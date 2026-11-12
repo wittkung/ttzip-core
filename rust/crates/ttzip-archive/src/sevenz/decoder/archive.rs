@@ -18,8 +18,6 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 
-
-
 /// Zero-copy 7z Archive reader and extractor.
 pub struct SevenZArchive<'a> {
     data: &'a [u8],
@@ -184,8 +182,6 @@ impl<'a> SevenZArchive<'a> {
         let mut cur_idx = 0usize;
         flush_zero_size_pending_files(&pending_files, &mut cur_idx, &jail)?;
         let mut cur_handle: Option<ActiveSevenZSink> = None;
-
-        let mut cursor = std::io::Cursor::new(self.data);
         let mut sink = |chunk: &[u8]| -> Result<(), TTZipStatus> {
             consume_extracted_stream_chunk(
                 chunk,
@@ -199,39 +195,8 @@ impl<'a> SevenZArchive<'a> {
             )
         };
 
-        if !self.info.folders.is_empty() {
-            for (f_idx, folder) in self.info.folders.iter().enumerate() {
-                match stream_7z_folder_from_reader(
-                    &mut cursor,
-                    &self.info,
-                    folder,
-                    password_str,
-                    options.thread_budget.max(1),
-                    &mut sink,
-                ) {
-                    Ok(_) => {}
-                    Err(TTZipStatus::ErrUnsupportedFeature) => {
-                        super::payload::decode_7z_folder_streaming(
-                            self.data,
-                            &self.info,
-                            f_idx,
-                            password_str,
-                            options.thread_budget.max(1),
-                            &mut sink,
-                        )?;
-                    }
-                    Err(e) => return Err(e),
-                }
-            }
-        } else {
-            decode_7z_solid_streaming(
-                self.data,
-                &self.info,
-                password_str,
-                options.thread_budget.max(1),
-                &mut sink,
-            )?;
-        }
+        let resolved_threads = super::codec_pump::resolve_decoder_threads(options.thread_budget);
+        self.decode_archive_folders_to_sink(password_str, resolved_threads, &mut sink)?;
 
         finalize_pending_extraction_state(
             &pending_files,
@@ -244,10 +209,50 @@ impl<'a> SevenZArchive<'a> {
         engine.apply_deferred_metadata(options.preserve_permissions)?;
         Ok(build_sevenz_extract_report(&self.info, total_uncomp_bytes, start_time))
     }
+
+    fn decode_archive_folders_to_sink<F>(
+        &self,
+        password_str: Option<&str>,
+        resolved_threads: u32,
+        sink: &mut F,
+    ) -> Result<(), TTZipStatus>
+    where
+        F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
+    {
+        if self.info.folders.is_empty() {
+            return decode_7z_solid_streaming(self.data, &self.info, password_str, resolved_threads, sink)
+                .map(|_| ());
+        }
+        let mut cursor = std::io::Cursor::new(self.data);
+        for (f_idx, folder) in self.info.folders.iter().enumerate() {
+            match stream_7z_folder_from_reader(
+                &mut cursor,
+                &self.info,
+                folder,
+                password_str,
+                resolved_threads,
+                sink,
+            ) {
+                Ok(_) => {}
+                Err(TTZipStatus::ErrUnsupportedFeature) => {
+                    super::payload::decode_7z_folder_streaming(
+                        self.data,
+                        &self.info,
+                        f_idx,
+                        password_str,
+                        resolved_threads,
+                        &mut *sink,
+                    )?;
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
 }
 
 pub use super::stream::extract_7z_single_entry_from_reader;
-use super::stream::stream_7z_folder_from_reader;
+pub use super::stream_folder::stream_7z_folder_from_reader;
 
 struct PendingSevenZItem {
     rel_path: String,
@@ -460,43 +465,24 @@ fn write_sevenz_sink_slice(
     active_sheet: &ProgressAtomicSheet,
     options: &TTZipExtractOptions,
 ) -> Result<(u64, u32), TTZipStatus> {
-    match sink {
-        ActiveSevenZSink::Regular {
-            inflight,
-            written,
-            running_crc,
-        } => {
-            let to_write = (chunk.len() as u64).min(item.size.saturating_sub(*written)) as usize;
-            if to_write > 0 {
-                let slice = &chunk[..to_write];
-                inflight
-                    .file_mut()
-                    .write_all(slice)
-                    .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-                *running_crc = crc32_fast(*running_crc, slice);
-                *written += to_write as u64;
-                report_extract_progress(active_sheet, options, &item.rel_path, to_write as u64)?;
-                *chunk = &chunk[to_write..];
-            }
-            Ok((*written, *running_crc))
+    let (file_opt, vec_opt, written, running_crc) = match sink {
+        ActiveSevenZSink::Regular { inflight, written, running_crc } => (Some(inflight), None, written, running_crc),
+        ActiveSevenZSink::Symlink { target_bytes, written, running_crc } => (None, Some(target_bytes), written, running_crc),
+    };
+    let to_write = (chunk.len() as u64).min(item.size.saturating_sub(*written)) as usize;
+    if to_write > 0 {
+        let slice = &chunk[..to_write];
+        if let Some(inflight) = file_opt {
+            inflight.file_mut().write_all(slice).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        } else if let Some(target_bytes) = vec_opt {
+            target_bytes.extend_from_slice(slice);
         }
-        ActiveSevenZSink::Symlink {
-            target_bytes,
-            written,
-            running_crc,
-        } => {
-            let to_write = (chunk.len() as u64).min(item.size.saturating_sub(*written)) as usize;
-            if to_write > 0 {
-                let slice = &chunk[..to_write];
-                target_bytes.extend_from_slice(slice);
-                *running_crc = crc32_fast(*running_crc, slice);
-                *written += to_write as u64;
-                report_extract_progress(active_sheet, options, &item.rel_path, to_write as u64)?;
-                *chunk = &chunk[to_write..];
-            }
-            Ok((*written, *running_crc))
-        }
+        *running_crc = crc32_fast(*running_crc, slice);
+        *written += to_write as u64;
+        report_extract_progress(active_sheet, options, &item.rel_path, to_write as u64)?;
+        *chunk = &chunk[to_write..];
     }
+    Ok((*written, *running_crc))
 }
 
 fn finalize_completed_sevenz_item(
@@ -509,20 +495,13 @@ fn finalize_completed_sevenz_item(
     if let Some(expected_crc) = item.expected_crc {
         if crc_now != expected_crc {
             let _ = cur_handle.take();
-            return Err(if is_encrypted {
-                TTZipStatus::ErrInvalidPassword
-            } else {
-                TTZipStatus::ErrCorruptHeader
-            });
+            return Err(if is_encrypted { TTZipStatus::ErrInvalidPassword } else { TTZipStatus::ErrCorruptHeader });
         }
     }
     match cur_handle.take() {
-        Some(ActiveSevenZSink::Regular { inflight, .. }) => {
-            inflight.commit(jail)?;
-        }
+        Some(ActiveSevenZSink::Regular { inflight, .. }) => inflight.commit(jail)?,
         Some(ActiveSevenZSink::Symlink { target_bytes, .. }) => {
-            let target_str =
-                std::str::from_utf8(&target_bytes).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
+            let target_str = std::str::from_utf8(&target_bytes).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
             jail.create_symlink_in_jail(&item.rel_path, target_str)?;
         }
         None => {}
@@ -538,11 +517,7 @@ fn ensure_no_excess_stream_bytes(
 ) -> Result<(), TTZipStatus> {
     if !chunk.is_empty() && remaining_files.iter().all(|f| f.size == 0) {
         let _ = cur_handle.take();
-        return Err(if is_encrypted {
-            TTZipStatus::ErrInvalidPassword
-        } else {
-            TTZipStatus::ErrCorruptHeader
-        });
+        return Err(if is_encrypted { TTZipStatus::ErrInvalidPassword } else { TTZipStatus::ErrCorruptHeader });
     }
     Ok(())
 }
@@ -567,12 +542,11 @@ fn consume_extracted_stream_chunk(
             return Err(TTZipStatus::Cancelled);
         }
         let item = &pending_files[*cur_idx];
-        if cur_handle.is_none() {
-            *cur_handle = Some(open_sevenz_sink_for_item(item, jail)?);
-        }
-        let sink = cur_handle.as_mut().unwrap();
-        let (written_now, crc_now) =
-            write_sevenz_sink_slice(sink, item, &mut chunk, active_sheet, options)?;
+        let sink = match cur_handle.as_mut() {
+            Some(s) => s,
+            None => cur_handle.insert(open_sevenz_sink_for_item(item, jail)?),
+        };
+        let (written_now, crc_now) = write_sevenz_sink_slice(sink, item, &mut chunk, active_sheet, options)?;
 
         if written_now >= item.size {
             ensure_no_excess_stream_bytes(chunk, &pending_files[*cur_idx + 1..], cur_handle, is_encrypted)?;
@@ -618,14 +592,7 @@ pub fn extract_7z_from_reader<R: std::io::Read + std::io::Seek>(
     let active_sheet = prepare_active_sheet(sheet, &local_sheet, total_uncomp_bytes)?;
 
     let mut engine = SafeExtractEngine::for_root(dest_dir);
-    let pending_files = prepare_pending_extraction_files(
-        info,
-        dest_dir,
-        &jail,
-        &mut engine,
-        options.dry_run,
-        active_sheet,
-    )?;
+    let pending_files = prepare_pending_extraction_files(info, dest_dir, &jail, &mut engine, options.dry_run, active_sheet)?;
     if options.dry_run {
         return Ok(total_uncomp_bytes);
     }
@@ -634,28 +601,13 @@ pub fn extract_7z_from_reader<R: std::io::Read + std::io::Seek>(
     flush_zero_size_pending_files(&pending_files, &mut cur_idx, &jail)?;
     let mut cur_handle: Option<ActiveSevenZSink> = None;
     let mut sink = |chunk: &[u8]| -> Result<(), TTZipStatus> {
-        consume_extracted_stream_chunk(
-            chunk,
-            &pending_files,
-            &mut cur_idx,
-            &mut cur_handle,
-            &jail,
-            info.is_encrypted,
-            options,
-            active_sheet,
-        )
+        consume_extracted_stream_chunk(chunk, &pending_files, &mut cur_idx, &mut cur_handle, &jail, info.is_encrypted, options, active_sheet)
     };
 
     for folder in &info.folders {
         stream_7z_folder_from_reader(reader, info, folder, password_str, options.thread_budget.max(1), &mut sink)?;
     }
-    finalize_pending_extraction_state(
-        &pending_files,
-        &mut cur_idx,
-        &cur_handle,
-        &jail,
-        info.is_encrypted,
-    )?;
+    finalize_pending_extraction_state(&pending_files, &mut cur_idx, &cur_handle, &jail, info.is_encrypted)?;
     if options.preserve_permissions {
         engine.apply_all()?;
     }
@@ -671,11 +623,7 @@ fn finalize_pending_extraction_state(
 ) -> Result<(), TTZipStatus> {
     flush_zero_size_pending_files(pending_files, cur_idx, jail)?;
     if cur_handle.is_some() || *cur_idx < pending_files.len() {
-        return Err(if is_encrypted {
-            TTZipStatus::ErrInvalidPassword
-        } else {
-            TTZipStatus::ErrCorruptHeader
-        });
+        return Err(if is_encrypted { TTZipStatus::ErrInvalidPassword } else { TTZipStatus::ErrCorruptHeader });
     }
     jail.verify_all_jail_symlinks()
 }

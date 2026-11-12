@@ -101,15 +101,84 @@ impl<W: Write> Lz4FrameEncoder<W> {
         })
     }
 
+    fn update_and_load_dict(&mut self, stream_ptr: *mut libc::c_void, raw_len: usize) {
+        const MAX_DICT_SIZE: usize = 65536;
+        if raw_len >= MAX_DICT_SIZE {
+            self.dict_history.clear();
+            self.dict_history
+                .extend_from_slice(&self.in_buf[raw_len - MAX_DICT_SIZE..]);
+        } else {
+            let avail = MAX_DICT_SIZE.saturating_sub(raw_len);
+            if self.dict_history.len() > avail {
+                let overflow = self.dict_history.len() - avail;
+                self.dict_history.drain(0..overflow);
+            }
+            self.dict_history.extend_from_slice(&self.in_buf);
+        }
+
+        unsafe {
+            LZ4_loadDict(
+                stream_ptr,
+                self.dict_history.as_ptr() as *const libc::c_char,
+                self.dict_history.len() as libc::c_int,
+            );
+        }
+    }
+
+    fn compress_active_block(&mut self, comp_buf: &mut [u8]) -> usize {
+        let raw_len = self.in_buf.len();
+        let max_bound = comp_buf.len();
+        let Some(stream_ptr) = self.cstream else {
+            return lz4_compress_fast(&self.in_buf, comp_buf, self.compression_level).unwrap_or(0);
+        };
+
+        let written = if self.dict_history.is_empty() {
+            lz4_compress_fast(&self.in_buf, comp_buf, self.compression_level).unwrap_or(0)
+        } else {
+            let res = unsafe {
+                LZ4_compress_fast_continue(
+                    stream_ptr,
+                    self.in_buf.as_ptr() as *const libc::c_char,
+                    comp_buf.as_mut_ptr() as *mut libc::c_char,
+                    raw_len as libc::c_int,
+                    max_bound as libc::c_int,
+                    self.compression_level.clamp(1, 100) as libc::c_int,
+                )
+            };
+            if res > 0 { res as usize } else { 0 }
+        };
+
+        if written > 0 {
+            self.update_and_load_dict(stream_ptr, raw_len);
+            written
+        } else {
+            0
+        }
+    }
+
+    fn write_framed_block(
+        writer: &mut W,
+        header_val: u32,
+        payload: &[u8],
+        block_checksum: bool,
+    ) -> io::Result<()> {
+        writer.write_all(&header_val.to_le_bytes())?;
+        writer.write_all(payload)?;
+        if block_checksum {
+            let bc = xxh32(payload, 0);
+            writer.write_all(&bc.to_le_bytes())?;
+        }
+        Ok(())
+    }
+
     /// Compresses and writes out the active block.
     fn flush_block(&mut self) -> io::Result<()> {
         if self.in_buf.is_empty() {
             return Ok(());
         }
-        let writer = self
-            .writer
-            .as_mut()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "writer closed"))?;
+        if self.writer.is_none() {
+            return Err(io::Error::new(io::ErrorKind::BrokenPipe, "writer closed"));
+        }
 
         if let Some(hasher) = &mut self.content_hasher {
             hasher.write(&self.in_buf);
@@ -118,74 +187,19 @@ impl<W: Write> Lz4FrameEncoder<W> {
         let raw_len = self.in_buf.len();
         let max_bound = lz4_compress_bound(raw_len);
         let mut comp_buf = vec![0u8; max_bound];
+        let comp_len = self.compress_active_block(&mut comp_buf);
 
-        let comp_len = if let Some(stream_ptr) = self.cstream {
-            let written = if self.dict_history.is_empty() {
-                lz4_compress_fast(&self.in_buf, &mut comp_buf, self.compression_level).unwrap_or(0)
-            } else {
-                let res = unsafe {
-                    LZ4_compress_fast_continue(
-                        stream_ptr,
-                        self.in_buf.as_ptr() as *const libc::c_char,
-                        comp_buf.as_mut_ptr() as *mut libc::c_char,
-                        raw_len as libc::c_int,
-                        max_bound as libc::c_int,
-                        self.compression_level.clamp(1, 100) as libc::c_int,
-                    )
-                };
-                if res > 0 {
-                    res as usize
-                } else {
-                    0
-                }
-            };
-
-            if written > 0 {
-                const MAX_DICT_SIZE: usize = 65536;
-                if raw_len >= MAX_DICT_SIZE {
-                    self.dict_history.clear();
-                    self.dict_history
-                        .extend_from_slice(&self.in_buf[raw_len - MAX_DICT_SIZE..]);
-                } else {
-                    let avail = MAX_DICT_SIZE.saturating_sub(raw_len);
-                    if self.dict_history.len() > avail {
-                        let overflow = self.dict_history.len() - avail;
-                        self.dict_history.drain(0..overflow);
-                    }
-                    self.dict_history.extend_from_slice(&self.in_buf);
-                }
-
-                unsafe {
-                    LZ4_loadDict(
-                        stream_ptr,
-                        self.dict_history.as_ptr() as *const libc::c_char,
-                        self.dict_history.len() as libc::c_int,
-                    );
-                }
-                written
-            } else {
-                0
-            }
-        } else {
-            lz4_compress_fast(&self.in_buf, &mut comp_buf, self.compression_level).unwrap_or(0)
-        };
+        let block_checksum = self.descriptor.block_checksum;
+        let writer = self
+            .writer
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::BrokenPipe, "writer closed"))?;
 
         if comp_len > 0 && comp_len < raw_len {
-            let block_header = (comp_len as u32).to_le_bytes();
-            writer.write_all(&block_header)?;
-            writer.write_all(&comp_buf[..comp_len])?;
-            if self.descriptor.block_checksum {
-                let bc = xxh32(&comp_buf[..comp_len], 0);
-                writer.write_all(&bc.to_le_bytes())?;
-            }
+            Self::write_framed_block(writer, comp_len as u32, &comp_buf[..comp_len], block_checksum)?;
         } else {
-            let block_header = ((raw_len as u32) | 0x8000_0000).to_le_bytes();
-            writer.write_all(&block_header)?;
-            writer.write_all(&self.in_buf)?;
-            if self.descriptor.block_checksum {
-                let bc = xxh32(&self.in_buf, 0);
-                writer.write_all(&bc.to_le_bytes())?;
-            }
+            let header_val = (raw_len as u32) | 0x8000_0000;
+            Self::write_framed_block(writer, header_val, &self.in_buf, block_checksum)?;
         }
 
         self.in_buf.clear();

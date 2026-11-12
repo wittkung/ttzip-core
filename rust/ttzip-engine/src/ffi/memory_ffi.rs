@@ -9,6 +9,42 @@ use std::ffi::CString;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Arc;
 
+unsafe fn free_subsystem_handle(ptr: *mut c_void, kind: TTZipMemoryKind) {
+    unsafe {
+        match kind {
+            TTZipMemoryKind::VfsTree => {
+                drop(Box::from_raw(ptr as *mut crate::ffi::fs_ffi::TTZipVfsTreeHandle));
+            }
+            TTZipMemoryKind::VfsCache => {
+                drop(Box::from_raw(ptr as *mut crate::ffi::vfs_ffi::TTZipVfsCacheHandle));
+            }
+            TTZipMemoryKind::Filter => {
+                drop(Box::from_raw(ptr as *mut crate::ffi::filter_ffi::TTZipFilterDslEngine));
+            }
+            TTZipMemoryKind::PathFilter => {
+                drop(Box::from_raw(ptr as *mut crate::ffi::filter_ffi::TTZipPathFilterHandle));
+            }
+            TTZipMemoryKind::SplitReader => {
+                drop(Box::from_raw(
+                    ptr as *mut crate::ffi::archive_ffi::split::reader::TTZipSplitReaderHandle,
+                ));
+            }
+            TTZipMemoryKind::SplitWriter => {
+                drop(Box::from_raw(
+                    ptr as *mut crate::ffi::archive_ffi::split::writer::TTZipSplitWriterHandle,
+                ));
+            }
+            TTZipMemoryKind::StreamReader => {
+                drop(Box::from_raw(ptr as *mut crate::ffi::stream_ffi::TTZipStreamReaderHandle));
+            }
+            TTZipMemoryKind::StreamWriter => {
+                drop(Box::from_raw(ptr as *mut crate::ffi::stream_ffi::TTZipStreamWriterHandle));
+            }
+            _ => {}
+        }
+    }
+}
+
 /// Canonical Universal Deallocator for all Rust-allocated resources across C-ABI boundaries.
 ///
 /// Ensures memory safety and prevents undefined behavior / cross-allocator crashes.
@@ -33,36 +69,13 @@ pub unsafe extern "C" fn ttzip_free(ptr: *mut c_void, kind: TTZipMemoryKind) {
             TTZipMemoryKind::Error => {
                 drop(Box::from_raw(ptr as *mut TTZipError));
             }
-            TTZipMemoryKind::VfsTree => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::fs_ffi::TTZipVfsTreeHandle));
-            }
-            TTZipMemoryKind::VfsCache => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::vfs_ffi::TTZipVfsCacheHandle));
-            }
-            TTZipMemoryKind::Filter => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::filter_ffi::TTZipFilterDslEngine));
-            }
-            TTZipMemoryKind::PathFilter => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::filter_ffi::TTZipPathFilterHandle));
-            }
-            TTZipMemoryKind::SplitReader => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::archive_ffi::split::reader::TTZipSplitReaderHandle));
-            }
-            TTZipMemoryKind::SplitWriter => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::archive_ffi::split::writer::TTZipSplitWriterHandle));
-            }
-            TTZipMemoryKind::StreamReader => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::stream_ffi::TTZipStreamReaderHandle));
-            }
-            TTZipMemoryKind::StreamWriter => {
-                drop(Box::from_raw(ptr as *mut crate::ffi::stream_ffi::TTZipStreamWriterHandle));
-            }
             TTZipMemoryKind::CancellationToken => {
-                Arc::decrement_strong_count(ptr as *const crate::runtime::cancellation::CancellationToken);
+                Arc::decrement_strong_count(
+                    ptr as *const crate::runtime::cancellation::CancellationToken,
+                );
             }
-            TTZipMemoryKind::InPlaceSession => {
-                // In-place session state has been evicted; no-op
-            }
+            TTZipMemoryKind::InPlaceSession => {}
+            other => free_subsystem_handle(ptr, other),
         }));
     }
 }

@@ -102,7 +102,7 @@ impl SemanticSearchCoordinator {
         if cancel_flag.load(Ordering::SeqCst) {
             return false;
         }
-        let guard = self.scopes.read().expect("scopes lock poisoned");
+        let guard = self.scopes.read().unwrap_or_else(|e| e.into_inner());
         Self::can_commit_locked(guard.get(scope_id), run_identity, cancel_flag)
     }
 
@@ -110,7 +110,7 @@ impl SemanticSearchCoordinator {
         &self,
         scope_id: &str,
     ) -> Result<(PathBuf, ScopeRunIdentity, Arc<AtomicBool>), SemanticModelError> {
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         let Some(managed) = guard.get_mut(scope_id) else {
             return Err(SemanticModelError::RuntimeFailed {
                 reason: format!("Unknown scope_id: {}", scope_id),
@@ -148,7 +148,7 @@ impl SemanticSearchCoordinator {
             "Failed to read authorized directory (permission or I/O error): {}",
             root_path.display()
         );
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if let Some(managed) = guard.get_mut(scope_id) {
             if managed.auth_epoch == run_identity.auth_epoch
                 && managed.active_run_token == run_identity.run_token
@@ -309,24 +309,18 @@ impl SemanticSearchCoordinator {
         run_identity: ScopeRunIdentity,
         cancel_flag: &AtomicBool,
     ) -> Result<PersistentScopeIndex, SemanticModelError> {
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         let Some(managed) = guard.get_mut(scope_id) else {
             return Err(SemanticModelError::RuntimeFailed {
                 reason: format!("Unknown scope_id: {}", scope_id),
             });
         };
         if Self::can_commit_locked(Some(managed), run_identity, cancel_flag) {
-            if let Some(managed) = guard.get_mut(scope_id) {
-                managed.progress.phase = SemanticIngestPhase::ChunkingAndEmbedding;
-                managed.progress.total_files = event_count as u32;
-                managed.progress.processed_files = 0;
-                return Ok(managed.index.clone());
-            }
+            managed.progress.phase = SemanticIngestPhase::ChunkingAndEmbedding;
+            managed.progress.total_files = event_count as u32;
+            managed.progress.processed_files = 0;
         }
-        Ok(guard
-            .get(scope_id)
-            .map(|m| m.index.clone())
-            .expect("checked Some above"))
+        Ok(managed.index.clone())
     }
 
     pub(super) fn cancelled_progress_snapshot(
@@ -334,7 +328,7 @@ impl SemanticSearchCoordinator {
         scope_id: &str,
         run_identity: ScopeRunIdentity,
     ) -> SemanticIndexProgress {
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if let Some(managed) = guard.get_mut(scope_id) {
             if managed.auth_epoch == run_identity.auth_epoch
                 && (managed.active_run_token == run_identity.run_token
@@ -364,7 +358,7 @@ impl SemanticSearchCoordinator {
         model_ready: bool,
     ) -> Result<SemanticIndexProgress, SemanticModelError> {
         let (ttvec_path, ttidx_path) = self.scope_paths(scope_id);
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if !Self::can_commit_locked(guard.get(scope_id), run_identity, cancel_flag) {
             if let Some(managed) = guard.get_mut(scope_id) {
                 if managed.auth_epoch == run_identity.auth_epoch
@@ -429,15 +423,7 @@ impl SemanticSearchCoordinator {
             return Ok(true);
         }
 
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(relative_path.as_bytes());
-        if matches!(tier, ContentSupportTier::Tier1PathOnly) && bytes.is_empty() {
-            hasher.update(&file_size.to_le_bytes());
-        } else {
-            hasher.update(bytes);
-        }
-        let content_blake3 = *hasher.finalize().as_bytes();
-
+        let content_blake3 = compute_file_content_hash(relative_path, bytes, file_size, tier);
         if working_index.is_file_up_to_date(relative_path, mtime_ns, file_size, &content_blake3) {
             self.record_step_progress_if_active(
                 scope_id,
@@ -449,7 +435,7 @@ impl SemanticSearchCoordinator {
             return Ok(true);
         }
 
-        let Some(built_segments) = self.build_file_segments(
+        let Some((built_segments, had_chunk_failure)) = self.build_file_segments(
             scope_id,
             relative_path,
             bytes,
@@ -465,7 +451,8 @@ impl SemanticSearchCoordinator {
             return Ok(false);
         }
 
-        working_index.upsert_file_segments(
+        commit_built_file_segments(
+            working_index,
             FileIndexInput {
                 relative_path: relative_path.to_string(),
                 archive_entry_path,
@@ -475,6 +462,7 @@ impl SemanticSearchCoordinator {
                 tier,
             },
             built_segments,
+            had_chunk_failure,
         )?;
         self.record_step_progress_if_active(
             scope_id,
@@ -494,7 +482,7 @@ impl SemanticSearchCoordinator {
         run_identity: ScopeRunIdentity,
         cancel_flag: &AtomicBool,
     ) {
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if Self::can_commit_locked(guard.get(scope_id), run_identity, cancel_flag) {
             if let Some(managed) = guard.get_mut(scope_id) {
                 managed.progress.processed_files = (idx + 1) as u32;
@@ -502,6 +490,20 @@ impl SemanticSearchCoordinator {
                 managed.progress.index_generation = working_index.index_generation;
             }
         }
+    }
+
+    fn encode_validated_segment(
+        &self,
+        relative_path: Option<&str>,
+        text: &str,
+    ) -> Result<[i8; 128], SemanticModelError> {
+        let vec_i8 = self.provider.encode_document(relative_path, text).inspect_err(|err| {
+            self.record_skipped_error(err);
+        })?;
+        validate_non_zero_int8_vector(&vec_i8).inspect_err(|err| {
+            self.record_skipped_error(err);
+        })?;
+        Ok(vec_i8)
     }
 
     fn build_file_segments(
@@ -512,26 +514,25 @@ impl SemanticSearchCoordinator {
         tier: ContentSupportTier,
         run_identity: ScopeRunIdentity,
         cancel_flag: &AtomicBool,
-    ) -> Result<Option<Vec<BuiltSegment>>, SemanticModelError> {
+    ) -> Result<Option<(Vec<BuiltSegment>, bool)>, SemanticModelError> {
         if !self.is_run_still_active(scope_id, run_identity, cancel_flag) {
             return Ok(None);
         }
         let mut built_segments = Vec::new();
-        let path_vec = self.provider.encode_document(None, relative_path)?;
+        let path_vec = self.encode_validated_segment(None, relative_path)?;
         if !self.is_run_still_active(scope_id, run_identity, cancel_flag) {
             return Ok(None);
         }
-        validate_non_zero_int8_vector(&path_vec)?;
         built_segments.push((true, 0, 0, 0, relative_path.to_string(), path_vec));
 
         if !matches!(
             tier,
             ContentSupportTier::Tier2PlainText | ContentSupportTier::Tier2SourceCode
         ) {
-            return Ok(Some(built_segments));
+            return Ok(Some((built_segments, false)));
         }
         let Some(text) = extract_safe_utf8_text(bytes) else {
-            return Ok(Some(built_segments));
+            return Ok(Some((built_segments, false)));
         };
         let is_code = tier == ContentSupportTier::Tier2SourceCode;
         let chunks = chunk_text_content(
@@ -540,17 +541,18 @@ impl SemanticSearchCoordinator {
             DEFAULT_CHUNK_CHARS,
             DEFAULT_CHUNK_OVERLAP_CHARS,
         );
+        let mut had_chunk_failure = false;
         for ch in chunks {
             if !self.is_run_still_active(scope_id, run_identity, cancel_flag) {
                 return Ok(None);
             }
-            let vec_i8 = self
-                .provider
-                .encode_document(Some(relative_path), &ch.text)?;
+            let Ok(vec_i8) = self.encode_validated_segment(Some(relative_path), &ch.text) else {
+                had_chunk_failure = true;
+                continue;
+            };
             if !self.is_run_still_active(scope_id, run_identity, cancel_flag) {
                 return Ok(None);
             }
-            validate_non_zero_int8_vector(&vec_i8)?;
             let preview = ch.text.chars().take(240).collect::<String>();
             built_segments.push((
                 false,
@@ -562,50 +564,66 @@ impl SemanticSearchCoordinator {
             ));
         }
 
-        Ok(Some(built_segments))
+        Ok(Some((built_segments, had_chunk_failure)))
     }
 }
 
+fn compute_file_content_hash(
+    relative_path: &str,
+    bytes: &[u8],
+    file_size: u64,
+    tier: ContentSupportTier,
+) -> [u8; 32] {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(relative_path.as_bytes());
+    if matches!(tier, ContentSupportTier::Tier1PathOnly) && bytes.is_empty() {
+        hasher.update(&file_size.to_le_bytes());
+    } else {
+        hasher.update(bytes);
+    }
+    *hasher.finalize().as_bytes()
+}
+
+fn commit_built_file_segments(
+    working_index: &mut PersistentScopeIndex,
+    mut input: FileIndexInput,
+    built_segments: Vec<BuiltSegment>,
+    had_chunk_failure: bool,
+) -> Result<(), SemanticModelError> {
+    if had_chunk_failure {
+        if working_index.contains_file(&input.relative_path) {
+            return Ok(());
+        }
+        input.content_blake3[0] ^= 0xff;
+        input.mtime_ns = i64::MIN;
+    }
+    working_index.upsert_file_segments(input, built_segments)?;
+    Ok(())
+}
+
 #[cfg(test)]
-mod tests {
+#[path = "ingest_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+mod retry_eligibility_tests {
     use crate::engine::{
-        SemanticIngestPhase, SemanticScopeDescriptor, SemanticScopeKind, SemanticSearchCoordinator,
+        SemanticFileEvent, SemanticIngestPhase, SemanticScopeDescriptor, SemanticScopeKind,
+        SemanticSearchCoordinator,
     };
     use crate::model::{SemanticModelError, SemanticModelState};
     use crate::scoring::{DeterministicEmbeddingProvider, EmbeddingProvider};
     use std::fs;
-    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-    use std::sync::{mpsc, Arc, Mutex};
-    use std::thread;
-    use std::time::Duration;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
     use tempfile::TempDir;
 
-    struct GatedEmbeddingProvider {
+    struct TogglePoisonProvider {
         inner: DeterministicEmbeddingProvider,
-        doc_call_count: AtomicUsize,
-        gate_on_call: usize,
-        entered_tx: Mutex<Option<mpsc::Sender<()>>>,
-        release_rx: Mutex<Option<mpsc::Receiver<()>>>,
+        fail_poison: AtomicBool,
     }
 
-    impl GatedEmbeddingProvider {
-        fn new(
-            gate_on_call: usize,
-        ) -> (Arc<Self>, mpsc::Receiver<()>, mpsc::Sender<()>) {
-            let (entered_tx, entered_rx) = mpsc::channel();
-            let (release_tx, release_rx) = mpsc::channel();
-            let provider = Arc::new(Self {
-                inner: DeterministicEmbeddingProvider::ready(),
-                doc_call_count: AtomicUsize::new(0),
-                gate_on_call,
-                entered_tx: Mutex::new(Some(entered_tx)),
-                release_rx: Mutex::new(Some(release_rx)),
-            });
-            (provider, entered_rx, release_tx)
-        }
-    }
-
-    impl EmbeddingProvider for GatedEmbeddingProvider {
+    impl EmbeddingProvider for TogglePoisonProvider {
         fn model_state(&self) -> SemanticModelState {
             self.inner.model_state()
         }
@@ -627,135 +645,90 @@ mod tests {
             relative_path: Option<&str>,
             chunk_text: &str,
         ) -> Result<[i8; 128], SemanticModelError> {
-            let call_idx = self.doc_call_count.fetch_add(1, Ordering::SeqCst) + 1;
-            if call_idx == self.gate_on_call {
-                if let Some(tx) = self.entered_tx.lock().expect("entered_tx").take() {
-                    let _ = tx.send(());
-                }
-                if let Some(rx) = self.release_rx.lock().expect("release_rx").take() {
-                    let _ = rx.recv_timeout(Duration::from_secs(2));
-                }
+            if self.fail_poison.load(Ordering::SeqCst) && chunk_text.contains("poison_chunk") {
+                return Err(SemanticModelError::ZeroOrNonFiniteVector);
             }
             self.inner.encode_document(relative_path, chunk_text)
         }
     }
 
     #[test]
-    fn test_s2_b_encode_a_suspended_cancel_start_b_release_a_no_resurrection_or_partial_commit() {
+    fn test_failed_chunk_preserves_existing_segments_and_keeps_file_retry_eligible() {
         let tmp = TempDir::new().expect("tempdir");
-        let ws = tmp.path().join("ws");
-        let store = tmp.path().join("store");
-        fs::create_dir_all(&ws).expect("mkdir ws");
-        fs::create_dir_all(&store).expect("mkdir store");
+        let store = tmp.path().join("store_retry");
+        fs::create_dir_all(&store).expect("mkdir store_retry");
 
-        let long_text = (0..60)
-            .map(|i| format!("Line {}: database connection retry backoff chunk content.\n", i))
+        let provider = Arc::new(TogglePoisonProvider {
+            inner: DeterministicEmbeddingProvider::ready(),
+            fail_poison: AtomicBool::new(false),
+        });
+        let coordinator = SemanticSearchCoordinator::new(Arc::clone(&provider) as _, store);
+        coordinator.register_scope(SemanticScopeDescriptor {
+            scope_id: "dir:retry_scope".to_string(),
+            kind: SemanticScopeKind::AuthorizedDirectory,
+            root_path: tmp.path().to_string_lossy().into_owned(),
+            display_name: "retry_scope".to_string(),
+            is_authorized: true,
+        });
+
+        let v1_body = (0..40)
+            .map(|i| format!("Line {i}: initial healthy indexed content segment data.\n"))
             .collect::<String>();
-        fs::write(ws.join("multi_chunk.txt"), &long_text).expect("write multi_chunk.txt");
+        let prog_v1 = coordinator
+            .index_entries(
+                "dir:retry_scope",
+                &[SemanticFileEvent::CreatedOrModified {
+                    relative_path: "existing.md".to_string(),
+                    archive_entry_path: None,
+                    bytes: v1_body.into_bytes(),
+                    mtime_ns: 10,
+                }],
+            )
+            .expect("v1 index");
+        assert_eq!(prog_v1.phase, SemanticIngestPhase::Completed);
+        assert!(prog_v1.indexed_segments >= 3);
 
-        let (provider, entered_rx, release_tx) = GatedEmbeddingProvider::new(3);
-        let coordinator = Arc::new(SemanticSearchCoordinator::new(provider, store));
-        let scope = SemanticScopeDescriptor {
-            scope_id: "dir:s2_b".to_string(),
-            kind: SemanticScopeKind::AuthorizedDirectory,
-            root_path: ws.to_string_lossy().into_owned(),
-            display_name: "ws".to_string(),
-            is_authorized: true,
+        provider.fail_poison.store(true, Ordering::SeqCst);
+        let v2_body = format!(
+            "{}\npoison_chunk transient failure tail\n",
+            (0..40)
+                .map(|i| format!("Line {i}: updated document body before transient failure.\n"))
+                .collect::<String>()
+        );
+        let v2_event = SemanticFileEvent::CreatedOrModified {
+            relative_path: "existing.md".to_string(),
+            archive_entry_path: None,
+            bytes: v2_body.into_bytes(),
+            mtime_ns: 20,
         };
-        coordinator.register_scope(scope);
-
-        let coord_a = Arc::clone(&coordinator);
-        let (done_tx, done_rx) = mpsc::channel();
-        let handle_a = thread::spawn(move || {
-            let res = coord_a.index_directory_scope("dir:s2_b");
-            let _ = done_tx.send(());
-            res
-        });
-
-        if entered_rx.recv_timeout(Duration::from_secs(2)).is_err() {
-            let _ = release_tx.send(());
-            panic!("Run A timed out entering gated encode_document on chunk 2");
-        }
-        let flag_a: Arc<AtomicBool> = coordinator
-            .scope_cancellation_flag("dir:s2_b")
-            .expect("flag A");
-
-        coordinator.cancel_indexing("dir:s2_b");
-        assert!(flag_a.load(Ordering::SeqCst), "Flag A must be true after cancel");
-
-        let prog_b = coordinator
-            .index_directory_scope("dir:s2_b")
-            .expect("Run B must succeed");
-        assert_eq!(prog_b.phase, SemanticIngestPhase::Completed);
-        assert!(
-            flag_a.load(Ordering::SeqCst),
-            "Starting Run B must NEVER resurrect Run A's cancellation flag"
-        );
-
-        let _ = release_tx.send(());
-        assert!(
-            done_rx.recv_timeout(Duration::from_secs(2)).is_ok(),
-            "Run A must complete within bounded timeout after gate release"
-        );
-        let prog_a = handle_a.join().expect("join A").expect("Run A result");
-        assert_eq!(prog_a.phase, SemanticIngestPhase::Cancelled);
-
-        let final_prog = coordinator.scope_progress("dir:s2_b").expect("final progress");
-        assert_eq!(final_prog.phase, SemanticIngestPhase::Completed);
-        assert_eq!(final_prog.indexed_segments, prog_b.indexed_segments);
-        assert!(final_prog.indexed_segments >= 3);
-    }
-
-    #[test]
-    fn test_s2_c_cancel_revoke_reauthorize_blocks_stale_commit() {
-        let tmp = TempDir::new().expect("tempdir");
-        let ws = tmp.path().join("ws_c");
-        let store = tmp.path().join("store_c");
-        fs::create_dir_all(&ws).expect("mkdir ws_c");
-        fs::create_dir_all(&store).expect("mkdir store_c");
-        fs::write(ws.join("stale_from_a.txt"), "stale body from run A").expect("write stale");
-
-        let (provider, entered_rx, release_tx) = GatedEmbeddingProvider::new(2);
-        let coordinator = Arc::new(SemanticSearchCoordinator::new(provider, store));
-
-        let scope = SemanticScopeDescriptor {
-            scope_id: "dir:s2_c".to_string(),
-            kind: SemanticScopeKind::AuthorizedDirectory,
-            root_path: ws.to_string_lossy().into_owned(),
-            display_name: "ws_c".to_string(),
-            is_authorized: true,
-        };
-        coordinator.register_scope(scope.clone());
-
-        let coord_a = Arc::clone(&coordinator);
-        let (done_tx, done_rx) = mpsc::channel();
-        let handle_a = thread::spawn(move || {
-            let res = coord_a.index_directory_scope("dir:s2_c");
-            let _ = done_tx.send(());
-            res
-        });
-
-        if entered_rx.recv_timeout(Duration::from_secs(2)).is_err() {
-            let _ = release_tx.send(());
-            panic!("Run A timed out entering encode_document");
-        }
-
-        coordinator.cancel_indexing("dir:s2_c");
-        assert!(coordinator.revoke_scope("dir:s2_c"));
-        fs::remove_file(ws.join("stale_from_a.txt")).expect("remove stale file");
-        coordinator.register_scope(scope);
-
-        let _ = release_tx.send(());
-        assert!(
-            done_rx.recv_timeout(Duration::from_secs(2)).is_ok(),
-            "Run A must complete within bounded timeout after gate release"
-        );
-        let prog_a = handle_a.join().expect("join A").expect("res A");
-        let post_c = coordinator.scope_progress("dir:s2_c").expect("progress C");
-        assert_eq!(prog_a.phase, SemanticIngestPhase::Cancelled);
+        let prog_v2_fail = coordinator
+            .index_entries("dir:retry_scope", std::slice::from_ref(&v2_event))
+            .expect("v2 failing index");
+        assert_eq!(coordinator.skipped_error_count(), 1);
         assert_eq!(
-            post_c.indexed_segments, 0,
-            "Retired Run A must never write into re-authorized Scope C"
+            prog_v2_fail.indexed_segments, prog_v1.indexed_segments,
+            "existing full segments must not be overwritten with partial segments on chunk failure"
+        );
+
+        let new_event = SemanticFileEvent::CreatedOrModified {
+            relative_path: "new_partial.md".to_string(),
+            archive_entry_path: None,
+            bytes: b"poison_chunk in newly discovered file".to_vec(),
+            mtime_ns: 30,
+        };
+        let prog_new_fail = coordinator
+            .index_entries("dir:retry_scope", std::slice::from_ref(&new_event))
+            .expect("new file failing index");
+        assert_eq!(coordinator.skipped_error_count(), 2);
+        let segments_after_partial = prog_new_fail.indexed_segments;
+
+        provider.fail_poison.store(false, Ordering::SeqCst);
+        let prog_retry = coordinator
+            .index_entries("dir:retry_scope", &[v2_event, new_event])
+            .expect("retry after transient failure clears");
+        assert!(
+            prog_retry.indexed_segments > segments_after_partial,
+            "unchanged files with prior chunk failures must be re-indexed on subsequent scan"
         );
     }
 }

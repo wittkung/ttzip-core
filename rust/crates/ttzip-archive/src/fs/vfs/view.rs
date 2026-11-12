@@ -64,6 +64,50 @@ pub struct VfsVisibleItem {
 }
 
 impl VfsCompactArena {
+    fn build_visible_item(
+        &self,
+        cid: u32,
+        depth: usize,
+        prefix: &str,
+        is_last: bool,
+    ) -> (VfsVisibleItem, bool) {
+        let nid = cid as usize;
+        let is_dir = (self.node_attributes[nid] & VFS_FLAG_IS_DIR) != 0;
+        let is_enc = (self.node_attributes[nid] & VFS_FLAG_IS_ENCRYPTED) != 0;
+        let is_expanded = self.expanded.get(nid).copied().unwrap_or(false);
+        let is_selected = self.selected.get(nid).copied().unwrap_or(false);
+
+        let branch = if is_last { "└── " } else { "├── " };
+        let indent_prefix = if depth == 0 {
+            String::new()
+        } else {
+            format!("{}{}", prefix, branch)
+        };
+
+        let visible_node = VfsVisibleNode {
+            node_id: cid,
+            name: self.node_name(cid).to_string(),
+            relative_path: self.node_full_path(cid),
+            is_dir,
+            uncompressed_size: self.uncompressed_sizes[nid],
+            compressed_size: self.compressed_sizes[nid],
+            crc32: self.crc32s[nid],
+            is_encrypted: is_enc,
+            is_expanded,
+            is_selected,
+            match_indices: Vec::new(),
+            entry_idx: self.entry_index(cid),
+        };
+
+        let item = VfsVisibleItem {
+            node: visible_node,
+            depth,
+            is_last_child: is_last,
+            indent_prefix,
+        };
+        (item, is_dir && is_expanded)
+    }
+
     /// Flattens the currently visible (expanded) nodes into a linear list.
     /// Traversal is non-recursive using an explicit heap stack.
     pub fn flatten_visible(&self) -> Vec<VfsVisibleItem> {
@@ -102,60 +146,24 @@ impl VfsCompactArena {
                 }
             };
 
-            let nid = cid as usize;
-            if nid >= self.total_nodes {
+            if (cid as usize) >= self.total_nodes {
                 continue;
             }
 
-            let is_dir = (self.node_attributes[nid] & VFS_FLAG_IS_DIR) != 0;
-            let is_enc = (self.node_attributes[nid] & VFS_FLAG_IS_ENCRYPTED) != 0;
-            let is_expanded = self.expanded.get(cid as usize).copied().unwrap_or(false);
-            let is_selected = self.selected.get(cid as usize).copied().unwrap_or(false);
-            let entry_idx = self.entry_index(cid);
+            let (item, should_descend) = self.build_visible_item(cid, depth, &prefix, is_last);
+            items.push(item);
 
-            let branch = if is_last { "└── " } else { "├── " };
-            let indent_prefix = if depth == 0 {
-                String::new()
-            } else {
-                format!("{}{}", prefix, branch)
-            };
-
-            let visible_node = VfsVisibleNode {
-                node_id: cid,
-                name: self.node_name(cid).to_string(),
-                relative_path: self.node_full_path(cid),
-                is_dir,
-                uncompressed_size: self.uncompressed_sizes[nid],
-                compressed_size: self.compressed_sizes[nid],
-                crc32: self.crc32s[nid],
-                is_encrypted: is_enc,
-                is_expanded,
-                is_selected,
-                match_indices: Vec::new(),
-                entry_idx,
-            };
-
-            items.push(VfsVisibleItem {
-                node: visible_node,
-                depth,
-                is_last_child: is_last,
-                indent_prefix,
-            });
-
-            if is_dir && is_expanded {
-                let next_prefix = if depth == 0 {
-                    ""
-                } else if is_last {
-                    "    "
-                } else {
-                    "│   "
+            if should_descend {
+                let next_prefix = match (depth == 0, is_last) {
+                    (true, _) => "",
+                    (false, true) => "    ",
+                    (false, false) => "│   ",
                 };
-                let combined_prefix = format!("{}{}", prefix, next_prefix);
                 stack.push(Frame {
                     node_id: cid,
                     child_idx: 0,
                     depth: depth + 1,
-                    prefix: combined_prefix,
+                    prefix: format!("{}{}", prefix, next_prefix),
                 });
             }
         }

@@ -26,6 +26,7 @@ APPLE_DIR="${REPO_ROOT}/products/ttzip/apple"
 
 CHECK_MODE=0
 GEN_SWIFT=1
+GEN_PYTHON=1
 GEN_CPP=1
 GEN_CSHARP=1
 
@@ -36,6 +37,7 @@ Usage: $(basename "$0") [OPTIONS]
 Options:
   --check          Dry-run drift verification; exits non-zero if bindings differ from disk
   --swift-only     Generate only macOS Swift 6 bindings
+  --python-only    Generate only Python SDK bindings
   --cpp-only       Generate only C++20 bindings (Windows WinUI 3 / Linux Qt6 / Slint)
   --csharp-only    Generate only C# 12 bindings (.NET 8 / WinUI 3)
   -h, --help       Show this help message
@@ -51,18 +53,28 @@ while [[ $# -gt 0 ]]; do
             ;;
         --swift-only)
             GEN_SWIFT=1
+            GEN_PYTHON=0
+            GEN_CPP=0
+            GEN_CSHARP=0
+            shift
+            ;;
+        --python-only)
+            GEN_SWIFT=0
+            GEN_PYTHON=1
             GEN_CPP=0
             GEN_CSHARP=0
             shift
             ;;
         --cpp-only)
             GEN_SWIFT=0
+            GEN_PYTHON=0
             GEN_CPP=1
             GEN_CSHARP=0
             shift
             ;;
         --csharp-only)
             GEN_SWIFT=0
+            GEN_PYTHON=0
             GEN_CPP=0
             GEN_CSHARP=1
             shift
@@ -99,19 +111,26 @@ echo "======================================================================"
 #   the scaffolding embedded in the cdylib agree.
 # ------------------------------------------------------------------------------
 DYLIB_TARGET="//products/ttzip/core/rust/ttzip-engine:ttzip_engine_dylib"
-BAZEL_CACHE_FLAG=""
+BAZEL_STARTUP_ARGS=()
+BAZEL_BUILD_ARGS=()
+if [[ -n "${TTZIP_ISOLATED_OUTPUT_BASE:-}" ]]; then
+    BAZEL_STARTUP_ARGS+=("--output_base=${TTZIP_ISOLATED_OUTPUT_BASE}")
+    BAZEL_BUILD_ARGS+=("--experimental_convenience_symlinks=ignore" "--noremote_accept_cached")
+fi
 if ! nc -z -G 1 127.0.0.1 50051 2>/dev/null; then
-    BAZEL_CACHE_FLAG="--remote_cache="
+    BAZEL_BUILD_ARGS+=("--remote_cache=")
 fi
 
 echo "--> [BUILD] Building cdylib via Bazel..."
-(cd "${REPO_ROOT}" && bazel build ${BAZEL_CACHE_FLAG} "${DYLIB_TARGET}")
-DYLIB_REL="$(cd "${REPO_ROOT}" && bazel cquery ${BAZEL_CACHE_FLAG} --output=files "${DYLIB_TARGET}" 2>/dev/null | grep -E '\.dylib$' | head -n 1 || true)"
-DYLIB="${DYLIB_REL:+${REPO_ROOT}/${DYLIB_REL}}"
+(cd "${REPO_ROOT}" && bazel "${BAZEL_STARTUP_ARGS[@]}" build "${BAZEL_BUILD_ARGS[@]}" "${DYLIB_TARGET}")
+EXEC_ROOT="$(cd "${REPO_ROOT}" && bazel "${BAZEL_STARTUP_ARGS[@]}" info execution_root 2>/dev/null | tail -n 1 || true)"
+DYLIB_REL="$(cd "${REPO_ROOT}" && bazel "${BAZEL_STARTUP_ARGS[@]}" cquery "${BAZEL_BUILD_ARGS[@]}" --output=files "${DYLIB_TARGET}" 2>/dev/null | grep -E '\.dylib$' | head -n 1 || true)"
+DYLIB="${DYLIB_REL:+${EXEC_ROOT:-${REPO_ROOT}}/${DYLIB_REL}}"
 
 echo "--> [BUILD] Building uniffi-bindgen via cargo..."
+CARGO_TARGET_ROOT="${CARGO_TARGET_DIR:-${RUST_DIR}/target}"
 cargo build --quiet --manifest-path "${RUST_DIR}/Cargo.toml" -p ttzip-bindgen --bin uniffi-bindgen
-BINDGEN_BIN="${RUST_DIR}/target/debug/uniffi-bindgen"
+BINDGEN_BIN="${CARGO_TARGET_ROOT}/debug/uniffi-bindgen"
 
 if [ -z "${DYLIB}" ] || [ ! -x "${BINDGEN_BIN}" ] || [ ! -f "${DYLIB}" ]; then
     echo "❌ Error: Failed to resolve executable uniffi-bindgen or cdylib."
@@ -127,7 +146,7 @@ echo "--> [OK] Using cdylib: ${DYLIB}"
 STAGING_DIR="$(mktemp -d /tmp/ttzip_bindings_staging.XXXXXX)"
 trap 'rm -rf "${STAGING_DIR}"' EXIT
 
-mkdir -p "${STAGING_DIR}/swift" "${STAGING_DIR}/cpp" "${STAGING_DIR}/csharp"
+mkdir -p "${STAGING_DIR}/swift" "${STAGING_DIR}/python" "${STAGING_DIR}/cpp" "${STAGING_DIR}/csharp"
 
 echo "--> [GEN] Running uniffi-bindgen generate..."
 (
@@ -139,6 +158,43 @@ echo "--> [GEN] Running uniffi-bindgen generate..."
         --no-format \
         --metadata-no-deps
 )
+
+if [ "${GEN_PYTHON}" -eq 1 ]; then
+    (
+        cd "${RUST_DIR}"
+        "${BINDGEN_BIN}" generate \
+            --library "${DYLIB}" \
+            --language python \
+            --out-dir "${STAGING_DIR}/python" \
+            --no-format \
+            --metadata-no-deps
+    )
+    python3 -c '
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+header = "# Copyright 2026 MetastudyLine. All rights reserved.\n# Proprietary and confidential.\n"
+txt = p.read_text(encoding="utf-8")
+if not txt.startswith("# Copyright 2026 MetastudyLine"):
+    p.write_text(header + txt, encoding="utf-8")
+' "${STAGING_DIR}/python/ttzip_engine.py"
+fi
+
+extract_swift_checksum() {
+    local sym="$1"
+    local val
+    val="$(sed -n "s/^[[:space:]]*if (uniffi_ttzip_engine_checksum_${sym}() != \([0-9][0-9]*\)) {$/\1/p" "${STAGING_DIR}/swift/ttzip_engine.swift" | head -n 1)"
+    if [ -z "${val}" ]; then
+        echo "❌ Error: Failed to extract checksum for ${sym} from ${STAGING_DIR}/swift/ttzip_engine.swift" >&2
+        exit 1
+    fi
+    echo "${val}"
+}
+
+CHECKSUM_DETECT_ARCHIVE_FORMAT="$(extract_swift_checksum "func_detect_archive_format")"
+CHECKSUM_CREATE_ARCHIVE_STREAM="$(extract_swift_checksum "func_create_archive_stream")"
+CHECKSUM_EXTRACT_ARCHIVE_STREAM="$(extract_swift_checksum "func_extract_archive_stream")"
+CHECKSUM_INSPECT_ARCHIVE_ENTRIES="$(extract_swift_checksum "func_inspect_archive_entries")"
+CHECKSUM_VERIFY_ARCHIVE_INTEGRITY="$(extract_swift_checksum "func_verify_archive_integrity")"
 
 # ------------------------------------------------------------------------------
 # 3. Process macOS Swift 6 Bindings
@@ -181,18 +237,77 @@ namespace ttzip::bindings {
 constexpr uint32_t EXPECTED_UNIFFI_CONTRACT_VERSION = 26;
 
 enum class ArchiveFormat : int32_t {
-    Auto = 0,
-    Zip = 1,
-    SevenZip = 2,
-    Tar = 3,
-    TarGz = 4,
-    TarBz2 = 5,
-    TarXz = 6,
-    TarZstd = 7,
-    Dmg = 8,
-    Lzfse = 9,
-    Snappy = 10,
-    Unknown = 99
+    Unknown = 0,
+    SevenZip = 1,
+    Zip = 2,
+    Zip64 = 3,
+    Tar = 4,
+    Rar4 = 5,
+    Rar5 = 6,
+    Cab = 7,
+    Wim = 8,
+    Iso = 9,
+    Udf = 10,
+    Dmg = 11,
+    Arj = 12,
+    Lzh = 13,
+    Cpio = 14,
+    Chm = 15,
+    Nsis = 16,
+    Msi = 17,
+    Gzip = 18,
+    Bzip2 = 19,
+    Xz = 20,
+    Zstd = 21,
+    Lz4 = 22,
+    Snappy = 23,
+    Lzfse = 24,
+    Brotli = 25,
+    Lzip = 26,
+    Lrzip = 27,
+    MsLz = 28,
+    Apfs = 29,
+    HfsPlus = 30,
+    Vhd = 31,
+    Vhdx = 32,
+    Vmdk = 33,
+    Qcow2 = 34,
+    Ext2 = 35,
+    Ext3 = 36,
+    Ext4 = 37,
+    Fat = 38,
+    Ntfs = 39,
+    Squashfs = 40,
+    Cramfs = 41,
+    Aar = 42,
+    Deb = 43,
+    Rpm = 44,
+    Xar = 45,
+    Ar = 46,
+    PeExe = 47,
+    Elf = 48,
+    MachO = 49,
+    Swf = 50,
+    Flac = 51,
+    Dcx = 52,
+    Arc = 53,
+    Zoo = 54,
+    Pak = 55,
+    Mub = 56,
+    Warc = 57,
+    Mtree = 58,
+    Raw = 59,
+    Empty = 60,
+    Auto = 61,
+    Rar = 62,
+    TarGz = 63,
+    TarBz2 = 64,
+    TarXz = 65,
+    TarZstd = 66,
+    TarLz4 = 67,
+    TarBrotli = 68,
+    TarLzip = 69,
+    TarLrzip = 70
 };
 
 enum class CompressionLevel : int32_t {
@@ -201,7 +316,7 @@ enum class CompressionLevel : int32_t {
     Fast = 3,
     Normal = 6,
     Maximum = 9,
-    Ultra = 11
+    Ultra = 12
 };
 
 enum class TTZipStatus : int32_t {
@@ -220,7 +335,12 @@ enum class TTZipStatus : int32_t {
     ErrInvalidPassword = -10,
     ErrExtractionFailed = -11,
     ErrCompressionFailed = -12,
+    ErrUnsupportedFeature = -13,
+    ErrBufferTooSmall = -14,
+    ErrIo = -15,
+    ErrSolidBudgetExceeded = -24,
     ErrSecurityViolation = -30,
+    ErrAbiMismatch = -40,
     ErrPanicCaught = -99
 };
 
@@ -253,11 +373,11 @@ inline void validate_contract() {
         );
     }
 
-    if (uniffi_ttzip_engine_checksum_func_detect_archive_format() != 2812 ||
-        uniffi_ttzip_engine_checksum_func_create_archive_stream() != 6966 ||
-        uniffi_ttzip_engine_checksum_func_extract_archive_stream() != 63284 ||
-        uniffi_ttzip_engine_checksum_func_inspect_archive_entries() != 63804 ||
-        uniffi_ttzip_engine_checksum_func_verify_archive_integrity() != 56393) {
+    if (uniffi_ttzip_engine_checksum_func_detect_archive_format() != __CHECKSUM_DETECT_ARCHIVE_FORMAT__ ||
+        uniffi_ttzip_engine_checksum_func_create_archive_stream() != __CHECKSUM_CREATE_ARCHIVE_STREAM__ ||
+        uniffi_ttzip_engine_checksum_func_extract_archive_stream() != __CHECKSUM_EXTRACT_ARCHIVE_STREAM__ ||
+        uniffi_ttzip_engine_checksum_func_inspect_archive_entries() != __CHECKSUM_INSPECT_ARCHIVE_ENTRIES__ ||
+        uniffi_ttzip_engine_checksum_func_verify_archive_integrity() != __CHECKSUM_VERIFY_ARCHIVE_INTEGRITY__) {
         throw TTZipException("UniFFI API checksum verification failed. Foreign host bindings drift detected.");
     }
 }
@@ -275,6 +395,13 @@ inline bool is_abi_compatible() noexcept {
 
 #endif // TTZIP_ENGINE_HPP
 EOF
+    sed -i '' \
+        -e "s/__CHECKSUM_DETECT_ARCHIVE_FORMAT__/${CHECKSUM_DETECT_ARCHIVE_FORMAT}/g" \
+        -e "s/__CHECKSUM_CREATE_ARCHIVE_STREAM__/${CHECKSUM_CREATE_ARCHIVE_STREAM}/g" \
+        -e "s/__CHECKSUM_EXTRACT_ARCHIVE_STREAM__/${CHECKSUM_EXTRACT_ARCHIVE_STREAM}/g" \
+        -e "s/__CHECKSUM_INSPECT_ARCHIVE_ENTRIES__/${CHECKSUM_INSPECT_ARCHIVE_ENTRIES}/g" \
+        -e "s/__CHECKSUM_VERIFY_ARCHIVE_INTEGRITY__/${CHECKSUM_VERIFY_ARCHIVE_INTEGRITY}/g" \
+        "${STAGING_DIR}/cpp/ttzip_engine.hpp"
 fi
 
 # ------------------------------------------------------------------------------
@@ -294,18 +421,77 @@ namespace TTZip.Bindings;
 
 public enum ArchiveFormat : int
 {
-    Auto = 0,
-    Zip = 1,
-    SevenZip = 2,
-    Tar = 3,
-    TarGz = 4,
-    TarBz2 = 5,
-    TarXz = 6,
-    TarZstd = 7,
-    Dmg = 8,
-    Lzfse = 9,
-    Snappy = 10,
-    Unknown = 99
+    Unknown = 0,
+    SevenZip = 1,
+    Zip = 2,
+    Zip64 = 3,
+    Tar = 4,
+    Rar4 = 5,
+    Rar5 = 6,
+    Cab = 7,
+    Wim = 8,
+    Iso = 9,
+    Udf = 10,
+    Dmg = 11,
+    Arj = 12,
+    Lzh = 13,
+    Cpio = 14,
+    Chm = 15,
+    Nsis = 16,
+    Msi = 17,
+    Gzip = 18,
+    Bzip2 = 19,
+    Xz = 20,
+    Zstd = 21,
+    Lz4 = 22,
+    Snappy = 23,
+    Lzfse = 24,
+    Brotli = 25,
+    Lzip = 26,
+    Lrzip = 27,
+    MsLz = 28,
+    Apfs = 29,
+    HfsPlus = 30,
+    Vhd = 31,
+    Vhdx = 32,
+    Vmdk = 33,
+    Qcow2 = 34,
+    Ext2 = 35,
+    Ext3 = 36,
+    Ext4 = 37,
+    Fat = 38,
+    Ntfs = 39,
+    Squashfs = 40,
+    Cramfs = 41,
+    Aar = 42,
+    Deb = 43,
+    Rpm = 44,
+    Xar = 45,
+    Ar = 46,
+    PeExe = 47,
+    Elf = 48,
+    MachO = 49,
+    Swf = 50,
+    Flac = 51,
+    Dcx = 52,
+    Arc = 53,
+    Zoo = 54,
+    Pak = 55,
+    Mub = 56,
+    Warc = 57,
+    Mtree = 58,
+    Raw = 59,
+    Empty = 60,
+    Auto = 61,
+    Rar = 62,
+    TarGz = 63,
+    TarBz2 = 64,
+    TarXz = 65,
+    TarZstd = 66,
+    TarLz4 = 67,
+    TarBrotli = 68,
+    TarLzip = 69,
+    TarLrzip = 70
 }
 
 public enum CompressionLevel : int
@@ -315,7 +501,7 @@ public enum CompressionLevel : int
     Fast = 3,
     Normal = 6,
     Maximum = 9,
-    Ultra = 11
+    Ultra = 12
 }
 
 public enum TTZipStatus : int
@@ -335,7 +521,12 @@ public enum TTZipStatus : int
     ErrInvalidPassword = -10,
     ErrExtractionFailed = -11,
     ErrCompressionFailed = -12,
+    ErrUnsupportedFeature = -13,
+    ErrBufferTooSmall = -14,
+    ErrIo = -15,
+    ErrSolidBudgetExceeded = -24,
     ErrSecurityViolation = -30,
+    ErrAbiMismatch = -40,
     ErrPanicCaught = -99
 }
 
@@ -372,11 +563,11 @@ public static class TTZipEngine
             );
         }
 
-        if (ChecksumDetectArchiveFormat() != 2812 ||
-            ChecksumCreateArchiveStream() != 6966 ||
-            ChecksumExtractArchiveStream() != 63284 ||
-            ChecksumInspectArchiveEntries() != 63804 ||
-            ChecksumVerifyArchiveIntegrity() != 56393)
+        if (ChecksumDetectArchiveFormat() != __CHECKSUM_DETECT_ARCHIVE_FORMAT__ ||
+            ChecksumCreateArchiveStream() != __CHECKSUM_CREATE_ARCHIVE_STREAM__ ||
+            ChecksumExtractArchiveStream() != __CHECKSUM_EXTRACT_ARCHIVE_STREAM__ ||
+            ChecksumInspectArchiveEntries() != __CHECKSUM_INSPECT_ARCHIVE_ENTRIES__ ||
+            ChecksumVerifyArchiveIntegrity() != __CHECKSUM_VERIFY_ARCHIVE_INTEGRITY__)
         {
             throw new InvalidOperationException(
                 "UniFFI API checksum validation failed. Interface drift detected between native core and C# bindings."
@@ -398,6 +589,13 @@ public static class TTZipEngine
     }
 }
 EOF
+    sed -i '' \
+        -e "s/__CHECKSUM_DETECT_ARCHIVE_FORMAT__/${CHECKSUM_DETECT_ARCHIVE_FORMAT}/g" \
+        -e "s/__CHECKSUM_CREATE_ARCHIVE_STREAM__/${CHECKSUM_CREATE_ARCHIVE_STREAM}/g" \
+        -e "s/__CHECKSUM_EXTRACT_ARCHIVE_STREAM__/${CHECKSUM_EXTRACT_ARCHIVE_STREAM}/g" \
+        -e "s/__CHECKSUM_INSPECT_ARCHIVE_ENTRIES__/${CHECKSUM_INSPECT_ARCHIVE_ENTRIES}/g" \
+        -e "s/__CHECKSUM_VERIFY_ARCHIVE_INTEGRITY__/${CHECKSUM_VERIFY_ARCHIVE_INTEGRITY}/g" \
+        "${STAGING_DIR}/csharp/TTZipEngine.cs"
 
     cat << 'EOF' > "${STAGING_DIR}/csharp/TTZip.Bindings.csproj"
 <Project Sdk="Microsoft.NET.Sdk">
@@ -457,6 +655,7 @@ echo "--> [VERIFY] Reconciling staged bindings with repository disk trees..."
 
 if [ "${GEN_SWIFT}" -eq 1 ]; then
     sync_or_check_file "${STAGING_DIR}/swift/ttzip_engine.swift" "${CORE_DIR}/Sources/TTZipCore/Generated/ttzip_engine.swift"
+    sync_or_check_file "${STAGING_DIR}/swift/ttzip_engineFFI.h" "${CORE_DIR}/Sources/CTTZipBridge/include/ttzip_engineFFI.h"
     sync_or_check_file "${STAGING_DIR}/swift/ttzip_engineFFI.h" "${CORE_DIR}/Sources/TTZipCore/Generated/ttzip_engineFFI.h"
     sync_or_check_file "${STAGING_DIR}/swift/ttzip_engineFFI.h" "${CORE_DIR}/Sources/TTZipEngineFFI/include/ttzip_engineFFI.h"
     sync_or_check_file "${STAGING_DIR}/swift/ttzip_engineFFI.modulemap" "${CORE_DIR}/Sources/TTZipCore/Generated/ttzip_engineFFI.modulemap"
@@ -472,6 +671,10 @@ if [ "${GEN_SWIFT}" -eq 1 ]; then
             sync_or_check_file "${STAGING_DIR}/swift/ttzip_engineFFI.h" "${hdr_dir}/ttzip_engineFFI.h"
         fi
     done
+fi
+
+if [ "${GEN_PYTHON}" -eq 1 ]; then
+    sync_or_check_file "${STAGING_DIR}/python/ttzip_engine.py" "${CORE_DIR}/sdk/python/ttzip/ttzip_engine.py"
 fi
 
 if [ "${GEN_CPP}" -eq 1 ]; then

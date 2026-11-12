@@ -336,7 +336,7 @@ fn get_linux_rss() -> Option<u64> {
 #[cfg(windows)]
 fn get_windows_rss() -> Option<u64> {
     #[repr(C)]
-    #[allow(non_snake_case)]
+    #[allow(non_snake_case, reason = "Matches Win32 PROCESS_MEMORY_COUNTERS struct layout")]
     struct ProcessMemoryCounters {
         cb: u32,
         PageFaultCount: u32,

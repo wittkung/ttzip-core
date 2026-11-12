@@ -119,7 +119,11 @@ impl Blake3Hasher {
                     let batch = (num_vector_chunks - processed).min(16);
                     for i in 0..batch {
                         let offset = (processed + i) * BLAKE3_CHUNK_LEN;
-                        chunk_ptrs[i] = input[offset..offset + BLAKE3_CHUNK_LEN].try_into().unwrap();
+                        if let Ok(chunk_ref) =
+                            <&[u8; 1024]>::try_from(&input[offset..offset + BLAKE3_CHUNK_LEN])
+                        {
+                            chunk_ptrs[i] = chunk_ref;
+                        }
                     }
                     super::neon::hash_many_neon(
                         &chunk_ptrs[..batch],

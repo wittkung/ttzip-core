@@ -86,7 +86,7 @@ fn generate_high_entropy_corpus(size: usize) -> Vec<u8> {
     data
 }
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "Diagnostic fields retained for benchmark matrix inspection")]
 struct LevelBenchmarkResult {
     level: i32,
     orig_size: usize,

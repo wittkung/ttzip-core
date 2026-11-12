@@ -21,6 +21,32 @@ use super::report::{ComplianceReport, ComplianceStandard, StandardCitation};
 use super::signatures::DetectedFormat;
 use super::sniffer::{detect_format_buffer, detect_format_file};
 
+type ComplianceCheckerFn = fn(&[u8]) -> ComplianceReport;
+
+const COMPLIANCE_CHECKER_TABLE: &[(DetectedFormat, ComplianceCheckerFn)] = &[
+    (DetectedFormat::Zip, zip::check_zip_compliance),
+    (DetectedFormat::Tar, tar::check_tar_compliance),
+    (DetectedFormat::SevenZip, sevenz::check_sevenz_compliance),
+    (DetectedFormat::Gzip, gzip::check_gzip_compliance),
+    (DetectedFormat::Zstd, zstd::check_zstd_compliance),
+    (DetectedFormat::Bzip2, bzip2::check_bzip2_compliance),
+    (DetectedFormat::Xz, xz::check_xz_compliance),
+    (DetectedFormat::Dmg, disk_images::check_dmg_compliance),
+    (DetectedFormat::Iso, disk_images::check_iso_compliance),
+    (DetectedFormat::Wim, disk_images::check_wim_compliance),
+    (DetectedFormat::Xar, modern::check_xar_compliance),
+    (DetectedFormat::Lzfse, modern::check_lzfse_compliance),
+    (DetectedFormat::Snappy, modern::check_snappy_compliance),
+    (DetectedFormat::Lz4, modern::check_lz4_compliance),
+    (DetectedFormat::Lzip, modern::check_lzip_compliance),
+    (DetectedFormat::Lrzip, modern::check_lrzip_compliance),
+    (DetectedFormat::Aar, modern::check_aar_compliance),
+    (DetectedFormat::Brotli, modern::check_brotli_compliance),
+    (DetectedFormat::Ar, modern::check_ar_compliance),
+    (DetectedFormat::Rar, modern::check_rar_compliance),
+    (DetectedFormat::Cab, modern::check_cab_compliance),
+];
+
 /// Dispatches buffer-level compliance inspection according to detected or specified format.
 pub fn check_compliance_buffer(format: DetectedFormat, buffer: &[u8]) -> ComplianceReport {
     let resolved_format = if format == DetectedFormat::Unknown {
@@ -29,35 +55,21 @@ pub fn check_compliance_buffer(format: DetectedFormat, buffer: &[u8]) -> Complia
         format
     };
 
-    match resolved_format {
-        DetectedFormat::Zip => zip::check_zip_compliance(buffer),
-        DetectedFormat::Tar => tar::check_tar_compliance(buffer),
-        DetectedFormat::SevenZip => sevenz::check_sevenz_compliance(buffer),
-        DetectedFormat::Gzip => gzip::check_gzip_compliance(buffer),
-        DetectedFormat::Zstd => zstd::check_zstd_compliance(buffer),
-        DetectedFormat::Bzip2 => bzip2::check_bzip2_compliance(buffer),
-        DetectedFormat::Xz => xz::check_xz_compliance(buffer),
-        DetectedFormat::Dmg => disk_images::check_dmg_compliance(buffer),
-        DetectedFormat::Iso => disk_images::check_iso_compliance(buffer),
-        DetectedFormat::Wim => disk_images::check_wim_compliance(buffer),
-        DetectedFormat::Xar => modern::check_xar_compliance(buffer),
-        DetectedFormat::Lzfse => modern::check_lzfse_compliance(buffer),
-        DetectedFormat::Snappy => modern::check_snappy_compliance(buffer),
-        DetectedFormat::Lz4 => modern::check_lz4_compliance(buffer),
-        DetectedFormat::Lzip => modern::check_lzip_compliance(buffer),
-        DetectedFormat::Lrzip => modern::check_lrzip_compliance(buffer),
-        DetectedFormat::Aar => modern::check_aar_compliance(buffer),
-        DetectedFormat::Brotli => modern::check_brotli_compliance(buffer),
-        DetectedFormat::Ar => modern::check_ar_compliance(buffer),
-        DetectedFormat::Rar => modern::check_rar_compliance(buffer),
-        DetectedFormat::Cab => modern::check_cab_compliance(buffer),
-        _ => {
-            let mut report = ComplianceReport::new(DetectedFormat::Unknown);
-            let citation = StandardCitation::new(ComplianceStandard::Generic, "1.0", "Format Identification");
-            report.add_error(citation, "Unknown or unsupported format for compliance checking", Some(0));
-            report
-        }
+    if let Some((_, checker)) = COMPLIANCE_CHECKER_TABLE
+        .iter()
+        .find(|(fmt, _)| *fmt == resolved_format)
+    {
+        return checker(buffer);
     }
+
+    let mut report = ComplianceReport::new(DetectedFormat::Unknown);
+    let citation = StandardCitation::new(ComplianceStandard::Generic, "1.0", "Format Identification");
+    report.add_error(
+        citation,
+        "Unknown or unsupported format for compliance checking",
+        Some(0),
+    );
+    report
 }
 
 /// Inspects and verifies compliance of an on-disk archive file.

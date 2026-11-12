@@ -18,6 +18,7 @@ pub mod security_ffi;
 pub mod stream_ffi;
 pub mod vfs_cache_ffi;
 pub mod vfs_ffi;
+pub mod vfs_snapshot_ffi;
 
 pub use analytics_ffi::*;
 pub use archive_ffi::*;

@@ -2,6 +2,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 //! Mozilla UniFFI 0.28 Service and Pipeline Implementations for System Updates, Delta Patching, and Appcast Metadata.
+//!
+//! Retention and consumer boundary policy (Issue #186):
+//! - Exported as part of the public `TTZipCore` / `ttzip-core` cross-platform SDK (`tools/copybara/sync_outbound.sh`).
+//! - Provides deterministic directory manifest tree hashing (`uniffi_calculate_tree_hash`), rolling-block binary delta
+//!   patch generation and in-memory reconstruction (`uniffi_create_delta_patch`, `uniffi_apply_delta_patch`),
+//!   Ed25519 signature verification (`uniffi_verify_appcast_signature`), and version monotonicity validation.
+//! - Not invoked by the macOS Desktop App (`TTZipApp`) for unauthenticated binary self-patching; macOS desktop release
+//!   channels update exclusively via `UpdateManager` (`MAS_BUILD`, `STEAM_BUILD`, `DIRECT_BUILD`).
 
 use std::collections::HashMap;
 use std::fs;
@@ -181,58 +189,71 @@ fn create_delta_patch_impl(
     Ok(output)
 }
 
+fn build_base_chunk_index(base: &[u8]) -> HashMap<u32, Vec<usize>> {
+    let mut base_index: HashMap<u32, Vec<usize>> = HashMap::new();
+    let mut i = 0;
+    while i + 4 <= base.len() {
+        let chunk = u32::from_le_bytes([base[i], base[i + 1], base[i + 2], base[i + 3]]);
+        base_index.entry(chunk).or_default().push(i);
+        i += 4;
+    }
+    base_index
+}
+
+fn find_longest_base_match(
+    base: &[u8],
+    target: &[u8],
+    target_pos: usize,
+    min_match: usize,
+    base_index: &HashMap<u32, Vec<usize>>,
+) -> Option<(usize, usize)> {
+    if target_pos + 4 > target.len() || base_index.is_empty() {
+        return None;
+    }
+    let chunk = u32::from_le_bytes([
+        target[target_pos],
+        target[target_pos + 1],
+        target[target_pos + 2],
+        target[target_pos + 3],
+    ]);
+    let offsets = base_index.get(&chunk)?;
+    let mut best_match: Option<(usize, usize)> = None;
+    for &offset in offsets {
+        let len = base[offset..]
+            .iter()
+            .zip(&target[target_pos..])
+            .take_while(|(a, b)| a == b)
+            .count();
+        if len >= min_match && best_match.is_none_or(|(_, best_len)| len > best_len) {
+            best_match = Some((offset, len));
+        }
+    }
+    best_match
+}
+
+fn flush_pending_literal_opcode(payload: &mut Vec<u8>, pending_literal: &mut Vec<u8>) {
+    if !pending_literal.is_empty() {
+        payload.push(0x02);
+        payload.extend_from_slice(&(pending_literal.len() as u64).to_le_bytes());
+        payload.extend_from_slice(pending_literal);
+        pending_literal.clear();
+    }
+}
+
 /// Generates rolling block COPY and INSERT opcodes from base to target.
 fn generate_delta_opcodes(base: &[u8], target: &[u8]) -> Vec<u8> {
     let mut payload = Vec::with_capacity(target.len() / 2 + 64);
     let min_match = if base.len() >= 16 { 16 } else { 4.min(base.len()) };
-
-    let mut base_index: HashMap<u32, Vec<usize>> = HashMap::new();
-    if base.len() >= 4 {
-        let stride = 4;
-        let mut i = 0;
-        while i + 4 <= base.len() {
-            let chunk = u32::from_le_bytes(base[i..i + 4].try_into().unwrap());
-            base_index.entry(chunk).or_default().push(i);
-            i += stride;
-        }
-    }
+    let base_index = build_base_chunk_index(base);
 
     let mut target_pos = 0;
     let mut pending_literal = Vec::new();
 
     while target_pos < target.len() {
-        let mut best_match: Option<(usize, usize)> = None;
-        if target_pos + 4 <= target.len() && !base_index.is_empty() {
-            let chunk = u32::from_le_bytes(target[target_pos..target_pos + 4].try_into().unwrap());
-            if let Some(offsets) = base_index.get(&chunk) {
-                for &offset in offsets {
-                    let mut len = 0;
-                    while target_pos + len < target.len()
-                        && offset + len < base.len()
-                        && base[offset + len] == target[target_pos + len]
-                    {
-                        len += 1;
-                    }
-                    if len >= min_match {
-                        if let Some((_, best_len)) = best_match {
-                            if len > best_len {
-                                best_match = Some((offset, len));
-                            }
-                        } else {
-                            best_match = Some((offset, len));
-                        }
-                    }
-                }
-            }
-        }
-
-        if let Some((base_offset, match_len)) = best_match {
-            if !pending_literal.is_empty() {
-                payload.push(0x02);
-                payload.extend_from_slice(&(pending_literal.len() as u64).to_le_bytes());
-                payload.extend_from_slice(&pending_literal);
-                pending_literal.clear();
-            }
+        if let Some((base_offset, match_len)) =
+            find_longest_base_match(base, target, target_pos, min_match, &base_index)
+        {
+            flush_pending_literal_opcode(&mut payload, &mut pending_literal);
             payload.push(0x01);
             payload.extend_from_slice(&(base_offset as u64).to_le_bytes());
             payload.extend_from_slice(&(match_len as u64).to_le_bytes());
@@ -243,12 +264,7 @@ fn generate_delta_opcodes(base: &[u8], target: &[u8]) -> Vec<u8> {
         }
     }
 
-    if !pending_literal.is_empty() {
-        payload.push(0x02);
-        payload.extend_from_slice(&(pending_literal.len() as u64).to_le_bytes());
-        payload.extend_from_slice(&pending_literal);
-    }
-
+    flush_pending_literal_opcode(&mut payload, &mut pending_literal);
     payload.push(0x00);
     payload
 }
@@ -274,7 +290,7 @@ fn apply_delta_patch_impl(
     }
 
     let format_byte = patch[15];
-    let target_size = u64::from_le_bytes(patch[16..24].try_into().unwrap()) as usize;
+    let target_size = u64::from_le_bytes(patch[16..24].try_into().unwrap_or([0u8; 8])) as usize;
     let expected_base_sha256 = &patch[24..56];
     let expected_target_sha256 = &patch[56..88];
 
@@ -348,8 +364,14 @@ fn execute_delta_opcodes(
                 if cursor + 16 > payload.len() {
                     return Err(UniFFISystemError::patch_err("Truncated COPY instruction"));
                 }
-                let offset = u64::from_le_bytes(payload[cursor..cursor + 8].try_into().unwrap()) as usize;
-                let len = u64::from_le_bytes(payload[cursor + 8..cursor + 16].try_into().unwrap()) as usize;
+                let offset =
+                    u64::from_le_bytes(payload[cursor..cursor + 8].try_into().unwrap_or([0u8; 8]))
+                        as usize;
+                let len = u64::from_le_bytes(
+                    payload[cursor + 8..cursor + 16]
+                        .try_into()
+                        .unwrap_or([0u8; 8]),
+                ) as usize;
                 cursor += 16;
                 if offset.checked_add(len).is_none_or(|end| end > base.len()) {
                     return Err(UniFFISystemError::patch_err("COPY offset out of bounds of base data"));
@@ -363,7 +385,9 @@ fn execute_delta_opcodes(
                 if cursor + 8 > payload.len() {
                     return Err(UniFFISystemError::patch_err("Truncated INSERT length header"));
                 }
-                let len = u64::from_le_bytes(payload[cursor..cursor + 8].try_into().unwrap()) as usize;
+                let len =
+                    u64::from_le_bytes(payload[cursor..cursor + 8].try_into().unwrap_or([0u8; 8]))
+                        as usize;
                 cursor += 8;
                 if cursor.checked_add(len).is_none_or(|end| end > payload.len()) {
                     return Err(UniFFISystemError::patch_err("Truncated INSERT literal data"));

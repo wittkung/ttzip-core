@@ -105,6 +105,38 @@ pub unsafe extern "C" fn ttzip_rust_rs_append_recovery_record_file(
     }
 }
 
+unsafe fn write_recovery_record_info(
+    info: &rs_fec::RecoveryRecordInfo,
+    out_slice_size: *mut usize,
+    out_data_slices: *mut usize,
+    out_parity_slices: *mut usize,
+    out_protected_len: *mut u64,
+    out_root_hash: *mut u8,
+    out_has_record: *mut bool,
+) {
+    unsafe {
+        if !out_has_record.is_null() {
+            *out_has_record = true;
+        }
+        if !out_slice_size.is_null() {
+            *out_slice_size = info.slice_size;
+        }
+        if !out_data_slices.is_null() {
+            *out_data_slices = info.data_slices_count;
+        }
+        if !out_parity_slices.is_null() {
+            *out_parity_slices = info.parity_slices_count;
+        }
+        if !out_protected_len.is_null() {
+            *out_protected_len = info.protected_payload_length;
+        }
+        if !out_root_hash.is_null() {
+            let hash_slice = slice::from_raw_parts_mut(out_root_hash, 32);
+            hash_slice.copy_from_slice(&info.root_hash);
+        }
+    }
+}
+
 /// C-ABI exported file recovery record inspector.
 ///
 /// # Safety
@@ -125,38 +157,25 @@ pub unsafe extern "C" fn ttzip_rust_rs_inspect_recovery_record_file(
                 return TTZipStatus::ErrInvalidParam.to_i32();
             }
 
-            let c_str = CStr::from_ptr(archive_path);
-            let path_str = match c_str.to_str() {
-                Ok(s) => s,
-                Err(_) => return TTZipStatus::ErrInvalidParam.to_i32(),
+            let Ok(path_str) = CStr::from_ptr(archive_path).to_str() else {
+                return TTZipStatus::ErrInvalidParam.to_i32();
             };
 
-            let mut file = match std::fs::File::open(std::path::Path::new(path_str)) {
-                Ok(f) => f,
-                Err(_) => return TTZipStatus::ErrFileNotFound.to_i32(),
+            let Ok(mut file) = std::fs::File::open(std::path::Path::new(path_str)) else {
+                return TTZipStatus::ErrFileNotFound.to_i32();
             };
 
             match rs_fec::inspect_recovery_record_reader(&mut file) {
                 Ok(Some(info)) => {
-                    if !out_has_record.is_null() {
-                        *out_has_record = true;
-                    }
-                    if !out_slice_size.is_null() {
-                        *out_slice_size = info.slice_size;
-                    }
-                    if !out_data_slices.is_null() {
-                        *out_data_slices = info.data_slices_count;
-                    }
-                    if !out_parity_slices.is_null() {
-                        *out_parity_slices = info.parity_slices_count;
-                    }
-                    if !out_protected_len.is_null() {
-                        *out_protected_len = info.protected_payload_length;
-                    }
-                    if !out_root_hash.is_null() {
-                        let hash_slice = slice::from_raw_parts_mut(out_root_hash, 32);
-                        hash_slice.copy_from_slice(&info.root_hash);
-                    }
+                    write_recovery_record_info(
+                        &info,
+                        out_slice_size,
+                        out_data_slices,
+                        out_parity_slices,
+                        out_protected_len,
+                        out_root_hash,
+                        out_has_record,
+                    );
                     TTZipStatus::Ok.to_i32()
                 }
                 Ok(None) => {

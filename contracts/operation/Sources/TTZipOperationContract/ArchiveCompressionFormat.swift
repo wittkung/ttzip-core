@@ -3,18 +3,14 @@
 
 import Foundation
 
-/// Canonical UniFFI Rust archive format type alias.
-public typealias TtZipArchiveFormat = ArchiveFormat
-
-/// Logical grouping category for archive formats.
 public enum ArchiveFormatCategory: String, Sendable, CaseIterable, Identifiable, Codable {
     case standard = "Standard & Universal"
     case unixPackage = "Linux & Unix Packages"
     case diskImage = "Disk & System Images"
     case modernStream = "High-Throughput Streams"
-    
+
     public var id: String { rawValue }
-    
+
     public var iconName: String {
         switch self {
         case .standard: return "archivebox.fill"
@@ -25,14 +21,11 @@ public enum ArchiveFormatCategory: String, Sendable, CaseIterable, Identifiable,
     }
 }
 
-/// Comprehensive enumeration of all archive, container, packaging, disc image, and stream formats.
 public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
-    // MARK: - Core Standard Formats
     case sevenZip = "7z"
     case zip = "zip"
     case tar = "tar"
-    
-    // MARK: - Composite Tarball Formats
+
     case tarGz = "tar.gz"
     case tarBz2 = "tar.bz2"
     case tarXz = "tar.xz"
@@ -41,8 +34,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
     case tarBrotli = "tar.br"
     case tarLzip = "tar.lz"
     case tarLrzip = "tar.lrz"
-    
-    // MARK: - Disk & Packaging Images
+
     case iso = "iso"
     case cab = "cab"
     case wim = "wim"
@@ -53,14 +45,12 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
     case deb = "deb"
     case rpm = "rpm"
     case xar = "xar"
-    
-    // MARK: - Read-Only / System Formats
+
     case rar = "rar"
     case squashfs = "squashfs"
     case lzfse = "lzfse"
     case lzh = "lzh"
-    
-    // MARK: - Standalone Streams
+
     case zst = "zst"
     case gz = "gz"
     case bz2 = "bz2"
@@ -70,8 +60,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
     case brotli = "brotli"
     case snappy = "snappy"
     case lrzip = "lrzip"
-    
-    /// Display name of the format.
+
     public var displayName: String {
         switch self {
         case .sevenZip: return "7-Zip"
@@ -110,8 +99,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .lrzip: return "LRZIP"
         }
     }
-    
-    /// Standard file extension with leading dot.
+
     public var fileExtension: String {
         switch self {
         case .sevenZip: return ".7z"
@@ -150,8 +138,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .lrzip: return ".lrz"
         }
     }
-    
-    /// Whether the format is strictly read-only for inspection and extraction (cannot be created).
+
     public var isReadOnly: Bool {
         switch self {
         case .rar, .squashfs, .lzh, .lzfse, .dmg, .cab, .wim, .deb, .rpm:
@@ -160,13 +147,11 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
             return false
         }
     }
-    
-    /// Whether the format supports writing and creating archives.
+
     public var isWritable: Bool {
-        return !isReadOnly
+        !isReadOnly
     }
 
-    /// Whether the format is a pure single-file compression stream (requires a single regular file input).
     public var isSingleStreamFormat: Bool {
         switch self {
         case .zst, .gz, .bz2, .xz, .lzip, .lz4, .brotli, .snappy, .lrzip, .lzfse:
@@ -176,7 +161,16 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         }
     }
 
-    /// Returns the corresponding `.tar.*` composite container format for a single-stream format, if available.
+    /// Single-volume archives in these formats accept an embedded RS-FEC `TTZR`/`TTRC` recovery trailer.
+    public var supportsRecoveryRecord: Bool {
+        switch self {
+        case .zip, .sevenZip, .tar:
+            return true
+        default:
+            return false
+        }
+    }
+
     public var correspondingTarCompositeFormat: ArchiveCompressionFormat? {
         switch self {
         case .gz: return .tarGz
@@ -190,8 +184,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         default: return nil
         }
     }
-    
-    /// Format classification category.
+
     public var category: ArchiveFormatCategory {
         switch self {
         case .sevenZip, .zip, .tar, .rar, .lzh:
@@ -204,8 +197,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
             return .modernStream
         }
     }
-    
-    /// SF Symbol icon name.
+
     public var iconName: String {
         switch self {
         case .sevenZip, .zip: return "archivebox.fill"
@@ -225,8 +217,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .zst, .lz4, .brotli, .snappy, .lzip, .lrzip, .gz, .bz2, .xz: return "bolt.fill"
         }
     }
-    
-    /// Friendly detailed description for guides, tooltips, and inspectors.
+
     public var formatDescription: String {
         switch self {
         case .sevenZip: return "High compression ratio LZMA2/ZSTD engine with strong AES-256 header encryption."
@@ -265,8 +256,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .lrzip: return "Standalone LRZIP extended-range stream."
         }
     }
-    
-    /// Keyboard shortcut badge.
+
     public var shortcutBadge: String {
         switch self {
         case .sevenZip: return "⌥⇧7"
@@ -297,8 +287,7 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .lrzip, .tarLrzip: return "⌥⇧J"
         }
     }
-    
-    /// Shortcut character for keyboard event matching.
+
     public var shortcutCharacter: Character {
         switch self {
         case .sevenZip: return "7"
@@ -329,133 +318,24 @@ public enum ArchiveCompressionFormat: String, Sendable, CaseIterable, Codable {
         case .lrzip, .tarLrzip: return "j"
         }
     }
-    
-    /// Maps to the canonical UniFFI Rust format enum.
-    public var uniffiFormat: ArchiveFormat {
-        switch self {
-        case .sevenZip: return .sevenZip
-        case .zip: return .zip
-        case .tar: return .tar
-        case .tarGz: return .tarGz
-        case .tarBz2: return .tarBz2
-        case .tarXz: return .tarXz
-        case .tarZst: return .tarZstd
-        case .tarLz4: return .tarLz4
-        case .tarBrotli: return .tarBrotli
-        case .tarLzip: return .tarLzip
-        case .tarLrzip: return .tarLrzip
-        case .iso: return .iso
-        case .cab: return .cab
-        case .wim: return .wim
-        case .dmg: return .dmg
-        case .aar: return .aar
-        case .cpio: return .cpio
-        case .ar: return .ar
-        case .deb: return .deb
-        case .rpm: return .rpm
-        case .xar: return .xar
-        case .rar: return .rar
-        case .squashfs: return .squashfs
-        case .lzfse: return .lzfse
-        case .lzh: return .lzh
-        case .zst: return .zstd
-        case .gz: return .gzip
-        case .bz2: return .bzip2
-        case .xz: return .xz
-        case .lzip: return .lzip
-        case .lz4: return .lz4
-        case .brotli: return .brotli
-        case .snappy: return .snappy
-        case .lrzip: return .lrzip
-        }
-    }
-    
-    /// Format capabilities queried directly from the Rust microkernel SSOT.
-    public var capabilities: UniFfiFormatCapabilities {
-        getFormatCapabilities(format: uniffiFormat)
-    }
-    
-    /// Whether format supports password encryption (delegated to Rust microkernel).
-    public var supportsPasswordEncryption: Bool {
-        capabilities.supportsPassword
-    }
-    
-    /// Whether format supports split volume multi-part archives (delegated to Rust microkernel).
-    public var supportsSplitVolume: Bool {
-        capabilities.supportsSplitVolume
-    }
-    
-    /// Whether format supports solid mode archiving blocks across multiple files (delegated to Rust microkernel).
-    public var supportsSolidMode: Bool {
-        capabilities.supportsSolidMode
-    }
-    
-    /// Supported compression levels for format.
-    public var supportedLevels: [ArchiveCompressionLevel] {
-        let maxLvl = maxCompressionLevel
-        if maxLvl == 0 {
-            return [.store]
-        } else if self == .zip {
-            return [.store, .level1, .level6, .level9, .level12]
-        } else {
-            return [.store, .level1, .level6, .level9]
-        }
-    }
-    
-    /// Minimum valid compression level integer (delegated to Rust microkernel).
-    public var minCompressionLevel: Int {
-        Int(capabilities.minLevel)
-    }
 
-    /// Maximum valid compression level integer (delegated to Rust microkernel).
-    public var maxCompressionLevel: Int {
-        Int(capabilities.maxLevel)
-    }
-
-    /// Default recommended compression level integer (delegated to Rust microkernel).
-    public var defaultCompressionLevel: Int {
-        Int(capabilities.defaultLevel)
-    }
-
-    /// Valid compression level integer range for format.
-    public var validCompressionLevelRange: ClosedRange<Int> {
-        minCompressionLevel...maxCompressionLevel
-    }
-    
-    /// Validates archive configuration parameters against the Rust microkernel capability matrix.
-    public func validateConfiguration(level: Int, hasPassword: Bool, isSplit: Bool) throws {
-        try validateArchiveParams(
-            format: uniffiFormat,
-            level: Int32(level),
-            hasPassword: hasPassword,
-            isSplit: isSplit
-        )
-    }
-    
-    /// List of primary writable container creation formats (excludes read-only containers and pure single-file streams).
     public static let primary17WritableFormats: [ArchiveCompressionFormat] = [
         .sevenZip, .zip, .tar, .tarGz, .tarBz2, .tarXz, .tarZst,
         .tarLz4, .tarBrotli, .tarLzip, .tarLrzip,
         .iso, .aar, .cpio, .ar, .xar
     ]
-    
-    /// List of all genuinely writable creation formats including standalone streams.
+
     public static let allWritableCases: [ArchiveCompressionFormat] = [
         .sevenZip, .zip, .tar, .tarGz, .tarBz2, .tarXz, .tarZst,
         .iso, .aar, .cpio, .ar, .xar,
         .tarLz4, .tarBrotli, .tarLzip, .tarLrzip,
         .zst, .gz, .bz2, .xz, .lzip, .lz4, .brotli, .snappy, .lrzip
     ]
-    
-    /// List of all 18+ readable and inspectable formats.
+
     public static let allReadableCases: [ArchiveCompressionFormat] = allCases
 }
 
-// MARK: - Extension Resolution & Detection Helpers
-
 extension ArchiveCompressionFormat {
-
-    /// Canonical set of all supported archive/stream extensions (without leading dot, including `xar`).
     public static let supportedArchiveExtensions: Set<String> = [
         "7z", "cb7", "zip", "zipx", "tar", "tgz", "tbz", "tbz2", "txz", "tzst",
         "tlz4", "tbr", "tlz", "tlrz", "gz", "bz2", "xz", "zst", "lz4", "br",
@@ -464,13 +344,11 @@ extension ArchiveCompressionFormat {
         "deb", "rpm", "xar", "pkg", "rar", "squashfs", "sqsh", "lzfse", "lzh",
         "lha", "001", "z01"
     ]
-    
-    /// 7Z / DMG / ISO / Split Volume (.001) compatible extensions set.
+
     public static let sevenZipFamilyExtensions: Set<String> = [
         ".7z", ".cb7", ".dmg", ".iso", ".001"
     ]
 
-    /// TAR derivative and libarchive compatible extensions set.
     public static let tarFamilyExtensions: Set<String> = [
         ".tar", ".tar.gz", ".tgz", ".tar.zst", ".tzst",
         ".tar.xz", ".txz", ".tar.bz2", ".tbz2", ".tbz", ".tar.lz",
@@ -482,7 +360,6 @@ extension ArchiveCompressionFormat {
         ".squashfs", ".sqsh", ".lzfse", ".lzh", ".lha"
     ]
 
-    /// Determines whether a filename or path represents a known archive format.
     public static func isArchiveExtension(_ ext: String, path: String = "") -> Bool {
         let lowerExt = ext.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
         if ArchiveCompressionFormat(rawValue: lowerExt) != nil {
@@ -509,44 +386,46 @@ extension ArchiveCompressionFormat {
         return false
     }
 
-    /// Resolves compression format from extension or name string.
+    private static let extensionAliasMap: [String: ArchiveCompressionFormat] = [
+        "7zip": .sevenZip, "sevenzip": .sevenZip, "cb7": .sevenZip,
+        "tgz": .tarGz, "tbz": .tarBz2, "tbz2": .tarBz2, "txz": .tarXz,
+        "tzst": .tarZst, "tlz4": .tarLz4, "tbr": .tarBrotli,
+        "tlz": .tarLzip, "tlrz": .tarLrzip, "lz": .lzip, "br": .brotli,
+        "lrz": .lrzip, "sz": .snappy, "zipx": .zip, "sqsh": .squashfs,
+        "pkg": .xar, "a": .ar, "aea": .aar, "lha": .lzh,
+        "img": .iso, "swm": .wim, "esd": .wim
+    ]
+
     public static func from(extensionOrName: String) -> ArchiveCompressionFormat? {
         let cleaned = extensionOrName.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
         if let direct = ArchiveCompressionFormat(rawValue: cleaned) {
             return direct
         }
-        for format in allCases {
-            if format.rawValue.lowercased() == cleaned || format.displayName.lowercased() == cleaned {
-                return format
-            }
+        if let alias = extensionAliasMap[cleaned] {
+            return alias
         }
-        switch cleaned {
-        case "7zip", "sevenzip", "cb7": return .sevenZip
-        case "tgz": return .tarGz
-        case "tbz", "tbz2": return .tarBz2
-        case "txz": return .tarXz
-        case "tzst": return .tarZst
-        case "tlz4": return .tarLz4
-        case "tbr": return .tarBrotli
-        case "tlz": return .tarLzip
-        case "tlrz": return .tarLrzip
-        case "lz": return .lzip
-        case "br": return .brotli
-        case "lrz": return .lrzip
-        case "sz": return .snappy
-        case "zipx": return .zip
-        case "sqsh": return .squashfs
-        case "pkg": return .xar
-        case "a": return .ar
-        case "aea": return .aar
-        case "lha": return .lzh
-        case "img": return .iso
-        case "swm", "esd": return .wim
-        default: return nil
+        return allCases.first {
+            $0.rawValue.lowercased() == cleaned || $0.displayName.lowercased() == cleaned
         }
     }
 
-    /// Resolves descriptive kind string for an item.
+    private static let nonArchiveKindMap: [String: String] = [
+        "jpg": "JPEG Image", "jpeg": "JPEG Image",
+        "png": "PNG Image",
+        "gif": "GIF Animation",
+        "webp": "WebP Image",
+        "heic": "HEIC Image",
+        "svg": "SVG Vector Image",
+        "pdf": "PDF Document",
+        "mp4": "MPEG-4 Video", "mov": "MPEG-4 Video", "m4v": "MPEG-4 Video", "mkv": "MPEG-4 Video", "avi": "MPEG-4 Video",
+        "mp3": "Audio File", "wav": "Audio File", "m4a": "Audio File", "flac": "Audio File", "aac": "Audio File",
+        "txt": "Text Document", "md": "Text Document", "markdown": "Text Document",
+        "swift": "Source Code", "py": "Source Code", "json": "Source Code", "js": "Source Code", "ts": "Source Code",
+        "cpp": "Source Code", "c": "Source Code", "h": "Source Code", "rs": "Source Code", "go": "Source Code",
+        "html": "Source Code", "css": "Source Code",
+        "csv": "Spreadsheet Document", "tsv": "Spreadsheet Document"
+    ]
+
     public static func kindDescription(forExtension ext: String, isArchive: Bool, path: String = "") -> String {
         let lowerExt = ext.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
         if let format = ArchiveCompressionFormat.from(extensionOrName: lowerExt) {
@@ -555,21 +434,9 @@ extension ArchiveCompressionFormat {
         if isArchive {
             return "Archive Package"
         }
-        
-        switch lowerExt {
-        case "jpg", "jpeg": return "JPEG Image"
-        case "png": return "PNG Image"
-        case "gif": return "GIF Animation"
-        case "webp": return "WebP Image"
-        case "heic": return "HEIC Image"
-        case "svg": return "SVG Vector Image"
-        case "pdf": return "PDF Document"
-        case "mp4", "mov", "m4v", "mkv", "avi": return "MPEG-4 Video"
-        case "mp3", "wav", "m4a", "flac", "aac": return "Audio File"
-        case "txt", "md", "markdown": return "Text Document"
-        case "swift", "py", "json", "js", "ts", "cpp", "c", "h", "rs", "go", "html", "css": return "Source Code"
-        case "csv", "tsv": return "Spreadsheet Document"
-        default: return "\(ext.uppercased()) File"
+        if let kind = nonArchiveKindMap[lowerExt] {
+            return kind
         }
+        return "\(ext.uppercased()) File"
     }
 }

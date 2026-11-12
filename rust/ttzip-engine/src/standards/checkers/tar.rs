@@ -11,7 +11,11 @@ pub fn check_tar_compliance(buffer: &[u8]) -> ComplianceReport {
 
     if buffer.len() < 512 {
         let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1", "Record and Block Size");
-        report.add_error(citation, format!("POSIX.1: Archive size is smaller than 512-byte header block ({} bytes)", buffer.len()), Some(0));
+        report.add_error(
+            citation,
+            format!("POSIX.1: Archive size is smaller than 512-byte header block ({} bytes)", buffer.len()),
+            Some(0),
+        );
         return report;
     }
 
@@ -31,7 +35,6 @@ pub fn check_tar_compliance(buffer: &[u8]) -> ComplianceReport {
     while cursor + 512 <= buffer.len() {
         let block = &buffer[cursor..cursor + 512];
 
-        // Check if block is entirely zero
         if is_all_zeros(block) {
             consecutive_zero_blocks += 1;
             cursor += 512;
@@ -40,69 +43,68 @@ pub fn check_tar_compliance(buffer: &[u8]) -> ComplianceReport {
                 break;
             }
             continue;
-        } else {
-            consecutive_zero_blocks = 0;
         }
-
+        consecutive_zero_blocks = 0;
         entry_count += 1;
 
-        // Verify Checksum at bytes 148..156
-        let (unsigned_sum, signed_sum) = compute_header_checksum(block);
-        let chksum_field = &block[148..156];
-        let parsed_chksum = parse_octal_field(chksum_field);
-
-        match parsed_chksum {
-            Some(val) => {
-                if val == unsigned_sum as u64 || (val as i32) == signed_sum {
-                    report.add_validated_header("POSIX.1: Header Octal Checksum (offset 148)");
-                } else {
-                    let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.1", "Header Checksum Field");
-                    report.add_error(
-                        citation,
-                        format!("POSIX.1: Header octal checksum mismatch (expected {}, parsed {})", unsigned_sum, val),
-                        Some(cursor as u64 + 148),
-                    );
-                }
-            }
-            None => {
-                let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.1", "Header Checksum Field Format");
-                report.add_error(citation, "POSIX.1: Malformed octal checksum field", Some(cursor as u64 + 148));
-            }
-        }
-
-        // Verify Magic at offset 257..265
-        let magic = &block[257..263];
-        if magic == b"ustar\0" {
-            report.add_validated_header("POSIX.1-2001: ustar Magic Header (offset 257)");
-        } else if magic == b"ustar " {
-            report.add_validated_header("GNU Tar: ustar Magic Header (offset 257)");
-        } else {
-            let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.2", "ustar Magic Identifier");
-            report.add_warning(citation, "Non-standard or legacy pre-POSIX tar header magic", Some(cursor as u64 + 257));
-        }
-
-        // Check Typeflag (byte 156)
-        let typeflag = block[156];
-        if typeflag == b'x' || typeflag == b'g' {
-            report.add_validated_header(format!("POSIX.1-2001 Pax Extended Header (typeflag '{}')", typeflag as char));
-        }
-
-        // Parse file size at 124..136
-        let size_field = &block[124..136];
-        let file_size = parse_octal_field(size_field).unwrap_or(0) as usize;
-
-        // Skip payload blocks (rounded up to 512 bytes)
-        let payload_blocks = file_size.div_ceil(512);
+        let payload_blocks = validate_tar_header_block(block, cursor, &mut report);
         cursor += 512 + (payload_blocks * 512);
     }
 
     if consecutive_zero_blocks < 2 {
         let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.3", "End-of-Archive Indicator");
-        report.add_warning(citation, "Archive lacks standard 1024-byte (2 zero blocks) End-of-Archive marker", Some(buffer.len() as u64));
+        report.add_warning(
+            citation,
+            "Archive lacks standard 1024-byte (2 zero blocks) End-of-Archive marker",
+            Some(buffer.len() as u64),
+        );
     }
 
     report.add_metadata("entry_count", entry_count.to_string());
     report
+}
+
+fn validate_tar_header_block(
+    block: &[u8],
+    cursor: usize,
+    report: &mut ComplianceReport,
+) -> usize {
+    let (unsigned_sum, signed_sum) = compute_header_checksum(block);
+    match parse_octal_field(&block[148..156]) {
+        Some(val) if val == unsigned_sum as u64 || (val as i32) == signed_sum => {
+            report.add_validated_header("POSIX.1: Header Octal Checksum (offset 148)");
+        }
+        Some(val) => {
+            let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.1", "Header Checksum Field");
+            report.add_error(
+                citation,
+                format!("POSIX.1: Header octal checksum mismatch (expected {}, parsed {})", unsigned_sum, val),
+                Some(cursor as u64 + 148),
+            );
+        }
+        None => {
+            let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.1", "Header Checksum Field Format");
+            report.add_error(citation, "POSIX.1: Malformed octal checksum field", Some(cursor as u64 + 148));
+        }
+    }
+
+    let magic = &block[257..263];
+    if magic == b"ustar\0" {
+        report.add_validated_header("POSIX.1-2001: ustar Magic Header (offset 257)");
+    } else if magic == b"ustar " {
+        report.add_validated_header("GNU Tar: ustar Magic Header (offset 257)");
+    } else {
+        let citation = StandardCitation::new(ComplianceStandard::Posix1Tar, "8.1.2", "ustar Magic Identifier");
+        report.add_warning(citation, "Non-standard or legacy pre-POSIX tar header magic", Some(cursor as u64 + 257));
+    }
+
+    let typeflag = block[156];
+    if typeflag == b'x' || typeflag == b'g' {
+        report.add_validated_header(format!("POSIX.1-2001 Pax Extended Header (typeflag '{}')", typeflag as char));
+    }
+
+    let file_size = parse_octal_field(&block[124..136]).unwrap_or(0) as usize;
+    file_size.div_ceil(512)
 }
 
 fn compute_header_checksum(block: &[u8]) -> (u32, i32) {

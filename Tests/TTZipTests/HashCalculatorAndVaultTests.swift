@@ -3,6 +3,7 @@
 
 import XCTest
 import Security
+import LocalAuthentication
 @testable import TTZipCore
 #if canImport(TTZipCoreCrypto)
 @testable import TTZipCoreCrypto
@@ -310,4 +311,382 @@ final class HashCalculatorAndVaultTests: XCTestCase {
         XCTAssertFalse(manager.isUnlocked)
         XCTAssertEqual(try Data(contentsOf: vaultURL), damagedCiphertext)
     }
+
+    func testCancelPendingBiometricAuthenticationInvalidatesContextAndPreventsLateUnlock() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("biometric_cancel_vault.enc")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: tempDirectory.appendingPathComponent("biometric_cancel_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("biometric_cancel_backup.enc")
+        )
+        manager.setMasterPassword("TaskOwnedMasterPassword@2026")
+        manager.addEntry(label: "test archive", password: "task-owned-secret")
+        let keyData = try XCTUnwrap(manager.activeDerivedVaultKey).withUnsafeBytes { Data($0) }
+        manager.lockVault()
+
+        let mockContext = MockBiometricAuthenticationContext()
+        let readEntered = DispatchSemaphore(value: 0)
+        let releaseRead = DispatchSemaphore(value: 0)
+        let unlockCompleted = DispatchSemaphore(value: 0)
+
+        manager.makeBiometricContext = { mockContext }
+        manager.biometricKeyReaderOverride = { context in
+            XCTAssertTrue((context as? MockBiometricAuthenticationContext) === mockContext)
+            XCTAssertFalse(context.localizedReason.isEmpty)
+            readEntered.signal()
+            _ = releaseRead.wait(timeout: .now() + 5)
+            return .success(keyData)
+        }
+
+        let resultBox = LockedResultBox()
+        DispatchQueue.global(qos: .userInitiated).async {
+            let outcome = manager.unlockWithBiometricsResult()
+            resultBox.store(outcome)
+            unlockCompleted.signal()
+        }
+
+        XCTAssertEqual(readEntered.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(mockContext.invalidateCallCount, 0)
+
+        manager.cancelPendingBiometricAuthentication()
+        XCTAssertEqual(mockContext.invalidateCallCount, 1)
+
+        releaseRead.signal()
+        XCTAssertEqual(unlockCompleted.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(resultBox.load(), .cancelled)
+        XCTAssertFalse(manager.isUnlocked)
+        XCTAssertTrue(manager.getEntries().isEmpty)
+        XCTAssertNil(manager.activeBiometricContext)
+    }
+
+    func testLockVaultInvalidatesActiveBiometricContextAndPreventsLateUnlock() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("biometric_lock_vault.enc")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: tempDirectory.appendingPathComponent("biometric_lock_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("biometric_lock_backup.enc")
+        )
+        manager.setMasterPassword("TaskOwnedMasterPassword@2026")
+        manager.addEntry(label: "test archive", password: "task-owned-secret")
+        let keyData = try XCTUnwrap(manager.activeDerivedVaultKey).withUnsafeBytes { Data($0) }
+        manager.lockVault()
+
+        let mockContext = MockBiometricAuthenticationContext()
+        let readEntered = DispatchSemaphore(value: 0)
+        let releaseRead = DispatchSemaphore(value: 0)
+        let unlockCompleted = DispatchSemaphore(value: 0)
+
+        manager.makeBiometricContext = { mockContext }
+        manager.biometricKeyReaderOverride = { _ in
+            readEntered.signal()
+            _ = releaseRead.wait(timeout: .now() + 5)
+            return .success(keyData)
+        }
+
+        let resultBox = LockedResultBox()
+        DispatchQueue.global(qos: .userInitiated).async {
+            resultBox.store(manager.unlockWithBiometricsResult())
+            unlockCompleted.signal()
+        }
+
+        XCTAssertEqual(readEntered.wait(timeout: .now() + 5), .success)
+        manager.lockVault()
+        XCTAssertEqual(mockContext.invalidateCallCount, 1)
+
+        releaseRead.signal()
+        XCTAssertEqual(unlockCompleted.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(resultBox.load(), .cancelled)
+        XCTAssertFalse(manager.isUnlocked)
+        XCTAssertTrue(manager.getEntries().isEmpty)
+    }
+
+    func testIsCLIProcessRecognizesDevAppBundleAndExcludesVerificationCopies() {
+        XCTAssertFalse(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.metastudyline.ttzip.dev",
+            processName: "TTZip",
+            arguments: ["/Applications/TTZip.app/Contents/MacOS/TTZip"]
+        ))
+        XCTAssertFalse(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.ttzip.app.dev",
+            processName: "TTZip",
+            arguments: ["/Applications/TTZip.app/Contents/MacOS/TTZip"]
+        ))
+        XCTAssertTrue(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.metastudyline.ttzip.cuverify-1234abcd",
+            processName: "TTZip",
+            arguments: ["/tmp/instance/TTZip.app/Contents/MacOS/TTZip"]
+        ))
+        XCTAssertTrue(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.metastudyline.ttzip.axverify-deadbeef",
+            processName: "TTZip",
+            arguments: ["/tmp/instance/TTZip.app/Contents/MacOS/TTZip"]
+        ))
+        XCTAssertTrue(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.metastudyline.ttzip.dev",
+            processName: "TTZip",
+            arguments: ["/Applications/TTZip.app/Contents/MacOS/TTZip", "--cli"]
+        ))
+        XCTAssertTrue(PasswordVaultManager.isCLIProcess(
+            bundleIdentifier: "com.metastudyline.ttzip.dev",
+            processName: "TTZip",
+            arguments: ["/Applications/TTZip.app/Contents/MacOS/TTZip"],
+            environment: ["XCTestConfigurationFilePath": "/tmp/test.xctestconfiguration"]
+        ))
+    }
+
+    func testAdHocMissingEntitlementFallbackStoresInLoginKeychainAndEnforcesBiometricPolicy() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("adhoc_vault.enc")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: tempDirectory.appendingPathComponent("adhoc_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("adhoc_backup.enc")
+        )
+        let keychain = MockLoginKeychainFallbackStore()
+        manager.customKeychainOperations = keychain.operations
+
+        manager.setMasterPassword("AdHocMaster@2026")
+        manager.addEntry(label: "dev archive", password: "adhoc-secret-password")
+        XCTAssertEqual(keychain.accessControlAddAttempts, 1)
+        XCTAssertEqual(keychain.loginKeychainSaveCount, 1)
+        manager.lockVault()
+
+        let policyEvaluated = LockedCounterBox()
+        manager.biometricPolicyEvaluatorOverride = { _, reason in
+            XCTAssertFalse(reason.isEmpty)
+            policyEvaluated.increment()
+            return .failure(LAError(.userCancel))
+        }
+        XCTAssertEqual(manager.unlockWithBiometricsResult(), .cancelled)
+        XCTAssertEqual(policyEvaluated.load(), 1)
+        XCTAssertFalse(manager.isUnlocked)
+
+        manager.biometricPolicyEvaluatorOverride = { _, _ in
+            policyEvaluated.increment()
+            return .failure(LAError(.biometryNotAvailable))
+        }
+        XCTAssertEqual(manager.unlockWithBiometricsResult(), .unavailable)
+
+        manager.biometricPolicyEvaluatorOverride = { _, _ in
+            policyEvaluated.increment()
+            return .failure(LAError(.authenticationFailed))
+        }
+        XCTAssertEqual(manager.unlockWithBiometricsResult(), .keyAccessFailed)
+
+        manager.biometricPolicyEvaluatorOverride = { _, _ in
+            policyEvaluated.increment()
+            return .success(())
+        }
+        XCTAssertEqual(manager.unlockWithBiometricsResult(), .unlocked)
+        XCTAssertTrue(manager.isUnlocked)
+        XCTAssertEqual(manager.getEntries().map(\.password), ["adhoc-secret-password"])
+    }
+
+    func testDefaultTouchIDBootstrapsUninitializedAndEmptyVaultsWithoutOverwritingNonEmptyVault() throws {
+        let freshVaultURL = tempDirectory.appendingPathComponent("fresh_touchid_vault.enc")
+        let freshManager = PasswordVaultManager(
+            vaultURL: freshVaultURL,
+            configURL: tempDirectory.appendingPathComponent("fresh_touchid_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("fresh_touchid_backup.enc")
+        )
+        let keychain = MockLoginKeychainFallbackStore()
+        freshManager.customKeychainOperations = keychain.operations
+        let biometricChecks = LockedCounterBox()
+        freshManager.biometricPolicyEvaluatorOverride = { _, _ in
+            biometricChecks.increment()
+            return .success(())
+        }
+
+        XCTAssertFalse(freshManager.isMasterPasswordSet)
+        XCTAssertEqual(freshManager.unlockWithBiometricsResult(), .unlocked)
+        XCTAssertTrue(freshManager.isUnlocked)
+        XCTAssertTrue(freshManager.isMasterPasswordSet)
+        XCTAssertEqual(biometricChecks.load(), 1)
+        XCTAssertEqual(keychain.loginKeychainSaveCount, 1)
+
+        freshManager.addEntry(label: "bootstrapped", password: "touchid-first-secret")
+        freshManager.lockVault()
+        XCTAssertFalse(freshManager.isUnlocked)
+
+        XCTAssertEqual(freshManager.unlockWithBiometricsResult(), .unlocked)
+        XCTAssertEqual(freshManager.getEntries().map(\.password), ["touchid-first-secret"])
+
+        let emptyVaultURL = tempDirectory.appendingPathComponent("empty_missing_key_vault.enc")
+        let emptyManager = PasswordVaultManager(
+            vaultURL: emptyVaultURL,
+            configURL: tempDirectory.appendingPathComponent("empty_missing_key_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("empty_missing_key_backup.enc")
+        )
+        emptyManager.setMasterPassword("InitialMaster@2026")
+        emptyManager.lockVault()
+        XCTAssertTrue(emptyManager.canBootstrapBiometricVault)
+        XCTAssertEqual(emptyManager.unlockWithBiometricsResult { .missing }, .unlocked)
+        XCTAssertTrue(emptyManager.isUnlocked)
+    }
+
+    func testLoginKeychainFallbackAndBootstrapHonorMidFlightBiometricCancellation() throws {
+        let vaultURL = tempDirectory.appendingPathComponent("cancel_fallback_vault.enc")
+        let manager = PasswordVaultManager(
+            vaultURL: vaultURL,
+            configURL: tempDirectory.appendingPathComponent("cancel_fallback_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("cancel_fallback_backup.enc")
+        )
+        let keychain = MockLoginKeychainFallbackStore()
+        let mockContext = MockBiometricAuthenticationContext()
+        manager.makeBiometricContext = { mockContext }
+        manager.customKeychainOperations = keychain.operations
+        manager.setMasterPassword("FallbackCancel@2026")
+        manager.lockVault()
+
+        let evalCalls = LockedCounterBox()
+        manager.biometricPolicyEvaluatorOverride = { [weak manager] _, _ in
+            evalCalls.increment()
+            manager?.cancelPendingBiometricAuthentication()
+            return .success(())
+        }
+        XCTAssertEqual(manager.unlockWithBiometricsResult(), .cancelled)
+        XCTAssertEqual(evalCalls.load(), 1)
+        XCTAssertGreaterThanOrEqual(mockContext.invalidateCallCount, 1)
+        XCTAssertFalse(manager.isUnlocked)
+
+        let bootstrapManager = PasswordVaultManager(
+            vaultURL: tempDirectory.appendingPathComponent("cancel_bootstrap_vault.enc"),
+            configURL: tempDirectory.appendingPathComponent("cancel_bootstrap_config.json"),
+            backupURL: tempDirectory.appendingPathComponent("cancel_bootstrap_backup.enc")
+        )
+        let bootstrapChecks = LockedCounterBox()
+        bootstrapManager.biometricPolicyEvaluatorOverride = { _, _ in
+            bootstrapChecks.increment()
+            return .success(())
+        }
+        let bootstrapResult = bootstrapManager.unlockWithBiometricsResult { [weak bootstrapManager] in
+            bootstrapManager?.cancelPendingBiometricAuthentication()
+            return .missing
+        }
+        XCTAssertEqual(bootstrapResult, .cancelled)
+        XCTAssertEqual(bootstrapChecks.load(), 0)
+        XCTAssertFalse(bootstrapManager.isUnlocked)
+    }
+
+    func testCompressCommandBacksUpAndRestoresOutputPathContainingBakSubstring() async throws {
+        let bakParent = tempDirectory.appendingPathComponent("dir.bak_workspace")
+        try FileManager.default.createDirectory(at: bakParent, withIntermediateDirectories: true)
+
+        let sourceFile = bakParent.appendingPathComponent("payload.txt")
+        try Data("new payload for compression".utf8).write(to: sourceFile)
+
+        let outputArchive = bakParent.appendingPathComponent("project.bak_2026.zip")
+        let originalSentinel = Data("ORIGINAL_USER_ARCHIVE_SENTINEL".utf8)
+        try originalSentinel.write(to: outputArchive)
+
+        let command = CompressCommand(
+            inputs: [sourceFile.path],
+            outputPath: outputArchive.path,
+            format: .zip
+        )
+        _ = try await command.execute()
+        XCTAssertNotEqual(try Data(contentsOf: outputArchive), originalSentinel)
+
+        try await command.undo()
+        XCTAssertEqual(try Data(contentsOf: outputArchive), originalSentinel)
+    }
+
+    func testArchiveWriterDoesNotLeakStagedOptionsWhenOverrideExecutorIsUsed() throws {
+        let sourceFile = tempDirectory.appendingPathComponent("writer_input.txt")
+        try Data(repeating: 0x41, count: 4096).write(to: sourceFile)
+        let dummyOut = tempDirectory.appendingPathComponent("dummy_override.zip")
+        let realOut = tempDirectory.appendingPathComponent("real_after_override.zst")
+
+        let writer = ArchiveWriter()
+        writer._createArchiveExecutorOverride = { _, _, _, _ in
+            CompressionReport(
+                uncompressedBytes: 4096,
+                compressedBytes: 128,
+                elapsedNanos: 1000,
+                throughputMbs: 10.0,
+                spaceSavingsPct: 90.0,
+                engineProvenance: "mock",
+                outcome: nil
+            )
+        }
+
+        let recoveryOpts = ArchiveAdvancedOptions(
+            dictionarySizeMB: 32,
+            cpuThreads: 2,
+            enableSolidArchive: false,
+            encryptFileNames: false,
+            zipEncryptionMethod: "ZipCrypto",
+            zstdLevel: 15,
+            zstdEnableLDM: true,
+            recoveryRecordRedundancyPercent: 10
+        )
+        _ = try writer.createArchiveSyncWithOutcome(
+            outputPath: dummyOut.path,
+            format: .zip,
+            level: .normal,
+            inputPaths: [sourceFile.path],
+            advancedOptions: recoveryOpts
+        )
+
+        writer._createArchiveExecutorOverride = nil
+        let zstdOpts = ArchiveAdvancedOptions(
+            dictionarySizeMB: 16,
+            cpuThreads: 2,
+            enableSolidArchive: true,
+            encryptFileNames: false,
+            zipEncryptionMethod: "AES-256",
+            zstdLevel: 12,
+            zstdEnableLDM: true,
+            recoveryRecordRedundancyPercent: 0
+        )
+        let report = try writer.createArchiveSyncWithOutcome(
+            outputPath: realOut.path,
+            format: .zst,
+            level: .normal,
+            inputPaths: [sourceFile.path],
+            advancedOptions: zstdOpts
+        )
+        XCTAssertGreaterThan(report.compressedBytes, 0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: realOut.path))
+    }
+
+    func testImageAndDocumentServicesPreserveTotalsAcrossOperations() async throws {
+        let imgService = TTZipImageRenderingService()
+        let pngBytes = Data([
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
+            0x89, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x44, 0x41,
+            0x54, 0x78, 0x9C, 0x63, 0x60, 0x60, 0x60, 0x60,
+            0x00, 0x00, 0x00, 0x05, 0x00, 0x01, 0x87, 0xA1,
+            0x49, 0x48, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45,
+            0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+        ])
+        _ = try await imgService.probeMetadata(data: pngBytes, fileName: "one.png")
+        XCTAssertEqual(imgService.totalImagesProcessed, 1)
+        _ = try await imgService.probeMetadata(data: pngBytes, fileName: "two.png")
+        XCTAssertEqual(imgService.totalImagesProcessed, 2)
+        XCTAssertEqual(imgService.activeOperationsCount, 0)
+        XCTAssertFalse(imgService.isProcessing)
+
+        let docService = TTZipDocumentMetadataService()
+        let plistBytes = Data("""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0"><dict><key>CFBundleName</key><string>TTZip</string></dict></plist>
+        """.utf8)
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            for _ in 0..<16 {
+                group.addTask {
+                    _ = try await docService.inspectPlist(data: plistBytes)
+                }
+            }
+            try await group.waitForAll()
+        }
+        XCTAssertEqual(docService.totalDocumentsInspected, 16)
+        XCTAssertEqual(docService.activeOperationsCount, 0)
+        XCTAssertFalse(docService.isProcessing)
+    }
 }
+
+

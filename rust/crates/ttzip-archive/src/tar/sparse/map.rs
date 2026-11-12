@@ -377,99 +377,111 @@ pub fn parse_gnu_sparse_1_0_stream<R: Read>(
     reader: &mut R,
     real_size: u64,
 ) -> Result<(SparseMap, usize), TarSparseError> {
-    let mut sector_buf = [0u8; BLOCK_SIZE];
     let mut raw_bytes = Vec::new();
     let mut total_sectors_read = 0usize;
-
     let mut num_entries: Option<usize> = None;
     let mut lines = Vec::new();
     let mut current_line_start = 0usize;
 
     loop {
-        reader.read_exact(&mut sector_buf).map_err(|e| {
-            if e.kind() == std::io::ErrorKind::UnexpectedEof {
-                TarSparseError::InvalidStreamMap(
-                    "unexpected EOF while reading sparse 1.0 header".to_string(),
-                )
-            } else {
-                TarSparseError::from(e)
-            }
-        })?;
-
+        read_sparse_1_0_sector(reader, &mut raw_bytes)?;
         total_sectors_read += 1;
-        raw_bytes.extend_from_slice(&sector_buf);
-
-        if raw_bytes.len() > MAX_SPARSE_HEADER_BYTES {
-            return Err(TarSparseError::HeaderTooLarge {
-                size: raw_bytes.len(),
-                max: MAX_SPARSE_HEADER_BYTES,
-            });
-        }
 
         while let Some(nl_pos) = raw_bytes[current_line_start..]
             .iter()
             .position(|&b| b == b'\n')
         {
             let line_end = current_line_start + nl_pos;
-            let line_bytes = &raw_bytes[current_line_start..line_end];
-            let line_str = std::str::from_utf8(line_bytes)
-                .map_err(|e| {
-                    TarSparseError::InvalidStreamMap(format!(
-                        "invalid UTF-8 sequence in stream map: {}",
-                        e
-                    ))
-                })?
-                .trim();
-
-            lines.push(line_str.to_string());
+            let line_str = parse_sparse_1_0_line(&raw_bytes[current_line_start..line_end])?;
+            lines.push(line_str);
             current_line_start = line_end + 1;
 
             if num_entries.is_none() {
-                let count = lines[0].parse::<usize>().map_err(|e| {
-                    TarSparseError::InvalidStreamMap(format!(
-                        "invalid num_entries count '{}': {}",
-                        lines[0], e
-                    ))
-                })?;
-                if count > MAX_SPARSE_ENTRIES {
-                    return Err(TarSparseError::HeaderTooLarge {
-                        size: count,
-                        max: MAX_SPARSE_ENTRIES,
-                    });
-                }
-                num_entries = Some(count);
+                num_entries = Some(parse_sparse_1_0_entry_count(&lines[0])?);
             }
 
             if let Some(target_entries) = num_entries {
-                let required_lines = 1 + target_entries * 2;
-                if lines.len() == required_lines {
-                    let mut extents = Vec::with_capacity(target_entries);
-                    for i in 0..target_entries {
-                        let offset_idx = 1 + i * 2;
-                        let numbytes_idx = 1 + i * 2 + 1;
-                        let offset = lines[offset_idx].parse::<u64>().map_err(|e| {
-                            TarSparseError::InvalidStreamMap(format!(
-                                "invalid offset '{}' at entry {}: {}",
-                                lines[offset_idx], i, e
-                            ))
-                        })?;
-                        let numbytes = lines[numbytes_idx].parse::<u64>().map_err(|e| {
-                            TarSparseError::InvalidStreamMap(format!(
-                                "invalid numbytes '{}' at entry {}: {}",
-                                lines[numbytes_idx], i, e
-                            ))
-                        })?;
-                        if numbytes > 0 {
-                            extents.push(SparseExtent::new(offset, numbytes));
-                        }
-                    }
-
-                    let map = SparseMap::new(real_size, extents);
-                    map.validate_sparse_map()?;
-                    let total_consumed = total_sectors_read * BLOCK_SIZE;
-                    return Ok((map, total_consumed));
+                if lines.len() == 1 + target_entries * 2 {
+                    let map = build_sparse_map_from_lines(&lines, target_entries, real_size)?;
+                    return Ok((map, total_sectors_read * BLOCK_SIZE));
                 }
             }
         }
     }
+}
+
+fn read_sparse_1_0_sector<R: Read>(
+    reader: &mut R,
+    raw_bytes: &mut Vec<u8>,
+) -> Result<(), TarSparseError> {
+    let mut sector_buf = [0u8; BLOCK_SIZE];
+    reader.read_exact(&mut sector_buf).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::UnexpectedEof {
+            TarSparseError::InvalidStreamMap(
+                "unexpected EOF while reading sparse 1.0 header".to_string(),
+            )
+        } else {
+            TarSparseError::from(e)
+        }
+    })?;
+    raw_bytes.extend_from_slice(&sector_buf);
+    if raw_bytes.len() > MAX_SPARSE_HEADER_BYTES {
+        return Err(TarSparseError::HeaderTooLarge {
+            size: raw_bytes.len(),
+            max: MAX_SPARSE_HEADER_BYTES,
+        });
+    }
+    Ok(())
+}
+
+fn parse_sparse_1_0_line(line_bytes: &[u8]) -> Result<String, TarSparseError> {
+    let line_str = std::str::from_utf8(line_bytes)
+        .map_err(|e| {
+            TarSparseError::InvalidStreamMap(format!("invalid UTF-8 sequence in stream map: {e}"))
+        })?
+        .trim();
+    Ok(line_str.to_string())
+}
+
+fn parse_sparse_1_0_entry_count(first_line: &str) -> Result<usize, TarSparseError> {
+    let count = first_line.parse::<usize>().map_err(|e| {
+        TarSparseError::InvalidStreamMap(format!("invalid num_entries count '{first_line}': {e}"))
+    })?;
+    if count > MAX_SPARSE_ENTRIES {
+        return Err(TarSparseError::HeaderTooLarge {
+            size: count,
+            max: MAX_SPARSE_ENTRIES,
+        });
+    }
+    Ok(count)
+}
+
+fn build_sparse_map_from_lines(
+    lines: &[String],
+    target_entries: usize,
+    real_size: u64,
+) -> Result<SparseMap, TarSparseError> {
+    let mut extents = Vec::with_capacity(target_entries);
+    for i in 0..target_entries {
+        let offset_idx = 1 + i * 2;
+        let numbytes_idx = offset_idx + 1;
+        let offset = lines[offset_idx].parse::<u64>().map_err(|e| {
+            TarSparseError::InvalidStreamMap(format!(
+                "invalid offset '{}' at entry {}: {}",
+                lines[offset_idx], i, e
+            ))
+        })?;
+        let numbytes = lines[numbytes_idx].parse::<u64>().map_err(|e| {
+            TarSparseError::InvalidStreamMap(format!(
+                "invalid numbytes '{}' at entry {}: {}",
+                lines[numbytes_idx], i, e
+            ))
+        })?;
+        if numbytes > 0 {
+            extents.push(SparseExtent::new(offset, numbytes));
+        }
+    }
+    let map = SparseMap::new(real_size, extents);
+    map.validate_sparse_map()?;
+    Ok(map)
 }

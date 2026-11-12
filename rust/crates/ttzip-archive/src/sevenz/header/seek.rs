@@ -72,12 +72,10 @@ impl SevenZSeekIndex {
                 let sz = if global_stream_idx < info.stream_sizes.len() {
                     info.stream_sizes[global_stream_idx]
                 } else if cur_folder_idx < info.folders.len() {
-                    info.folders[cur_folder_idx]
-                        .unpack_sizes
-                        .last()
-                        .copied()
-                        .unwrap_or(0)
-                        .saturating_sub(current_folder_offset)
+                    crate::sevenz::decoder::payload::folder_final_unpack_size(
+                        &info.folders[cur_folder_idx],
+                    )
+                    .saturating_sub(current_folder_offset)
                 } else {
                     0
                 };

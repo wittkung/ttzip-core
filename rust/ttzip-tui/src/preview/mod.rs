@@ -53,6 +53,25 @@ impl Default for SyntaxHighlighter {
     }
 }
 
+const EXTENSION_LANGUAGE_MAP: &[(&[&str], &str)] = &[
+    (&["rs"], "Rust"),
+    (&["swift"], "Swift"),
+    (&["c", "h"], "C"),
+    (&["cpp", "cc", "cxx", "hpp"], "C++"),
+    (&["json"], "JSON"),
+    (&["toml"], "TOML"),
+    (&["yaml", "yml"], "YAML"),
+    (&["md", "markdown"], "Markdown"),
+    (&["sh", "bash", "zsh"], "Bash"),
+    (&["py"], "Python"),
+    (&["js", "mjs"], "JavaScript"),
+    (&["ts"], "TypeScript"),
+    (&["html", "htm"], "HTML"),
+    (&["css"], "CSS"),
+    (&["xml", "plist"], "XML"),
+    (&["txt", "log"], "Plain Text"),
+];
+
 impl SyntaxHighlighter {
     /// Initializes a new syntax highlighter with default syntax and theme sets.
     pub fn new() -> Self {
@@ -76,25 +95,12 @@ impl SyntaxHighlighter {
             return syntax.name.clone();
         }
 
-        match ext.to_lowercase().as_str() {
-            "rs" => "Rust".to_string(),
-            "swift" => "Swift".to_string(),
-            "c" | "h" => "C".to_string(),
-            "cpp" | "cc" | "cxx" | "hpp" => "C++".to_string(),
-            "json" => "JSON".to_string(),
-            "toml" => "TOML".to_string(),
-            "yaml" | "yml" => "YAML".to_string(),
-            "md" | "markdown" => "Markdown".to_string(),
-            "sh" | "bash" | "zsh" => "Bash".to_string(),
-            "py" => "Python".to_string(),
-            "js" | "mjs" => "JavaScript".to_string(),
-            "ts" => "TypeScript".to_string(),
-            "html" | "htm" => "HTML".to_string(),
-            "css" => "CSS".to_string(),
-            "xml" | "plist" => "XML".to_string(),
-            "txt" | "log" => "Plain Text".to_string(),
-            _ => "Plain Text".to_string(),
-        }
+        let ext_lower = ext.to_lowercase();
+        EXTENSION_LANGUAGE_MAP
+            .iter()
+            .find(|(exts, _)| exts.contains(&ext_lower.as_str()))
+            .map(|(_, lang)| (*lang).to_string())
+            .unwrap_or_else(|| "Plain Text".to_string())
     }
 
     /// Highlights text lines with ANSI 24-bit TrueColor sequences.

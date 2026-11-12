@@ -11,6 +11,46 @@ use super::spline::{FritschCarlsonSpline, SplinePoint};
 /// Visualizer for benchmark reports.
 pub struct BenchmarkPlotter;
 
+struct SvgPlotLayout {
+    width: f64,
+    height: f64,
+    pad_l: f64,
+    pad_r: f64,
+    pad_t: f64,
+    plot_w: f64,
+    plot_h: f64,
+    max_speed: f64,
+}
+
+impl SvgPlotLayout {
+    fn new(report: &BenchmarkMatrixReport, width: u32, height: u32) -> Self {
+        let width = width.max(640) as f64;
+        let height = height.max(400) as f64;
+        let pad_l = 80.0;
+        let pad_r = 50.0;
+        let pad_t = 60.0;
+        let pad_b = 65.0;
+        Self {
+            width,
+            height,
+            pad_l,
+            pad_r,
+            pad_t,
+            plot_w: width - pad_l - pad_r,
+            plot_h: height - pad_t - pad_b,
+            max_speed: report.peak_compress_throughput_mbs.max(100.0) * 1.15,
+        }
+    }
+
+    fn map_x(&self, speed: f64) -> f64 {
+        self.pad_l + (speed / self.max_speed) * self.plot_w
+    }
+
+    fn map_y(&self, savings: f64) -> f64 {
+        self.pad_t + self.plot_h - (savings / 100.0) * self.plot_h
+    }
+}
+
 impl BenchmarkPlotter {
     fn algorithm_color(algo: &str) -> &'static str {
         match algo {
@@ -27,75 +67,71 @@ impl BenchmarkPlotter {
 
     /// Generates a standalone, vector SVG chart with scatter points and smooth Pareto frontier trajectory.
     pub fn generate_svg(report: &BenchmarkMatrixReport, width: u32, height: u32) -> String {
-        let width = width.max(640) as f64;
-        let height = height.max(400) as f64;
-        let pad_l = 80.0;
-        let pad_r = 50.0;
-        let pad_t = 60.0;
-        let pad_b = 65.0;
-
-        let plot_w = width - pad_l - pad_r;
-        let plot_h = height - pad_t - pad_b;
-
-        let max_speed = report.peak_compress_throughput_mbs.max(100.0) * 1.15;
-        let max_savings = 100.0;
-
-        let map_x = |speed: f64| -> f64 { pad_l + (speed / max_speed) * plot_w };
-        let map_y = |savings: f64| -> f64 { pad_t + plot_h - (savings / max_savings) * plot_h };
-
+        let layout = SvgPlotLayout::new(report, width, height);
         let mut svg = String::with_capacity(8192);
         svg.push_str(&format!(
             "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 {} {}\" width=\"100%\" height=\"100%\" style=\"background:#0F172A;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;\">\n",
-            width, height
+            layout.width, layout.height
         ));
 
-        // Background grid lines
+        Self::append_svg_grid_and_axes(&mut svg, &layout, &report.corpus_name);
+        Self::append_svg_points_and_spline(&mut svg, &layout, report);
+
+        svg.push_str("</svg>");
+        svg
+    }
+
+    fn append_svg_grid_and_axes(svg: &mut String, layout: &SvgPlotLayout, corpus_name: &str) {
         svg.push_str("<g stroke=\"#334155\" stroke-width=\"1\" stroke-dasharray=\"3,3\" opacity=\"0.6\">\n");
         for s in (0..=100).step_by(20) {
-            let y = map_y(s as f64);
+            let y = layout.map_y(s as f64);
             svg.push_str(&format!(
                 "  <line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\"/>\n",
-                pad_l, y, width - pad_r, y
+                layout.pad_l, y, layout.width - layout.pad_r, y
             ));
             svg.push_str(&format!(
                 "  <text x=\"{:.1}\" y=\"{:.1}\" fill=\"#64748B\" font-size=\"11\" text-anchor=\"end\" alignment-baseline=\"middle\">{}%</text>\n",
-                pad_l - 10.0, y, s
+                layout.pad_l - 10.0, y, s
             ));
         }
 
-        let speed_step = (max_speed / 5.0).round().max(10.0);
+        let speed_step = (layout.max_speed / 5.0).round().max(10.0);
         let mut sp = 0.0;
-        while sp <= max_speed {
-            let x = map_x(sp);
-            if x <= width - pad_r {
+        while sp <= layout.max_speed {
+            let x = layout.map_x(sp);
+            if x <= layout.width - layout.pad_r {
                 svg.push_str(&format!(
                     "  <line x1=\"{:.1}\" y1=\"{:.1}\" x2=\"{:.1}\" y2=\"{:.1}\"/>\n",
-                    x, pad_t, x, pad_t + plot_h
+                    x, layout.pad_t, x, layout.pad_t + layout.plot_h
                 ));
                 svg.push_str(&format!(
                     "  <text x=\"{:.1}\" y=\"{:.1}\" fill=\"#64748B\" font-size=\"11\" text-anchor=\"middle\">{:.0}</text>\n",
-                    x, pad_t + plot_h + 20.0, sp
+                    x, layout.pad_t + layout.plot_h + 20.0, sp
                 ));
             }
             sp += speed_step;
         }
         svg.push_str("</g>\n");
 
-        // Axis Titles
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"32\" fill=\"#F8FAFC\" font-size=\"16\" font-weight=\"bold\">TTZip Pareto Frontier: {}</text>\n",
-            pad_l, report.corpus_name
+            layout.pad_l, corpus_name
         ));
         svg.push_str(&format!(
             "<text x=\"{:.1}\" y=\"{:.1}\" fill=\"#94A3B8\" font-size=\"12\" text-anchor=\"middle\">Compression Throughput (MB/s)</text>\n",
-            pad_l + plot_w / 2.0, height - 15.0
+            layout.pad_l + layout.plot_w / 2.0, layout.height - 15.0
         ));
         svg.push_str(&format!(
             "<text x=\"20\" y=\"{:.1}\" fill=\"#94A3B8\" font-size=\"12\" text-anchor=\"middle\" transform=\"rotate(-90 20 {:.1})\">Space Savings (%)</text>\n",
-            pad_t + plot_h / 2.0, pad_t + plot_h / 2.0
+            layout.pad_t + layout.plot_h / 2.0, layout.pad_t + layout.plot_h / 2.0
         ));
+    }
 
-        // Smooth Pareto Trajectory Line via Fritsch-Carlson Spline
+    fn append_svg_points_and_spline(
+        svg: &mut String,
+        layout: &SvgPlotLayout,
+        report: &BenchmarkMatrixReport,
+    ) {
         let pareto_points: Vec<SplinePoint> = report
             .points
             .iter()
@@ -105,7 +141,7 @@ impl BenchmarkPlotter {
 
         if pareto_points.len() >= 2 {
             if let Some(spline) = FritschCarlsonSpline::new(pareto_points) {
-                let path_d = spline.to_svg_bezier_path(|x, y| (map_x(x), map_y(y)));
+                let path_d = spline.to_svg_bezier_path(|x, y| (layout.map_x(x), layout.map_y(y)));
                 svg.push_str(&format!(
                     "<path d=\"{}\" fill=\"none\" stroke=\"#F59E0B\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.9\" filter=\"drop-shadow(0 0 6px #F59E0B88)\"/>\n",
                     path_d
@@ -113,10 +149,9 @@ impl BenchmarkPlotter {
             }
         }
 
-        // Scatter Points
         for pt in &report.points {
-            let cx = map_x(pt.compress_throughput_mbs);
-            let cy = map_y(pt.space_savings_pct);
+            let cx = layout.map_x(pt.compress_throughput_mbs);
+            let cy = layout.map_y(pt.space_savings_pct);
             let color = Self::algorithm_color(&pt.algorithm);
             let r = if pt.is_pareto_optimal { 6.5 } else { 4.0 };
             let stroke = if pt.is_pareto_optimal { "#FFFFFF" } else { "#1E293B" };
@@ -132,9 +167,6 @@ impl BenchmarkPlotter {
             ));
             svg.push_str("</circle>\n");
         }
-
-        svg.push_str("</svg>");
-        svg
     }
 
     /// Generates a complete standalone HTML interactive dashboard report.

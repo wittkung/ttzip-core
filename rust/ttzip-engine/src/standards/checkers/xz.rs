@@ -29,7 +29,7 @@ pub fn check_xz_compliance(buffer: &[u8]) -> ComplianceReport {
 
     // 2. Validate Stream Flags & Header CRC32
     let stream_flags = &buffer[6..8];
-    let header_crc32 = u32::from_le_bytes(buffer[8..12].try_into().unwrap());
+    let header_crc32 = u32::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11]]);
     let computed_crc32 = crc32_fast(0, stream_flags);
 
     if header_crc32 != computed_crc32 {

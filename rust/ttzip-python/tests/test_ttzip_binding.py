@@ -44,6 +44,20 @@ class TestTTZipPythonBinding(unittest.TestCase):
         self.assertEqual(written, len(raw))
         self.assertEqual(bytes(dst), raw)
 
+    def test_snappy_roundtrip_and_oversized_header_guard(self):
+        import _ttzip
+
+        data = b"Snappy SDK allocation guard verification payload " * 16
+        compressed = _ttzip.compress_buffer(data, "snappy")
+        self.assertEqual(_ttzip.decompress_buffer(compressed, "snappy"), data)
+        self.assertEqual(_ttzip.decompress_buffer(compressed, "sz"), data)
+
+        with self.assertRaises(_ttzip.TTZipError):
+            _ttzip.decompress_buffer(b"\x80\x80\x04\x00\x01\x02", "snappy")
+
+        with self.assertRaises(_ttzip.TTZipError):
+            _ttzip.decompress_buffer(b"\xff\xff\xff\xff\x0fA", "snappy")
+
 
 if __name__ == "__main__":
     unittest.main()

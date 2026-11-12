@@ -30,14 +30,14 @@ const MAX_SYMLINK_TARGET_BYTES: u64 = 4096;
 
 /// Target specification for an entry selected for extraction within a folder stream.
 #[derive(Debug, Clone)]
-struct SelectedTarget {
-    rel_path: String,
-    out_rel: String,
-    offset_start: u64,
-    offset_end: u64,
-    uncompressed_size: u64,
-    expected_crc: Option<u32>,
-    is_symlink: bool,
+pub(crate) struct SelectedTarget {
+    pub(crate) rel_path: String,
+    pub(crate) out_rel: String,
+    pub(crate) offset_start: u64,
+    pub(crate) offset_end: u64,
+    pub(crate) uncompressed_size: u64,
+    pub(crate) expected_crc: Option<u32>,
+    pub(crate) is_symlink: bool,
 }
 
 /// Metadata for an empty or 0-byte entry extracted without running stream decoders.
@@ -438,17 +438,17 @@ fn execute_folder_extractions<R: Read + Seek>(
             info.is_encrypted,
             quota_guard,
         );
-        let mut sink =
-            |chunk: &[u8]| -> Result<(), TTZipStatus> { dispatcher.consume_chunk(chunk) };
-
-        let stream_res = stream_7z_folder_from_reader(
+        // Unencrypted METHOD_COPY folders seek directly to selected target offsets
+        // instead of reading multi-gigabyte discarded prefixes from disk.
+        let stream_res = stream_folder_to_dispatcher(
             reader,
             info,
             folder,
             password,
             options.thread_budget.max(1),
-            &mut sink,
+            &mut dispatcher,
         );
+
         match stream_res {
             Ok(_) | Err(TTZipStatus::Eof) => {}
             Err(e) => return Err(e),
@@ -491,7 +491,7 @@ pub fn extract_sevenz_selected_from_reader_with_quota<R: Read + Seek>(
     process_empty_targets(&empty_targets, &jail)?;
 
     let mut total_processed = 0u64;
-    let mut quota = quota_guard.unwrap_or_else(ExtractionQuotaGuard::default_limits);
+    let mut quota = quota_guard.unwrap_or_else(|| default_selected_quota_guard(&info, &folder_map));
     execute_folder_extractions(
         reader,
         &info,
@@ -523,5 +523,185 @@ pub fn extract_sevenz_selected_from_reader<R: Read + Seek>(
 ) -> Result<usize, TTZipStatus> {
     extract_sevenz_selected_from_reader_with_quota(
         reader, selection, staging, options, password, None,
+    )
+}
+
+pub(crate) fn default_selected_quota_guard(
+    info: &SevenZHeaderInfo,
+    folder_map: &BTreeMap<usize, Vec<SelectedTarget>>,
+) -> ExtractionQuotaGuard {
+    let mut total_packed = 0u64;
+    let mut total_discarded_window = 0u64;
+    for (&folder_idx, targets) in folder_map {
+        if let Some(folder) = info.folders.get(folder_idx) {
+            total_packed = total_packed.saturating_add(folder.packed_len as u64);
+        }
+        let max_end = targets.iter().map(|t| t.offset_end).max().unwrap_or(0);
+        let selected_bytes: u64 = targets
+            .iter()
+            .fold(0u64, |acc, t| acc.saturating_add(t.uncompressed_size));
+        total_discarded_window =
+            total_discarded_window.saturating_add(max_end.saturating_sub(selected_bytes));
+    }
+    let base_budget = ExtractionQuotaGuard::DEFAULT_MAX_UNCOMPRESSED_BYTES
+        .max(total_packed.saturating_mul(1024));
+    let max_uncompressed = base_budget.saturating_add(total_discarded_window);
+    ExtractionQuotaGuard::new(max_uncompressed, ExtractionQuotaGuard::DEFAULT_MAX_RATIO)
+}
+
+/// Returns `true` when `folder` is an unencrypted single-coder `METHOD_COPY` stream
+/// whose uncompressed byte offsets map 1:1 to `folder.packed_offset + offset`.
+pub fn is_unencrypted_copy_folder(
+    info: &SevenZHeaderInfo,
+    folder: &crate::sevenz::header::SevenZFolder,
+) -> bool {
+    !info.is_encrypted
+        && folder.bind_pairs.is_empty()
+        && folder.coders.len() == 1
+        && folder.coders[0].method_id == crate::sevenz::format::METHOD_COPY
+}
+
+fn stream_folder_to_dispatcher<R: Read + Seek>(
+    reader: &mut R,
+    info: &SevenZHeaderInfo,
+    folder: &crate::sevenz::header::SevenZFolder,
+    password: Option<&str>,
+    thread_budget: u32,
+    dispatcher: &mut FolderDispatcher<'_>,
+) -> Result<(), TTZipStatus> {
+    if is_unencrypted_copy_folder(info, folder) {
+        return stream_unencrypted_copy_folder(reader, folder, dispatcher);
+    }
+    let mut sink = |chunk: &[u8]| -> Result<(), TTZipStatus> { dispatcher.consume_chunk(chunk) };
+    stream_7z_folder_from_reader(reader, info, folder, password, thread_budget, &mut sink)
+        .map(|_| ())
+}
+
+fn seek_folder_offset<R: Seek>(
+    reader: &mut R,
+    packed_offset: usize,
+    rel_offset: u64,
+) -> Result<(), TTZipStatus> {
+    let seek_pos = (packed_offset as u64)
+        .checked_add(rel_offset)
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    reader
+        .seek(std::io::SeekFrom::Start(seek_pos))
+        .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+    Ok(())
+}
+
+fn skip_copy_gap(
+    dispatcher: &mut FolderDispatcher<'_>,
+    target_start: u64,
+    limit: u64,
+) -> Result<(), TTZipStatus> {
+    if dispatcher.current_offset < target_start {
+        let skip_to = target_start.min(limit);
+        dispatcher.check_quota(skip_to - dispatcher.current_offset)?;
+        dispatcher.check_cancellation(None)?;
+        dispatcher.current_offset = skip_to;
+    }
+    Ok(())
+}
+
+fn read_copy_target_chunks<R: Read>(
+    reader: &mut R,
+    dispatcher: &mut FolderDispatcher<'_>,
+    limit: u64,
+    buf: &mut [u8],
+) -> Result<bool, TTZipStatus> {
+    while dispatcher.cur_idx < dispatcher.targets.len()
+        && dispatcher.current_offset < limit
+        && dispatcher.current_offset >= dispatcher.targets[dispatcher.cur_idx].offset_start
+    {
+        let rem = (limit - dispatcher.current_offset) as usize;
+        let to_read = rem.min(buf.len());
+        let n = reader
+            .read(&mut buf[..to_read])
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+        if n == 0 {
+            return Ok(false);
+        }
+        dispatcher.consume_chunk(&buf[..n])?;
+    }
+    Ok(true)
+}
+
+fn stream_unencrypted_copy_folder<R: Read + Seek>(
+    reader: &mut R,
+    folder: &crate::sevenz::header::SevenZFolder,
+    dispatcher: &mut FolderDispatcher<'_>,
+) -> Result<(), TTZipStatus> {
+    const COPY_CHUNK_SIZE: usize = 4 * 1024 * 1024;
+    let final_unpack = crate::sevenz::decoder::payload::folder_final_unpack_size(folder);
+    let limit = (folder.packed_len as u64).min(final_unpack);
+    let mut buf = vec![0u8; COPY_CHUNK_SIZE];
+
+    while dispatcher.cur_idx < dispatcher.targets.len() && dispatcher.current_offset < limit {
+        let target_start = dispatcher.targets[dispatcher.cur_idx].offset_start;
+        skip_copy_gap(dispatcher, target_start, limit)?;
+        if dispatcher.current_offset >= limit {
+            break;
+        }
+        seek_folder_offset(reader, folder.packed_offset, dispatcher.current_offset)?;
+        if !read_copy_target_chunks(reader, dispatcher, limit, &mut buf)? {
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
+fn read_unencrypted_copy_entry<R: Read + Seek>(
+    reader: &mut R,
+    folder: &crate::sevenz::header::SevenZFolder,
+    loc: &crate::sevenz::header::SevenZEntryLocation,
+) -> Result<Vec<u8>, TTZipStatus> {
+    let final_unpack = crate::sevenz::decoder::payload::folder_final_unpack_size(folder);
+    let limit = (folder.packed_len as u64).min(final_unpack);
+    let end_offset = loc
+        .offset_in_folder
+        .checked_add(loc.uncompressed_size)
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    if end_offset > limit {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    seek_folder_offset(reader, folder.packed_offset, loc.offset_in_folder)?;
+    let mut out = vec![0u8; loc.uncompressed_size as usize];
+    reader
+        .read_exact(&mut out)
+        .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+    if loc.crc.is_some_and(|exp| crc32_fast(0, &out) != exp) {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    Ok(out)
+}
+
+/// Extracts a single 7z entry into memory from `reader`, seeking directly over
+/// unselected prefix bytes when the target folder uses unencrypted `METHOD_COPY`.
+pub fn extract_7z_single_entry_from_reader_fast<R: Read + Seek>(
+    reader: &mut R,
+    info: &SevenZHeaderInfo,
+    seek_index: &crate::sevenz::header::SevenZSeekIndex,
+    file_index: usize,
+    password: Option<&str>,
+) -> Result<Vec<u8>, TTZipStatus> {
+    const MAX_IN_MEMORY_BYTES: u64 = 64 * 1024 * 1024;
+    let loc = seek_index
+        .get_by_index(file_index)
+        .ok_or(TTZipStatus::ErrFileNotFound)?;
+    if loc.uncompressed_size > MAX_IN_MEMORY_BYTES {
+        return Err(TTZipStatus::ErrOutOfMemory);
+    }
+    if loc.is_directory || loc.is_empty_stream || loc.uncompressed_size == 0 {
+        return Ok(Vec::new());
+    }
+    if let Some(folder) = loc.folder_index.and_then(|fi| info.folders.get(fi)) {
+        if is_unencrypted_copy_folder(info, folder) {
+            return read_unencrypted_copy_entry(reader, folder, loc);
+        }
+    }
+    crate::sevenz::decoder::archive::extract_7z_single_entry_from_reader(
+        reader, info, seek_index, file_index, password,
     )
 }

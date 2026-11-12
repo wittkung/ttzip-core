@@ -30,46 +30,34 @@ use corpus::{SyntheticCorpus, MEASURE_RUNS, WARMUP_RUNS};
 use stream_suites::{
     bench_apfs_sparse_suite, bench_gzip_suite, bench_xz_suite, bench_zstd_suite,
 };
-use ttzip_engine::bench_telemetry::MultiFormatBenchmarkSuiteReport;
+use ttzip_engine::bench_telemetry::{
+    BenchmarkMetricSamples, MultiFormatBenchmarkRecord, MultiFormatBenchmarkSuiteReport,
+};
 
-fn main() {
-    println!("\n=====================================================================================================");
-    println!("     TTZip Industrial Multi-Format Container & Codec Performance Benchmark Suite (Task T043)        ");
-    println!("=====================================================================================================");
-    println!("Target Matrix : ZIP (Deflate, Zstd, LZMA2), 7z, Tar, Gzip, Xz, Zstd, APFS Sparse");
-    println!("Hardware Arch : {}", std::env::consts::ARCH);
-    println!("Measurements  : {} Warmup runs | {} Measurement runs per stage\n", WARMUP_RUNS, MEASURE_RUNS);
-
-    // 1. Generate Synthetic Corpus (4MB Canterbury/Silesia-like workload with controllable entropy)
-    let corpus = SyntheticCorpus::new(4 * 1024 * 1024, 0.65);
-    println!(
-        "Synthetic Corpus: 4 files, {:.2} MB total, Empirical Entropy: {:.3} bits/byte\n",
-        corpus.total_uncompressed_bytes as f64 / (1024.0 * 1024.0),
-        corpus.empirical_entropy
-    );
-
+fn execute_benchmark_matrix(
+    corpus: &SyntheticCorpus,
+) -> (Vec<MultiFormatBenchmarkRecord>, Vec<BenchmarkMetricSamples>) {
     let mut records = Vec::new();
     let mut distributions = Vec::new();
 
-    // 2. Execute Benchmark Matrix
     print!("Benchmarking [1/9] ZIP (Deflate Level 6)... ");
-    records.push(bench_zip_variant(&corpus, "Deflate-6", 8, &mut distributions));
+    records.push(bench_zip_variant(corpus, "Deflate-6", 8, &mut distributions));
     println!("done.");
 
     print!("Benchmarking [2/9] ZIP (Zstandard Level 3)... ");
-    records.push(bench_zip_variant(&corpus, "Zstd-3", 93, &mut distributions));
+    records.push(bench_zip_variant(corpus, "Zstd-3", 93, &mut distributions));
     println!("done.");
 
     print!("Benchmarking [3/9] ZIP (Fast-LZMA2 Level 6)... ");
-    records.push(bench_zip_variant(&corpus, "LZMA2-6", 14, &mut distributions));
+    records.push(bench_zip_variant(corpus, "LZMA2-6", 14, &mut distributions));
     println!("done.");
 
     print!("Benchmarking [4/9] 7-Zip (Solid LZMA2 Level 5)... ");
-    records.push(bench_sevenz_suite(&corpus, &mut distributions));
+    records.push(bench_sevenz_suite(corpus, &mut distributions));
     println!("done.");
 
     print!("Benchmarking [5/9] POSIX TAR (PAX / USTAR)... ");
-    let (tar_bytes, tar_record) = bench_tar_suite(&corpus, &mut distributions);
+    let (tar_bytes, tar_record) = bench_tar_suite(corpus, &mut distributions);
     records.push(tar_record);
     println!("done.");
 
@@ -89,12 +77,15 @@ fn main() {
     records.push(bench_apfs_sparse_suite(&mut distributions));
     println!("done.");
 
-    // 3. Render High-Contrast ANSI Output Matrix
+    (records, distributions)
+}
+
+fn render_ansi_summary_matrix(records: &[MultiFormatBenchmarkRecord]) {
     println!("\n+----------------+----------------+--------+--------------+------------------+------------------+----------------+");
     println!("| Container      | Codec / Engine | Ratio  | TOC Latency  | Seq Decomp (MB/s)| Chk Decomp (MB/s)| RSS Delta (KB) |");
     println!("+----------------+----------------+--------+--------------+------------------+------------------+----------------+");
 
-    for r in &records {
+    for r in records {
         let toc_str = if let Some(ref toc) = r.toc_metrics {
             format!("{:.1} µs", toc.latency_micros)
         } else {
@@ -113,8 +104,26 @@ fn main() {
         );
     }
     println!("+----------------+----------------+--------+--------------+------------------+------------------+----------------+\n");
+}
 
-    // 4. Assemble Structured RFC 8259 Report
+fn main() {
+    println!("\n=====================================================================================================");
+    println!("     TTZip Industrial Multi-Format Container & Codec Performance Benchmark Suite (Task T043)        ");
+    println!("=====================================================================================================");
+    println!("Target Matrix : ZIP (Deflate, Zstd, LZMA2), 7z, Tar, Gzip, Xz, Zstd, APFS Sparse");
+    println!("Hardware Arch : {}", std::env::consts::ARCH);
+    println!("Measurements  : {} Warmup runs | {} Measurement runs per stage\n", WARMUP_RUNS, MEASURE_RUNS);
+
+    let corpus = SyntheticCorpus::new(4 * 1024 * 1024, 0.65);
+    println!(
+        "Synthetic Corpus: 4 files, {:.2} MB total, Empirical Entropy: {:.3} bits/byte\n",
+        corpus.total_uncompressed_bytes as f64 / (1024.0 * 1024.0),
+        corpus.empirical_entropy
+    );
+
+    let (records, distributions) = execute_benchmark_matrix(&corpus);
+    render_ansi_summary_matrix(&records);
+
     let report = MultiFormatBenchmarkSuiteReport {
         suite_name: "TTZip Multi-Format Container & Codec Performance Suite".to_string(),
         timestamp_epoch_secs: std::time::SystemTime::now()

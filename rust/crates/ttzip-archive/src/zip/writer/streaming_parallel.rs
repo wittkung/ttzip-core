@@ -161,19 +161,60 @@ fn resolve_compression_level_num(level: TTZipCompressionLevel) -> i32 {
     }
 }
 
+const COALESCE_WRITE_THRESHOLD: usize = 2 * 1024 * 1024;
+
 fn write_compressed_entry_to_sink(
     sink: &mut ZipOutputSink,
+    batch_buf: &mut Vec<u8>,
     entry: CompressedEntryResult,
 ) -> Result<CentralDirectoryMeta, TTZipStatus> {
-    let lfh_offset = sink.current_offset();
+    let lfh_offset = sink.current_offset() + batch_buf.len() as u64;
+    let is_zip64 = entry.uncompressed_size >= 0xFFFF_FFFF
+        || entry.compressed_size >= 0xFFFF_FFFF
+        || lfh_offset >= 0xFFFF_FFFF;
+
+    if let EntryPayload::Memory(ref mem_bytes) = entry.payload {
+        if mem_bytes.len() <= COALESCE_WRITE_THRESHOLD {
+            batch_buf.extend_from_slice(&entry.header_bytes);
+            batch_buf.extend_from_slice(mem_bytes);
+            if !entry.is_directory {
+                let dd_bytes = build_data_descriptor(
+                    entry.crc32,
+                    entry.compressed_size,
+                    entry.uncompressed_size,
+                    is_zip64,
+                );
+                batch_buf.extend_from_slice(&dd_bytes);
+            }
+            if batch_buf.len() >= COALESCE_WRITE_THRESHOLD {
+                sink.write_bytes(batch_buf)?;
+                batch_buf.clear();
+            }
+            return Ok(CentralDirectoryMeta {
+                rel_path: entry.rel_path,
+                lfh_offset,
+                uncompressed_size: entry.uncompressed_size,
+                compressed_size: entry.compressed_size,
+                crc32: entry.crc32,
+                compression_method: entry.compression_method,
+                actual_method: entry.actual_method,
+                is_encrypted: entry.is_encrypted,
+                mtime_secs: entry.mtime_secs,
+                mode: entry.mode,
+                is_directory: entry.is_directory,
+            });
+        }
+    }
+
+    if !batch_buf.is_empty() {
+        sink.write_bytes(batch_buf)?;
+        batch_buf.clear();
+    }
     sink.write_bytes(&entry.header_bytes)?;
     if !entry.payload.is_empty() {
         sink.write_payload(&entry.payload)?;
     }
     if !entry.is_directory {
-        let is_zip64 = entry.uncompressed_size >= 0xFFFF_FFFF
-            || entry.compressed_size >= 0xFFFF_FFFF
-            || lfh_offset >= 0xFFFF_FFFF;
         let dd_bytes = build_data_descriptor(
             entry.crc32,
             entry.compressed_size,
@@ -203,11 +244,12 @@ fn write_central_directory_tail_to_sink(
     total_uncompressed: u64,
 ) -> Result<(), TTZipStatus> {
     let cd_start_offset = sink.current_offset();
+    let mut tail_buf = Vec::with_capacity(cd_entries.len() * 80 + 128);
     for cd in cd_entries {
         let cd_bytes = build_cdfh_bytes(cd);
-        sink.write_bytes(&cd_bytes)?;
+        tail_buf.extend_from_slice(&cd_bytes);
     }
-    let cd_size = sink.current_offset() - cd_start_offset;
+    let cd_size = tail_buf.len() as u64;
 
     let needs_zip64 = cd_entries.len() >= 0xFFFF
         || cd_start_offset >= 0xFFFF_FFFF
@@ -215,11 +257,11 @@ fn write_central_directory_tail_to_sink(
         || total_uncompressed >= 0xFFFF_FFFF;
 
     if needs_zip64 {
-        let zip64_eocd_offset = sink.current_offset();
+        let zip64_eocd_offset = cd_start_offset + cd_size;
         let zip64_eocd = build_zip64_eocd(cd_entries.len() as u64, cd_size, cd_start_offset);
-        sink.write_bytes(&zip64_eocd)?;
+        tail_buf.extend_from_slice(&zip64_eocd);
         let zip64_locator = build_zip64_locator(zip64_eocd_offset);
-        sink.write_bytes(&zip64_locator)?;
+        tail_buf.extend_from_slice(&zip64_locator);
     }
 
     let eocd = build_eocd(
@@ -227,7 +269,8 @@ fn write_central_directory_tail_to_sink(
         cd_size.min(0xFFFF_FFFF) as u32,
         cd_start_offset.min(0xFFFF_FFFF) as u32,
     );
-    sink.write_bytes(&eocd)
+    tail_buf.extend_from_slice(&eocd);
+    sink.write_bytes(&tail_buf)
 }
 
 fn run_parallel_zip_batches_to_sink(
@@ -250,6 +293,7 @@ fn run_parallel_zip_batches_to_sink(
     };
 
     let mut cd_entries: Vec<CentralDirectoryMeta> = Vec::with_capacity(plan_items.len());
+    let mut batch_write_buf: Vec<u8> = Vec::with_capacity(COALESCE_WRITE_THRESHOLD + 65536);
     let mut plan_items_iter = plan_items.into_iter().peekable();
     loop {
         if active_sheet.is_cancelled() {
@@ -275,7 +319,7 @@ fn run_parallel_zip_batches_to_sink(
             if active_sheet.is_cancelled() {
                 return Err(TTZipStatus::Cancelled);
             }
-            let meta = write_compressed_entry_to_sink(sink, result?)?;
+            let meta = write_compressed_entry_to_sink(sink, &mut batch_write_buf, result?)?;
             let current_processed = active_sheet.read_snapshot().processed_bytes;
             let elapsed_secs = start_time.elapsed().as_secs_f64();
             let instant_bps = if elapsed_secs > 0.001 {
@@ -301,6 +345,10 @@ fn run_parallel_zip_batches_to_sink(
             }
             cd_entries.push(meta);
         }
+    }
+    if !batch_write_buf.is_empty() {
+        sink.write_bytes(&batch_write_buf)?;
+        batch_write_buf.clear();
     }
     write_central_directory_tail_to_sink(sink, &cd_entries, total_uncompressed)?;
     Ok(cd_entries)

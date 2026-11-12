@@ -35,6 +35,31 @@ pub enum TTZipStatus {
     ErrPanicCaught = -99,
 }
 
+const STATUS_DESCRIPTIONS: &[(i32, &str)] = &[
+    (TTZipStatus::Ok as i32, "Operation completed successfully"),
+    (TTZipStatus::Eof as i32, "End of archive / stream reached"),
+    (TTZipStatus::Cancelled as i32, "Operation cancelled by user"),
+    (TTZipStatus::ErrInvalidParam as i32, "Invalid parameter or configuration"),
+    (TTZipStatus::ErrFileNotFound as i32, "Archive or source file not found"),
+    (TTZipStatus::ErrMmapFailed as i32, "Memory mapping failed"),
+    (TTZipStatus::ErrCorruptHeader as i32, "Corrupt archive header or signature mismatch"),
+    (TTZipStatus::ErrInvalidOffset as i32, "Invalid entry offset or seek error"),
+    (TTZipStatus::ErrArchiveInitFailed as i32, "Failed to initialize archive context"),
+    (TTZipStatus::ErrOpenFailed as i32, "Failed to open archive stream"),
+    (TTZipStatus::ErrPathTooLong as i32, "File path exceeds system MAXPATHLEN"),
+    (TTZipStatus::ErrOutOfMemory as i32, "Out of memory"),
+    (TTZipStatus::ErrInvalidPassword as i32, "Invalid or missing archive password"),
+    (TTZipStatus::ErrExtractionFailed as i32, "Extraction error"),
+    (TTZipStatus::ErrCompressionFailed as i32, "Compression error"),
+    (TTZipStatus::ErrUnsupportedFeature as i32, "Unsupported compression algorithm or archive feature"),
+    (TTZipStatus::ErrBufferTooSmall as i32, "Buffer capacity too small"),
+    (TTZipStatus::ErrIo as i32, "Input/output error while reading or writing a file"),
+    (TTZipStatus::ErrSolidBudgetExceeded as i32, "7z solid decompression budget exceeded"),
+    (TTZipStatus::ErrSecurityViolation as i32, "Security boundary violation (e.g. path traversal)"),
+    (TTZipStatus::ErrAbiMismatch as i32, "ABI version mismatch"),
+    (TTZipStatus::ErrPanicCaught as i32, "Internal panic caught at FFI boundary"),
+];
+
 impl TTZipStatus {
     #[inline]
     #[must_use]
@@ -59,30 +84,15 @@ impl TTZipStatus {
     /// Returns a static English string description of the status code.
     #[must_use]
     pub const fn as_str(self) -> &'static str {
-        match self {
-            TTZipStatus::Ok => "Operation completed successfully",
-            TTZipStatus::Eof => "End of archive / stream reached",
-            TTZipStatus::Cancelled => "Operation cancelled by user",
-            TTZipStatus::ErrInvalidParam => "Invalid parameter or configuration",
-            TTZipStatus::ErrFileNotFound => "Archive or source file not found",
-            TTZipStatus::ErrMmapFailed => "Memory mapping failed",
-            TTZipStatus::ErrCorruptHeader => "Corrupt archive header or signature mismatch",
-            TTZipStatus::ErrInvalidOffset => "Invalid entry offset or seek error",
-            TTZipStatus::ErrArchiveInitFailed => "Failed to initialize archive context",
-            TTZipStatus::ErrOpenFailed => "Failed to open archive stream",
-            TTZipStatus::ErrPathTooLong => "File path exceeds system MAXPATHLEN",
-            TTZipStatus::ErrOutOfMemory => "Out of memory",
-            TTZipStatus::ErrInvalidPassword => "Invalid or missing archive password",
-            TTZipStatus::ErrExtractionFailed => "Extraction error",
-            TTZipStatus::ErrCompressionFailed => "Compression error",
-            TTZipStatus::ErrUnsupportedFeature => "Unsupported compression algorithm or archive feature",
-            TTZipStatus::ErrBufferTooSmall => "Buffer capacity too small",
-            TTZipStatus::ErrIo => "Input/output error while reading or writing a file",
-            TTZipStatus::ErrSolidBudgetExceeded => "7z solid decompression budget exceeded",
-            TTZipStatus::ErrSecurityViolation => "Security boundary violation (e.g. path traversal)",
-            TTZipStatus::ErrAbiMismatch => "ABI version mismatch",
-            TTZipStatus::ErrPanicCaught => "Internal panic caught at FFI boundary",
+        let code = self as i32;
+        let mut idx = 0;
+        while idx < STATUS_DESCRIPTIONS.len() {
+            if STATUS_DESCRIPTIONS[idx].0 == code {
+                return STATUS_DESCRIPTIONS[idx].1;
+            }
+            idx += 1;
         }
+        "Unknown status code"
     }
 }
 

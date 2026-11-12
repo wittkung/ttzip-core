@@ -253,6 +253,77 @@ pub fn scan_archive_for_salvage(raw_data: &[u8], path: &Path) -> (String, Vec<Sa
     ("ZIP".to_string(), Vec::new())
 }
 
+fn reconstruct_tar_archive(
+    raw_data: &[u8],
+    selected: &[&SalvagedEntry],
+    output_path: &Path,
+) -> Result<usize, TTZipStatus> {
+    let mut out_file = File::create(output_path).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    let total_len = raw_data.len();
+    let mut count = 0;
+
+    for entry in selected {
+        if entry.header_offset + 512 <= total_len {
+            let header = &raw_data[entry.header_offset..entry.header_offset + 512];
+            out_file.write_all(header).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+
+            let payload_len = entry.uncompressed_size as usize;
+            if payload_len > 0 && entry.payload_offset < total_len {
+                let avail = total_len.saturating_sub(entry.payload_offset);
+                let write_len = payload_len.min(avail);
+                let payload = &raw_data[entry.payload_offset..entry.payload_offset + write_len];
+                out_file.write_all(payload).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+
+                let pad = (512 - (write_len % 512)) % 512;
+                if pad > 0 {
+                    out_file.write_all(&vec![0u8; pad]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                }
+            }
+            count += 1;
+        }
+    }
+    out_file.write_all(&[0u8; 1024]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    out_file.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    Ok(count)
+}
+
+fn reconstruct_zip_archive(
+    raw_data: &[u8],
+    selected: &[&SalvagedEntry],
+    output_path: &Path,
+) -> Result<usize, TTZipStatus> {
+    let total_len = raw_data.len();
+    let mut items = Vec::with_capacity(selected.len());
+
+    for entry in selected {
+        let payload_start = entry.payload_offset;
+        let comp_len = entry.compressed_size as usize;
+        let avail = total_len.saturating_sub(payload_start);
+        let actual_len = comp_len.min(avail);
+        let payload = raw_data[payload_start..payload_start + actual_len].to_vec();
+
+        items.push(ZipCompressedItem {
+            rel_path: entry.rel_path.clone(),
+            uncompressed_size: entry.uncompressed_size,
+            compressed_size: payload.len() as u64,
+            crc32: entry.crc32,
+            compression_method: entry.compression_method,
+            actual_method: entry.compression_method,
+            aes_strength: 0,
+            payload,
+            mtime_epoch_secs: entry.mtime_epoch_secs,
+            mode: if entry.is_directory { 0o755 } else { 0o644 },
+            is_directory: entry.is_directory,
+            is_encrypted: false,
+        });
+    }
+
+    let count = items.len();
+    let assembled_bytes = assemble_zip_archive(&items)?;
+    fs::write(output_path, &assembled_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    Ok(count)
+}
+
 /// Reconstructs a healthy archive at `output_path` using selected salvaged entries.
 pub fn reconstruct_salvaged_archive(
     raw_data: &[u8],
@@ -272,64 +343,8 @@ pub fn reconstruct_salvaged_archive(
     }
 
     if format_name.eq_ignore_ascii_case("TAR") {
-        let mut out_file = File::create(output_path).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        let total_len = raw_data.len();
-        let mut count = 0;
-
-        for entry in &selected {
-            if entry.header_offset + 512 <= total_len {
-                let header = &raw_data[entry.header_offset..entry.header_offset + 512];
-                out_file.write_all(header).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-                let payload_len = entry.uncompressed_size as usize;
-                if payload_len > 0 && entry.payload_offset < total_len {
-                    let avail = total_len.saturating_sub(entry.payload_offset);
-                    let write_len = payload_len.min(avail);
-                    let payload = &raw_data[entry.payload_offset..entry.payload_offset + write_len];
-                    out_file.write_all(payload).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-
-                    let pad = (512 - (write_len % 512)) % 512;
-                    if pad > 0 {
-                        out_file.write_all(&vec![0u8; pad]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                    }
-                }
-                count += 1;
-            }
-        }
-        out_file.write_all(&[0u8; 1024]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        out_file.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        Ok(count)
+        reconstruct_tar_archive(raw_data, &selected, output_path)
     } else {
-        // ZIP TOC Central Directory Reconstruction
-        let total_len = raw_data.len();
-        let mut items = Vec::new();
-
-        for entry in &selected {
-            let payload_start = entry.payload_offset;
-            let comp_len = entry.compressed_size as usize;
-            let avail = total_len.saturating_sub(payload_start);
-            let actual_len = comp_len.min(avail);
-            let payload = raw_data[payload_start..payload_start + actual_len].to_vec();
-
-            items.push(ZipCompressedItem {
-                rel_path: entry.rel_path.clone(),
-                uncompressed_size: entry.uncompressed_size,
-                compressed_size: payload.len() as u64,
-                crc32: entry.crc32,
-                compression_method: entry.compression_method,
-                actual_method: entry.compression_method,
-                aes_strength: 0,
-                payload,
-                mtime_epoch_secs: entry.mtime_epoch_secs,
-                mode: if entry.is_directory { 0o755 } else { 0o644 },
-                is_directory: entry.is_directory,
-                is_encrypted: false,
-            });
-        }
-
-        let count = items.len();
-        let assembled_bytes = assemble_zip_archive(&items)?;
-        fs::write(output_path, &assembled_bytes).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        Ok(count)
+        reconstruct_zip_archive(raw_data, &selected, output_path)
     }
 }

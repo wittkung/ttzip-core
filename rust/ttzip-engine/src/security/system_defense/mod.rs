@@ -111,28 +111,54 @@ pub enum SystemDefenseError {
 
 impl std::fmt::Display for SystemDefenseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(res) = self.fmt_sandbox_or_delta(f) {
+            return res;
+        }
+        self.fmt_crypto_or_path(f)
+    }
+}
+
+impl SystemDefenseError {
+    fn fmt_sandbox_or_delta(&self, f: &mut std::fmt::Formatter<'_>) -> Option<std::fmt::Result> {
+        let res = match self {
+            Self::SandboxEscapeAttempt { path, reason } => write!(
+                f,
+                "Sandbox escape attempt detected: path '{}', reason: {reason}",
+                path.escape_debug()
+            ),
+            Self::SymlinkEscapingDetected { path, reason } => write!(
+                f,
+                "Symlink escaping detected on path '{}': {reason}",
+                path.escape_debug()
+            ),
+            Self::DeltaMemoryBudgetExceeded { allocated, max_budget } => write!(
+                f,
+                "Delta memory budget exceeded: {allocated} bytes > maximum budget {max_budget} bytes"
+            ),
+            Self::DeltaPatchSizeExceeded { size, max_size } => write!(
+                f,
+                "Delta patch size exceeded: {size} bytes > maximum allowed {max_size} bytes"
+            ),
+            Self::DeltaExpansionRatioExceeded { ratio, max_ratio } => write!(
+                f,
+                "Delta expansion ratio exceeded: {ratio}x > maximum allowed {max_ratio}x"
+            ),
+            Self::DeltaInstructionQuotaExceeded { count, max_quota } => write!(
+                f,
+                "Delta instruction count exceeded quota: {count} > maximum allowed {max_quota}"
+            ),
+            _ => return None,
+        };
+        Some(res)
+    }
+
+    fn fmt_crypto_or_path(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SandboxEscapeAttempt { path, reason } => {
-                write!(f, "Sandbox escape attempt detected: path '{}', reason: {reason}", path.escape_debug())
-            }
-            Self::SymlinkEscapingDetected { path, reason } => {
-                write!(f, "Symlink escaping detected on path '{}': {reason}", path.escape_debug())
-            }
-            Self::DeltaMemoryBudgetExceeded { allocated, max_budget } => {
-                write!(f, "Delta memory budget exceeded: {allocated} bytes > maximum budget {max_budget} bytes")
-            }
-            Self::DeltaPatchSizeExceeded { size, max_size } => {
-                write!(f, "Delta patch size exceeded: {size} bytes > maximum allowed {max_size} bytes")
-            }
-            Self::DeltaExpansionRatioExceeded { ratio, max_ratio } => {
-                write!(f, "Delta expansion ratio exceeded: {ratio}x > maximum allowed {max_ratio}x")
-            }
-            Self::DeltaInstructionQuotaExceeded { count, max_quota } => {
-                write!(f, "Delta instruction count exceeded quota: {count} > maximum allowed {max_quota}")
-            }
-            Self::SmallSubgroupKeyDetected { key_prefix } => {
-                write!(f, "Ed25519 small subgroup key rejected: prefix {}", key_prefix.escape_debug())
-            }
+            Self::SmallSubgroupKeyDetected { key_prefix } => write!(
+                f,
+                "Ed25519 small subgroup key rejected: prefix {}",
+                key_prefix.escape_debug()
+            ),
             Self::NonCanonicalScalarDetected => {
                 write!(f, "Ed25519 non-canonical scalar S detected (S >= l)")
             }
@@ -142,27 +168,37 @@ impl std::fmt::Display for SystemDefenseError {
             Self::SignatureVerificationFailed { reason } => {
                 write!(f, "Signature verification failed: {reason}")
             }
-            Self::VersionDowngradeDetected { current, attempted } => {
-                write!(f, "Version downgrade rejected: attempted '{}' <= current '{}'", attempted.escape_debug(), current.escape_debug())
-            }
-            Self::PathTraversalAttackDetected { path, reason } => {
-                write!(f, "Path traversal attack detected: path '{}', reason: {reason}", path.escape_debug())
-            }
+            Self::VersionDowngradeDetected { current, attempted } => write!(
+                f,
+                "Version downgrade rejected: attempted '{}' <= current '{}'",
+                attempted.escape_debug(),
+                current.escape_debug()
+            ),
+            Self::PathTraversalAttackDetected { path, reason } => write!(
+                f,
+                "Path traversal attack detected: path '{}', reason: {reason}",
+                path.escape_debug()
+            ),
             Self::NullByteInjectionDetected { path } => {
                 write!(f, "Null-byte injection detected in path '{}'", path.escape_debug())
             }
-            Self::ReservedDeviceNameDetected { segment } => {
-                write!(f, "Reserved system device name detected in path: '{}'", segment.escape_debug())
-            }
+            Self::ReservedDeviceNameDetected { segment } => write!(
+                f,
+                "Reserved system device name detected in path: '{}'",
+                segment.escape_debug()
+            ),
             Self::PathTooLong { len, max_len } => {
                 write!(f, "Path length exceeded limit: {len} > {max_len} bytes")
             }
-            Self::TempDirectoryCreationFailed { path, reason } => {
-                write!(f, "Failed to create isolated temporary directory '{}': {reason}", path.escape_debug())
-            }
+            Self::TempDirectoryCreationFailed { path, reason } => write!(
+                f,
+                "Failed to create isolated temporary directory '{}': {reason}",
+                path.escape_debug()
+            ),
             Self::TempDirectoryCleanupFailed { reason } => {
                 write!(f, "Failed to clean temporary workspace: {reason}")
             }
+            _ => Ok(()),
         }
     }
 }

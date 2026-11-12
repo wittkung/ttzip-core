@@ -203,6 +203,44 @@ impl FrameDescriptor {
         self.descriptor_payload_len() + 1
     }
 
+    fn validate_flg_and_bd(flg: u8, bd: u8) -> Result<(u8, BlockMaxSize), TTZipStatus> {
+        let version = (flg >> 6) & 0x03;
+        let flg_reserved = ((flg >> 1) & 0x01) != 0;
+        let bd_reserved = (bd & 0x8F) != 0;
+        if version != LZ4F_VERSION_1 || flg_reserved || bd_reserved {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        let block_size_id = (bd >> 4) & 0x07;
+        Ok((version, BlockMaxSize::from_id(block_size_id)?))
+    }
+
+    fn parse_optional_fields(
+        bytes: &[u8],
+        has_content_size: bool,
+        has_dict_id: bool,
+    ) -> Result<(Option<u64>, Option<u32>), TTZipStatus> {
+        let mut cursor = 2usize;
+        let content_size = if has_content_size {
+            let cs_bytes: [u8; 8] = bytes[cursor..cursor + 8]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+            cursor += 8;
+            Some(u64::from_le_bytes(cs_bytes))
+        } else {
+            None
+        };
+
+        let dict_id = if has_dict_id {
+            let dict_bytes: [u8; 4] = bytes[cursor..cursor + 4]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+            Some(u32::from_le_bytes(dict_bytes))
+        } else {
+            None
+        };
+        Ok((content_size, dict_id))
+    }
+
     /// Parses a `FrameDescriptor` from a byte slice starting at the `FLG` byte.
     ///
     /// Returns `Ok((FrameDescriptor, bytes_consumed))` on success, or an explicit `TTZipStatus` error
@@ -214,79 +252,28 @@ impl FrameDescriptor {
 
         let flg = bytes[0];
         let bd = bytes[1];
-
-        // 1. FLG Bitfield Validation
-        let version = (flg >> 6) & 0x03;
-        if version != LZ4F_VERSION_1 {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
+        let (version, block_max_size) = Self::validate_flg_and_bd(flg, bd)?;
 
         let b_indep_flag = ((flg >> 5) & 0x01) != 0;
         let block_checksum = ((flg >> 4) & 0x01) != 0;
         let has_content_size = ((flg >> 3) & 0x01) != 0;
         let content_checksum = ((flg >> 2) & 0x01) != 0;
-        let flg_reserved = ((flg >> 1) & 0x01) != 0;
         let has_dict_id = (flg & 0x01) != 0;
 
-        // Reserved bit 1 of FLG must be 0
-        if flg_reserved {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-
-        // 2. BD Bitfield Validation
-        let bd_reserved_high = (bd & 0x80) != 0;
-        let bd_reserved_low = (bd & 0x0F) != 0;
-        if bd_reserved_high || bd_reserved_low {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-
-        let block_size_id = (bd >> 4) & 0x07;
-        let block_max_size = BlockMaxSize::from_id(block_size_id)?;
-
-        // 3. Compute expected descriptor length
-        let mut expected_payload_len = 2usize; // FLG + BD
-        if has_content_size {
-            expected_payload_len += 8;
-        }
-        if has_dict_id {
-            expected_payload_len += 4;
-        }
-
-        let total_required_len = expected_payload_len + 1; // + 1 for HC
+        let expected_payload_len =
+            2 + usize::from(has_content_size) * 8 + usize::from(has_dict_id) * 4;
+        let total_required_len = expected_payload_len + 1;
         if bytes.len() < total_required_len {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        // 4. Verify Header Checksum (HC)
         let desc_payload = &bytes[..expected_payload_len];
-        let expected_hc = bytes[expected_payload_len];
-        let actual_hc = header_checksum(desc_payload);
-        if expected_hc != actual_hc {
+        if bytes[expected_payload_len] != header_checksum(desc_payload) {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
 
-        // 5. Parse optional fields
-        let mut cursor = 2usize;
-        let content_size = if has_content_size {
-            let cs_bytes: [u8; 8] = match bytes[cursor..cursor + 8].try_into() {
-                Ok(b) => b,
-                Err(_) => return Err(TTZipStatus::ErrCorruptHeader),
-            };
-            cursor += 8;
-            Some(u64::from_le_bytes(cs_bytes))
-        } else {
-            None
-        };
-
-        let dict_id = if has_dict_id {
-            let dict_bytes: [u8; 4] = match bytes[cursor..cursor + 4].try_into() {
-                Ok(b) => b,
-                Err(_) => return Err(TTZipStatus::ErrCorruptHeader),
-            };
-            Some(u32::from_le_bytes(dict_bytes))
-        } else {
-            None
-        };
+        let (content_size, dict_id) =
+            Self::parse_optional_fields(bytes, has_content_size, has_dict_id)?;
 
         let descriptor = Self {
             version,

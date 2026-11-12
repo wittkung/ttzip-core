@@ -326,123 +326,143 @@ public enum PlatformPathSanitizer: Sendable {
     public static func sanitize(path: String) -> PlatformPathNormalizationResult {
         let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
-            return PlatformPathNormalizationResult(
-                originalPath: path,
-                normalizedPath: "",
-                isAbsolute: false,
-                isUNCPath: false,
-                isLongPath: false,
-                containsWindowsReservedDeviceName: false,
-                strippedAlternateDataStream: nil,
-                win32FormattedPath: "",
-                hasTraversalAttack: false
-            )
+            return emptyNormalizationResult(originalPath: path)
         }
 
         var hasTraversalAttack = path.contains("\0")
-
-        // 1. Boundary & Protocol prefix detection
-        var isUNC = false
-        var isAbsolute = false
-
-        if trimmed.hasPrefix("\\\\") || trimmed.hasPrefix("//") {
-            isUNC = true
-            isAbsolute = true
-        } else if trimmed.hasPrefix("/") || trimmed.hasPrefix("\\") {
-            isAbsolute = true
-        }
-
-        // 2. Windows drive letter check (e.g. C:, D:/, etc.)
-        let utf8 = Array(trimmed.utf8)
-        let hasDriveLetter = utf8.count >= 2
-            && ((utf8[0] >= 0x41 && utf8[0] <= 0x5A) || (utf8[0] >= 0x61 && utf8[0] <= 0x7A))
-            && utf8[1] == 0x3A /* ':' */
-
-        if hasDriveLetter {
-            isAbsolute = true
-        }
-
+        let prefixInfo = detectPathPrefix(trimmed)
         var containsReserved = trimmed.uppercased().contains("PHYSICALDRIVE")
 
-        // 3. Fast Unicode NFC canonical normalization
         let nfcPath = trimmed.precomposedStringWithCanonicalMapping
-
-        // 4. Single-pass slash/backslash segment splitting, ADS stripping, and ZipSlip stack normalization
-        var cleanSegments: [String] = []
-        cleanSegments.reserveCapacity(8)
-        var strippedAds: String? = nil
-
-        let rawSegments = nfcPath.split(omittingEmptySubsequences: true) { $0 == "/" || $0 == "\\" }
-
-        for (segIdx, rawSegSubstring) in rawSegments.enumerated() {
-            var seg = String(rawSegSubstring)
-            if seg.isEmpty { continue }
-
-            // NTFS Alternate Data Stream (ADS) identification & stripping
-            let isDriveSeg = segIdx == 0 && hasDriveLetter && seg.count == 2 && seg.hasSuffix(":")
-            if !isDriveSeg {
-                if let colonIdx = seg.firstIndex(of: ":") {
-                    let adsPart = String(seg[colonIdx...])
-                    if strippedAds == nil {
-                        strippedAds = adsPart
-                    }
-                    seg = String(seg[..<colonIdx])
-                }
-            }
-
-            if seg.isEmpty { continue }
-
-            // ZipSlip stack traversal check
-            if seg == "." { continue }
-            if seg == ".." {
-                if !cleanSegments.isEmpty {
-                    let lastIsDrive = cleanSegments.count == 1
-                        && cleanSegments[0].count == 2
-                        && cleanSegments[0].hasSuffix(":")
-                    if lastIsDrive {
-                        hasTraversalAttack = true
-                    } else {
-                        cleanSegments.removeLast()
-                    }
-                } else {
-                    hasTraversalAttack = true
-                }
-                continue
-            }
-
-            // Check Windows reserved device names
-            if !containsReserved && isWindowsReservedDeviceName(seg) {
-                containsReserved = true
-            }
-
-            cleanSegments.append(seg)
-        }
+        let (cleanSegments, strippedAds) = normalizeSegments(
+            nfcPath: nfcPath,
+            hasDriveLetter: prefixInfo.hasDriveLetter,
+            containsReserved: &containsReserved,
+            hasTraversalAttack: &hasTraversalAttack
+        )
 
         let normalizedPath = cleanSegments.joined(separator: "/")
         let isLongPath = normalizedPath.utf16.count > 260
-
-        // 5. Format Win32 path representation
-        let win32Base = cleanSegments.joined(separator: "\\")
-        let win32FormattedPath: String
-        if isUNC {
-            win32FormattedPath = "\\\\?\\UNC\\" + win32Base
-        } else if isLongPath && isAbsolute {
-            win32FormattedPath = "\\\\?\\" + win32Base
-        } else {
-            win32FormattedPath = win32Base
-        }
+        let win32FormattedPath = formatWin32Path(
+            segments: cleanSegments,
+            isUNC: prefixInfo.isUNC,
+            isLongPath: isLongPath,
+            isAbsolute: prefixInfo.isAbsolute
+        )
 
         return PlatformPathNormalizationResult(
             originalPath: path,
             normalizedPath: normalizedPath,
-            isAbsolute: isAbsolute,
-            isUNCPath: isUNC,
+            isAbsolute: prefixInfo.isAbsolute,
+            isUNCPath: prefixInfo.isUNC,
             isLongPath: isLongPath,
             containsWindowsReservedDeviceName: containsReserved,
             strippedAlternateDataStream: strippedAds,
             win32FormattedPath: win32FormattedPath,
             hasTraversalAttack: hasTraversalAttack
         )
+    }
+
+    private static func emptyNormalizationResult(originalPath: String) -> PlatformPathNormalizationResult {
+        PlatformPathNormalizationResult(
+            originalPath: originalPath,
+            normalizedPath: "",
+            isAbsolute: false,
+            isUNCPath: false,
+            isLongPath: false,
+            containsWindowsReservedDeviceName: false,
+            strippedAlternateDataStream: nil,
+            win32FormattedPath: "",
+            hasTraversalAttack: false
+        )
+    }
+
+    private static func detectPathPrefix(
+        _ trimmed: String
+    ) -> (isUNC: Bool, isAbsolute: Bool, hasDriveLetter: Bool) {
+        let isUNC = trimmed.hasPrefix("\\\\") || trimmed.hasPrefix("//")
+        let hasSlashPrefix = isUNC || trimmed.hasPrefix("/") || trimmed.hasPrefix("\\")
+        let utf8 = Array(trimmed.utf8)
+        let isAlphaFirst = utf8.first.map { ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A) } ?? false
+        let hasDriveLetter = utf8.count >= 2 && isAlphaFirst && utf8[1] == 0x3A
+        return (isUNC, hasSlashPrefix || hasDriveLetter, hasDriveLetter)
+    }
+
+    private static func normalizeSegments(
+        nfcPath: String,
+        hasDriveLetter: Bool,
+        containsReserved: inout Bool,
+        hasTraversalAttack: inout Bool
+    ) -> (segments: [String], strippedAds: String?) {
+        var cleanSegments: [String] = []
+        cleanSegments.reserveCapacity(8)
+        var strippedAds: String? = nil
+
+        let rawSegments = nfcPath.split(omittingEmptySubsequences: true) { $0 == "/" || $0 == "\\" }
+        for (segIdx, rawSegSubstring) in rawSegments.enumerated() {
+            let isDriveSeg = segIdx == 0 && hasDriveLetter && rawSegSubstring.count == 2 && rawSegSubstring.hasSuffix(":")
+            let seg = stripAlternateDataStream(
+                segment: String(rawSegSubstring),
+                isDriveSegment: isDriveSeg,
+                strippedAds: &strippedAds
+            )
+            if seg.isEmpty || seg == "." { continue }
+            if seg == ".." {
+                applyParentTraversal(cleanSegments: &cleanSegments, hasTraversalAttack: &hasTraversalAttack)
+                continue
+            }
+            if !containsReserved && isWindowsReservedDeviceName(seg) {
+                containsReserved = true
+            }
+            cleanSegments.append(seg)
+        }
+        return (cleanSegments, strippedAds)
+    }
+
+    private static func stripAlternateDataStream(
+        segment: String,
+        isDriveSegment: Bool,
+        strippedAds: inout String?
+    ) -> String {
+        guard !isDriveSegment, let colonIdx = segment.firstIndex(of: ":") else {
+            return segment
+        }
+        if strippedAds == nil {
+            strippedAds = String(segment[colonIdx...])
+        }
+        return String(segment[..<colonIdx])
+    }
+
+    private static func applyParentTraversal(
+        cleanSegments: inout [String],
+        hasTraversalAttack: inout Bool
+    ) {
+        guard let first = cleanSegments.first else {
+            hasTraversalAttack = true
+            return
+        }
+        let lastIsDrive = cleanSegments.count == 1 && first.count == 2 && first.hasSuffix(":")
+        if lastIsDrive {
+            hasTraversalAttack = true
+        } else {
+            cleanSegments.removeLast()
+        }
+    }
+
+    private static func formatWin32Path(
+        segments: [String],
+        isUNC: Bool,
+        isLongPath: Bool,
+        isAbsolute: Bool
+    ) -> String {
+        let win32Base = segments.joined(separator: "\\")
+        if isUNC {
+            return "\\\\?\\UNC\\" + win32Base
+        }
+        if isLongPath && isAbsolute {
+            return "\\\\?\\" + win32Base
+        }
+        return win32Base
     }
 
     private static func isWindowsReservedDeviceName(_ segment: String) -> Bool {
@@ -461,7 +481,7 @@ public enum PlatformPathSanitizer: Sendable {
         }
 
         if (trimmedStem.hasPrefix("COM") || trimmedStem.hasPrefix("LPT")) && trimmedStem.count == 4 {
-            let lastChar = trimmedStem.last!
+            guard let lastChar = trimmedStem.last else { return false }
             if lastChar >= "0" && lastChar <= "9" {
                 return true
             }

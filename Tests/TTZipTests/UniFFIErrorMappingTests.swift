@@ -154,6 +154,35 @@ final class UniFFIErrorMappingTests: XCTestCase {
     // MARK: - 5. U1 CreateTransactionIncomplete Mapping & Cancellation Cross-Check
 
     func testCreateTransactionIncompleteMappingAndWasPrimaryCancelledVerification() {
+        let uniffiReport = makeSyntheticCreateTransactionFailureReport()
+        let uniffiErr = TtZipError.CreateTransactionIncomplete(
+            report: uniffiReport,
+            summaryMessage: "Archive creation transaction incomplete"
+        )
+        let mapped = uniffiErr.toArchiveError()
+        guard case let .createTransactionIncomplete(report) = mapped else {
+            XCTFail("Expected .createTransactionIncomplete, got: \(mapped)")
+            return
+        }
+
+        assertCreateTransactionFailureReportFields(report)
+
+        var nonCancelReport = uniffiReport
+        nonCancelReport.primaryStatusCode = RustTTZipStatusCode.errCompressionFailed.rawValue
+        nonCancelReport.wasPrimaryCancelled = true
+        let mappedNonCancel = TtZipError.CreateTransactionIncomplete(
+            report: nonCancelReport,
+            summaryMessage: "Non-cancel primary"
+        ).toArchiveError()
+        if case let .createTransactionIncomplete(r2) = mappedNonCancel {
+            XCTAssertFalse(r2.wasPrimaryCancelled, "wasPrimaryCancelled must require primaryStatusCode == .cancelled")
+            XCTAssertTrue(r2.isCancellationRequested)
+        } else {
+            XCTFail("Expected .createTransactionIncomplete")
+        }
+    }
+
+    private func makeSyntheticCreateTransactionFailureReport() -> UniFfiCreateTransactionFailureReport {
         let cleanupItem = UniFfiStageCleanupFailureItem(
             role: .stagedArtifact,
             disposition: .descriptorReleaseUnconfirmed,
@@ -183,7 +212,7 @@ final class UniFFIErrorMappingTests: XCTestCase {
             osErrorCode: Int32(EACCES),
             message: "Permission denied"
         )
-        let uniffiReport = UniFfiCreateTransactionFailureReport(
+        return UniFfiCreateTransactionFailureReport(
             primaryStatusCode: RustTTZipStatusCode.cancelled.rawValue,
             wasPrimaryCancelled: true,
             isCancellationRequested: true,
@@ -199,17 +228,9 @@ final class UniFFIErrorMappingTests: XCTestCase {
             backupDirCleanupError: "Backup preserved",
             summaryMessage: "Archive creation transaction incomplete"
         )
+    }
 
-        let uniffiErr = TtZipError.CreateTransactionIncomplete(
-            report: uniffiReport,
-            summaryMessage: "Archive creation transaction incomplete"
-        )
-        let mapped = uniffiErr.toArchiveError()
-        guard case let .createTransactionIncomplete(report) = mapped else {
-            XCTFail("Expected .createTransactionIncomplete, got: \(mapped)")
-            return
-        }
-
+    private func assertCreateTransactionFailureReportFields(_ report: ArchiveCreateTransactionFailureReport) {
         XCTAssertEqual(report.primaryStatusCode, RustTTZipStatusCode.cancelled.rawValue)
         XCTAssertTrue(report.wasPrimaryCancelled)
         XCTAssertTrue(report.isCancellationRequested)
@@ -231,21 +252,6 @@ final class UniFFIErrorMappingTests: XCTestCase {
         XCTAssertEqual(report.rollbackFailedEntries.count, 1)
         XCTAssertEqual(report.rollbackFailedEntries[0].targetPath, "/tmp/vol.7z.002")
         XCTAssertEqual(report.backupDirCleanupError, "Backup preserved")
-
-        // Verify cross-check: if primaryStatusCode is NOT .cancelled (2), wasPrimaryCancelled must be false
-        var nonCancelReport = uniffiReport
-        nonCancelReport.primaryStatusCode = RustTTZipStatusCode.errCompressionFailed.rawValue
-        nonCancelReport.wasPrimaryCancelled = true
-        let mappedNonCancel = TtZipError.CreateTransactionIncomplete(
-            report: nonCancelReport,
-            summaryMessage: "Non-cancel primary"
-        ).toArchiveError()
-        if case let .createTransactionIncomplete(r2) = mappedNonCancel {
-            XCTAssertFalse(r2.wasPrimaryCancelled, "wasPrimaryCancelled must require primaryStatusCode == .cancelled")
-            XCTAssertTrue(r2.isCancellationRequested)
-        } else {
-            XCTFail("Expected .createTransactionIncomplete")
-        }
     }
 
     func test_c2a_second_write_to_same_target_waits_for_cancelled_first_write_cleanup() async throws {
@@ -439,7 +445,7 @@ private final class BlockingGate: @unchecked Sendable {
     }
 }
 
-private final class EventTimeline: @unchecked Sendable {
+final class EventTimeline: @unchecked Sendable {
     private let lock = OSAllocatedUnfairLock(initialState: [String]())
 
     func record(_ event: String) {

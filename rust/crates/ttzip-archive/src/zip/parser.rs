@@ -69,62 +69,46 @@ fn read_u64_le(slice: &[u8], offset: usize) -> u64 {
     ])
 }
 
+fn scan_eocd_backward(mapped: &[u8], search_start: usize, exact_end: bool) -> Option<usize> {
+    let file_size = mapped.len();
+    let mut pos = file_size - 22;
+    loop {
+        if pos < search_start {
+            break None;
+        }
+        if read_u32_le(mapped, pos) == MAGIC_EOCD {
+            let end = pos + 22 + read_u16_le(mapped, pos + 20) as usize;
+            if (exact_end && end == file_size) || (!exact_end && end <= file_size) {
+                break Some(pos);
+            }
+        }
+        if pos == 0 {
+            break None;
+        }
+        pos -= 1;
+    }
+}
+
 /// Finds End of Central Directory (EOCD) and optional Zip64 EOCD structures.
 pub fn find_eocd(mapped: &[u8]) -> Result<EocdInfo, TTZipStatus> {
+    let mapped = match crate::crypto::rs_fec::inspect_recovery_record(mapped) {
+        Ok(Some(info))
+            if info.protected_payload_length >= 22
+                && (info.protected_payload_length as usize) <= mapped.len() =>
+        {
+            &mapped[..info.protected_payload_length as usize]
+        }
+        _ => mapped,
+    };
     let file_size = mapped.len();
     if file_size < 22 {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    let search_back = file_size.min(65557);
-    let search_start = file_size - search_back;
-
-    let mut eocd_pos = None;
-
-    // First pass: search backwards for exact EOCD where pos + 22 + comment_len == file_size.
-    // This disambiguates real EOCD from fake EOCD signatures embedded in comments.
-    let mut pos = file_size - 22;
-    loop {
-        if pos < search_start {
-            break;
-        }
-        let sig = read_u32_le(mapped, pos);
-        if sig == MAGIC_EOCD {
-            let comment_len = read_u16_le(mapped, pos + 20) as usize;
-            if pos + 22 + comment_len == file_size {
-                eocd_pos = Some(pos);
-                break;
-            }
-        }
-        if pos == 0 {
-            break;
-        }
-        pos -= 1;
-    }
-
-    // Fallback pass: if trailing bytes exist, accept pos + 22 + comment_len <= file_size
-    if eocd_pos.is_none() {
-        let mut pos = file_size - 22;
-        loop {
-            if pos < search_start {
-                break;
-            }
-            let sig = read_u32_le(mapped, pos);
-            if sig == MAGIC_EOCD {
-                let comment_len = read_u16_le(mapped, pos + 20) as usize;
-                if pos + 22 + comment_len <= file_size {
-                    eocd_pos = Some(pos);
-                    break;
-                }
-            }
-            if pos == 0 {
-                break;
-            }
-            pos -= 1;
-        }
-    }
-
-    let p = eocd_pos.ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let search_start = file_size - file_size.min(65557);
+    let p = scan_eocd_backward(mapped, search_start, true)
+        .or_else(|| scan_eocd_backward(mapped, search_start, false))
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
 
     let entries16 = read_u16_le(mapped, p + 10) as u64;
     let cd_size32 = read_u32_le(mapped, p + 12) as u64;

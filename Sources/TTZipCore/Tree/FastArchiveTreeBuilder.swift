@@ -9,7 +9,7 @@ import Foundation
 /// 1. Zero-allocation `Substring` scanning eliminates intermediate path string concatenations.
 /// 2. Single-pass hierarchy generation avoids dual-pass class-to-struct deep copying.
 /// 3. Fast directory-first sorting replaces heavyweight localized ICU comparisons on hot paths.
-public final class FastArchiveTreeBuilder: @unchecked Sendable {
+public final class FastArchiveTreeBuilder: Sendable {
     private final class FastNode {
         let name: String
         let fullPath: String
@@ -33,96 +33,94 @@ public final class FastArchiveTreeBuilder: @unchecked Sendable {
         let root = FastNode(name: "", fullPath: "", isDirectory: true)
 
         for entry in entries {
-            let path = entry.path
-            var current = root
-            var searchStart = path.startIndex
-
-            while searchStart < path.endIndex {
-                let slashIndex = path[searchStart...].firstIndex(of: "/") ?? path.endIndex
-                let component = path[searchStart..<slashIndex]
-
-                if component.isEmpty {
-                    if slashIndex < path.endIndex {
-                        searchStart = path.index(after: slashIndex)
-                        continue
-                    } else {
-                        break
-                    }
-                }
-
-                let isLast = (slashIndex == path.endIndex)
-                let compStr = String(component)
-
-                if let child = current.children[compStr] {
-                    current = child
-                } else {
-                    let subPath = String(path[..<slashIndex])
-                    let isDir = isLast ? entry.isDirectory : true
-                    let newNode = FastNode(
-                        name: compStr,
-                        fullPath: subPath,
-                        isDirectory: isDir,
-                        entry: isLast ? entry : nil
-                    )
-                    current.children[compStr] = newNode
-                    current = newNode
-                }
-
-                if isLast {
-                    current.size = entry.uncompressedSize
-                    current.entry = entry
-                    break
-                }
-                searchStart = path.index(after: slashIndex)
-            }
+            insertEntry(entry, into: root)
         }
 
-        func convert(node: FastNode) -> ArchiveTreeNode {
-            if !node.isDirectory {
-                return ArchiveTreeNode(
-                    id: node.fullPath,
-                    name: node.name,
-                    path: node.fullPath,
-                    uncompressedSize: node.size,
-                    isDirectory: false,
-                    detectedEncoding: node.detectedEncoding,
-                    children: nil,
-                    entry: node.entry
+        return sortedChildren(of: root).map { convertNode($0) }
+    }
+
+    private static func insertEntry(_ entry: ArchiveEntry, into root: FastNode) {
+        let path = entry.path
+        var current = root
+        var searchStart = path.startIndex
+
+        while searchStart < path.endIndex {
+            let slashIndex = path[searchStart...].firstIndex(of: "/") ?? path.endIndex
+            let component = path[searchStart..<slashIndex]
+
+            if component.isEmpty {
+                guard slashIndex < path.endIndex else { break }
+                searchStart = path.index(after: slashIndex)
+                continue
+            }
+
+            let isLast = (slashIndex == path.endIndex)
+            let compStr = String(component)
+
+            if let child = current.children[compStr] {
+                current = child
+            } else {
+                let subPath = String(path[..<slashIndex])
+                let newNode = FastNode(
+                    name: compStr,
+                    fullPath: subPath,
+                    isDirectory: isLast ? entry.isDirectory : true,
+                    entry: isLast ? entry : nil
                 )
+                current.children[compStr] = newNode
+                current = newNode
             }
 
-            let sortedList = node.children.values.sorted { a, b in
-                if a.isDirectory != b.isDirectory { return a.isDirectory }
-                return a.name < b.name
+            if isLast {
+                current.size = entry.uncompressedSize
+                current.entry = entry
+                break
             }
+            searchStart = path.index(after: slashIndex)
+        }
+    }
 
-            var totalSize: Int64 = 0
-            var convertedChildren: [ArchiveTreeNode] = []
-            convertedChildren.reserveCapacity(sortedList.count)
+    private static func sortedChildren(of node: FastNode) -> [FastNode] {
+        node.children.values.sorted { a, b in
+            if a.isDirectory != b.isDirectory { return a.isDirectory }
+            return a.name < b.name
+        }
+    }
 
-            for childNode in sortedList {
-                let converted = convert(node: childNode)
-                totalSize += converted.uncompressedSize
-                convertedChildren.append(converted)
-            }
-
+    private static func convertNode(_ node: FastNode) -> ArchiveTreeNode {
+        if !node.isDirectory {
             return ArchiveTreeNode(
                 id: node.fullPath,
                 name: node.name,
                 path: node.fullPath,
-                uncompressedSize: totalSize,
-                isDirectory: true,
+                uncompressedSize: node.size,
+                isDirectory: false,
                 detectedEncoding: node.detectedEncoding,
-                children: convertedChildren,
+                children: nil,
                 entry: node.entry
             )
         }
 
-        let sortedRoots = root.children.values.sorted { a, b in
-            if a.isDirectory != b.isDirectory { return a.isDirectory }
-            return a.name < b.name
+        let sortedList = sortedChildren(of: node)
+        var totalSize: Int64 = 0
+        var convertedChildren: [ArchiveTreeNode] = []
+        convertedChildren.reserveCapacity(sortedList.count)
+
+        for childNode in sortedList {
+            let converted = convertNode(childNode)
+            totalSize += converted.uncompressedSize
+            convertedChildren.append(converted)
         }
 
-        return sortedRoots.map { convert(node: $0) }
+        return ArchiveTreeNode(
+            id: node.fullPath,
+            name: node.name,
+            path: node.fullPath,
+            uncompressedSize: totalSize,
+            isDirectory: true,
+            detectedEncoding: node.detectedEncoding,
+            children: convertedChildren,
+            entry: node.entry
+        )
     }
 }

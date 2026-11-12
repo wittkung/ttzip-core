@@ -113,28 +113,28 @@ impl AclPermissions {
         Ok(perms)
     }
 
+    const NFS4_PERMISSION_SLOTS: [(u32, char); 14] = [
+        (Self::READ_DATA.0, 'r'),
+        (Self::WRITE_DATA.0, 'w'),
+        (Self::EXECUTE.0, 'x'),
+        (Self::APPEND_DATA.0, 'p'),
+        (Self::DELETE_CHILD.0, 'D'),
+        (Self::DELETE.0, 'd'),
+        (Self::READ_ATTRIBUTES.0, 'a'),
+        (Self::WRITE_ATTRIBUTES.0, 'A'),
+        (Self::READ_NAMED_ATTRS.0, 'R'),
+        (Self::WRITE_NAMED_ATTRS.0, 'W'),
+        (Self::READ_ACL.0, 'c'),
+        (Self::WRITE_ACL.0, 'C'),
+        (Self::WRITE_OWNER.0, 'o'),
+        (Self::SYNCHRONIZE.0, 's'),
+    ];
+
     /// Converts to standard 14-slot NFSv4 permission string (`rwxpDaARWcCos`).
     #[must_use]
     pub fn to_nfs4_string(&self) -> String {
-        const SLOTS: [(u32, char); 14] = [
-            (AclPermissions::READ_DATA.0, 'r'),
-            (AclPermissions::WRITE_DATA.0, 'w'),
-            (AclPermissions::EXECUTE.0, 'x'),
-            (AclPermissions::APPEND_DATA.0, 'p'),
-            (AclPermissions::DELETE_CHILD.0, 'D'),
-            (AclPermissions::DELETE.0, 'd'),
-            (AclPermissions::READ_ATTRIBUTES.0, 'a'),
-            (AclPermissions::WRITE_ATTRIBUTES.0, 'A'),
-            (AclPermissions::READ_NAMED_ATTRS.0, 'R'),
-            (AclPermissions::WRITE_NAMED_ATTRS.0, 'W'),
-            (AclPermissions::READ_ACL.0, 'c'),
-            (AclPermissions::WRITE_ACL.0, 'C'),
-            (AclPermissions::WRITE_OWNER.0, 'o'),
-            (AclPermissions::SYNCHRONIZE.0, 's'),
-        ];
-
         let mut out = String::with_capacity(14);
-        for (bit, ch) in SLOTS {
+        for (bit, ch) in Self::NFS4_PERMISSION_SLOTS {
             if (self.0 & bit) != 0 {
                 out.push(ch);
             } else {
@@ -148,24 +148,14 @@ impl AclPermissions {
     pub fn from_nfs4_str(s: &str) -> Result<Self, AclError> {
         let mut mask = 0u32;
         for c in s.chars() {
-            match c {
-                'r' => mask |= Self::READ_DATA.0,
-                'w' => mask |= Self::WRITE_DATA.0,
-                'p' => mask |= Self::APPEND_DATA.0,
-                'R' => mask |= Self::READ_NAMED_ATTRS.0,
-                'W' => mask |= Self::WRITE_NAMED_ATTRS.0,
-                'x' => mask |= Self::EXECUTE.0,
-                'D' => mask |= Self::DELETE_CHILD.0,
-                'a' => mask |= Self::READ_ATTRIBUTES.0,
-                'A' => mask |= Self::WRITE_ATTRIBUTES.0,
-                'd' => mask |= Self::DELETE.0,
-                'c' => mask |= Self::READ_ACL.0,
-                'C' => mask |= Self::WRITE_ACL.0,
-                'o' => mask |= Self::WRITE_OWNER.0,
-                's' => mask |= Self::SYNCHRONIZE.0,
-                '-' => {}
-                _ => return Err(AclError::InvalidPermission(c)),
+            if c == '-' {
+                continue;
             }
+            let &(bit, _) = Self::NFS4_PERMISSION_SLOTS
+                .iter()
+                .find(|&&(_, slot_ch)| slot_ch == c)
+                .ok_or(AclError::InvalidPermission(c))?;
+            mask |= bit;
         }
         Ok(Self(mask))
     }

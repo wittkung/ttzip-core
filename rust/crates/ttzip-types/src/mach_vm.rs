@@ -48,7 +48,7 @@ impl fmt::Display for MachVmError {
 impl std::error::Error for MachVmError {}
 
 #[cfg(target_os = "macos")]
-#[allow(dead_code)]
+#[allow(dead_code, reason = "Complete Mach VM kernel constant definitions for Darwin FFI")]
 mod sys {
     pub type MachPort = u32;
     pub type VmMap = MachPort;

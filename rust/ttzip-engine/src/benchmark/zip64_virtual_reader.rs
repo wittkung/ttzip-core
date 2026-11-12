@@ -210,39 +210,16 @@ impl Zip64ArchiveBuilder {
 
         for (name, size, crc) in &self.entries {
             let lfh_offset = offset;
-            let name_bytes = name.as_bytes();
-            let is_z64 = *size >= ZIP64_OVERFLOW_32 as u64;
-
-            let mut extra = Vec::new();
-            if is_z64 {
-                extra.extend_from_slice(&ZIP64_EXTRA_FIELD_TAG.to_le_bytes());
-                extra.extend_from_slice(&16u16.to_le_bytes());
-                extra.extend_from_slice(&size.to_le_bytes());
-                extra.extend_from_slice(&size.to_le_bytes());
-            }
-
-            let mut lfh = Vec::with_capacity(30 + name_bytes.len() + extra.len());
-            lfh.extend_from_slice(&ZIP_LFH_MAGIC);
-            lfh.extend_from_slice(&45u16.to_le_bytes()); // version
-            lfh.extend_from_slice(&0u16.to_le_bytes()); // flags
-            lfh.extend_from_slice(&0u16.to_le_bytes()); // stored
-            lfh.extend_from_slice(&0x4521u16.to_le_bytes()); // time
-            lfh.extend_from_slice(&0x5467u16.to_le_bytes()); // date
-            lfh.extend_from_slice(&crc.to_le_bytes());
-            let sz32 = if is_z64 { ZIP64_OVERFLOW_32 } else { *size as u32 };
-            lfh.extend_from_slice(&sz32.to_le_bytes());
-            lfh.extend_from_slice(&sz32.to_le_bytes());
-            lfh.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-            lfh.extend_from_slice(&(extra.len() as u16).to_le_bytes());
-            lfh.extend_from_slice(name_bytes);
-            lfh.extend_from_slice(&extra);
-
-            let lfh_len = lfh.len() as u64;
-            segments.push(VirtualSegment { start_offset: lfh_offset, length: lfh_len, data: SegmentData::Dense(lfh) });
-            offset += lfh_len;
+            let lfh_seg = Self::build_local_file_segment(name, *size, *crc, lfh_offset);
+            offset += lfh_seg.length;
+            segments.push(lfh_seg);
 
             if *size > 0 {
-                segments.push(VirtualSegment { start_offset: offset, length: *size, data: SegmentData::Zeroes });
+                segments.push(VirtualSegment {
+                    start_offset: offset,
+                    length: *size,
+                    data: SegmentData::Zeroes,
+                });
                 offset += *size;
             }
             cdh_entries.push((name.clone(), *size, *crc, lfh_offset));
@@ -250,52 +227,124 @@ impl Zip64ArchiveBuilder {
 
         let cd_start = offset;
         let mut cd_bytes = Vec::new();
-
         for (name, size, crc, lfh_off) in &cdh_entries {
-            let name_bytes = name.as_bytes();
-            let is_sz64 = *size >= ZIP64_OVERFLOW_32 as u64;
-            let is_off64 = *lfh_off >= ZIP64_OVERFLOW_32 as u64;
-
-            let mut extra = Vec::new();
-            if is_sz64 || is_off64 {
-                let mut data = Vec::new();
-                if is_sz64 { data.extend_from_slice(&size.to_le_bytes()); data.extend_from_slice(&size.to_le_bytes()); }
-                if is_off64 { data.extend_from_slice(&lfh_off.to_le_bytes()); }
-                extra.extend_from_slice(&ZIP64_EXTRA_FIELD_TAG.to_le_bytes());
-                extra.extend_from_slice(&(data.len() as u16).to_le_bytes());
-                extra.extend_from_slice(&data);
-            }
-
-            let mut cdh = Vec::with_capacity(46 + name_bytes.len() + extra.len());
-            cdh.extend_from_slice(&ZIP_CDH_MAGIC);
-            cdh.extend_from_slice(&45u16.to_le_bytes());
-            cdh.extend_from_slice(&45u16.to_le_bytes());
-            cdh.extend_from_slice(&0u16.to_le_bytes());
-            cdh.extend_from_slice(&0u16.to_le_bytes());
-            cdh.extend_from_slice(&0x4521u16.to_le_bytes());
-            cdh.extend_from_slice(&0x5467u16.to_le_bytes());
-            cdh.extend_from_slice(&crc.to_le_bytes());
-            let sz32 = if is_sz64 { ZIP64_OVERFLOW_32 } else { *size as u32 };
-            cdh.extend_from_slice(&sz32.to_le_bytes());
-            cdh.extend_from_slice(&sz32.to_le_bytes());
-            cdh.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-            cdh.extend_from_slice(&(extra.len() as u16).to_le_bytes());
-            cdh.extend_from_slice(&0u16.to_le_bytes()); // comment len
-            cdh.extend_from_slice(&0u16.to_le_bytes()); // disk start
-            cdh.extend_from_slice(&0u16.to_le_bytes()); // internal
-            cdh.extend_from_slice(&0x81A40000u32.to_le_bytes()); // external
-            let off32 = if is_off64 { ZIP64_OVERFLOW_32 } else { *lfh_off as u32 };
-            cdh.extend_from_slice(&off32.to_le_bytes());
-            cdh.extend_from_slice(name_bytes);
-            cdh.extend_from_slice(&extra);
-            cd_bytes.extend_from_slice(&cdh);
+            cd_bytes.extend_from_slice(&Self::build_central_directory_entry(
+                name, *size, *crc, *lfh_off,
+            ));
         }
 
         let cd_size = cd_bytes.len() as u64;
-        segments.push(VirtualSegment { start_offset: cd_start, length: cd_size, data: SegmentData::Dense(cd_bytes) });
+        segments.push(VirtualSegment {
+            start_offset: cd_start,
+            length: cd_size,
+            data: SegmentData::Dense(cd_bytes),
+        });
         offset += cd_size;
 
-        // Zip64 EOCD
+        Self::append_zip64_trailer_segments(
+            &mut segments,
+            offset,
+            self.entries.len() as u64,
+            cd_size,
+            cd_start,
+        );
+
+        Zip64VirtualSparseReader::new(segments)
+    }
+
+    fn build_local_file_segment(
+        name: &str,
+        size: u64,
+        crc: u32,
+        lfh_offset: u64,
+    ) -> VirtualSegment {
+        let name_bytes = name.as_bytes();
+        let is_z64 = size >= ZIP64_OVERFLOW_32 as u64;
+
+        let mut extra = Vec::new();
+        if is_z64 {
+            extra.extend_from_slice(&ZIP64_EXTRA_FIELD_TAG.to_le_bytes());
+            extra.extend_from_slice(&16u16.to_le_bytes());
+            extra.extend_from_slice(&size.to_le_bytes());
+            extra.extend_from_slice(&size.to_le_bytes());
+        }
+
+        let mut lfh = Vec::with_capacity(30 + name_bytes.len() + extra.len());
+        lfh.extend_from_slice(&ZIP_LFH_MAGIC);
+        lfh.extend_from_slice(&45u16.to_le_bytes());
+        lfh.extend_from_slice(&0u16.to_le_bytes());
+        lfh.extend_from_slice(&0u16.to_le_bytes());
+        lfh.extend_from_slice(&0x4521u16.to_le_bytes());
+        lfh.extend_from_slice(&0x5467u16.to_le_bytes());
+        lfh.extend_from_slice(&crc.to_le_bytes());
+        let sz32 = if is_z64 { ZIP64_OVERFLOW_32 } else { size as u32 };
+        lfh.extend_from_slice(&sz32.to_le_bytes());
+        lfh.extend_from_slice(&sz32.to_le_bytes());
+        lfh.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
+        lfh.extend_from_slice(&(extra.len() as u16).to_le_bytes());
+        lfh.extend_from_slice(name_bytes);
+        lfh.extend_from_slice(&extra);
+
+        let lfh_len = lfh.len() as u64;
+        VirtualSegment {
+            start_offset: lfh_offset,
+            length: lfh_len,
+            data: SegmentData::Dense(lfh),
+        }
+    }
+
+    fn build_central_directory_entry(name: &str, size: u64, crc: u32, lfh_off: u64) -> Vec<u8> {
+        let name_bytes = name.as_bytes();
+        let is_sz64 = size >= ZIP64_OVERFLOW_32 as u64;
+        let is_off64 = lfh_off >= ZIP64_OVERFLOW_32 as u64;
+
+        let mut extra = Vec::new();
+        if is_sz64 || is_off64 {
+            let mut data = Vec::new();
+            if is_sz64 {
+                data.extend_from_slice(&size.to_le_bytes());
+                data.extend_from_slice(&size.to_le_bytes());
+            }
+            if is_off64 {
+                data.extend_from_slice(&lfh_off.to_le_bytes());
+            }
+            extra.extend_from_slice(&ZIP64_EXTRA_FIELD_TAG.to_le_bytes());
+            extra.extend_from_slice(&(data.len() as u16).to_le_bytes());
+            extra.extend_from_slice(&data);
+        }
+
+        let mut cdh = Vec::with_capacity(46 + name_bytes.len() + extra.len());
+        cdh.extend_from_slice(&ZIP_CDH_MAGIC);
+        cdh.extend_from_slice(&45u16.to_le_bytes());
+        cdh.extend_from_slice(&45u16.to_le_bytes());
+        cdh.extend_from_slice(&0u16.to_le_bytes());
+        cdh.extend_from_slice(&0u16.to_le_bytes());
+        cdh.extend_from_slice(&0x4521u16.to_le_bytes());
+        cdh.extend_from_slice(&0x5467u16.to_le_bytes());
+        cdh.extend_from_slice(&crc.to_le_bytes());
+        let sz32 = if is_sz64 { ZIP64_OVERFLOW_32 } else { size as u32 };
+        cdh.extend_from_slice(&sz32.to_le_bytes());
+        cdh.extend_from_slice(&sz32.to_le_bytes());
+        cdh.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
+        cdh.extend_from_slice(&(extra.len() as u16).to_le_bytes());
+        cdh.extend_from_slice(&0u16.to_le_bytes());
+        cdh.extend_from_slice(&0u16.to_le_bytes());
+        cdh.extend_from_slice(&0u16.to_le_bytes());
+        cdh.extend_from_slice(&0x81A40000u32.to_le_bytes());
+        let off32 = if is_off64 { ZIP64_OVERFLOW_32 } else { lfh_off as u32 };
+        cdh.extend_from_slice(&off32.to_le_bytes());
+        cdh.extend_from_slice(name_bytes);
+        cdh.extend_from_slice(&extra);
+        cdh
+    }
+
+    fn append_zip64_trailer_segments(
+        segments: &mut Vec<VirtualSegment>,
+        mut offset: u64,
+        entries_count: u64,
+        cd_size: u64,
+        cd_start: u64,
+    ) {
         let z64_eocd_off = offset;
         let mut z64_eocd = Vec::with_capacity(56);
         z64_eocd.extend_from_slice(&ZIP64_EOCD_MAGIC);
@@ -304,16 +353,18 @@ impl Zip64ArchiveBuilder {
         z64_eocd.extend_from_slice(&45u16.to_le_bytes());
         z64_eocd.extend_from_slice(&0u32.to_le_bytes());
         z64_eocd.extend_from_slice(&0u32.to_le_bytes());
-        let entries_count = self.entries.len() as u64;
         z64_eocd.extend_from_slice(&entries_count.to_le_bytes());
         z64_eocd.extend_from_slice(&entries_count.to_le_bytes());
         z64_eocd.extend_from_slice(&cd_size.to_le_bytes());
         z64_eocd.extend_from_slice(&cd_start.to_le_bytes());
         let z64_len = z64_eocd.len() as u64;
-        segments.push(VirtualSegment { start_offset: z64_eocd_off, length: z64_len, data: SegmentData::Dense(z64_eocd) });
+        segments.push(VirtualSegment {
+            start_offset: z64_eocd_off,
+            length: z64_len,
+            data: SegmentData::Dense(z64_eocd),
+        });
         offset += z64_len;
 
-        // Locator
         let loc_off = offset;
         let mut loc = Vec::with_capacity(20);
         loc.extend_from_slice(&ZIP64_LOCATOR_MAGIC);
@@ -321,10 +372,13 @@ impl Zip64ArchiveBuilder {
         loc.extend_from_slice(&z64_eocd_off.to_le_bytes());
         loc.extend_from_slice(&1u32.to_le_bytes());
         let loc_len = loc.len() as u64;
-        segments.push(VirtualSegment { start_offset: loc_off, length: loc_len, data: SegmentData::Dense(loc) });
+        segments.push(VirtualSegment {
+            start_offset: loc_off,
+            length: loc_len,
+            data: SegmentData::Dense(loc),
+        });
         offset += loc_len;
 
-        // EOCD
         let mut eocd = Vec::with_capacity(22);
         eocd.extend_from_slice(&ZIP_EOCD_MAGIC);
         eocd.extend_from_slice(&0u16.to_le_bytes());
@@ -335,9 +389,11 @@ impl Zip64ArchiveBuilder {
         eocd.extend_from_slice(&ZIP64_OVERFLOW_32.to_le_bytes());
         eocd.extend_from_slice(&ZIP64_OVERFLOW_32.to_le_bytes());
         eocd.extend_from_slice(&0u16.to_le_bytes());
-        segments.push(VirtualSegment { start_offset: offset, length: eocd.len() as u64, data: SegmentData::Dense(eocd) });
-
-        Zip64VirtualSparseReader::new(segments)
+        segments.push(VirtualSegment {
+            start_offset: offset,
+            length: eocd.len() as u64,
+            data: SegmentData::Dense(eocd),
+        });
     }
 }
 
@@ -405,19 +461,19 @@ fn parse_extra_field_zip64(
         if tag == ZIP64_EXTRA_FIELD_TAG {
             let mut dp = pos;
             let uncomp = if need_uncomp && dp + 8 <= pos + size {
-                let v = u64::from_le_bytes(extra[dp..dp + 8].try_into().unwrap());
+                let v = u64::from_le_bytes(extra[dp..dp + 8].try_into().unwrap_or_default());
                 dp += 8;
                 Some(v)
             } else { None };
 
             let comp = if need_comp && dp + 8 <= pos + size {
-                let v = u64::from_le_bytes(extra[dp..dp + 8].try_into().unwrap());
+                let v = u64::from_le_bytes(extra[dp..dp + 8].try_into().unwrap_or_default());
                 dp += 8;
                 Some(v)
             } else { None };
 
             let offset = if need_offset && dp + 8 <= pos + size {
-                let v = u64::from_le_bytes(extra[dp..dp + 8].try_into().unwrap());
+                let v = u64::from_le_bytes(extra[dp..dp + 8].try_into().unwrap_or_default());
                 Some(v)
             } else { None };
 
@@ -438,11 +494,11 @@ impl Zip64HeaderInspector {
         if fixed[0..4] != ZIP_LFH_MAGIC {
             return Err(Zip64InspectionError::SignatureMismatch { offset, expected: ZIP_LFH_MAGIC, found: [fixed[0], fixed[1], fixed[2], fixed[3]] });
         }
-        let crc32 = u32::from_le_bytes(fixed[14..18].try_into().unwrap());
-        let comp32 = u32::from_le_bytes(fixed[18..22].try_into().unwrap());
-        let uncomp32 = u32::from_le_bytes(fixed[22..26].try_into().unwrap());
-        let name_len = u16::from_le_bytes(fixed[26..28].try_into().unwrap()) as usize;
-        let extra_len = u16::from_le_bytes(fixed[28..30].try_into().unwrap()) as usize;
+        let crc32 = u32::from_le_bytes(fixed[14..18].try_into().unwrap_or_default());
+        let comp32 = u32::from_le_bytes(fixed[18..22].try_into().unwrap_or_default());
+        let uncomp32 = u32::from_le_bytes(fixed[22..26].try_into().unwrap_or_default());
+        let name_len = u16::from_le_bytes(fixed[26..28].try_into().unwrap_or_default()) as usize;
+        let extra_len = u16::from_le_bytes(fixed[28..30].try_into().unwrap_or_default()) as usize;
 
         let mut name_buf = vec![0u8; name_len];
         reader.read_exact(&mut name_buf).map_err(|_| Zip64InspectionError::UnexpectedEof { offset: offset + 30, expected: name_len, read: 0 })?;
@@ -474,12 +530,12 @@ impl Zip64HeaderInspector {
         if fixed[0..4] != ZIP_CDH_MAGIC {
             return Err(Zip64InspectionError::SignatureMismatch { offset, expected: ZIP_CDH_MAGIC, found: [fixed[0], fixed[1], fixed[2], fixed[3]] });
         }
-        let comp32 = u32::from_le_bytes(fixed[20..24].try_into().unwrap());
-        let uncomp32 = u32::from_le_bytes(fixed[24..28].try_into().unwrap());
-        let name_len = u16::from_le_bytes(fixed[28..30].try_into().unwrap()) as usize;
-        let extra_len = u16::from_le_bytes(fixed[30..32].try_into().unwrap()) as usize;
-        let comment_len = u16::from_le_bytes(fixed[32..34].try_into().unwrap()) as usize;
-        let rel_off32 = u32::from_le_bytes(fixed[42..46].try_into().unwrap());
+        let comp32 = u32::from_le_bytes(fixed[20..24].try_into().unwrap_or_default());
+        let uncomp32 = u32::from_le_bytes(fixed[24..28].try_into().unwrap_or_default());
+        let name_len = u16::from_le_bytes(fixed[28..30].try_into().unwrap_or_default()) as usize;
+        let extra_len = u16::from_le_bytes(fixed[30..32].try_into().unwrap_or_default()) as usize;
+        let comment_len = u16::from_le_bytes(fixed[32..34].try_into().unwrap_or_default()) as usize;
+        let rel_off32 = u32::from_le_bytes(fixed[42..46].try_into().unwrap_or_default());
 
         let mut name_buf = vec![0u8; name_len];
         reader.read_exact(&mut name_buf).map_err(|_| Zip64InspectionError::UnexpectedEof { offset: offset + 46, expected: name_len, read: 0 })?;
@@ -525,15 +581,15 @@ impl Zip64HeaderInspector {
             }
         }
         let loc_idx = locator_rel.ok_or(Zip64InspectionError::SignatureMismatch { offset: scan_start, expected: ZIP64_LOCATOR_MAGIC, found: [0; 4] })?;
-        let z64_eocd_off = u64::from_le_bytes(tail_buf[loc_idx + 8..loc_idx + 16].try_into().unwrap());
+        let z64_eocd_off = u64::from_le_bytes(tail_buf[loc_idx + 8..loc_idx + 16].try_into().unwrap_or_default());
 
         reader.seek(SeekFrom::Start(z64_eocd_off)).map_err(|e| Zip64InspectionError::IoError(e.to_string()))?;
         let mut eocd_buf = [0u8; 56];
         reader.read_exact(&mut eocd_buf).map_err(|_| Zip64InspectionError::UnexpectedEof { offset: z64_eocd_off, expected: 56, read: 0 })?;
 
-        let total_entries = u64::from_le_bytes(eocd_buf[32..40].try_into().unwrap());
-        let cd_size = u64::from_le_bytes(eocd_buf[40..48].try_into().unwrap());
-        let cd_offset = u64::from_le_bytes(eocd_buf[48..56].try_into().unwrap());
+        let total_entries = u64::from_le_bytes(eocd_buf[32..40].try_into().unwrap_or_default());
+        let cd_size = u64::from_le_bytes(eocd_buf[40..48].try_into().unwrap_or_default());
+        let cd_offset = u64::from_le_bytes(eocd_buf[48..56].try_into().unwrap_or_default());
 
         let mut cur_cd = cd_offset;
         let cd_end = cd_offset + cd_size;

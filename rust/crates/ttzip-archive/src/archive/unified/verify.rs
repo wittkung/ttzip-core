@@ -58,132 +58,169 @@ pub fn verify_archive_stream(
         .unwrap_or("")
         .to_lowercase();
 
-    // -----------------------------------------------------------------------
-    // PATHWAY A: ZIP Multi-Threaded In-Memory Verification (Rayon)
-    // -----------------------------------------------------------------------
-    if ext == "zip" || ext == "cbz" || ext == "jar" {
-        let mapped = match fs::read(archive_path) {
-            Ok(m) => m,
-            Err(_) => return Err(TTZipStatus::ErrOpenFailed),
-        };
-        let zip = match ZipArchive::open_slice(&mapped) {
-            Ok(z) => z,
-            Err(e) => {
-                let duration = start_time.elapsed().as_secs_f64();
-                return Ok(ArchiveIntegrityReport {
-                    archive_path: archive_path.to_string_lossy().to_string(),
-                    total_entries_count: 1,
-                    verified_entries_count: 0,
-                    corrupted_entries_count: 1,
-                    overall_status: "corrupted".to_string(),
-                    verification_duration_seconds: duration,
-                    average_throughput_mbs: 0.0,
-                    corrupted_entries: vec![CorruptedEntryDetail {
-                        entry_path: archive_path.file_name().unwrap_or_default().to_string_lossy().to_string(),
-                        error_type: "header_damaged".to_string(),
-                        expected_checksum: "".to_string(),
-                        actual_checksum: "".to_string(),
-                        diagnostic_message: format!("Archive header corrupted or invalid: {:?}", e),
-                    }],
-                });
-            }
-        };
-        let total_entries = zip.entries().len();
+    if matches!(ext.as_str(), "zip" | "cbz" | "jar") {
+        verify_zip_archive_in_memory(archive_path, password, progress_callback, user_data, start_time)
+    } else {
+        verify_archive_via_libarchive(archive_path, password, progress_callback, user_data, start_time)
+    }
+}
 
-        let verified_count = AtomicUsize::new(0);
-        let total_bytes = AtomicU64::new(0);
-        let corrupted_list = parking_lot::Mutex::new(Vec::new());
-        let user_data_addr = user_data as usize;
+fn verify_zip_archive_in_memory(
+    archive_path: &Path,
+    password: Option<&str>,
+    progress_callback: TTZipProgressCallback,
+    user_data: *mut c_void,
+    start_time: Instant,
+) -> Result<ArchiveIntegrityReport, TTZipStatus> {
+    let mapped = fs::read(archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    let zip = match ZipArchive::open_slice(&mapped) {
+        Ok(z) => z,
+        Err(e) => return Ok(build_corrupted_zip_header_report(archive_path, start_time, e)),
+    };
+    let total_entries = zip.entries().len();
 
-        let num_threads = ttzip_types::recommended_compute_threads().min(total_entries).max(1);
-        let next_entry_idx = AtomicUsize::new(0);
-        let pool = LocalWorkStealingPool::with_threads(num_threads);
+    let verified_count = AtomicUsize::new(0);
+    let total_bytes = AtomicU64::new(0);
+    let corrupted_list = parking_lot::Mutex::new(Vec::new());
+    let user_data_addr = user_data as usize;
 
-        pool.scope(|s| {
-            for _ in 0..num_threads {
-                s.spawn(|| {
-                    loop {
-                        let idx = next_entry_idx.fetch_add(1, Ordering::Relaxed);
-                        if idx >= total_entries {
-                            break;
-                        }
-                        let entry = &zip.entries()[idx];
-                        if entry.is_directory || entry.uncompressed_size == 0 {
-                            verified_count.fetch_add(1, Ordering::Relaxed);
-                        } else {
-                            match zip.extract_entry_bytes(idx, password) {
-                                Ok(bytes) => {
-                                    let actual_crc = crc32_fast(0, &bytes);
-                                    if entry.crc32 != 0 && actual_crc != entry.crc32 {
-                                        corrupted_list.lock().push(CorruptedEntryDetail {
-                                            entry_path: entry.rel_path.clone(),
-                                            error_type: "crc32_mismatch".to_string(),
-                                            expected_checksum: format!("{:08X}", entry.crc32),
-                                            actual_checksum: format!("{:08X}", actual_crc),
-                                            diagnostic_message: "Calculated CRC32 does not match ZIP local header checksum".to_string(),
-                                        });
-                                    } else {
-                                        verified_count.fetch_add(1, Ordering::Relaxed);
-                                        total_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed);
-                                    }
-                                }
-                                Err(e) => {
-                                    let err_type = if e == TTZipStatus::ErrInvalidPassword {
-                                        "invalid_dictionary"
-                                    } else {
-                                        "header_damaged"
-                                    };
-                                    corrupted_list.lock().push(CorruptedEntryDetail {
-                                        entry_path: entry.rel_path.clone(),
-                                        error_type: err_type.to_string(),
-                                        expected_checksum: format!("{:08X}", entry.crc32),
-                                        actual_checksum: "".to_string(),
-                                        diagnostic_message: format!("Decompression failed with status: {:?}", e),
-                                    });
-                                }
-                            }
-                        }
+    let num_threads = ttzip_types::recommended_compute_threads().min(total_entries).max(1);
+    let next_entry_idx = AtomicUsize::new(0);
+    let pool = LocalWorkStealingPool::with_threads(num_threads);
 
-                        if let Some(cb) = progress_callback {
-                            let v = verified_count.load(Ordering::Relaxed);
-                            let c_name = CString::new(entry.rel_path.as_str()).unwrap_or_default();
-                            unsafe {
-                                cb(v as u64, total_entries as u64, c_name.as_ptr(), user_data_addr as *mut c_void);
-                            }
+    pool.scope(|s| {
+        for _ in 0..num_threads {
+            s.spawn(|| {
+                while let idx = next_entry_idx.fetch_add(1, Ordering::Relaxed)
+                    && idx < total_entries
+                {
+                    verify_single_zip_entry(
+                        &zip,
+                        idx,
+                        password,
+                        &verified_count,
+                        &total_bytes,
+                        &corrupted_list,
+                    );
+                    if let Some(cb) = progress_callback {
+                        let v = verified_count.load(Ordering::Relaxed);
+                        let c_name = CString::new(zip.entries()[idx].rel_path.as_str()).unwrap_or_default();
+                        unsafe {
+                            cb(v as u64, total_entries as u64, c_name.as_ptr(), user_data_addr as *mut c_void);
                         }
                     }
-                });
-            }
-        });
+                }
+            });
+        }
+    });
 
-        let duration = start_time.elapsed().as_secs_f64().max(0.0001);
-        let uncompressed = total_bytes.load(Ordering::Relaxed);
-        let throughput = (uncompressed as f64 / (1024.0 * 1024.0)) / duration;
-        let corrupted = corrupted_list.lock().clone();
+    let duration = start_time.elapsed().as_secs_f64().max(0.0001);
+    let uncompressed = total_bytes.load(Ordering::Relaxed);
+    let throughput = (uncompressed as f64 / (1024.0 * 1024.0)) / duration;
+    let corrupted = corrupted_list.lock().clone();
 
-        let status = if corrupted.is_empty() {
-            "passed"
-        } else if password.is_none() && zip.entries().iter().any(|e| e.is_encrypted) {
-            "encrypted_missing_key"
-        } else {
-            "corrupted"
-        };
+    let status = if corrupted.is_empty() {
+        "passed"
+    } else if password.is_none() && zip.entries().iter().any(|e| e.is_encrypted) {
+        "encrypted_missing_key"
+    } else {
+        "corrupted"
+    };
 
-        return Ok(ArchiveIntegrityReport {
-            archive_path: archive_path.to_string_lossy().to_string(),
-            total_entries_count: total_entries,
-            verified_entries_count: verified_count.load(Ordering::Relaxed),
-            corrupted_entries_count: corrupted.len(),
-            overall_status: status.to_string(),
-            verification_duration_seconds: duration,
-            average_throughput_mbs: throughput,
-            corrupted_entries: corrupted,
-        });
+    Ok(ArchiveIntegrityReport {
+        archive_path: archive_path.to_string_lossy().to_string(),
+        total_entries_count: total_entries,
+        verified_entries_count: verified_count.load(Ordering::Relaxed),
+        corrupted_entries_count: corrupted.len(),
+        overall_status: status.to_string(),
+        verification_duration_seconds: duration,
+        average_throughput_mbs: throughput,
+        corrupted_entries: corrupted,
+    })
+}
+
+fn build_corrupted_zip_header_report(
+    archive_path: &Path,
+    start_time: Instant,
+    err: TTZipStatus,
+) -> ArchiveIntegrityReport {
+    let duration = start_time.elapsed().as_secs_f64();
+    ArchiveIntegrityReport {
+        archive_path: archive_path.to_string_lossy().to_string(),
+        total_entries_count: 1,
+        verified_entries_count: 0,
+        corrupted_entries_count: 1,
+        overall_status: "corrupted".to_string(),
+        verification_duration_seconds: duration,
+        average_throughput_mbs: 0.0,
+        corrupted_entries: vec![CorruptedEntryDetail {
+            entry_path: archive_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .to_string(),
+            error_type: "header_damaged".to_string(),
+            expected_checksum: String::new(),
+            actual_checksum: String::new(),
+            diagnostic_message: format!("Archive header corrupted or invalid: {:?}", err),
+        }],
+    }
+}
+
+fn verify_single_zip_entry(
+    zip: &ZipArchive<'_>,
+    idx: usize,
+    password: Option<&str>,
+    verified_count: &AtomicUsize,
+    total_bytes: &AtomicU64,
+    corrupted_list: &parking_lot::Mutex<Vec<CorruptedEntryDetail>>,
+) {
+    let entry = &zip.entries()[idx];
+    if entry.is_directory || entry.uncompressed_size == 0 {
+        verified_count.fetch_add(1, Ordering::Relaxed);
+        return;
     }
 
-    // -----------------------------------------------------------------------
-    // PATHWAY B: General Stream-Discarding Verification (Libarchive)
-    // -----------------------------------------------------------------------
+    match zip.extract_entry_bytes(idx, password) {
+        Ok(bytes) => {
+            let actual_crc = crc32_fast(0, &bytes);
+            if entry.crc32 != 0 && actual_crc != entry.crc32 {
+                corrupted_list.lock().push(CorruptedEntryDetail {
+                    entry_path: entry.rel_path.clone(),
+                    error_type: "crc32_mismatch".to_string(),
+                    expected_checksum: format!("{:08X}", entry.crc32),
+                    actual_checksum: format!("{:08X}", actual_crc),
+                    diagnostic_message: "Calculated CRC32 does not match ZIP local header checksum".to_string(),
+                });
+            } else {
+                verified_count.fetch_add(1, Ordering::Relaxed);
+                total_bytes.fetch_add(entry.uncompressed_size, Ordering::Relaxed);
+            }
+        }
+        Err(e) => {
+            let err_type = if e == TTZipStatus::ErrInvalidPassword {
+                "invalid_dictionary"
+            } else {
+                "header_damaged"
+            };
+            corrupted_list.lock().push(CorruptedEntryDetail {
+                entry_path: entry.rel_path.clone(),
+                error_type: err_type.to_string(),
+                expected_checksum: format!("{:08X}", entry.crc32),
+                actual_checksum: String::new(),
+                diagnostic_message: format!("Decompression failed with status: {:?}", e),
+            });
+        }
+    }
+}
+
+fn verify_archive_via_libarchive(
+    archive_path: &Path,
+    password: Option<&str>,
+    progress_callback: TTZipProgressCallback,
+    user_data: *mut c_void,
+    start_time: Instant,
+) -> Result<ArchiveIntegrityReport, TTZipStatus> {
     let arch_c = CString::new(archive_path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?)
         .map_err(|_| TTZipStatus::ErrInvalidParam)?;
 
@@ -198,10 +235,10 @@ pub fn verify_archive_stream(
         archive_read_support_format_raw(a);
         archive_read_support_filter_all(a);
 
-        if let Some(pwd) = password {
-            if let Ok(c_pwd) = CString::new(pwd) {
-                archive_read_add_passphrase(a, c_pwd.as_ptr());
-            }
+        if let Some(pwd) = password
+            && let Ok(c_pwd) = CString::new(pwd)
+        {
+            archive_read_add_passphrase(a, c_pwd.as_ptr());
         }
 
         if archive_read_open_filename(a, arch_c.as_ptr(), 65536) != 0 {
@@ -215,54 +252,20 @@ pub fn verify_archive_stream(
         let mut corrupted_list = Vec::new();
         let mut chunk_buf = vec![0u8; 65536];
 
-        while archive_read_next_header(a, &mut entry) == 0 {
-            if entry.is_null() {
-                break;
-            }
+        while archive_read_next_header(a, &mut entry) == 0 && !entry.is_null() {
             total_entries += 1;
-
             let raw_path = archive_entry_pathname(entry);
-            let entry_path_str = if !raw_path.is_null() {
-                CStr::from_ptr(raw_path).to_string_lossy().to_string()
-            } else {
-                format!("entry_{}", total_entries)
-            };
-
-            let is_dir = archive_entry_size(entry) == 0;
-            if is_dir {
-                verified_count += 1;
-                archive_read_data_skip(a);
-                continue;
-            }
-
-            let mut running_crc = 0u32;
-            let mut entry_has_error = false;
-
-            loop {
-                let r = archive_read_data(a, chunk_buf.as_mut_ptr() as *mut c_void, chunk_buf.len());
-                if r < 0 {
-                    corrupted_list.push(CorruptedEntryDetail {
-                        entry_path: entry_path_str.clone(),
-                        error_type: "block_truncated".to_string(),
-                        expected_checksum: "".to_string(),
-                        actual_checksum: format!("{:08X}", running_crc),
-                        diagnostic_message: "Decompression stream read error".to_string(),
-                    });
-                    entry_has_error = true;
-                    break;
-                }
-                if r == 0 {
-                    break;
-                }
-                let read_bytes = r as usize;
-                running_crc = crc32_fast(running_crc, &chunk_buf[..read_bytes]);
-                total_decomp_bytes += read_bytes as u64;
-            }
-
-            if !entry_has_error {
+            if verify_single_libarchive_entry(
+                a,
+                entry,
+                raw_path,
+                total_entries,
+                &mut chunk_buf,
+                &mut total_decomp_bytes,
+                &mut corrupted_list,
+            ) {
                 verified_count += 1;
             }
-
             if let Some(cb) = progress_callback {
                 cb(verified_count as u64, total_entries as u64, raw_path, user_data);
             }
@@ -270,12 +273,7 @@ pub fn verify_archive_stream(
 
         let duration = start_time.elapsed().as_secs_f64().max(0.0001);
         let throughput = (total_decomp_bytes as f64 / (1024.0 * 1024.0)) / duration;
-
-        let status = if corrupted_list.is_empty() {
-            "passed"
-        } else {
-            "corrupted"
-        };
+        let status = if corrupted_list.is_empty() { "passed" } else { "corrupted" };
 
         Ok(ArchiveIntegrityReport {
             archive_path: archive_path.to_string_lossy().to_string(),
@@ -287,5 +285,47 @@ pub fn verify_archive_stream(
             average_throughput_mbs: throughput,
             corrupted_entries: corrupted_list,
         })
+    }
+}
+
+unsafe fn verify_single_libarchive_entry(
+    a: *mut c_void,
+    entry: *mut c_void,
+    raw_path: *const libc::c_char,
+    entry_index: usize,
+    chunk_buf: &mut [u8],
+    total_decomp_bytes: &mut u64,
+    corrupted_list: &mut Vec<CorruptedEntryDetail>,
+) -> bool {
+    let entry_path_str = if !raw_path.is_null() {
+        unsafe { CStr::from_ptr(raw_path).to_string_lossy().to_string() }
+    } else {
+        format!("entry_{}", entry_index)
+    };
+
+    if unsafe { archive_entry_size(entry) } == 0 {
+        unsafe { archive_read_data_skip(a) };
+        return true;
+    }
+
+    let mut running_crc = 0u32;
+    loop {
+        let r = unsafe { archive_read_data(a, chunk_buf.as_mut_ptr() as *mut c_void, chunk_buf.len()) };
+        if r < 0 {
+            corrupted_list.push(CorruptedEntryDetail {
+                entry_path: entry_path_str,
+                error_type: "block_truncated".to_string(),
+                expected_checksum: String::new(),
+                actual_checksum: format!("{:08X}", running_crc),
+                diagnostic_message: "Decompression stream read error".to_string(),
+            });
+            return false;
+        }
+        if r == 0 {
+            return true;
+        }
+        let read_bytes = r as usize;
+        running_crc = crc32_fast(running_crc, &chunk_buf[..read_bytes]);
+        *total_decomp_bytes += read_bytes as u64;
     }
 }

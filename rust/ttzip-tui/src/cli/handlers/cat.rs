@@ -4,12 +4,65 @@
 //! Subcommand execution handler: cat / view.
 
 use crate::cli::format::{detect_archive_format, read_archive_data_auto, ContainerFormat};
-use std::ffi::CString;
 use std::io::Write;
 use std::path::Path;
 use ttzip_engine::archive::tar::TarArchive;
 use ttzip_engine::sevenz::SevenZArchive;
 use ttzip_engine::zip::ZipArchive;
+
+fn cat_zip_entry(
+    data: &[u8],
+    entry_path: &str,
+    normalized_target: &str,
+    password: Option<&str>,
+) -> Result<Vec<u8>, String> {
+    let archive =
+        ZipArchive::open_slice(data).map_err(|e| format!("Failed to open ZIP archive: {:?}", e))?;
+    let idx = archive
+        .entries()
+        .iter()
+        .position(|e| e.rel_path.trim_start_matches('/') == normalized_target)
+        .ok_or_else(|| format!("Entry {} not found in ZIP archive", entry_path))?;
+    archive
+        .extract_entry_bytes(idx, password)
+        .map_err(|e| format!("Failed to decompress entry {}: {:?}", entry_path, e))
+}
+
+fn cat_sevenz_entry(
+    data: &[u8],
+    entry_path: &str,
+    normalized_target: &str,
+    password: Option<&str>,
+) -> Result<Vec<u8>, String> {
+    let archive = SevenZArchive::open_slice(data)
+        .map_err(|e| format!("Failed to open 7z archive: {:?}", e))?;
+    let idx = archive
+        .files()
+        .iter()
+        .position(|f| f.rel_path.trim_start_matches('/') == normalized_target)
+        .ok_or_else(|| format!("Entry {} not found in 7z archive", entry_path))?;
+    archive
+        .extract_entry_bytes(idx, password)
+        .map_err(|e| format!("Failed to decompress entry {}: {:?}", entry_path, e))
+}
+
+fn cat_tar_entry(
+    data: &[u8],
+    entry_path: &str,
+    normalized_target: &str,
+) -> Result<Vec<u8>, String> {
+    let archive =
+        TarArchive::open_slice(data).map_err(|e| format!("Failed to open TAR archive: {:?}", e))?;
+    let idx = archive
+        .entries()
+        .iter()
+        .position(|e| e.path.trim_start_matches('/') == normalized_target)
+        .ok_or_else(|| format!("Entry {} not found in TAR archive", entry_path))?;
+    archive
+        .extract_entry_bytes(idx)
+        .map(|s| s.to_vec())
+        .map_err(|e| format!("Failed to extract TAR entry {}: {:?}", entry_path, e))
+}
 
 /// Executes headless `cat` subcommand, writing entry payload to stdout.
 pub fn execute_cat(
@@ -23,67 +76,23 @@ pub fn execute_cat(
 
     let (_volumes, data) = read_archive_data_auto(archive_path)?;
     let format = detect_archive_format(archive_path, &data);
-
-    let password_c = password.map(|p| CString::new(p).unwrap_or_default());
-    let _password_ptr = password_c.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null());
-
     let normalized_target = entry_path.trim_start_matches('/');
 
-    let payload: Vec<u8> = match format {
-        ContainerFormat::Zip => {
-            let archive = ZipArchive::open_slice(&data)
-                .map_err(|e| format!("Failed to open ZIP archive: {:?}", e))?;
-            let mut found_data = None;
-            for (i, entry) in archive.entries().iter().enumerate() {
-                let entry_name = entry.rel_path.trim_start_matches('/');
-                if entry_name == normalized_target {
-                    let decompressed = archive.extract_entry_bytes(i, password)
-                        .map_err(|e| format!("Failed to decompress entry {}: {:?}", entry_path, e))?;
-                    found_data = Some(decompressed);
-                    break;
-                }
-            }
-            found_data.ok_or_else(|| format!("Entry {} not found in ZIP archive", entry_path))?
-        }
+    let payload = match format {
+        ContainerFormat::Zip => cat_zip_entry(&data, entry_path, normalized_target, password)?,
         ContainerFormat::SevenZip => {
-            let archive = SevenZArchive::open_slice(&data)
-                .map_err(|e| format!("Failed to open 7z archive: {:?}", e))?;
-            let mut found_data = None;
-            for (i, file) in archive.files().iter().enumerate() {
-                let entry_name = file.rel_path.trim_start_matches('/');
-                if entry_name == normalized_target {
-                    let decompressed = archive.extract_entry_bytes(i, password)
-                        .map_err(|e| format!("Failed to decompress entry {}: {:?}", entry_path, e))?;
-                    found_data = Some(decompressed);
-                    break;
-                }
-            }
-            found_data.ok_or_else(|| format!("Entry {} not found in 7z archive", entry_path))?
+            cat_sevenz_entry(&data, entry_path, normalized_target, password)?
         }
-        ContainerFormat::Tar => {
-            let archive = TarArchive::open_slice(&data)
-                .map_err(|e| format!("Failed to open TAR archive: {:?}", e))?;
-            let mut found_data = None;
-            for (i, entry) in archive.entries().iter().enumerate() {
-                let entry_name = entry.path.trim_start_matches('/');
-                if entry_name == normalized_target {
-                    let decompressed = archive.extract_entry_bytes(i)
-                        .map_err(|e| format!("Failed to extract TAR entry {}: {:?}", entry_path, e))?;
-                    found_data = Some(decompressed.to_vec());
-                    break;
-                }
-            }
-            found_data.ok_or_else(|| format!("Entry {} not found in TAR archive", entry_path))?
-        }
-        _ => {
-            return Err(format!("Direct cat not supported for format {:?}", format.name()));
-        }
+        ContainerFormat::Tar => cat_tar_entry(&data, entry_path, normalized_target)?,
+        _ => return Err(format!("Direct cat not supported for format {:?}", format.name())),
     };
 
     let mut stdout = std::io::stdout().lock();
-    stdout.write_all(&payload)
+    stdout
+        .write_all(&payload)
         .map_err(|e| format!("Failed to write payload to stdout: {}", e))?;
-    stdout.flush()
+    stdout
+        .flush()
         .map_err(|e| format!("Failed to flush stdout: {}", e))?;
 
     Ok(())

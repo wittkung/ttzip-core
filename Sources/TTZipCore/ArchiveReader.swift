@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+import os
 
 /// High-performance stream-based archive reader (100% Pure Mozilla UniFFI Engine).
 public final class ArchiveReader: ArchiveReading, Sendable {
@@ -37,76 +38,77 @@ public final class ArchiveReader: ArchiveReading, Sendable {
               let fileSize = attrs[.size] as? Int64 else {
             throw ArchiveError.fileNotFound
         }
-        
-        // Zero-byte empty file returns empty list directly
         if fileSize == 0 {
             return []
         }
-        
         try Task.checkCancellation()
         
         return try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
-            let targetInspectPath = archivePath
-            
-            let performInspect: (String?) throws -> [ArchiveEntry] = { pwd in
-                // This browsing path materializes UniFFI metadata, then maps it to Swift entries.
-                // Snapshot and VFS-session APIs are separate capabilities, not used by this call.
-                let items = try inspectArchiveEntries(archivePath: targetInspectPath, password: pwd)
-                var entries: [ArchiveEntry] = []
-                entries.reserveCapacity(items.count)
-                for meta in items {
-                    let sanitizedPath = meta.path
-                    if ArchiveFilterOptions.isSystemMetadata(path: sanitizedPath) {
-                        continue
-                    }
-                    let mtimeDate = meta.mtimeEpochSecs > 0 ? Date(timeIntervalSince1970: TimeInterval(meta.mtimeEpochSecs)) : nil
-                    let entry = ArchiveEntry(
-                        path: sanitizedPath,
-                        uncompressedSize: meta.uncompressedSize.clampedToInt64,
-                        isDirectory: meta.isDirectory,
-                        detectedEncoding: meta.detectedEncoding ?? "UTF-8",
-                        modificationDate: mtimeDate,
-                        isEncrypted: meta.isEncrypted,
-                        isDataEncrypted: meta.isEncrypted,
-                        isMetadataEncrypted: false,
-                        encryptionMethod: meta.isEncrypted ? "AES-256" : nil
-                    )
-                    entries.append(entry)
-                }
-                return entries
-            }
-            
-            if let explicitPassword = password, !explicitPassword.isEmpty {
-                do {
-                    return try performInspect(explicitPassword)
-                } catch let uniffiError as TtZipError {
-                    if case .InvalidPassword = uniffiError {
-                        throw ArchiveError.wrongPassword(archivePath: targetInspectPath)
-                    }
-                    throw ArchiveError.from(uniffiError: uniffiError)
-                } catch {
-                    throw ArchiveError.from(error: error)
-                }
-            }
-            
-            do {
-                return try performInspect(nil)
-            } catch let initialError {
-                let mappedError = ArchiveError.from(error: initialError)
-                guard mappedError.isPasswordRelated || (initialError as? TtZipError) == .InvalidPassword else {
-                    throw mappedError
-                }
-                
-                let candidates = candidatePasswords ?? PasswordVaultManager.shared.candidatePasswordsForAutoUnlock()
-                for cand in candidates where !cand.isEmpty {
-                    if let entries = try? performInspect(cand) {
-                        return entries
-                    }
-                }
-                
+            try Self.inspectArchiveSync(
+                archivePath: archivePath,
+                password: password,
+                candidatePasswords: candidatePasswords
+            )
+        }
+    }
+
+    private static func inspectArchiveSync(
+        archivePath: String,
+        password: String?,
+        candidatePasswords: [String]?
+    ) throws -> [ArchiveEntry] {
+        if let explicitPassword = password, !explicitPassword.isEmpty {
+            return try inspectWithExplicitPassword(archivePath: archivePath, password: explicitPassword)
+        }
+        do {
+            return try loadFilteredEntries(archivePath: archivePath, password: nil)
+        } catch let initialError {
+            let mappedError = ArchiveError.from(error: initialError)
+            guard mappedError.isPasswordRelated || (initialError as? TtZipError) == .InvalidPassword else {
                 throw mappedError
             }
+            let candidates = candidatePasswords ?? PasswordVaultManager.shared.candidatePasswordsForAutoUnlock()
+            for cand in candidates where !cand.isEmpty {
+                if let entries = try? loadFilteredEntries(archivePath: archivePath, password: cand) {
+                    return entries
+                }
+            }
+            throw mappedError
         }
+    }
+
+    private static func inspectWithExplicitPassword(archivePath: String, password: String) throws -> [ArchiveEntry] {
+        do {
+            return try loadFilteredEntries(archivePath: archivePath, password: password)
+        } catch let uniffiError as TtZipError {
+            if case .InvalidPassword = uniffiError {
+                throw ArchiveError.wrongPassword(archivePath: archivePath)
+            }
+            throw ArchiveError.from(uniffiError: uniffiError)
+        } catch {
+            throw ArchiveError.from(error: error)
+        }
+    }
+
+    private static func loadFilteredEntries(archivePath: String, password: String?) throws -> [ArchiveEntry] {
+        let items = try inspectArchiveEntries(archivePath: archivePath, password: password)
+        var entries: [ArchiveEntry] = []
+        entries.reserveCapacity(items.count)
+        for meta in items where !ArchiveFilterOptions.isSystemMetadata(path: meta.path) {
+            let mtimeDate = meta.mtimeEpochSecs > 0 ? Date(timeIntervalSince1970: TimeInterval(meta.mtimeEpochSecs)) : nil
+            entries.append(ArchiveEntry(
+                path: meta.path,
+                uncompressedSize: meta.uncompressedSize.clampedToInt64,
+                isDirectory: meta.isDirectory,
+                detectedEncoding: meta.detectedEncoding ?? "UTF-8",
+                modificationDate: mtimeDate,
+                isEncrypted: meta.isEncrypted,
+                isDataEncrypted: meta.isEncrypted,
+                isMetadataEncrypted: false,
+                encryptionMethod: meta.isEncrypted ? "AES-256" : nil
+            ))
+        }
+        return entries
     }
     
     /// Inspects archive and builds a unified hierarchical VFS tree.
@@ -160,9 +162,8 @@ public final class ArchiveReader: ArchiveReading, Sendable {
 // MARK: - Integrity Checker
 
 /// High-performance data integrity and checksum verification engine (CRC32, SHA256 & Stream Decompression).
-public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked Sendable {
-    private var sourceCRCCache: [String: String] = [:]
-    private let cacheLock = NSLock()
+public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, Sendable {
+    private let sourceCRCCache = OSAllocatedUnfairLock<[String: String]>(initialState: [:])
     
     public init() {}
     public init(hashCalculator: HashCalculating) {}
@@ -254,76 +255,134 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
             TTLogger.debug("  [\(label) Integrity Verification] Destination directory is empty: \(directoryPath)")
             return (false, 0, nil)
         }
-        
-        var totalExtractedBytes: Int64 = 0
-        var firstFilePath: String? = nil
-        
-        var checkDir = directoryPath
-        if let items = try? fm.contentsOfDirectory(atPath: directoryPath), items.count == 1, let first = items.first {
-            let sub = (directoryPath as NSString).appendingPathComponent(first)
-            var isDir: ObjCBool = false
-            if fm.fileExists(atPath: sub, isDirectory: &isDir), isDir.boolValue {
-                checkDir = sub
-            }
-        }
-        
-        if let enumerator = fm.enumerator(atPath: checkDir) {
-            while let rel = enumerator.nextObject() as? String {
-                let fullPath = (checkDir as NSString).appendingPathComponent(rel)
-                var isDir: ObjCBool = false
-                if fm.fileExists(atPath: fullPath, isDirectory: &isDir), !isDir.boolValue {
-                    let filename = (fullPath as NSString).lastPathComponent
-                    if filename == ".metadata_never_index" || filename == ".noindex" || filename == ".DS_Store" || filename.hasPrefix("._") || filename.contains(":com.apple.") || filename.contains("com.apple.provenance") {
-                        continue
-                    }
-                    let sz = (try? fm.attributesOfItem(atPath: fullPath)[.size] as? Int64) ?? 0
-                    totalExtractedBytes += sz
-                    if firstFilePath == nil {
-                        firstFilePath = fullPath
-                    }
-                }
-            }
-        }
-        
-        let sizeValid = totalExtractedBytes == expectedOriginalBytes
-        var crcStr: String? = nil
-        var hashValid = true
-        var targetSrcCRC: String? = sourceCRC32
 
-        if sizeValid, let fileToHash = firstFilePath {
-            TTLogger.debug("  🔍 [\(label) CRC32 Verification] Verifying extracted payload checksum...")
-            crcStr = computeCRC32(filePath: fileToHash)
-            
-            var isSrcDir: ObjCBool = false
-            if targetSrcCRC == nil {
-                targetSrcCRC = {
-                    if let src = sourceFilePath, fm.fileExists(atPath: src, isDirectory: &isSrcDir), !isSrcDir.boolValue {
-                        cacheLock.lock()
-                        if let cached = sourceCRCCache[src] {
-                            cacheLock.unlock()
-                            return cached
-                        }
-                        cacheLock.unlock()
-                        
-                        let computed = computeCRC32(filePath: src)
-                        cacheLock.lock()
-                        sourceCRCCache[src] = computed
-                        cacheLock.unlock()
-                        return computed
-                    }
-                    return nil
-                }()
-            }
-            
-            if let srcCrc = targetSrcCRC, !srcCrc.isEmpty, srcCrc != "00000000" {
-                hashValid = (crcStr == srcCrc)
-                if !hashValid {
-                    TTLogger.error("  ❌ [\(label) Checksum Mismatch] Source CRC32: \(srcCrc) vs Extracted CRC32: \(crcStr ?? "")")
-                }
-            }
-        }
+        let checkDir = resolveSingleSubdirectoryIfPresent(directoryPath: directoryPath, items: items, fileManager: fm)
+        let (totalExtractedBytes, firstFilePath) = scanExtractedFiles(in: checkDir, fileManager: fm)
+
+        let sizeValid = totalExtractedBytes == expectedOriginalBytes
+        let (crcStr, targetSrcCRC, hashValid) = verifyFirstFileHashIfNeeded(
+            sizeValid: sizeValid,
+            firstFilePath: firstFilePath,
+            sourceFilePath: sourceFilePath,
+            sourceCRC32: sourceCRC32,
+            label: label,
+            fileManager: fm
+        )
 
         let isValid = sizeValid && hashValid
+        logDirectoryVerificationOutcome(
+            isValid: isValid,
+            sizeValid: sizeValid,
+            totalExtractedBytes: totalExtractedBytes,
+            expectedOriginalBytes: expectedOriginalBytes,
+            targetSrcCRC: targetSrcCRC,
+            crcStr: crcStr,
+            checkDir: checkDir,
+            label: label
+        )
+        return (isValid, totalExtractedBytes, crcStr)
+    }
+
+    private func resolveSingleSubdirectoryIfPresent(
+        directoryPath: String,
+        items: [String],
+        fileManager: FileManager
+    ) -> String {
+        guard items.count == 1, let first = items.first else { return directoryPath }
+        let sub = (directoryPath as NSString).appendingPathComponent(first)
+        var isDir: ObjCBool = false
+        if fileManager.fileExists(atPath: sub, isDirectory: &isDir), isDir.boolValue {
+            return sub
+        }
+        return directoryPath
+    }
+
+    private func scanExtractedFiles(
+        in checkDir: String,
+        fileManager: FileManager
+    ) -> (totalBytes: Int64, firstFile: String?) {
+        guard let enumerator = fileManager.enumerator(atPath: checkDir) else { return (0, nil) }
+        var totalExtractedBytes: Int64 = 0
+        var firstFilePath: String? = nil
+        while let rel = enumerator.nextObject() as? String {
+            let fullPath = (checkDir as NSString).appendingPathComponent(rel)
+            var isDir: ObjCBool = false
+            guard fileManager.fileExists(atPath: fullPath, isDirectory: &isDir), !isDir.boolValue else {
+                continue
+            }
+            let filename = (fullPath as NSString).lastPathComponent
+            if Self.isIgnoredVerificationArtifact(filename) {
+                continue
+            }
+            let sz = (try? fileManager.attributesOfItem(atPath: fullPath)[.size] as? Int64) ?? 0
+            totalExtractedBytes += sz
+            if firstFilePath == nil {
+                firstFilePath = fullPath
+            }
+        }
+        return (totalExtractedBytes, firstFilePath)
+    }
+
+    private static let ignoredVerificationFilenames: Set<String> = [
+        ".metadata_never_index", ".noindex", ".DS_Store"
+    ]
+
+    private static func isIgnoredVerificationArtifact(_ filename: String) -> Bool {
+        ignoredVerificationFilenames.contains(filename)
+            || filename.hasPrefix("._")
+            || filename.contains(":com.apple.")
+            || filename.contains("com.apple.provenance")
+    }
+
+    private func verifyFirstFileHashIfNeeded(
+        sizeValid: Bool,
+        firstFilePath: String?,
+        sourceFilePath: String?,
+        sourceCRC32: String?,
+        label: String,
+        fileManager: FileManager
+    ) -> (crcStr: String?, targetSrcCRC: String?, hashValid: Bool) {
+        guard sizeValid, let fileToHash = firstFilePath else {
+            return (nil, sourceCRC32, true)
+        }
+        TTLogger.debug("  🔍 [\(label) CRC32 Verification] Verifying extracted payload checksum...")
+        let crcStr = computeCRC32(filePath: fileToHash)
+        let targetSrcCRC = sourceCRC32 ?? resolveCachedSourceCRC(sourceFilePath: sourceFilePath, fileManager: fileManager)
+        var hashValid = true
+        if let srcCrc = targetSrcCRC, !srcCrc.isEmpty, srcCrc != "00000000" {
+            hashValid = (crcStr == srcCrc)
+            if !hashValid {
+                TTLogger.error("  ❌ [\(label) Checksum Mismatch] Source CRC32: \(srcCrc) vs Extracted CRC32: \(crcStr)")
+            }
+        }
+        return (crcStr, targetSrcCRC, hashValid)
+    }
+
+    private func resolveCachedSourceCRC(sourceFilePath: String?, fileManager: FileManager) -> String? {
+        var isSrcDir: ObjCBool = false
+        guard let src = sourceFilePath,
+              fileManager.fileExists(atPath: src, isDirectory: &isSrcDir),
+              !isSrcDir.boolValue else {
+            return nil
+        }
+        if let cached = sourceCRCCache.withLock({ $0[src] }) {
+            return cached
+        }
+        let computed = computeCRC32(filePath: src)
+        sourceCRCCache.withLock { $0[src] = computed }
+        return computed
+    }
+
+    private func logDirectoryVerificationOutcome(
+        isValid: Bool,
+        sizeValid: Bool,
+        totalExtractedBytes: Int64,
+        expectedOriginalBytes: Int64,
+        targetSrcCRC: String?,
+        crcStr: String?,
+        checkDir: String,
+        label: String
+    ) {
         if isValid {
             let crcDisplay: String
             if let srcCrc = targetSrcCRC, let extCrc = crcStr {
@@ -337,7 +396,6 @@ public final class ArchiveIntegrityChecker: ArchiveIntegrityChecking, @unchecked
         } else if !sizeValid {
             TTLogger.error("  ❌ [\(label) Byte Count Mismatch] Expected: \(expectedOriginalBytes) bytes vs Actual: \(totalExtractedBytes) bytes (checkDir: \(checkDir))")
         }
-        return (isValid, totalExtractedBytes, crcStr)
     }
 }
 

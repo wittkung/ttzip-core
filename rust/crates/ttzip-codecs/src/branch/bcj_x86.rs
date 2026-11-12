@@ -29,10 +29,29 @@ pub fn x86_decode(data: &mut [u8], ip: u32) -> usize {
     x86_transform(data, ip, false)
 }
 
+#[inline]
+fn compute_x86_branch_dest(mut src: u32, adj: u32, prev_mask: u32, is_encoder: bool) -> u32 {
+    static MASK_TO_BIT_NUMBER: [u32; 5] = [0, 1, 2, 2, 3];
+    loop {
+        let dest = if is_encoder {
+            src.wrapping_add(adj)
+        } else {
+            src.wrapping_sub(adj)
+        };
+        if prev_mask == 0 {
+            return dest;
+        }
+        let i = MASK_TO_BIT_NUMBER[(prev_mask >> 1) as usize];
+        let b_check = (dest >> (24 - i * 8)) as u8;
+        if !test_86_ms_byte(b_check) {
+            return dest;
+        }
+        src = dest ^ ((1u32 << (32 - i * 8)).wrapping_sub(1));
+    }
+}
+
 /// Core transformation loop with 5-byte sliding window state machine.
 fn x86_transform(buffer: &mut [u8], now_pos: u32, is_encoder: bool) -> usize {
-    static MASK_TO_BIT_NUMBER: [u32; 5] = [0, 1, 2, 2, 3];
-
     let size = buffer.len();
     if size < 5 {
         return 0;
@@ -66,33 +85,12 @@ fn x86_transform(buffer: &mut [u8], now_pos: u32, is_encoder: bool) -> usize {
         let b = buffer[buffer_pos + 4];
 
         if test_86_ms_byte(b) && (prev_mask >> 1) <= 4 && (prev_mask >> 1) != 3 {
-            let mut src = ((b as u32) << 24)
+            let src = ((b as u32) << 24)
                 | ((buffer[buffer_pos + 3] as u32) << 16)
                 | ((buffer[buffer_pos + 2] as u32) << 8)
                 | (buffer[buffer_pos + 1] as u32);
-
-            let mut dest;
-            loop {
-                let adj = now_pos.wrapping_add(buffer_pos as u32).wrapping_add(5);
-                if is_encoder {
-                    dest = src.wrapping_add(adj);
-                } else {
-                    dest = src.wrapping_sub(adj);
-                }
-
-                if prev_mask == 0 {
-                    break;
-                }
-
-                let i = MASK_TO_BIT_NUMBER[(prev_mask >> 1) as usize];
-                let b_check = (dest >> (24 - i * 8)) as u8;
-
-                if !test_86_ms_byte(b_check) {
-                    break;
-                }
-
-                src = dest ^ ((1u32 << (32 - i * 8)).wrapping_sub(1));
-            }
+            let adj = now_pos.wrapping_add(buffer_pos as u32).wrapping_add(5);
+            let dest = compute_x86_branch_dest(src, adj, prev_mask, is_encoder);
 
             buffer[buffer_pos + 4] = (!(((dest >> 24) & 1).wrapping_sub(1))) as u8;
             buffer[buffer_pos + 3] = (dest >> 16) as u8;

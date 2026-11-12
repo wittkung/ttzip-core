@@ -108,82 +108,107 @@ impl BenchmarkMatrixRunner {
         let mut pareto_points = Vec::with_capacity(configs.len());
 
         for cfg in &configs {
-            // Warmup & trial run
-            let mut comp_data = MatrixCodecDriver::compress(cfg, &corpus_data)?;
-            let decomp_data =
-                MatrixCodecDriver::decompress(cfg, &comp_data, corpus_data.len())?;
-
-            if decomp_data != corpus_data {
-                return Err(TTZipStatus::ErrExtractionFailed);
-            }
-
-            // High-resolution monotonic timing: Compression
-            let t_comp_start = Instant::now();
-            for _ in 0..iterations {
-                comp_data = MatrixCodecDriver::compress(cfg, &corpus_data)?;
-            }
-            let comp_elapsed_nanos = t_comp_start.elapsed().as_nanos() as u64;
-            let comp_time_per_iter_sec =
-                (comp_elapsed_nanos as f64) / (iterations as f64 * 1_000_000_000.0);
-
-            // High-resolution monotonic timing: Decompression
-            let t_decomp_start = Instant::now();
-            for _ in 0..iterations {
-                let _ = MatrixCodecDriver::decompress(cfg, &comp_data, corpus_data.len())?;
-            }
-            let decomp_elapsed_nanos = t_decomp_start.elapsed().as_nanos() as u64;
-            let decomp_time_per_iter_sec =
-                (decomp_elapsed_nanos as f64) / (iterations as f64 * 1_000_000_000.0);
-
-            let orig_len = corpus_data.len();
-            let comp_len = comp_data.len();
-            let ratio = if orig_len > 0 {
-                (comp_len as f64) / (orig_len as f64)
-            } else {
-                1.0
-            };
-            let space_savings = ((1.0 - ratio) * 100.0).max(0.0);
-
-            let comp_mb = (orig_len as f64) / (1024.0 * 1024.0);
-            let comp_speed_mbs = if comp_time_per_iter_sec > 1e-9 {
-                comp_mb / comp_time_per_iter_sec
-            } else {
-                0.0
-            };
-            let decomp_speed_mbs = if decomp_time_per_iter_sec > 1e-9 {
-                comp_mb / decomp_time_per_iter_sec
-            } else {
-                0.0
-            };
-
-            pareto_points.push(ParetoCodecPoint::new(
-                &cfg.display_name,
-                space_savings, // Optimization target: maximize space savings %
-                comp_speed_mbs, // Optimization target: maximize speed MB/s
-                0.0,
-            ));
-
-            point_results.push(BenchmarkPointResult {
-                algorithm: cfg.algorithm.clone(),
-                level: cfg.level,
-                display_name: cfg.display_name.clone(),
-                original_size_bytes: orig_len,
-                compressed_size_bytes: comp_len,
-                compression_ratio: ratio,
-                space_savings_pct: space_savings,
-                compress_throughput_mbs: comp_speed_mbs,
-                decompress_throughput_mbs: decomp_speed_mbs,
-                compress_time_nanos: comp_elapsed_nanos / (iterations as u64),
-                decompress_time_nanos: decomp_elapsed_nanos / (iterations as u64),
-                pareto_rank: 1,
-                is_pareto_optimal: false,
-                is_on_convex_hull: false,
-            });
+            let (pt, pareto) = Self::evaluate_matrix_config(cfg, &corpus_data, iterations)?;
+            pareto_points.push(pareto);
+            point_results.push(pt);
         }
 
-        // Compute 2D Pareto frontier and Convex Hull
         calculate_pareto_frontier(&mut pareto_points);
+        let (pareto_count, peak_comp, peak_decomp, max_savings) =
+            Self::summarize_pareto_results(&mut point_results, &pareto_points);
 
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let passed = point_results.len() >= 50 && pareto_count > 0;
+
+        Ok(BenchmarkMatrixReport {
+            corpus_type,
+            corpus_name: corpus_type.name().to_string(),
+            corpus_size_bytes: corpus_data.len(),
+            timestamp_epoch_secs: timestamp,
+            total_points_evaluated: point_results.len(),
+            pareto_optimal_count: pareto_count,
+            peak_compress_throughput_mbs: peak_comp,
+            peak_decompress_throughput_mbs: peak_decomp,
+            max_space_savings_pct: max_savings,
+            points: point_results,
+            passed_gate: passed,
+        })
+    }
+
+    fn evaluate_matrix_config(
+        cfg: &super::codecs_driver::MatrixCodecConfig,
+        corpus_data: &[u8],
+        iterations: usize,
+    ) -> Result<(BenchmarkPointResult, ParetoCodecPoint), TTZipStatus> {
+        let mut comp_data = MatrixCodecDriver::compress(cfg, corpus_data)?;
+        let decomp_data = MatrixCodecDriver::decompress(cfg, &comp_data, corpus_data.len())?;
+        if decomp_data != corpus_data {
+            return Err(TTZipStatus::ErrExtractionFailed);
+        }
+
+        let t_comp_start = Instant::now();
+        for _ in 0..iterations {
+            comp_data = MatrixCodecDriver::compress(cfg, corpus_data)?;
+        }
+        let comp_elapsed_nanos = t_comp_start.elapsed().as_nanos() as u64;
+        let comp_time_per_iter_sec =
+            (comp_elapsed_nanos as f64) / (iterations as f64 * 1_000_000_000.0);
+
+        let t_decomp_start = Instant::now();
+        for _ in 0..iterations {
+            let _ = MatrixCodecDriver::decompress(cfg, &comp_data, corpus_data.len())?;
+        }
+        let decomp_elapsed_nanos = t_decomp_start.elapsed().as_nanos() as u64;
+        let decomp_time_per_iter_sec =
+            (decomp_elapsed_nanos as f64) / (iterations as f64 * 1_000_000_000.0);
+
+        let orig_len = corpus_data.len();
+        let comp_len = comp_data.len();
+        let ratio = if orig_len > 0 {
+            (comp_len as f64) / (orig_len as f64)
+        } else {
+            1.0
+        };
+        let space_savings = ((1.0 - ratio) * 100.0).max(0.0);
+        let comp_mb = (orig_len as f64) / (1024.0 * 1024.0);
+        let comp_speed_mbs = if comp_time_per_iter_sec > 1e-9 {
+            comp_mb / comp_time_per_iter_sec
+        } else {
+            0.0
+        };
+        let decomp_speed_mbs = if decomp_time_per_iter_sec > 1e-9 {
+            comp_mb / decomp_time_per_iter_sec
+        } else {
+            0.0
+        };
+
+        let pareto = ParetoCodecPoint::new(&cfg.display_name, space_savings, comp_speed_mbs, 0.0);
+        let result = BenchmarkPointResult {
+            algorithm: cfg.algorithm.clone(),
+            level: cfg.level,
+            display_name: cfg.display_name.clone(),
+            original_size_bytes: orig_len,
+            compressed_size_bytes: comp_len,
+            compression_ratio: ratio,
+            space_savings_pct: space_savings,
+            compress_throughput_mbs: comp_speed_mbs,
+            decompress_throughput_mbs: decomp_speed_mbs,
+            compress_time_nanos: comp_elapsed_nanos / (iterations as u64),
+            decompress_time_nanos: decomp_elapsed_nanos / (iterations as u64),
+            pareto_rank: 1,
+            is_pareto_optimal: false,
+            is_on_convex_hull: false,
+        };
+        Ok((result, pareto))
+    }
+
+    fn summarize_pareto_results(
+        point_results: &mut [BenchmarkPointResult],
+        pareto_points: &[ParetoCodecPoint],
+    ) -> (usize, f64, f64, f64) {
         let mut pareto_count = 0;
         let mut peak_comp = 0.0;
         let mut peak_decomp = 0.0;
@@ -207,27 +232,7 @@ impl BenchmarkMatrixRunner {
                 max_savings = pt.space_savings_pct;
             }
         }
-
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        let passed = point_results.len() >= 50 && pareto_count > 0;
-
-        Ok(BenchmarkMatrixReport {
-            corpus_type,
-            corpus_name: corpus_type.name().to_string(),
-            corpus_size_bytes: corpus_data.len(),
-            timestamp_epoch_secs: timestamp,
-            total_points_evaluated: point_results.len(),
-            pareto_optimal_count: pareto_count,
-            peak_compress_throughput_mbs: peak_comp,
-            peak_decompress_throughput_mbs: peak_decomp,
-            max_space_savings_pct: max_savings,
-            points: point_results,
-            passed_gate: passed,
-        })
+        (pareto_count, peak_comp, peak_decomp, max_savings)
     }
 
     /// Executes standard 50-point Matrix Gate pass (128KB Silesia corpus, 2 iterations).

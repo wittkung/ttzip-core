@@ -146,64 +146,79 @@ public final class QuarantineWorkerClient: Sendable {
         destinationDirectory: URL,
         workerURL: URL
     ) throws -> UInt64 {
-        if !FileManager.default.fileExists(atPath: destinationDirectory.path) {
-            do {
-                try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
-            } catch {
-                throw QuarantineWorkerError.executionFailed(
-                    code: -1,
-                    message: "Failed to create destination directory: \(error.localizedDescription)"
-                )
-            }
-        }
+        try ensureDestinationDirectoryExists(destinationDirectory)
 
-        let rawArchiveFd = Darwin.open(archiveURL.path, O_RDONLY)
-        guard rawArchiveFd >= 0 else {
-            let errCode = errno
-            throw QuarantineWorkerError.executionFailed(
-                code: Int(errCode),
-                message: "Failed to open archive file descriptor: \(String(cString: strerror(errCode)))"
-            )
-        }
-        let archiveFd = Darwin.fcntl(rawArchiveFd, F_DUPFD_CLOEXEC, 10)
-        Darwin.close(rawArchiveFd)
-        guard archiveFd >= 0 else {
-            let errCode = errno
-            throw QuarantineWorkerError.executionFailed(
-                code: Int(errCode),
-                message: "Failed to duplicate archive file descriptor: \(String(cString: strerror(errCode)))"
-            )
-        }
-        defer {
-            Darwin.close(archiveFd)
-        }
+        let archiveFd = try openCloexecDescriptor(
+            path: archiveURL.path,
+            flags: O_RDONLY,
+            label: "archive file"
+        )
+        defer { Darwin.close(archiveFd) }
 
-        let rawDirFd = Darwin.open(destinationDirectory.path, O_RDONLY | O_DIRECTORY)
-        guard rawDirFd >= 0 else {
-            let errCode = errno
-            throw QuarantineWorkerError.executionFailed(
-                code: Int(errCode),
-                message: "Failed to open destination directory descriptor: \(String(cString: strerror(errCode)))"
-            )
-        }
-        let dirFd = Darwin.fcntl(rawDirFd, F_DUPFD_CLOEXEC, 10)
-        Darwin.close(rawDirFd)
-        guard dirFd >= 0 else {
-            let errCode = errno
-            throw QuarantineWorkerError.executionFailed(
-                code: Int(errCode),
-                message: "Failed to duplicate destination directory descriptor: \(String(cString: strerror(errCode)))"
-            )
-        }
-        defer {
-            Darwin.close(dirFd)
-        }
+        let dirFd = try openCloexecDescriptor(
+            path: destinationDirectory.path,
+            flags: O_RDONLY | O_DIRECTORY,
+            label: "destination directory"
+        )
+        defer { Darwin.close(dirFd) }
 
         let bookmarks = createWorkerSecurityBookmarks(
             archiveURL: archiveURL,
             destinationDirectory: destinationDirectory
         )
+        return try executeSpawnedWorker(
+            workerURL: workerURL,
+            archiveURL: archiveURL,
+            archiveFd: archiveFd,
+            dirFd: dirFd,
+            bookmarks: bookmarks
+        )
+    }
 
+    private static func ensureDestinationDirectoryExists(_ destinationDirectory: URL) throws {
+        guard !FileManager.default.fileExists(atPath: destinationDirectory.path) else { return }
+        do {
+            try FileManager.default.createDirectory(at: destinationDirectory, withIntermediateDirectories: true)
+        } catch {
+            throw QuarantineWorkerError.executionFailed(
+                code: -1,
+                message: "Failed to create destination directory: \(error.localizedDescription)"
+            )
+        }
+    }
+
+    private static func openCloexecDescriptor(
+        path: String,
+        flags: Int32,
+        label: String
+    ) throws -> Int32 {
+        let rawFd = Darwin.open(path, flags)
+        guard rawFd >= 0 else {
+            let errCode = errno
+            throw QuarantineWorkerError.executionFailed(
+                code: Int(errCode),
+                message: "Failed to open \(label) descriptor: \(String(cString: strerror(errCode)))"
+            )
+        }
+        let dupFd = Darwin.fcntl(rawFd, F_DUPFD_CLOEXEC, 10)
+        Darwin.close(rawFd)
+        guard dupFd >= 0 else {
+            let errCode = errno
+            throw QuarantineWorkerError.executionFailed(
+                code: Int(errCode),
+                message: "Failed to duplicate \(label) descriptor: \(String(cString: strerror(errCode)))"
+            )
+        }
+        return dupFd
+    }
+
+    private static func executeSpawnedWorker(
+        workerURL: URL,
+        archiveURL: URL,
+        archiveFd: Int32,
+        dirFd: Int32,
+        bookmarks: (archiveBookmark: String?, destinationBookmark: String?)
+    ) throws -> UInt64 {
         var outPipe: [Int32] = [0, 0]
         guard Darwin.pipe(&outPipe) == 0 else {
             let errCode = errno
@@ -223,24 +238,18 @@ public final class QuarantineWorkerClient: Sendable {
             childTargetFd: childTargetFd
         )
         guard actionRc == 0 else {
-            Darwin.close(outPipe[0])
-            Darwin.close(outPipe[1])
+            closePipePair(outPipe)
             throw QuarantineWorkerError.communicationFailure("Failed to configure posix_spawn file actions: \(actionRc)")
         }
-        defer {
-            posix_spawn_file_actions_destroy(&fileActions)
-        }
+        defer { posix_spawn_file_actions_destroy(&fileActions) }
 
         var attr: posix_spawnattr_t? = nil
         let attrRc = configureSpawnAttributes(attr: &attr)
         guard attrRc == 0 else {
-            Darwin.close(outPipe[0])
-            Darwin.close(outPipe[1])
+            closePipePair(outPipe)
             throw QuarantineWorkerError.communicationFailure("Failed to configure posix_spawn attributes: \(attrRc)")
         }
-        defer {
-            posix_spawnattr_destroy(&attr)
-        }
+        defer { posix_spawnattr_destroy(&attr) }
 
         let pid: pid_t
         do {
@@ -255,22 +264,22 @@ public final class QuarantineWorkerClient: Sendable {
                 attr: &attr
             )
         } catch {
-            Darwin.close(outPipe[0])
-            Darwin.close(outPipe[1])
+            closePipePair(outPipe)
             throw error
         }
 
-        // Close child write end of pipe in parent process
         Darwin.close(outPipe[1])
-
-        // Read stdout into Data until EOF, then close stdout read handle
         let outData = readDescriptorToEnd(fd: outPipe[0])
         Darwin.close(outPipe[0])
 
         var status: Int32 = 0
         waitpid(pid, &status, 0)
-
         return try parseWorkerOutput(data: outData, waitStatus: status)
+    }
+
+    private static func closePipePair(_ pipePair: [Int32]) {
+        Darwin.close(pipePair[0])
+        Darwin.close(pipePair[1])
     }
 
     /// Configures Darwin `posix_spawn_file_actions_t` descriptors for Single-Root-FD Jail isolation.
@@ -380,55 +389,11 @@ public final class QuarantineWorkerClient: Sendable {
         }
 
         var completedBytes: UInt64?
-        var executionError: QuarantineWorkerError?
-
         for line in outputStr.split(separator: "\n") {
-            let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
-            if trimmed.isEmpty { continue }
-
-            guard let lineData = trimmed.data(using: .utf8),
-                  let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
-                continue
-            }
-
-            let eventType = json["type"] as? String ?? json["event"] as? String
-
-            if eventType == "completed" || eventType == "ExtractCompleted" {
-                if let payload = json["payload"] as? [String: Any] {
-                    completedBytes = (payload["total_bytes"] as? NSNumber)?.uint64Value
-                } else if let total = json["total_bytes"] as? NSNumber {
-                    completedBytes = total.uint64Value
-                }
-                break
-            } else if eventType == "error" || eventType == "Error" {
-                let code: Int
-                let msg: String
-                if let payload = json["payload"] as? [String: Any] {
-                    code = (payload["code"] as? NSNumber)?.intValue ?? -1
-                    msg = payload["message"] as? String ?? "Unknown error"
-                } else {
-                    code = (json["code"] as? NSNumber)?.intValue ?? -1
-                    msg = json["message"] as? String ?? "Unknown error"
-                }
-                let lowerMsg = msg.lowercased()
-                if code == -30
-                    || code == -403
-                    || lowerMsg.contains("zip slip")
-                    || lowerMsg.contains("zipslip")
-                    || lowerMsg.contains("symlink")
-                    || lowerMsg.contains("security")
-                    || lowerMsg.contains("traversal")
-                {
-                    executionError = QuarantineWorkerError.zipSlipDetected(msg)
-                } else {
-                    executionError = QuarantineWorkerError.executionFailed(code: code, message: msg)
-                }
+            if let bytes = try parseWorkerEventLine(String(line)) {
+                completedBytes = bytes
                 break
             }
-        }
-
-        if let error = executionError {
-            throw error
         }
 
         if waitStatus != 0 {
@@ -442,7 +407,49 @@ public final class QuarantineWorkerClient: Sendable {
         if let bytes = completedBytes {
             return bytes
         }
-
         throw QuarantineWorkerError.communicationFailure("No completed event received from worker")
+    }
+
+    private static func parseWorkerEventLine(_ rawLine: String) throws -> UInt64? {
+        let trimmed = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty,
+              let lineData = trimmed.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else {
+            return nil
+        }
+
+        let eventType = (json["type"] as? String) ?? (json["event"] as? String)
+        if eventType == "completed" || eventType == "ExtractCompleted" {
+            let payload = json["payload"] as? [String: Any]
+            let number = (payload?["total_bytes"] as? NSNumber) ?? (json["total_bytes"] as? NSNumber)
+            return number?.uint64Value ?? 0
+        }
+        if eventType == "error" || eventType == "Error" {
+            throw parseWorkerErrorEvent(json)
+        }
+        return nil
+    }
+
+    private static func parseWorkerErrorEvent(_ json: [String: Any]) -> QuarantineWorkerError {
+        let payload = json["payload"] as? [String: Any]
+        let codeNumber = (payload?["code"] as? NSNumber) ?? (json["code"] as? NSNumber)
+        let code = codeNumber?.intValue ?? -1
+        let msg = (payload?["message"] as? String) ?? (json["message"] as? String) ?? "Unknown error"
+        if isZipSlipSecurityFailure(code: code, message: msg) {
+            return .zipSlipDetected(msg)
+        }
+        return .executionFailed(code: code, message: msg)
+    }
+
+    private static let zipSlipKeywords: [String] = [
+        "zip slip", "zipslip", "symlink", "security", "traversal"
+    ]
+
+    private static func isZipSlipSecurityFailure(code: Int, message: String) -> Bool {
+        if code == -30 || code == -403 {
+            return true
+        }
+        let lowerMsg = message.lowercased()
+        return zipSlipKeywords.contains { lowerMsg.contains($0) }
     }
 }

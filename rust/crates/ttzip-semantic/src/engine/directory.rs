@@ -5,12 +5,15 @@
 
 use super::ingest::IngestFileEvent;
 use super::SemanticSearchCoordinator;
-use crate::chunker::{classify_content_tier, ContentSupportTier, MAX_TEXT_FILE_BYTES};
+use crate::chunker::{
+    classify_content_tier, is_excluded_relative_path, ContentSupportTier, MAX_TEXT_FILE_BYTES,
+};
 use std::collections::HashSet;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::UNIX_EPOCH;
 
 type DiscoveredFile = (String, PathBuf, u64, i64);
 
@@ -111,7 +114,7 @@ impl SemanticSearchCoordinator {
             .collect();
         let mut removed_paths = Vec::new();
         if !had_directory_read_error && !cancel_flag.load(Ordering::SeqCst) {
-            let guard = self.scopes.read().expect("scopes lock poisoned");
+            let guard = self.scopes.read().unwrap_or_else(|e| e.into_inner());
             if let Some(managed) = guard.get(scope_id) {
                 removed_paths.extend(managed.index.files().filter_map(|file| {
                     (!seen.contains(file.relative_path.as_str()))
@@ -126,6 +129,85 @@ impl SemanticSearchCoordinator {
             had_read_error,
         }
     }
+}
+
+pub(crate) fn collect_authorized_files(
+    root: &Path,
+    current: &Path,
+    out: &mut Vec<(String, PathBuf, u64, i64)>,
+    cancel_flag: &AtomicBool,
+    had_directory_read_error: &mut bool,
+) {
+    if cancel_flag.load(Ordering::SeqCst) {
+        return;
+    }
+    let Ok(entries) = fs::read_dir(current) else {
+        *had_directory_read_error = true;
+        return;
+    };
+    let mut sorted_entries = Vec::new();
+    for entry_res in entries {
+        let Ok(entry) = entry_res else {
+            *had_directory_read_error = true;
+            return;
+        };
+        sorted_entries.push(entry);
+    }
+    sorted_entries.sort_by_key(|e| e.file_name());
+
+    for entry in sorted_entries {
+        if cancel_flag.load(Ordering::SeqCst) {
+            return;
+        }
+        let path = entry.path();
+        let Ok(rel) = path.strip_prefix(root) else {
+            continue;
+        };
+        let rel_str = rel.to_string_lossy().replace('\\', "/");
+        if is_excluded_relative_path(&rel_str) {
+            continue;
+        }
+        let Ok(ft) = entry.file_type() else {
+            *had_directory_read_error = true;
+            return;
+        };
+        if ft.is_symlink() {
+            continue;
+        }
+        if ft.is_dir() {
+            collect_authorized_files(root, &path, out, cancel_flag, had_directory_read_error);
+            if *had_directory_read_error {
+                return;
+            }
+        } else if ft.is_file() {
+            let Ok(meta) = entry.metadata() else {
+                *had_directory_read_error = true;
+                return;
+            };
+            if is_dataless_metadata(&meta) {
+                continue;
+            }
+            let mtime_ns = meta
+                .modified()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_nanos() as i64)
+                .unwrap_or(0);
+            out.push((rel_str, path, meta.len(), mtime_ns));
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn is_dataless_metadata(meta: &fs::Metadata) -> bool {
+    use std::os::macos::fs::MetadataExt;
+    const SF_DATALESS_FLAG: u32 = 0x4000_0000;
+    (meta.st_flags() & SF_DATALESS_FLAG) != 0
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_dataless_metadata(_meta: &fs::Metadata) -> bool {
+    false
 }
 
 #[cfg(test)]

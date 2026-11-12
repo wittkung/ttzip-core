@@ -192,11 +192,8 @@ pub struct BenchmarkCodecItem {
     pub raw: ParetoPointRaw,
 }
 
-pub fn get_live_benchmark_dataset() -> Vec<BenchmarkCodecItem> {
-    let corpus = BenchmarkCorpusGenerator::generate(BenchmarkCorpusType::Silesia, 256 * 1024);
-    let orig_len = corpus.len();
-
-    let configs = vec![
+fn standard_pareto_codec_configs() -> Vec<MatrixCodecConfig> {
+    vec![
         MatrixCodecConfig::new("Snappy", 1, "Snappy"),
         MatrixCodecConfig::new("LZ4", 1, "LZ4 Fast 1"),
         MatrixCodecConfig::new("LZFSE", 1, "Apple LZFSE"),
@@ -206,40 +203,67 @@ pub fn get_live_benchmark_dataset() -> Vec<BenchmarkCodecItem> {
         MatrixCodecConfig::new("Libdeflate", 1, "Deflate L1"),
         MatrixCodecConfig::new("Libdeflate", 6, "Deflate L6"),
         MatrixCodecConfig::new("Libdeflate", 9, "Deflate L9"),
+        MatrixCodecConfig::new("LZMA2", 1, "LZMA2 L1"),
+        MatrixCodecConfig::new("LZMA2", 6, "LZMA2 L6"),
         MatrixCodecConfig::new("Brotli", 1, "Brotli L1"),
         MatrixCodecConfig::new("Brotli", 6, "Brotli L6"),
         MatrixCodecConfig::new("Brotli", 9, "Brotli L9"),
         MatrixCodecConfig::new("Bzip2", 1, "Bzip2 L1"),
         MatrixCodecConfig::new("Bzip2", 6, "Bzip2 L6"),
         MatrixCodecConfig::new("Bzip2", 9, "Bzip2 L9"),
-    ];
+    ]
+}
+
+pub fn get_live_benchmark_dataset() -> Vec<BenchmarkCodecItem> {
+    get_live_benchmark_dataset_with_params(0, 16, 2)
+}
+
+pub fn get_live_benchmark_dataset_with_params(
+    _threads: u32,
+    dict_mb: u32,
+    iterations: u32,
+) -> Vec<BenchmarkCodecItem> {
+    let corpus_bytes = (dict_mb.clamp(1, 64) as usize * 16 * 1024).max(256 * 1024);
+    let corpus = BenchmarkCorpusGenerator::generate(BenchmarkCorpusType::Silesia, corpus_bytes);
+    let orig_len = corpus.len();
+    let iters = iterations.max(1) as usize;
+    let configs = standard_pareto_codec_configs();
 
     let mut raw_points = Vec::with_capacity(configs.len());
     let mut items_meta = Vec::with_capacity(configs.len());
+    let ext_opts = ttzip_engine::types::TTZipExtendedCreateOptions {
+        dictionary_size_mb: dict_mb,
+        enable_ldm: false,
+        raw_level: None,
+    };
 
-    for (idx, cfg) in configs.iter().enumerate() {
-        let _ = MatrixCodecDriver::compress(cfg, &corpus);
-
-        let iterations = 2;
-        let start = Instant::now();
-        let mut comp_len = orig_len;
-        for _ in 0..iterations {
-            if let Ok(comp) = MatrixCodecDriver::compress(cfg, &corpus) {
-                comp_len = comp.len();
+    ttzip_engine::types::with_extended_create_options(ext_opts, || {
+        for (idx, cfg) in configs.iter().enumerate() {
+            let _ = MatrixCodecDriver::compress(cfg, &corpus);
+            let start = Instant::now();
+            let mut comp_len = orig_len;
+            for _ in 0..iters {
+                if let Ok(comp) = MatrixCodecDriver::compress(cfg, &corpus) {
+                    comp_len = comp.len();
+                }
             }
-        }
-        let elapsed = start.elapsed().as_secs_f64().max(0.00001);
-        let total_mb = ((orig_len * iterations) as f64) / (1024.0 * 1024.0);
-        let throughput = total_mb / elapsed;
-        let space_savings = ((1.0 - (comp_len as f64 / orig_len as f64)) * 100.0).clamp(0.0, 99.9);
+            let elapsed = start.elapsed().as_secs_f64().max(0.00001);
+            let total_mb = ((orig_len * iters) as f64) / (1024.0 * 1024.0);
+            let throughput = total_mb / elapsed;
+            let space_savings = ((1.0 - (comp_len as f64 / orig_len as f64)) * 100.0).clamp(0.0, 99.9);
 
-        let raw_p = ParetoPointRaw::new(idx as u64, throughput, space_savings);
-        raw_points.push(raw_p);
-        items_meta.push((cfg.algorithm.clone(), format!("L{}", cfg.level), throughput, space_savings, idx as u64));
-    }
+            raw_points.push(ParetoPointRaw::new(idx as u64, throughput, space_savings));
+            items_meta.push((
+                cfg.algorithm.clone(),
+                format!("L{}", cfg.level),
+                throughput,
+                space_savings,
+                idx as u64,
+            ));
+        }
+    });
 
     compute_pareto_frontier_raw(&mut raw_points);
-
     items_meta
         .into_iter()
         .map(|(algo, lvl, tp, ss, tag)| {
@@ -335,7 +359,8 @@ pub fn run_cli_benchmark(mips: bool, pareto: bool, threads: u32, dict_mb: u32, i
 
     if pareto || run_all {
         println!("\n=== 2D Braille Pareto Frontier & Upper Convex Hull Plotter ===");
-        let dataset = get_standard_benchmark_dataset();
+        println!("Dictionary Size: {} MB | Threads: {} | Iterations: {}", dict_mb, threads, iterations);
+        let dataset = get_live_benchmark_dataset_with_params(threads, dict_mb, iterations);
         for line in render_pareto_chart(&dataset, 54, 14) {
             println!("{}", line);
         }

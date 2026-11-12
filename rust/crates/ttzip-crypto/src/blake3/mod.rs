@@ -33,8 +33,9 @@ pub use neon::{
 };
 pub use output::{Output, OutputReader};
 pub use parallel::{
-    derive_key_parallel, hash_parallel, hash_subtree_rayon, hash_subtree_rayon_with_threshold,
-    hash_subtree_serial, keyed_hash_parallel, ParallelTreeHasher, PARALLEL_THRESHOLD,
+    derive_key_parallel, hash_chunks_parallel, hash_parallel, hash_subtree_rayon,
+    hash_subtree_rayon_with_threshold, hash_subtree_serial, keyed_hash_parallel,
+    ParallelTreeHasher, PARALLEL_THRESHOLD,
 };
 pub use tree::{
     left_subtree_len, parent_cv, parent_output, TreeStack, MAX_DEPTH, STACK_CAPACITY,

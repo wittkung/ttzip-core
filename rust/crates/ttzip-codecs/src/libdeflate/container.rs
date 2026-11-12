@@ -120,7 +120,10 @@ pub enum ContainerFormat {
 
 impl ContainerFormat {
     /// Pure raw RFC 1951 DEFLATE byte stream (alias for Raw).
-    #[allow(non_upper_case_globals)]
+    #[allow(
+        non_upper_case_globals,
+        reason = "enum-variant-style associated constant alias for ContainerFormat::Raw"
+    )]
     pub const Deflate: ContainerFormat = ContainerFormat::Raw;
 }
 
@@ -301,83 +304,77 @@ pub fn gzip_compress_to_slice(
     Ok(footer_offset + GZIP_FOOTER_SIZE)
 }
 
-/// Decompresses RFC 1952 Gzip container stream into pre-allocated destination buffer.
-pub fn gzip_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
-    if src.len() < GZIP_MIN_OVERHEAD {
+fn skip_gzip_cstr(src: &[u8], pos: usize, max_search: usize) -> Result<usize, TTZipStatus> {
+    let rel_nul = src
+        .get(pos..max_search)
+        .and_then(|slice| slice.iter().position(|&b| b == 0))
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    Ok(pos + rel_nul + 1)
+}
+
+fn skip_gzip_extra(src: &[u8], pos: usize, max_search: usize) -> Result<usize, TTZipStatus> {
+    if pos + 2 > max_search {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
-
-    // Validate 10-byte header: ID1, ID2, CM
-    if src[0] != GZIP_ID1 || src[1] != GZIP_ID2 || src[2] != GZIP_CM_DEFLATE {
+    let xlen = u16::from_le_bytes([src[pos], src[pos + 1]]) as usize;
+    let next_pos = pos + 2 + xlen;
+    if next_pos > max_search {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
+    Ok(next_pos)
+}
 
+fn verify_gzip_header_crc16(
+    src: &[u8],
+    pos: usize,
+    max_search: usize,
+) -> Result<usize, TTZipStatus> {
+    if pos + 2 > max_search {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    let header_crc16 = u16::from_le_bytes([src[pos], src[pos + 1]]);
+    let computed_crc = (crc32_compute(&src[..pos]) & 0xFFFF) as u16;
+    if header_crc16 != computed_crc {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    Ok(pos + 2)
+}
+
+fn parse_gzip_header_offset(src: &[u8]) -> Result<usize, TTZipStatus> {
+    if src.len() < GZIP_MIN_OVERHEAD
+        || src[0] != GZIP_ID1
+        || src[1] != GZIP_ID2
+        || src[2] != GZIP_CM_DEFLATE
+    {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
     let flg = src[3];
     if (flg & GZIP_FRESERVED) != 0 {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
+    let max_search = src.len() - GZIP_FOOTER_SIZE;
     let mut pos = GZIP_MIN_HEADER_SIZE;
 
-    // FEXTRA: Extra field
     if (flg & GZIP_FEXTRA) != 0 {
-        if pos + 2 + GZIP_FOOTER_SIZE > src.len() {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        let xlen = u16::from_le_bytes([src[pos], src[pos + 1]]) as usize;
-        pos += 2;
-        if pos + xlen + GZIP_FOOTER_SIZE > src.len() {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        pos += xlen;
+        pos = skip_gzip_extra(src, pos, max_search)?;
     }
-
-    // FNAME: Original zero-terminated file name
     if (flg & GZIP_FNAME) != 0 {
-        let max_search = src.len().saturating_sub(GZIP_FOOTER_SIZE);
-        let mut found = false;
-        while pos < max_search {
-            let b = src[pos];
-            pos += 1;
-            if b == 0 {
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
+        pos = skip_gzip_cstr(src, pos, max_search)?;
     }
-
-    // FCOMMENT: Zero-terminated file comment
     if (flg & GZIP_FCOMMENT) != 0 {
-        let max_search = src.len().saturating_sub(GZIP_FOOTER_SIZE);
-        let mut found = false;
-        while pos < max_search {
-            let b = src[pos];
-            pos += 1;
-            if b == 0 {
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
+        pos = skip_gzip_cstr(src, pos, max_search)?;
+    }
+    if (flg & GZIP_FHCRC) != 0 {
+        pos = verify_gzip_header_crc16(src, pos, max_search)?;
     }
 
-    // FHCRC: Header CRC16 checksum
-    if (flg & GZIP_FHCRC) != 0 {
-        if pos + 2 + GZIP_FOOTER_SIZE > src.len() {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        let header_crc16 = u16::from_le_bytes([src[pos], src[pos + 1]]);
-        let computed_crc = (crc32_compute(&src[..pos]) & 0xFFFF) as u16;
-        if header_crc16 != computed_crc {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        pos += 2;
-    }
+    Ok(pos)
+}
+
+/// Decompresses RFC 1952 Gzip container stream into pre-allocated destination buffer.
+pub fn gzip_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus> {
+    let pos = parse_gzip_header_offset(src)?;
 
     // Extract and decompress raw DEFLATE payload
     let payload = &src[pos..src.len() - GZIP_FOOTER_SIZE];
@@ -389,11 +386,7 @@ pub fn gzip_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, TTZipStatus>
     let expected_isize = u32::from_le_bytes([footer[4], footer[5], footer[6], footer[7]]);
 
     let actual_crc = crc32_compute(&dst[..decompressed_size]);
-    if actual_crc != expected_crc {
-        return Err(TTZipStatus::ErrCorruptHeader);
-    }
-
-    if (decompressed_size as u32) != expected_isize {
+    if actual_crc != expected_crc || (decompressed_size as u32) != expected_isize {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 

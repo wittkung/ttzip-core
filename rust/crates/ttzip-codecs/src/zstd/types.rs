@@ -61,7 +61,7 @@ pub enum ZstdDCtxOpaque {}
 pub enum ZstdCDictOpaque {}
 pub enum ZstdDDictOpaque {}
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "complete C-ABI libzstd binding surface")]
 unsafe extern "C" {
     pub fn ZSTD_createCCtx() -> *mut ZstdCCtxOpaque;
     pub fn ZSTD_freeCCtx(cctx: *mut ZstdCCtxOpaque) -> libc::size_t;

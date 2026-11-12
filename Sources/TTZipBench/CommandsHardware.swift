@@ -156,70 +156,71 @@ func executePipelineBenchmark(jsonOut: String?) {
     var pipelineReports: [[String: Any]] = []
 
     for size in corpusSizes {
-        let sizeMB = size / (1024 * 1024)
-        print("\n--- Running Pipeline Benchmark for Corpus Size: \(sizeMB) MB ---")
-
-        let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ttzip_bench_\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let inputFile = tempDir.appendingPathComponent("bench_data.bin")
-        let outputZip = tempDir.appendingPathComponent("bench_out.zip")
-
-        let rawData = SyntheticCorpusGenerator.generate(type: .zipfText, size: size)
-        try? rawData.write(to: inputFile)
-
-        // 1. Measure Isolated In-Memory Codec speed
-        let tIsolatedStart = DispatchTime.now().uptimeNanoseconds
-        let compressed = AppleLibcompressionAccelerator.shared.compressData(rawData)
-        let tIsolatedEnd = DispatchTime.now().uptimeNanoseconds
-        guard compressed != nil else {
-            print("❌ Failed isolated compression.")
-            continue
-        }
-        let isolatedDurationSec = Double(tIsolatedEnd - tIsolatedStart) / 1_000_000_000.0
-        let isolatedThroughput = Double(sizeMB) / max(0.0001, isolatedDurationSec)
-
-        // 2. Measure End-to-End APFS Pipeline speed
-        let writer = ArchiveWriter()
-        guard let provenance = try? writer.createArchiveWithReport(
-            outputPath: outputZip.path,
-            format: .zip,
-            level: .normal,
-            inputPaths: [inputFile.path]
-        ) else {
-            print("❌ Failed to create benchmark archive.")
-            continue
-        }
-
-        let e2eDurationSec = Double(provenance.totalE2EDurationNanos) / 1_000_000_000.0
-        let e2eThroughput = Double(sizeMB) / max(0.0001, e2eDurationSec)
-
-        // 3. Compute FFI Bridge Tax and Full Pipeline Overhead
-        let ffiTaxPercent = (Double(provenance.ffiBridgeOverheadNanos) / max(1.0, Double(provenance.totalE2EDurationNanos))) * 100.0
-        let degradationPercent = (1.0 - (e2eThroughput / max(0.0001, isolatedThroughput))) * 100.0
-
-        print("📊 [Results for \(sizeMB) MB]")
-        print("  - Dispatched Engine:      \(provenance.engineTag.rawValue) (Fallback: \(provenance.isFallback))")
-        print("  - Isolated Codec Speed:   \(String(format: "%.1f", isolatedThroughput)) MB/s")
-        print("  - E2E Pipeline Speed:     \(String(format: "%.1f", e2eThroughput)) MB/s")
-        print("  - FFI Bridge Tax:         \(String(format: "%.2f", ffiTaxPercent)) %")
-        print("  - Full Pipeline Overhead: \(String(format: "%.2f", degradationPercent)) %")
-
-        pipelineReports.append([
-            "corpus_size_mb": sizeMB,
-            "engine": provenance.engineTag.rawValue,
-            "isolated_mbs": isolatedThroughput,
-            "e2e_mbs": e2eThroughput,
-            "ffi_tax_pct": ffiTaxPercent,
-            "degradation_pct": degradationPercent
-        ])
-    }
-
-    if let path = jsonOut {
-        if let data = try? JSONSerialization.data(withJSONObject: pipelineReports, options: .prettyPrinted) {
-            try? data.write(to: URL(fileURLWithPath: path))
-            print("\n📄 Pipeline Telemetry JSON exported to: \(path)")
+        if let report = runSingleCorpusPipelineBenchmark(size: size) {
+            pipelineReports.append(report)
         }
     }
+
+    if let path = jsonOut,
+       let data = try? JSONSerialization.data(withJSONObject: pipelineReports, options: .prettyPrinted) {
+        try? data.write(to: URL(fileURLWithPath: path))
+        print("\n📄 Pipeline Telemetry JSON exported to: \(path)")
+    }
+}
+
+private func runSingleCorpusPipelineBenchmark(size: Int) -> [String: Any]? {
+    let sizeMB = size / (1024 * 1024)
+    print("\n--- Running Pipeline Benchmark for Corpus Size: \(sizeMB) MB ---")
+
+    let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent("ttzip_bench_\(UUID().uuidString)")
+    try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: tempDir) }
+
+    let inputFile = tempDir.appendingPathComponent("bench_data.bin")
+    let outputZip = tempDir.appendingPathComponent("bench_out.zip")
+
+    let rawData = SyntheticCorpusGenerator.generate(type: .zipfText, size: size)
+    try? rawData.write(to: inputFile)
+
+    let tIsolatedStart = DispatchTime.now().uptimeNanoseconds
+    let compressed = AppleLibcompressionAccelerator.shared.compressData(rawData)
+    let tIsolatedEnd = DispatchTime.now().uptimeNanoseconds
+    guard compressed != nil else {
+        print("❌ Failed isolated compression.")
+        return nil
+    }
+    let isolatedDurationSec = Double(tIsolatedEnd - tIsolatedStart) / 1_000_000_000.0
+    let isolatedThroughput = Double(sizeMB) / max(0.0001, isolatedDurationSec)
+
+    let writer = ArchiveWriter()
+    guard let provenance = try? writer.createArchiveWithReport(
+        outputPath: outputZip.path,
+        format: .zip,
+        level: .normal,
+        inputPaths: [inputFile.path]
+    ) else {
+        print("❌ Failed to create benchmark archive.")
+        return nil
+    }
+
+    let e2eDurationSec = Double(provenance.totalE2EDurationNanos) / 1_000_000_000.0
+    let e2eThroughput = Double(sizeMB) / max(0.0001, e2eDurationSec)
+    let ffiTaxPercent = (Double(provenance.ffiBridgeOverheadNanos) / max(1.0, Double(provenance.totalE2EDurationNanos))) * 100.0
+    let degradationPercent = (1.0 - (e2eThroughput / max(0.0001, isolatedThroughput))) * 100.0
+
+    print("📊 [Results for \(sizeMB) MB]")
+    print("  - Dispatched Engine:      \(provenance.engineTag.rawValue) (Fallback: \(provenance.isFallback))")
+    print("  - Isolated Codec Speed:   \(String(format: "%.1f", isolatedThroughput)) MB/s")
+    print("  - E2E Pipeline Speed:     \(String(format: "%.1f", e2eThroughput)) MB/s")
+    print("  - FFI Bridge Tax:         \(String(format: "%.2f", ffiTaxPercent)) %")
+    print("  - Full Pipeline Overhead: \(String(format: "%.2f", degradationPercent)) %")
+
+    return [
+        "corpus_size_mb": sizeMB,
+        "engine": provenance.engineTag.rawValue,
+        "isolated_mbs": isolatedThroughput,
+        "e2e_mbs": e2eThroughput,
+        "ffi_tax_pct": ffiTaxPercent,
+        "degradation_pct": degradationPercent
+    ]
 }

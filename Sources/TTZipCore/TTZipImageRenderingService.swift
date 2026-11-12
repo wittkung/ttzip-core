@@ -115,7 +115,7 @@ public actor TTZipImageWorker {
 /// Provides zero-disk streaming thumbnail generation, fast EXIF inspection, full RGBA8 frame decoding,
 /// and high-resolution viewport tile sampling for macOS UI inspector panels, Miller Columns, and QuickLook.
 @Observable
-public final class TTZipImageRenderingService: @unchecked Sendable {
+public final class TTZipImageRenderingService: Sendable {
 
     // MARK: - Shared Singleton
 
@@ -124,36 +124,112 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
     // MARK: - Published Observable Metrics
 
     /// Indicates whether one or more image decoding or rendering tasks are actively running.
-    public private(set) var isProcessing: Bool = false
+    public private(set) var isProcessing: Bool {
+        get {
+            access(keyPath: \.isProcessing)
+            return lock.withLock { $0.isProcessing }
+        }
+        set {
+            withMutation(keyPath: \.isProcessing) {
+                lock.withLock { $0.isProcessing = newValue }
+            }
+        }
+    }
 
     /// Number of concurrent rendering operations currently in flight.
-    public private(set) var activeOperationsCount: Int = 0
+    public private(set) var activeOperationsCount: Int {
+        get {
+            access(keyPath: \.activeOperationsCount)
+            return lock.withLock { $0.activeCount }
+        }
+        set {
+            withMutation(keyPath: \.activeOperationsCount) {
+                lock.withLock { $0.activeCount = newValue }
+            }
+        }
+    }
 
     /// Cumulative total number of images processed across the lifetime of this service.
-    public private(set) var totalImagesProcessed: Int = 0
+    public private(set) var totalImagesProcessed: Int {
+        get {
+            access(keyPath: \.totalImagesProcessed)
+            return lock.withLock { $0.totalImagesProcessed }
+        }
+        set {
+            withMutation(keyPath: \.totalImagesProcessed) {
+                lock.withLock { $0.totalImagesProcessed = newValue }
+            }
+        }
+    }
 
     /// Most recently rendered full-frame image.
-    public private(set) var lastRenderedFrame: TTZipRenderedFrame? = nil
+    public private(set) var lastRenderedFrame: TTZipRenderedFrame? {
+        get {
+            access(keyPath: \.lastRenderedFrame)
+            return lock.withLock { $0.lastRenderedFrame }
+        }
+        set {
+            withMutation(keyPath: \.lastRenderedFrame) {
+                lock.withLock { $0.lastRenderedFrame = newValue }
+            }
+        }
+    }
 
     /// Most recently generated thumbnail.
-    public private(set) var lastThumbnail: TTZipThumbnail? = nil
+    public private(set) var lastThumbnail: TTZipThumbnail? {
+        get {
+            access(keyPath: \.lastThumbnail)
+            return lock.withLock { $0.lastThumbnail }
+        }
+        set {
+            withMutation(keyPath: \.lastThumbnail) {
+                lock.withLock { $0.lastThumbnail = newValue }
+            }
+        }
+    }
 
     /// Most recently inspected image metadata record.
-    public private(set) var lastInspectedMetadata: TTZipImageMetadata? = nil
+    public private(set) var lastInspectedMetadata: TTZipImageMetadata? {
+        get {
+            access(keyPath: \.lastInspectedMetadata)
+            return lock.withLock { $0.lastInspectedMetadata }
+        }
+        set {
+            withMutation(keyPath: \.lastInspectedMetadata) {
+                lock.withLock { $0.lastInspectedMetadata = newValue }
+            }
+        }
+    }
 
     /// Most recent localized error encountered during decoding or rendering.
-    public private(set) var latestError: String? = nil
+    public private(set) var latestError: String? {
+        get {
+            access(keyPath: \.latestError)
+            return lock.withLock { $0.latestError }
+        }
+        set {
+            withMutation(keyPath: \.latestError) {
+                lock.withLock { $0.latestError = newValue }
+            }
+        }
+    }
 
     // MARK: - Internal Storage & Actor Worker
 
     private let worker = TTZipImageWorker()
 
-    private struct CacheState {
+    private struct CacheState: Sendable {
         var metadataCache: [String: TTZipImageMetadata] = [:]
         var thumbnailCache: [String: TTZipThumbnail] = [:]
         var frameCache: [String: TTZipRenderedFrame] = [:]
         var activeCount: Int = 0
         var totalCount: Int = 0
+        var isProcessing: Bool = false
+        var totalImagesProcessed: Int = 0
+        var lastRenderedFrame: TTZipRenderedFrame? = nil
+        var lastThumbnail: TTZipThumbnail? = nil
+        var lastInspectedMetadata: TTZipImageMetadata? = nil
+        var latestError: String? = nil
     }
 
     private let lock = OSAllocatedUnfairLock(initialState: CacheState())
@@ -184,7 +260,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
                 $0.totalCount += 1
             }
             self.lastInspectedMetadata = meta
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return meta
         } catch {
             self.latestError = error.localizedDescription
@@ -205,7 +281,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
         do {
             let meta = try await worker.probeMetadata(from: data, fileName: fileName)
             self.lastInspectedMetadata = meta
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return meta
         } catch {
             self.latestError = error.localizedDescription
@@ -237,7 +313,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
                 $0.totalCount += 1
             }
             self.lastRenderedFrame = frame
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return frame
         } catch {
             self.latestError = error.localizedDescription
@@ -258,7 +334,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
         do {
             let frame = try await worker.decodeImage(from: data, maxDimension: maxDimension)
             self.lastRenderedFrame = frame
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return frame
         } catch {
             self.latestError = error.localizedDescription
@@ -302,7 +378,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
                 $0.totalCount += 1
             }
             self.lastThumbnail = thumb
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return thumb
         } catch {
             self.latestError = error.localizedDescription
@@ -335,7 +411,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
                 filter: filter
             )
             self.lastThumbnail = thumb
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return thumb
         } catch {
             self.latestError = error.localizedDescription
@@ -357,7 +433,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
 
         do {
             let tile = try await worker.sampleViewport(at: url.path, request: request)
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return tile
         } catch {
             self.latestError = error.localizedDescription
@@ -377,7 +453,7 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
 
         do {
             let tile = try await worker.sampleViewport(from: data, request: request)
-            self.totalImagesProcessed += 1
+            incrementTotalImagesProcessed()
             return tile
         } catch {
             self.latestError = error.localizedDescription
@@ -399,14 +475,21 @@ public final class TTZipImageRenderingService: @unchecked Sendable {
     // MARK: - Private Helpers
 
     private func updateOperationCount(delta: Int) {
-        let (active, total) = lock.withLock { state -> (Int, Int) in
-            state.activeCount = max(0, state.activeCount + delta)
-            return (state.activeCount, state.totalCount)
+        withMutation(keyPath: \.activeOperationsCount) {
+            withMutation(keyPath: \.isProcessing) {
+                lock.withLock { state in
+                    state.activeCount = max(0, state.activeCount + delta)
+                    state.isProcessing = state.activeCount > 0
+                }
+            }
         }
-        self.activeOperationsCount = active
-        self.isProcessing = active > 0
-        if delta > 0 {
-            self.totalImagesProcessed = total
+    }
+
+    private func incrementTotalImagesProcessed() {
+        withMutation(keyPath: \.totalImagesProcessed) {
+            lock.withLock { state in
+                state.totalImagesProcessed += 1
+            }
         }
     }
 }

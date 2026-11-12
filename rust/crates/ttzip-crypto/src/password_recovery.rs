@@ -122,71 +122,82 @@ pub fn verify_7z_aes_candidate(
     }
 }
 
+fn resolve_winzip_aes_salt_len(data: &[u8], extra_start: usize, extra_end: usize) -> usize {
+    if extra_end > data.len() {
+        return 16;
+    }
+    let mut pos = extra_start;
+    while pos + 4 <= extra_end {
+        let field_id = u16::from_le_bytes([data[pos], data[pos + 1]]);
+        let field_sz = u16::from_le_bytes([data[pos + 2], data[pos + 3]]) as usize;
+        pos += 4;
+        if field_id == 0x9901 && field_sz >= 7 && pos + field_sz <= extra_end {
+            return match data[pos + 4] {
+                1 => 8,
+                2 => 12,
+                _ => 16,
+            };
+        }
+        pos += field_sz;
+    }
+    16
+}
+
+fn inspect_zip_recovery_target(data: &[u8]) -> Result<RecoveryTarget, TTZipStatus> {
+    let flags = u16::from_le_bytes([data[6], data[7]]);
+    if flags & 0x01 == 0 {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+    let method = u16::from_le_bytes([data[8], data[9]]);
+    let fn_len = u16::from_le_bytes([data[26], data[27]]) as usize;
+    let extra_len = u16::from_le_bytes([data[28], data[29]]) as usize;
+    let header_offset = 30 + fn_len + extra_len;
+
+    if method == 99 {
+        let salt_len = resolve_winzip_aes_salt_len(data, 30 + fn_len, header_offset);
+        if data.len() < header_offset + salt_len + 2 {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        let salt = data[header_offset..header_offset + salt_len].to_vec();
+        let stored_pvv = [data[header_offset + salt_len], data[header_offset + salt_len + 1]];
+        return Ok(RecoveryTarget::WinZipAes { salt, stored_pvv });
+    }
+    if data.len() < header_offset + 12 {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    let mut header = [0u8; 12];
+    header.copy_from_slice(&data[header_offset..header_offset + 12]);
+    let check_byte = if flags & 0x08 == 0 { data[17] } else { data[11] };
+    Ok(RecoveryTarget::ZipCrypto { header, check_byte })
+}
+
+fn inspect_7z_recovery_target(data: &[u8]) -> RecoveryTarget {
+    let probe = if data.len() > 32 {
+        data[32..data.len().min(48)].to_vec()
+    } else {
+        vec![0u8; 16]
+    };
+    let (salt, num_cycles_power) = (*SEVENZ_METADATA_HOOK.read())
+        .and_then(|hook| hook(data))
+        .unwrap_or_else(|| (vec![], 19));
+    RecoveryTarget::SevenZipAes {
+        salt,
+        num_cycles_power,
+        probe_cipher: probe,
+        expected_magic: vec![0x17],
+    }
+}
+
 /// Inspects in-memory archive bytes to construct recovery target.
 pub fn inspect_archive_bytes(data: &[u8]) -> Result<RecoveryTarget, TTZipStatus> {
     if data.len() < 30 {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
     if data[0..4] == [0x50, 0x4B, 0x03, 0x04] {
-        let flags = u16::from_le_bytes([data[6], data[7]]);
-        if flags & 0x01 == 0 {
-            return Err(TTZipStatus::ErrInvalidParam);
-        }
-        let method = u16::from_le_bytes([data[8], data[9]]);
-        let fn_len = u16::from_le_bytes([data[26], data[27]]) as usize;
-        let extra_len = u16::from_le_bytes([data[28], data[29]]) as usize;
-        let header_offset = 30 + fn_len + extra_len;
-
-        if method == 99 {
-            let mut salt_len = 16usize;
-            let (extra_start, extra_end) = (30 + fn_len, 30 + fn_len + extra_len);
-            if extra_end <= data.len() {
-                let mut pos = extra_start;
-                while pos + 4 <= extra_end {
-                    let field_id = u16::from_le_bytes([data[pos], data[pos + 1]]);
-                    let field_sz = u16::from_le_bytes([data[pos + 2], data[pos + 3]]) as usize;
-                    pos += 4;
-                    if field_id == 0x9901 && field_sz >= 7 && pos + field_sz <= extra_end {
-                        salt_len = match data[pos + 4] { 1 => 8, 2 => 12, _ => 16 };
-                        break;
-                    }
-                    pos += field_sz;
-                }
-            }
-            if data.len() < header_offset + salt_len + 2 {
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
-            let salt = data[header_offset..header_offset + salt_len].to_vec();
-            let stored_pvv = [data[header_offset + salt_len], data[header_offset + salt_len + 1]];
-            return Ok(RecoveryTarget::WinZipAes { salt, stored_pvv });
-        }
-        if data.len() < header_offset + 12 {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        let mut header = [0u8; 12];
-        header.copy_from_slice(&data[header_offset..header_offset + 12]);
-        let check_byte = if flags & 0x08 == 0 { data[17] } else { data[11] };
-        return Ok(RecoveryTarget::ZipCrypto { header, check_byte });
+        return inspect_zip_recovery_target(data);
     }
     if data.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        if let Some(hook) = *SEVENZ_METADATA_HOOK.read() {
-            if let Some((salt, num_cycles_power)) = hook(data) {
-                let probe = if data.len() > 32 { data[32..data.len().min(48)].to_vec() } else { vec![0u8; 16] };
-                return Ok(RecoveryTarget::SevenZipAes {
-                    salt,
-                    num_cycles_power,
-                    probe_cipher: probe,
-                    expected_magic: vec![0x17],
-                });
-            }
-        }
-        let probe = if data.len() > 32 { data[32..data.len().min(48)].to_vec() } else { vec![0u8; 16] };
-        return Ok(RecoveryTarget::SevenZipAes {
-            salt: vec![],
-            num_cycles_power: 19,
-            probe_cipher: probe,
-            expected_magic: vec![0x17],
-        });
+        return Ok(inspect_7z_recovery_target(data));
     }
     Err(TTZipStatus::ErrCorruptHeader)
 }
@@ -240,6 +251,107 @@ pub fn recover_dictionary_rayon(
     })
 }
 
+#[inline]
+fn advance_odometer(indices: &mut [usize], radix: usize) -> bool {
+    if indices.is_empty() {
+        return false;
+    }
+    let mut pos = indices.len() - 1;
+    loop {
+        indices[pos] += 1;
+        if indices[pos] < radix {
+            return true;
+        }
+        indices[pos] = 0;
+        if pos == 0 {
+            return false;
+        }
+        pos -= 1;
+    }
+}
+
+fn search_prefixed_odometer(
+    prefix: &[char],
+    suffix_len: usize,
+    chars: &[char],
+    target: &RecoveryTarget,
+    cancel_token: Option<&CancellationToken>,
+    attempts: Option<&AtomicU64>,
+) -> Option<String> {
+    let mut candidate = String::with_capacity(prefix.len() + suffix_len);
+    for &ch in prefix {
+        candidate.push(ch);
+    }
+    let prefix_bytes_len = candidate.len();
+    let mut indices = vec![0usize; suffix_len];
+    let num_chars = chars.len();
+    let mut local_attempts = 0u64;
+
+    loop {
+        if local_attempts.is_multiple_of(1024) {
+            if let Some(cnt) = attempts {
+                cnt.fetch_add(local_attempts, Ordering::Relaxed);
+                local_attempts = 0;
+            }
+            if cancel_token.is_some_and(|t| t.is_cancelled()) {
+                return None;
+            }
+        }
+        candidate.truncate(prefix_bytes_len);
+        for &idx in &indices {
+            candidate.push(chars[idx]);
+        }
+        local_attempts += 1;
+        if target.verify(&candidate) {
+            if let Some(cnt) = attempts {
+                cnt.fetch_add(local_attempts, Ordering::Relaxed);
+            }
+            return Some(candidate);
+        }
+        if !advance_odometer(&mut indices, num_chars) {
+            if let Some(cnt) = attempts {
+                cnt.fetch_add(local_attempts, Ordering::Relaxed);
+            }
+            return None;
+        }
+    }
+}
+
+fn recover_brute_force_len(
+    chars: &[char],
+    len: usize,
+    target: &RecoveryTarget,
+    cancel_token: Option<&CancellationToken>,
+    attempts: Option<&AtomicU64>,
+) -> Option<String> {
+    if len == 1 {
+        return chars.par_iter().find_map_any(|&c| {
+            if cancel_token.is_some_and(|t| t.is_cancelled()) {
+                return None;
+            }
+            if let Some(cnt) = attempts {
+                cnt.fetch_add(1, Ordering::Relaxed);
+            }
+            let pwd = c.to_string();
+            target.verify(&pwd).then_some(pwd)
+        });
+    }
+    if len == 2 || chars.len() >= 64 {
+        return chars.par_iter().find_map_any(|&first_char| {
+            search_prefixed_odometer(&[first_char], len - 1, chars, target, cancel_token, attempts)
+        });
+    }
+    let mut prefixes = Vec::with_capacity(chars.len() * chars.len());
+    for &c1 in chars {
+        for &c2 in chars {
+            prefixes.push([c1, c2]);
+        }
+    }
+    prefixes.par_iter().find_map_any(|prefix| {
+        search_prefixed_odometer(prefix, len - 2, chars, target, cancel_token, attempts)
+    })
+}
+
 /// Recovers password via combinatoric brute force candidate generation across Rayon threads.
 pub fn recover_brute_force_rayon(
     charset: &str,
@@ -257,128 +369,8 @@ pub fn recover_brute_force_rayon(
         if cancel_token.is_some_and(|t| t.is_cancelled()) {
             return None;
         }
-        if len == 1 {
-            let found = chars.par_iter().find_map_any(|&c| {
-                if cancel_token.is_some_and(|t| t.is_cancelled()) {
-                    return None;
-                }
-                attempts.map(|cnt| cnt.fetch_add(1, Ordering::Relaxed));
-                let pwd = c.to_string();
-                if target.verify(&pwd) { Some(pwd) } else { None }
-            });
-            if found.is_some() {
-                return found;
-            }
-        } else if len == 2 || chars.len() >= 64 {
-            let found = chars.par_iter().find_map_any(|&first_char| {
-                let mut candidate = String::with_capacity(len);
-                candidate.push(first_char);
-                let mut indices = vec![0usize; len - 1];
-                let num_chars = chars.len();
-                let mut local_attempts = 0u64;
-                loop {
-                    if local_attempts.is_multiple_of(1024) {
-                        if let Some(cnt) = attempts {
-                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                            local_attempts = 0;
-                        }
-                        if cancel_token.is_some_and(|t| t.is_cancelled()) {
-                            return None;
-                        }
-                    }
-                    candidate.truncate(1);
-                    for &idx in &indices {
-                        candidate.push(chars[idx]);
-                    }
-                    local_attempts += 1;
-                    if target.verify(&candidate) {
-                        if let Some(cnt) = attempts {
-                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                        }
-                        return Some(candidate);
-                    }
-                    let mut pos = len - 2;
-                    loop {
-                        indices[pos] += 1;
-                        if indices[pos] < num_chars {
-                            break;
-                        }
-                        indices[pos] = 0;
-                        if pos == 0 {
-                            if let Some(cnt) = attempts {
-                                cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                            }
-                            return None;
-                        }
-                        pos -= 1;
-                    }
-                }
-            });
-            if found.is_some() {
-                return found;
-            }
-        } else {
-            // 2-level prefix Cartesian product decomposition for small charsets to saturate multi-core CPUs
-            let mut prefixes = Vec::with_capacity(chars.len() * chars.len());
-            for &c1 in &chars {
-                for &c2 in &chars {
-                    prefixes.push((c1, c2));
-                }
-            }
-            let found = prefixes.par_iter().find_map_any(|&(c1, c2)| {
-                let mut candidate = String::with_capacity(len);
-                candidate.push(c1);
-                candidate.push(c2);
-                let mut indices = vec![0usize; len - 2];
-                let num_chars = chars.len();
-                let mut local_attempts = 0u64;
-                loop {
-                    if local_attempts.is_multiple_of(1024) {
-                        if let Some(cnt) = attempts {
-                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                            local_attempts = 0;
-                        }
-                        if cancel_token.is_some_and(|t| t.is_cancelled()) {
-                            return None;
-                        }
-                    }
-                    candidate.truncate(2);
-                    for &idx in &indices {
-                        candidate.push(chars[idx]);
-                    }
-                    local_attempts += 1;
-                    if target.verify(&candidate) {
-                        if let Some(cnt) = attempts {
-                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                        }
-                        return Some(candidate);
-                    }
-                    if indices.is_empty() {
-                        if let Some(cnt) = attempts {
-                            cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                        }
-                        return None;
-                    }
-                    let mut pos = len - 3;
-                    loop {
-                        indices[pos] += 1;
-                        if indices[pos] < num_chars {
-                            break;
-                        }
-                        indices[pos] = 0;
-                        if pos == 0 {
-                            if let Some(cnt) = attempts {
-                                cnt.fetch_add(local_attempts, Ordering::Relaxed);
-                            }
-                            return None;
-                        }
-                        pos -= 1;
-                    }
-                }
-            });
-            if found.is_some() {
-                return found;
-            }
+        if let Some(found) = recover_brute_force_len(&chars, len, target, cancel_token, attempts) {
+            return Some(found);
         }
     }
     None

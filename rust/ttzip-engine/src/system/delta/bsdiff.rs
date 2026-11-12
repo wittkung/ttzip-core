@@ -63,6 +63,15 @@ impl BsDiffPatch {
     }
 }
 
+#[derive(Clone, Copy, Default)]
+struct BsdiffWindowState {
+    scan: usize,
+    pos: usize,
+    len: usize,
+    lastscan: usize,
+    lastpos: usize,
+}
+
 /// Pure Safe Rust high-throughput bsdiff generator.
 pub struct TTZipBsDiff;
 
@@ -70,171 +79,46 @@ impl TTZipBsDiff {
     /// Generates a binary delta patch between `old_data` and `new_data`.
     pub fn diff(old_data: &[u8], new_data: &[u8]) -> DeltaResult<BsDiffPatch> {
         let mut patch = BsDiffPatch::new();
-
         if new_data.is_empty() {
             return Ok(patch);
         }
-
         if old_data.is_empty() {
-            // Entire new_data is an extra literal insertion.
-            patch.push_triplet(
-                BsDiffControl::new(0, new_data.len(), 0),
-                &[],
-                new_data,
-            );
+            patch.push_triplet(BsDiffControl::new(0, new_data.len(), 0), &[], new_data);
             return Ok(patch);
         }
 
         let sa = build_suffix_array(old_data);
+        let mut win = BsdiffWindowState::default();
 
-        let mut scan = 0usize;
-        let mut pos = 0usize;
-        let mut len = 0usize;
-        let mut lastscan = 0usize;
-        let mut lastpos = 0usize;
+        while win.scan < new_data.len() {
+            let oldscore = advance_scan_window(&sa, old_data, new_data, &mut win);
 
-        while scan < new_data.len() {
-            let mut oldscore = 0usize;
-            scan += len;
-            if scan > new_data.len() {
-                scan = new_data.len();
-            }
-            let mut scsc = scan;
-
-            while scan < new_data.len() {
-                let match_result = search_longest_match(&sa, old_data, &new_data[scan..]);
-                pos = match_result.0;
-                len = match_result.1;
-
-                while scsc < scan + len && scsc < new_data.len() {
-                    if scsc >= lastscan {
-                        let old_idx = lastpos + (scsc - lastscan);
-                        if old_idx < old_data.len() {
-                            if old_data[old_idx] == new_data[scsc] {
-                                oldscore += 1;
-                            }
-                        }
-                    }
-                    scsc += 1;
-                }
-
-                if (len == oldscore && len != 0) || len > oldscore + 8 {
-                    break;
-                }
-
-                if scan >= lastscan {
-                    let old_idx = lastpos + (scan - lastscan);
-                    if old_idx < old_data.len() && scan < new_data.len() {
-                        if old_data[old_idx] == new_data[scan] {
-                            oldscore = oldscore.saturating_sub(1);
-                        }
-                    }
-                }
-
-                scan += 1;
-            }
-
-            if scan > new_data.len() {
-                scan = new_data.len();
-            }
-
-            if len != oldscore || scan >= new_data.len() {
-                let mut s = 0i64;
-                let mut sf = 0usize;
-                let mut lenf = 0usize;
-
-                // Find forward matching boundary from lastscan
-                let mut i = 0usize;
-                while lastscan + i < scan && lastpos + i < old_data.len() && lastscan + i < new_data.len() {
-                    if old_data[lastpos + i] == new_data[lastscan + i] {
-                        s += 1;
-                    }
-                    i += 1;
-                    if s * 2 - (i as i64) > (sf as i64) * 2 - (lenf as i64) {
-                        sf = s as usize;
-                        lenf = i;
-                    }
-                }
-
-                let mut lenb = 0usize;
-                if scan < new_data.len() {
-                    let mut sb = 0i64;
-                    let mut sc = 0usize;
-                    let mut j = 1usize;
-                    while scan >= j && pos >= j {
-                        if old_data[pos - j] == new_data[scan - j] {
-                            sb += 1;
-                        }
-                        if sb * 2 - (j as i64) > (sc as i64) * 2 - (lenb as i64) {
-                            sc = sb as usize;
-                            lenb = j;
-                        }
-                        j += 1;
-                    }
-                }
-
-                if lastscan + lenf > scan.saturating_sub(lenb) {
-                    let overlap = (lastscan + lenf) - (scan - lenb);
-                    let mut s = 0i64;
-                    let mut ss = 0i64;
-                    let mut lens = 0usize;
-
-                    for k in 0..overlap {
-                        if (lastscan + lenf > overlap - k)
-                            && (lastpos + lenf > overlap - k)
-                            && (new_data[lastscan + lenf - overlap + k]
-                                == old_data[lastpos + lenf - overlap + k])
-                        {
-                            s += 1;
-                        }
-                        if (pos >= lenb - k)
-                            && (scan >= lenb - k)
-                            && (new_data[scan - lenb + k] == old_data[pos - lenb + k])
-                        {
-                            s -= 1;
-                        }
-                        if s > ss {
-                            ss = s;
-                            lens = k + 1;
-                        }
-                    }
-
-                    lenf = lenf.saturating_sub(overlap - lens);
-                    lenb = lenb.saturating_sub(lens);
-                }
-
-                let target_boundary = scan.saturating_sub(lenb);
-                let extra_len = target_boundary.saturating_sub(lastscan + lenf);
-                let seek_offset = (pos as i64 - lenb as i64) - (lastpos as i64 + lenf as i64);
-
-                let mut diff_chunk = Vec::with_capacity(lenf);
-                for idx in 0..lenf {
-                    let old_byte = old_data[lastpos + idx];
-                    let new_byte = new_data[lastscan + idx];
-                    diff_chunk.push(new_byte.wrapping_sub(old_byte));
-                }
-
-                let extra_start = lastscan + lenf;
-                let extra_end = extra_start + extra_len;
-                let extra_chunk = if extra_start <= new_data.len() && extra_end <= new_data.len() {
-                    &new_data[extra_start..extra_end]
+            if win.len != oldscore || win.scan >= new_data.len() {
+                let mut lenf = compute_forward_boundary(
+                    old_data,
+                    new_data,
+                    win.scan,
+                    win.lastscan,
+                    win.lastpos,
+                );
+                let mut lenb = if win.scan < new_data.len() {
+                    compute_backward_boundary(old_data, new_data, win.scan, win.pos)
                 } else {
-                    &[]
+                    0
                 };
 
-                patch.push_triplet(
-                    BsDiffControl::new(lenf, extra_len, seek_offset),
-                    &diff_chunk,
-                    extra_chunk,
-                );
+                if win.lastscan + lenf > win.scan.saturating_sub(lenb) {
+                    (lenf, lenb) = resolve_boundary_overlap(old_data, new_data, &win, lenf, lenb);
+                }
 
-                lastscan = scan.saturating_sub(lenb);
-                lastpos = pos.saturating_sub(lenb);
+                emit_patch_triplet(&mut patch, old_data, new_data, &win, lenf, lenb);
+                win.lastscan = win.scan.saturating_sub(lenb);
+                win.lastpos = win.pos.saturating_sub(lenb);
             }
         }
 
-        if lastscan < new_data.len() {
-            let trailing_extra = &new_data[lastscan..];
+        if win.lastscan < new_data.len() {
+            let trailing_extra = &new_data[win.lastscan..];
             patch.push_triplet(
                 BsDiffControl::new(0, trailing_extra.len(), 0),
                 &[],
@@ -244,6 +128,172 @@ impl TTZipBsDiff {
 
         Ok(patch)
     }
+}
+
+fn advance_scan_window(
+    sa: &[usize],
+    old_data: &[u8],
+    new_data: &[u8],
+    win: &mut BsdiffWindowState,
+) -> usize {
+    let mut oldscore = 0usize;
+    win.scan = (win.scan + win.len).min(new_data.len());
+    let mut scsc = win.scan;
+
+    while win.scan < new_data.len() {
+        let match_result = search_longest_match(sa, old_data, &new_data[win.scan..]);
+        win.pos = match_result.0;
+        win.len = match_result.1;
+
+        while scsc < win.scan + win.len && scsc < new_data.len() {
+            if is_matching_at_offset(old_data, new_data, scsc, win.lastscan, win.lastpos) {
+                oldscore += 1;
+            }
+            scsc += 1;
+        }
+
+        if (win.len == oldscore && win.len != 0) || win.len > oldscore + 8 {
+            break;
+        }
+
+        if is_matching_at_offset(old_data, new_data, win.scan, win.lastscan, win.lastpos) {
+            oldscore = oldscore.saturating_sub(1);
+        }
+
+        win.scan += 1;
+    }
+
+    win.scan = win.scan.min(new_data.len());
+    oldscore
+}
+
+#[inline]
+fn is_matching_at_offset(
+    old_data: &[u8],
+    new_data: &[u8],
+    idx: usize,
+    lastscan: usize,
+    lastpos: usize,
+) -> bool {
+    if idx < lastscan || idx >= new_data.len() {
+        return false;
+    }
+    let old_idx = lastpos + (idx - lastscan);
+    old_idx < old_data.len() && old_data[old_idx] == new_data[idx]
+}
+
+fn compute_forward_boundary(
+    old_data: &[u8],
+    new_data: &[u8],
+    scan: usize,
+    lastscan: usize,
+    lastpos: usize,
+) -> usize {
+    let mut s = 0i64;
+    let mut sf = 0usize;
+    let mut lenf = 0usize;
+    let mut i = 0usize;
+
+    while lastscan + i < scan && lastpos + i < old_data.len() && lastscan + i < new_data.len() {
+        if old_data[lastpos + i] == new_data[lastscan + i] {
+            s += 1;
+        }
+        i += 1;
+        if s * 2 - (i as i64) > (sf as i64) * 2 - (lenf as i64) {
+            sf = s as usize;
+            lenf = i;
+        }
+    }
+    lenf
+}
+
+fn compute_backward_boundary(old_data: &[u8], new_data: &[u8], scan: usize, pos: usize) -> usize {
+    let mut sb = 0i64;
+    let mut sc = 0usize;
+    let mut lenb = 0usize;
+    let mut j = 1usize;
+
+    while scan >= j && pos >= j {
+        if old_data[pos - j] == new_data[scan - j] {
+            sb += 1;
+        }
+        if sb * 2 - (j as i64) > (sc as i64) * 2 - (lenb as i64) {
+            sc = sb as usize;
+            lenb = j;
+        }
+        j += 1;
+    }
+    lenb
+}
+
+fn resolve_boundary_overlap(
+    old_data: &[u8],
+    new_data: &[u8],
+    win: &BsdiffWindowState,
+    lenf: usize,
+    lenb: usize,
+) -> (usize, usize) {
+    let overlap = (win.lastscan + lenf) - (win.scan - lenb);
+    let mut s = 0i64;
+    let mut ss = 0i64;
+    let mut lens = 0usize;
+
+    for k in 0..overlap {
+        let f_dist = overlap - k;
+        if win.lastscan + lenf > f_dist
+            && win.lastpos + lenf > f_dist
+            && new_data[win.lastscan + lenf - f_dist] == old_data[win.lastpos + lenf - f_dist]
+        {
+            s += 1;
+        }
+        let b_dist = lenb - k;
+        if win.pos >= b_dist
+            && win.scan >= b_dist
+            && new_data[win.scan - b_dist] == old_data[win.pos - b_dist]
+        {
+            s -= 1;
+        }
+        if s > ss {
+            ss = s;
+            lens = k + 1;
+        }
+    }
+
+    (lenf.saturating_sub(overlap - lens), lenb.saturating_sub(lens))
+}
+
+fn emit_patch_triplet(
+    patch: &mut BsDiffPatch,
+    old_data: &[u8],
+    new_data: &[u8],
+    win: &BsdiffWindowState,
+    lenf: usize,
+    lenb: usize,
+) {
+    let target_boundary = win.scan.saturating_sub(lenb);
+    let extra_len = target_boundary.saturating_sub(win.lastscan + lenf);
+    let seek_offset = (win.pos as i64 - lenb as i64) - (win.lastpos as i64 + lenf as i64);
+
+    let mut diff_chunk = Vec::with_capacity(lenf);
+    for idx in 0..lenf {
+        let old_byte = old_data[win.lastpos + idx];
+        let new_byte = new_data[win.lastscan + idx];
+        diff_chunk.push(new_byte.wrapping_sub(old_byte));
+    }
+
+    let extra_start = win.lastscan + lenf;
+    let extra_end = extra_start + extra_len;
+    let extra_chunk = if extra_start <= new_data.len() && extra_end <= new_data.len() {
+        &new_data[extra_start..extra_end]
+    } else {
+        &[]
+    };
+
+    patch.push_triplet(
+        BsDiffControl::new(lenf, extra_len, seek_offset),
+        &diff_chunk,
+        extra_chunk,
+    );
 }
 
 /// Constructs a suffix array for the given data slice using pure Safe Rust prefix doubling.

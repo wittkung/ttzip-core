@@ -176,47 +176,50 @@ public actor CommandHistoryManager {
     
     /// Constructs `ArchiveTaskRecord` from command execution with real parameters.
     public func makeRecord(for command: ArchiveCommandProtocol, isSuccess: Bool) -> ArchiveTaskRecord {
-        let archivePath: String
-        let targetPath: String
-        let fileSize: Int64
-        let fileManager = FileManager.default
-
-        if let compressCmd = command as? CompressCommand {
-            archivePath = compressCmd.outputPath
-            targetPath = compressCmd.inputs.first ?? compressCmd.outputPath
-            if let attr = try? fileManager.attributesOfItem(atPath: compressCmd.outputPath),
-               let size = attr[.size] as? Int64 {
-                fileSize = size
-            } else {
-                fileSize = compressCmd.inputs.reduce(Int64(0)) {
-                    $0 + ((try? fileManager.attributesOfItem(atPath: $1)[.size] as? Int64) ?? 0)
-                }
-            }
-        } else if let extractCmd = command as? ExtractCommand {
-            archivePath = extractCmd.archivePath
-            targetPath = extractCmd.destinationDir
-            let attr = try? fileManager.attributesOfItem(atPath: extractCmd.archivePath)
-            fileSize = (attr?[.size] as? Int64) ?? 0
-        } else if let repairCmd = command as? RepairCommand {
-            archivePath = repairCmd.damagedPath
-            targetPath = repairCmd.outputPath
-            let attr = (try? fileManager.attributesOfItem(atPath: repairCmd.outputPath)) ?? (try? fileManager.attributesOfItem(atPath: repairCmd.damagedPath))
-            fileSize = (attr?[.size] as? Int64) ?? 0
-        } else {
-            archivePath = command.commandId
-            targetPath = ""
-            fileSize = 0
-        }
-
+        let details = resolveRecordDetails(command, fileManager: FileManager.default)
         return ArchiveTaskRecord(
             id: UUID(),
             commandName: command.description,
-            archivePath: archivePath,
-            targetPath: targetPath,
+            archivePath: details.archivePath,
+            targetPath: details.targetPath,
             isSuccess: isSuccess,
             timestamp: Date(),
-            fileSizeByte: fileSize
+            fileSizeByte: details.fileSize
         )
+    }
+
+    private func resolveRecordDetails(
+        _ command: ArchiveCommandProtocol,
+        fileManager: FileManager
+    ) -> (archivePath: String, targetPath: String, fileSize: Int64) {
+        if let compressCmd = command as? CompressCommand {
+            let target = compressCmd.inputs.first ?? compressCmd.outputPath
+            return (compressCmd.outputPath, target, resolveCompressSize(compressCmd, fileManager: fileManager))
+        }
+        if let extractCmd = command as? ExtractCommand {
+            return (extractCmd.archivePath, extractCmd.destinationDir, itemFileSize(atPath: extractCmd.archivePath, fileManager: fileManager) ?? 0)
+        }
+        if let repairCmd = command as? RepairCommand {
+            let size = itemFileSize(atPath: repairCmd.outputPath, fileManager: fileManager)
+                ?? itemFileSize(atPath: repairCmd.damagedPath, fileManager: fileManager)
+                ?? 0
+            return (repairCmd.damagedPath, repairCmd.outputPath, size)
+        }
+        return (command.commandId, "", 0)
+    }
+
+    private func resolveCompressSize(_ compressCmd: CompressCommand, fileManager: FileManager) -> Int64 {
+        if let outputSize = itemFileSize(atPath: compressCmd.outputPath, fileManager: fileManager) {
+            return outputSize
+        }
+        return compressCmd.inputs.reduce(Int64(0)) { total, path in
+            total + (itemFileSize(atPath: path, fileManager: fileManager) ?? 0)
+        }
+    }
+
+    private func itemFileSize(atPath path: String, fileManager: FileManager) -> Int64? {
+        guard let attr = try? fileManager.attributesOfItem(atPath: path) else { return nil }
+        return attr[.size] as? Int64
     }
     
     /// Executes command and pushes to undo stack if supported, clearing redo branch.

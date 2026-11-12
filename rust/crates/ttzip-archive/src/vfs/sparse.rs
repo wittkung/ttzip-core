@@ -66,6 +66,86 @@ pub fn allocate_sparse_file(path: &Path, len: u64) -> io::Result<File> {
     Ok(file)
 }
 
+#[cfg(target_os = "macos")]
+fn punch_hole_macos(file: &File, offset: u64, len: u64) -> io::Result<()> {
+    use std::os::unix::io::AsRawFd;
+    let punch = fpunchhole_t {
+        fp_flags: 0,
+        reserved: 0,
+        fp_offset: offset as libc::off_t,
+        fp_length: len as libc::off_t,
+    };
+    let ret = unsafe { libc::fcntl(file.as_raw_fd(), F_PUNCHHOLE, &punch) };
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn punch_hole_linux(file: &File, offset: u64, len: u64) -> io::Result<()> {
+    use std::os::unix::io::AsRawFd;
+    let ret = unsafe {
+        libc::fallocate(
+            file.as_raw_fd(),
+            FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
+            offset as libc::off_t,
+            len as libc::off_t,
+        )
+    };
+    if ret == 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
+#[cfg(windows)]
+fn punch_hole_windows(file: &File, offset: u64, len: u64) -> io::Result<()> {
+    use std::os::windows::io::AsRawHandle;
+    let handle = file.as_raw_handle() as *mut std::ffi::c_void;
+    let _ = set_sparse_handle(handle);
+
+    extern "system" {
+        fn DeviceIoControl(
+            hDevice: *mut std::ffi::c_void,
+            dwIoControlCode: u32,
+            lpInBuffer: *mut std::ffi::c_void,
+            nInBufferSize: u32,
+            lpOutBuffer: *mut std::ffi::c_void,
+            nOutBufferSize: u32,
+            lpBytesReturned: *mut u32,
+            lpOverlapped: *mut std::ffi::c_void,
+        ) -> i32;
+    }
+
+    let zero_info = FILE_ZERO_DATA_INFORMATION {
+        file_offset: offset as i64,
+        beyond_final_zero: (offset + len) as i64,
+    };
+
+    let mut bytes_returned: u32 = 0;
+    let ok = unsafe {
+        DeviceIoControl(
+            handle,
+            FSCTL_SET_ZERO_DATA,
+            &zero_info as *const _ as *mut std::ffi::c_void,
+            std::mem::size_of::<FILE_ZERO_DATA_INFORMATION>() as u32,
+            std::ptr::null_mut(),
+            0,
+            &mut bytes_returned,
+            std::ptr::null_mut(),
+        )
+    };
+
+    if ok != 0 {
+        Ok(())
+    } else {
+        Err(io::Error::last_os_error())
+    }
+}
+
 /// Punches a hole in an existing file across `[offset, offset + len)`.
 ///
 /// ### APFS / POSIX Physical Storage Semantics
@@ -82,82 +162,17 @@ pub fn punch_hole(file: &File, offset: u64, len: u64) -> io::Result<()> {
 
     #[cfg(target_os = "macos")]
     {
-        use std::os::unix::io::AsRawFd;
-        let punch = fpunchhole_t {
-            fp_flags: 0,
-            reserved: 0,
-            fp_offset: offset as libc::off_t,
-            fp_length: len as libc::off_t,
-        };
-        let ret = unsafe { libc::fcntl(file.as_raw_fd(), F_PUNCHHOLE, &punch) };
-        if ret == 0 {
-            Ok(())
-        } else {
-            Err(io::Error::last_os_error())
-        }
+        punch_hole_macos(file, offset, len)
     }
 
     #[cfg(target_os = "linux")]
     {
-        use std::os::unix::io::AsRawFd;
-        let ret = unsafe {
-            libc::fallocate(
-                file.as_raw_fd(),
-                FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE,
-                offset as libc::off_t,
-                len as libc::off_t,
-            )
-        };
-        if ret == 0 {
-            Ok(())
-        } else {
-            Err(io::Error::last_os_error())
-        }
+        punch_hole_linux(file, offset, len)
     }
 
     #[cfg(windows)]
     {
-        use std::os::windows::io::AsRawHandle;
-        let handle = file.as_raw_handle() as *mut std::ffi::c_void;
-        let _ = set_sparse_handle(handle);
-
-        extern "system" {
-            fn DeviceIoControl(
-                hDevice: *mut std::ffi::c_void,
-                dwIoControlCode: u32,
-                lpInBuffer: *mut std::ffi::c_void,
-                nInBufferSize: u32,
-                lpOutBuffer: *mut std::ffi::c_void,
-                nOutBufferSize: u32,
-                lpBytesReturned: *mut u32,
-                lpOverlapped: *mut std::ffi::c_void,
-            ) -> i32;
-        }
-
-        let zero_info = FILE_ZERO_DATA_INFORMATION {
-            file_offset: offset as i64,
-            beyond_final_zero: (offset + len) as i64,
-        };
-
-        let mut bytes_returned: u32 = 0;
-        let ok = unsafe {
-            DeviceIoControl(
-                handle,
-                FSCTL_SET_ZERO_DATA,
-                &zero_info as *const _ as *mut std::ffi::c_void,
-                std::mem::size_of::<FILE_ZERO_DATA_INFORMATION>() as u32,
-                std::ptr::null_mut(),
-                0,
-                &mut bytes_returned,
-                std::ptr::null_mut(),
-            )
-        };
-
-        if ok != 0 {
-            Ok(())
-        } else {
-            Err(io::Error::last_os_error())
-        }
+        punch_hole_windows(file, offset, len)
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]

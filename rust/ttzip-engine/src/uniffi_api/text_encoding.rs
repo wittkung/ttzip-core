@@ -137,145 +137,38 @@ pub fn uniffi_remediate_filename(raw_bytes: Vec<u8>, fallback_encoding: Option<S
 // Internal Helpers & Implementation Details
 // -----------------------------------------------------------------------------
 
+const SUPPORTED_ENCODING_SPECS: &[(&str, &str, &str, bool, bool, bool)] = &[
+    ("UTF-8", "UTF-8 (Unicode)", "utf-8", true, false, false),
+    ("GB18030", "GB18030 / GBK / GB2312 (Simplified Chinese)", "gb18030", false, true, false),
+    ("Big5", "Big5 / CP950 (Traditional Chinese)", "big5", false, true, false),
+    ("Shift_JIS", "Shift-JIS / CP932 (Japanese)", "shift_jis", false, true, false),
+    ("EUC-KR", "EUC-KR / CP949 (Korean)", "euc-kr", false, true, false),
+    ("EUC-JP", "EUC-JP (Japanese Unix)", "euc-jp", false, true, false),
+    ("windows-1252", "Windows-1252 (Western European)", "windows-1252", false, false, true),
+    ("windows-1251", "Windows-1251 (Cyrillic)", "windows-1251", false, false, true),
+    ("windows-1250", "Windows-1250 (Central European)", "windows-1250", false, false, true),
+    ("windows-1256", "Windows-1256 (Arabic)", "windows-1256", false, false, true),
+    ("windows-1254", "Windows-1254 (Turkish)", "windows-1254", false, false, true),
+    ("ISO-8859-1", "ISO-8859-1 (Latin-1)", "iso-8859-1", false, false, true),
+    ("ISO-8859-2", "ISO-8859-2 (Latin-2 Central European)", "iso-8859-2", false, false, true),
+    ("IBM866", "CP866 / IBM866 (DOS Cyrillic)", "ibm866", false, false, true),
+    ("IBM437", "CP437 / IBM437 (DOS Latin US)", "ibm437", false, false, true),
+    ("UTF-16LE", "UTF-16LE (Unicode Little Endian)", "utf-16le", true, false, false),
+    ("UTF-16BE", "UTF-16BE (Unicode Big Endian)", "utf-16be", true, false, false),
+];
+
 fn get_all_supported_encodings() -> Vec<UniFFIEncodingInfo> {
-    vec![
-        UniFFIEncodingInfo {
-            name: "UTF-8".to_string(),
-            display_name: "UTF-8 (Unicode)".to_string(),
-            iana_name: "utf-8".to_string(),
-            is_unicode: true,
-            is_cjk: false,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "GB18030".to_string(),
-            display_name: "GB18030 / GBK / GB2312 (Simplified Chinese)".to_string(),
-            iana_name: "gb18030".to_string(),
-            is_unicode: false,
-            is_cjk: true,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "Big5".to_string(),
-            display_name: "Big5 / CP950 (Traditional Chinese)".to_string(),
-            iana_name: "big5".to_string(),
-            is_unicode: false,
-            is_cjk: true,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "Shift_JIS".to_string(),
-            display_name: "Shift-JIS / CP932 (Japanese)".to_string(),
-            iana_name: "shift_jis".to_string(),
-            is_unicode: false,
-            is_cjk: true,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "EUC-KR".to_string(),
-            display_name: "EUC-KR / CP949 (Korean)".to_string(),
-            iana_name: "euc-kr".to_string(),
-            is_unicode: false,
-            is_cjk: true,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "EUC-JP".to_string(),
-            display_name: "EUC-JP (Japanese Unix)".to_string(),
-            iana_name: "euc-jp".to_string(),
-            is_unicode: false,
-            is_cjk: true,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "windows-1252".to_string(),
-            display_name: "Windows-1252 (Western European)".to_string(),
-            iana_name: "windows-1252".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "windows-1251".to_string(),
-            display_name: "Windows-1251 (Cyrillic)".to_string(),
-            iana_name: "windows-1251".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "windows-1250".to_string(),
-            display_name: "Windows-1250 (Central European)".to_string(),
-            iana_name: "windows-1250".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "windows-1256".to_string(),
-            display_name: "Windows-1256 (Arabic)".to_string(),
-            iana_name: "windows-1256".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "windows-1254".to_string(),
-            display_name: "Windows-1254 (Turkish)".to_string(),
-            iana_name: "windows-1254".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "ISO-8859-1".to_string(),
-            display_name: "ISO-8859-1 (Latin-1)".to_string(),
-            iana_name: "iso-8859-1".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "ISO-8859-2".to_string(),
-            display_name: "ISO-8859-2 (Latin-2 Central European)".to_string(),
-            iana_name: "iso-8859-2".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "IBM866".to_string(),
-            display_name: "CP866 / IBM866 (DOS Cyrillic)".to_string(),
-            iana_name: "ibm866".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "IBM437".to_string(),
-            display_name: "CP437 / IBM437 (DOS Latin US)".to_string(),
-            iana_name: "ibm437".to_string(),
-            is_unicode: false,
-            is_cjk: false,
-            is_single_byte: true,
-        },
-        UniFFIEncodingInfo {
-            name: "UTF-16LE".to_string(),
-            display_name: "UTF-16LE (Unicode Little Endian)".to_string(),
-            iana_name: "utf-16le".to_string(),
-            is_unicode: true,
-            is_cjk: false,
-            is_single_byte: false,
-        },
-        UniFFIEncodingInfo {
-            name: "UTF-16BE".to_string(),
-            display_name: "UTF-16BE (Unicode Big Endian)".to_string(),
-            iana_name: "utf-16be".to_string(),
-            is_unicode: true,
-            is_cjk: false,
-            is_single_byte: false,
-        },
-    ]
+    SUPPORTED_ENCODING_SPECS
+        .iter()
+        .map(|&(name, display_name, iana_name, is_unicode, is_cjk, is_single_byte)| UniFFIEncodingInfo {
+            name: name.to_string(),
+            display_name: display_name.to_string(),
+            iana_name: iana_name.to_string(),
+            is_unicode,
+            is_cjk,
+            is_single_byte,
+        })
+        .collect()
 }
 
 fn detect_encoding_internal(data: &[u8]) -> UniFFIDetectedEncoding {

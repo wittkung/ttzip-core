@@ -179,6 +179,113 @@ impl LruShard {
     }
 }
 
+struct ShardUpsertPlan {
+    evictions: Vec<(PathBuf, Arc<[u8]>)>,
+    direct_spill: Option<(PathBuf, Arc<[u8]>)>,
+    old_disk_path: Option<PathBuf>,
+}
+
+impl LruShard {
+    fn upsert_entry(
+        &mut self,
+        key: CacheKey,
+        raw_size: usize,
+        comp_arc: Arc<[u8]>,
+        now: u64,
+        spill_dir: &Path,
+        max_ram: usize,
+    ) -> ShardUpsertPlan {
+        let comp_len = comp_arc.len();
+        let evictions = if self.ram_bytes + comp_len > max_ram {
+            self.plan_evictions(spill_dir, comp_len, max_ram)
+        } else {
+            Vec::new()
+        };
+
+        let mut direct_spill = None;
+        let mut old_disk_path = None;
+
+        if let Some(&node_idx) = self.map.get(&key) {
+            let old_data_len = self.nodes[node_idx].ram_data.as_ref().map(|d| d.len()).unwrap_or(0);
+            self.ram_bytes = self.ram_bytes.saturating_sub(old_data_len);
+            old_disk_path = self.nodes[node_idx].disk_path.take();
+
+            self.nodes[node_idx].raw_size = raw_size;
+            self.nodes[node_idx].compressed_size = comp_len;
+            self.nodes[node_idx].access_time = now;
+
+            if self.ram_bytes + comp_len <= max_ram {
+                self.nodes[node_idx].in_ram = true;
+                self.nodes[node_idx].ram_data = Some(comp_arc);
+                self.nodes[node_idx].disk_path = None;
+                self.ram_bytes += comp_len;
+            } else {
+                let spill_file = spill_dir.join(format!("{:016x}_{:016x}.lz4", key.0, key.1));
+                self.nodes[node_idx].in_ram = false;
+                self.nodes[node_idx].ram_data = None;
+                self.nodes[node_idx].disk_path = Some(spill_file.clone());
+                direct_spill = Some((spill_file, comp_arc));
+            }
+            self.move_to_front(node_idx);
+        } else {
+            let (in_ram, ram_data, disk_path) = if self.ram_bytes + comp_len <= max_ram {
+                self.ram_bytes += comp_len;
+                (true, Some(comp_arc), None)
+            } else {
+                let spill_file = spill_dir.join(format!("{:016x}_{:016x}.lz4", key.0, key.1));
+                direct_spill = Some((spill_file.clone(), comp_arc));
+                (false, None, Some(spill_file))
+            };
+
+            let new_node = LruNode {
+                key,
+                raw_size,
+                compressed_size: comp_len,
+                in_ram,
+                ram_data,
+                disk_path,
+                access_time: now,
+                prev: None,
+                next: None,
+                active: true,
+            };
+
+            let node_idx = self.allocate_node(new_node);
+            self.map.insert(key, node_idx);
+            self.push_front(node_idx);
+        }
+
+        ShardUpsertPlan {
+            evictions,
+            direct_spill,
+            old_disk_path,
+        }
+    }
+
+    fn rollback_evicted_path(&mut self, failed_path: &Path) {
+        let mut keys_to_remove = Vec::new();
+        for node in self.nodes.iter_mut() {
+            if node.active && node.disk_path.as_deref() == Some(failed_path) {
+                node.active = false;
+                node.disk_path = None;
+                node.ram_data = None;
+                keys_to_remove.push(node.key);
+            }
+        }
+        for k in keys_to_remove {
+            self.map.remove(&k);
+        }
+    }
+
+    fn rollback_direct_spill(&mut self, key: CacheKey) {
+        if let Some(&node_idx) = self.map.get(&key) {
+            self.nodes[node_idx].active = false;
+            self.nodes[node_idx].disk_path = None;
+            self.map.remove(&key);
+        }
+    }
+}
+
 /// 16-way sharded Lock-Free / Concurrent LZ4 VFS cache pool with 2-tier RAM + Disk spill.
 pub struct VFSLz4CachePool {
     shards: [RwLock<LruShard>; NUM_SHARDS],
@@ -227,6 +334,30 @@ impl VFSLz4CachePool {
                 .unwrap_or(0)
     }
 
+    fn execute_spill_plan(
+        &self,
+        s_idx: usize,
+        key: CacheKey,
+        plan: ShardUpsertPlan,
+    ) -> Result<(), TTZipStatus> {
+        if let Some(path) = plan.old_disk_path {
+            let _ = fs::remove_file(path);
+        }
+        for (path, data) in plan.evictions {
+            if fs::write(&path, &data).is_err() {
+                self.shards[s_idx].write().rollback_evicted_path(&path);
+                return Err(TTZipStatus::ErrOpenFailed);
+            }
+        }
+        if let Some((path, data)) = plan.direct_spill {
+            if fs::write(&path, &data).is_err() {
+                self.shards[s_idx].write().rollback_direct_spill(key);
+                return Err(TTZipStatus::ErrOpenFailed);
+            }
+        }
+        Ok(())
+    }
+
     /// Compresses chunk using LZ4 and inserts into RAM cache, spilling to disk on budget overflow.
     pub fn put(&self, session_id: &str, chunk_index: u64, raw_data: &[u8], acceleration: i32) -> Result<(), TTZipStatus> {
         if raw_data.is_empty() {
@@ -243,108 +374,19 @@ impl VFSLz4CachePool {
         let s_idx = self.shard_idx(&key);
         let now = self.current_timestamp();
 
-        let (evictions, direct_spill, old_disk_path) = {
+        let plan = {
             let mut shard = self.shards[s_idx].write();
-
-            let evictions = if shard.ram_bytes + comp_len > self.per_shard_max_ram {
-                shard.plan_evictions(&self.spill_dir, comp_len, self.per_shard_max_ram)
-            } else {
-                Vec::new()
-            };
-
-            let mut direct_spill = None;
-            let mut old_disk_path = None;
-
-            if let Some(&node_idx) = shard.map.get(&key) {
-                let old_data_len = shard.nodes[node_idx].ram_data.as_ref().map(|d| d.len()).unwrap_or(0);
-                shard.ram_bytes = shard.ram_bytes.saturating_sub(old_data_len);
-                old_disk_path = shard.nodes[node_idx].disk_path.take();
-
-                shard.nodes[node_idx].raw_size = raw_data.len();
-                shard.nodes[node_idx].compressed_size = comp_len;
-                shard.nodes[node_idx].access_time = now;
-
-                if shard.ram_bytes + comp_len <= self.per_shard_max_ram {
-                    shard.nodes[node_idx].in_ram = true;
-                    shard.nodes[node_idx].ram_data = Some(comp_arc.clone());
-                    shard.nodes[node_idx].disk_path = None;
-                    shard.ram_bytes += comp_len;
-                } else {
-                    let safe_filename = format!("{:016x}_{:016x}.lz4", key.0, key.1);
-                    let spill_file = self.spill_dir.join(safe_filename);
-                    shard.nodes[node_idx].in_ram = false;
-                    shard.nodes[node_idx].ram_data = None;
-                    shard.nodes[node_idx].disk_path = Some(spill_file.clone());
-                    direct_spill = Some((spill_file, comp_arc.clone()));
-                }
-                shard.move_to_front(node_idx);
-            } else {
-                let (in_ram, ram_data, disk_path) = if shard.ram_bytes + comp_len <= self.per_shard_max_ram {
-                    shard.ram_bytes += comp_len;
-                    (true, Some(comp_arc.clone()), None)
-                } else {
-                    let safe_filename = format!("{:016x}_{:016x}.lz4", key.0, key.1);
-                    let spill_file = self.spill_dir.join(safe_filename);
-                    direct_spill = Some((spill_file.clone(), comp_arc.clone()));
-                    (false, None, Some(spill_file))
-                };
-
-                let new_node = LruNode {
-                    key,
-                    raw_size: raw_data.len(),
-                    compressed_size: comp_len,
-                    in_ram,
-                    ram_data,
-                    disk_path,
-                    access_time: now,
-                    prev: None,
-                    next: None,
-                    active: true,
-                };
-
-                let node_idx = shard.allocate_node(new_node);
-                shard.map.insert(key, node_idx);
-                shard.push_front(node_idx);
-            }
-
-            (evictions, direct_spill, old_disk_path)
+            shard.upsert_entry(
+                key,
+                raw_data.len(),
+                comp_arc,
+                now,
+                &self.spill_dir,
+                self.per_shard_max_ram,
+            )
         };
 
-        // Lock-free I/O outside critical path
-        if let Some(path) = old_disk_path {
-            let _ = fs::remove_file(path);
-        }
-        for (path, data) in evictions {
-            if fs::write(&path, &data).is_err() {
-                let mut shard = self.shards[s_idx].write();
-                let mut keys_to_remove = Vec::new();
-                for node in shard.nodes.iter_mut() {
-                    if node.active && node.disk_path.as_ref() == Some(&path) {
-                        node.active = false;
-                        node.disk_path = None;
-                        node.ram_data = None;
-                        keys_to_remove.push(node.key);
-                    }
-                }
-                for k in keys_to_remove {
-                    shard.map.remove(&k);
-                }
-                return Err(TTZipStatus::ErrOpenFailed);
-            }
-        }
-        if let Some((path, data)) = direct_spill {
-            if fs::write(&path, &data).is_err() {
-                let mut shard = self.shards[s_idx].write();
-                if let Some(&node_idx) = shard.map.get(&key) {
-                    shard.nodes[node_idx].active = false;
-                    shard.nodes[node_idx].disk_path = None;
-                    shard.map.remove(&key);
-                }
-                return Err(TTZipStatus::ErrOpenFailed);
-            }
-        }
-
-        Ok(())
+        self.execute_spill_plan(s_idx, key, plan)
     }
 
     /// Retrieves and decompresses chunk into `out_buf` with lock-free decompression & I/O.

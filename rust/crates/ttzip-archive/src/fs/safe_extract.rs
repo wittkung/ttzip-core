@@ -92,6 +92,37 @@ pub fn is_windows_reserved_device(comp: &str) -> bool {
     crate::security::path_sanitizer::is_windows_reserved_device_name(comp)
 }
 
+#[inline]
+fn has_drive_letter_prefix_bytes(bytes: &[u8]) -> bool {
+    bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+fn validate_raw_entry_header(raw_entry_path: &str) -> Result<(), TTZipStatus> {
+    let raw_bytes = raw_entry_path.as_bytes();
+    if raw_bytes.is_empty() || raw_bytes.len() > 4096 {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+    if raw_bytes[0] == b'/' || raw_entry_path.contains("://") || has_drive_letter_prefix_bytes(raw_bytes) {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+    for &b in raw_bytes {
+        if b <= 0x1F || matches!(b, b'\\' | b'<' | b'>' | b':' | b'"' | b'|' | b'?' | b'*') {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+    }
+    Ok(())
+}
+
+fn validate_normal_component_str(s: &str) -> Result<(), TTZipStatus> {
+    if s.starts_with(' ') || s.ends_with(' ') || (s.ends_with('.') && s != "._.") {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+    if s.chars().all(|ch| ch == '.') || s.contains(':') || is_windows_reserved_device(s) {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+    Ok(())
+}
+
 /// Sanitizes a relative entry path and strictly validates that it does not escape `dest_dir`.
 ///
 /// Defends against:
@@ -105,73 +136,26 @@ pub fn is_windows_reserved_device(comp: &str) -> bool {
 /// 8. Path total length upper bound (<= 4096 bytes)
 /// 9. Unicode normalization desynchronization via canonical NFC formatting
 pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Result<PathBuf, TTZipStatus> {
-    let raw_bytes = raw_entry_path.as_bytes();
-    let len = raw_bytes.len();
+    validate_raw_entry_header(raw_entry_path)?;
 
-    // 1. Length bounds (1..=4096 bytes)
-    if len == 0 || len > 4096 {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    // 2. Reject root slash, UNC paths (// or \\), or scheme delimiters (://)
-    if raw_bytes[0] == b'/' || raw_entry_path.starts_with("//") || raw_entry_path.contains("://") {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    // 3. Reject Windows drive letter prefix (e.g. "C:", "D:")
-    if len >= 2 && raw_bytes[0].is_ascii_alphabetic() && raw_bytes[1] == b':' {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    // 4. Pure byte scan: reject control characters (0x00..=0x1F), backslashes ('\'),
-    // and Windows illegal characters (< > : " | ? *)
-    for &b in raw_bytes {
-        if b <= 0x1F || b == b'\\' || matches!(b, b'<' | b'>' | b':' | b'"' | b'|' | b'?' | b'*') {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-    }
-
-    // 5. Canonical Unicode NFC normalization
     let nfc_normalized = normalize_to_nfc(raw_entry_path);
     let normalized_path = nfc_normalized.as_ref();
     if normalized_path.len() > 4096 {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
-    // 6. Component-level structural and Win32 normalization validation
     let mut target = dest_dir.to_path_buf();
     let mut has_normal_components = false;
 
     for comp in Path::new(normalized_path).components() {
         match comp {
             Component::Normal(c) => {
-                let s = match c.to_str() {
-                    Some(s) => s,
-                    None => return Err(TTZipStatus::ErrSecurityViolation),
-                };
-
-                // Win32 normalization trailing truncation & leading space defense:
-                // Components must not start with space, and must not end with space or dot (except AppleDouble root ._.).
-                if s.starts_with(' ') || s.ends_with(' ') || (s.ends_with('.') && s != "._.") {
-                    return Err(TTZipStatus::ErrSecurityViolation);
-                }
-
-                // Reject multi-dot components ("..", "...", etc.)
-                if s.chars().all(|ch| ch == '.') {
-                    return Err(TTZipStatus::ErrSecurityViolation);
-                }
-
-                // Defense against NTFS Alternate Data Streams (ADS) and Windows reserved devices
-                if s.contains(':') || is_windows_reserved_device(s) {
-                    return Err(TTZipStatus::ErrSecurityViolation);
-                }
-
+                let s = c.to_str().ok_or(TTZipStatus::ErrSecurityViolation)?;
+                validate_normal_component_str(s)?;
                 target.push(s);
                 has_normal_components = true;
             }
-            Component::CurDir => {
-                // Standalone '.' relative component is safe to skip
-            }
+            Component::CurDir => {}
             Component::RootDir | Component::Prefix(_) | Component::ParentDir => {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
@@ -183,6 +167,17 @@ pub fn sanitize_and_validate_path(dest_dir: &Path, raw_entry_path: &str) -> Resu
     }
 
     Ok(target)
+}
+
+fn validate_zip_rel_header(normalized: &str) -> Result<(), TTZipStatus> {
+    let bytes = normalized.as_bytes();
+    if normalized.starts_with('/') || normalized.contains("://") || has_drive_letter_prefix_bytes(bytes) {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+    if bytes.iter().any(|&b| b <= 0x1F || b == b':') {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+    Ok(())
 }
 
 /// Validates and normalizes an archive entry relative path for ZIP archive creation.
@@ -199,37 +194,15 @@ pub fn validate_and_normalize_zip_rel_path(raw_rel_path: &str, is_directory: boo
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
-    // In-place slash normalization: convert Windows '\' to POSIX '/'
     let mut normalized = raw_rel_path.to_string();
     normalize_slashes_in_place_str(&mut normalized);
+    validate_zip_rel_header(&normalized)?;
 
-    // Reject absolute paths, UNC prefixes, or scheme delimiters
-    if normalized.starts_with('/') || normalized.starts_with("//") || normalized.contains("://") {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    // Reject Windows drive letters (e.g. "C:")
-    let bytes = normalized.as_bytes();
-    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    // Reject NTFS alternate data streams or control characters
-    for &b in bytes {
-        if b <= 0x1F || b == b':' {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-    }
-
-    // Component-level structural and traversal validation
     let mut has_normal = false;
     for comp in Path::new(&normalized).components() {
         match comp {
             Component::Normal(s) => {
-                let s_str = match s.to_str() {
-                    Some(val) => val,
-                    None => return Err(TTZipStatus::ErrSecurityViolation),
-                };
+                let s_str = s.to_str().ok_or(TTZipStatus::ErrSecurityViolation)?;
                 if s_str.chars().all(|ch| ch == '.') || is_windows_reserved_device(s_str) {
                     return Err(TTZipStatus::ErrSecurityViolation);
                 }

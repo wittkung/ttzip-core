@@ -83,6 +83,206 @@ pub fn copy_stream_fallback(src_fd: RawFd, dst_fd: RawFd, len: u64) -> io::Resul
     Ok(total_copied)
 }
 
+#[cfg(target_os = "macos")]
+fn is_unsupported_macos_cow_errno(code: i32) -> bool {
+    matches!(
+        code,
+        libc::ENOTSUP | libc::EXDEV | libc::ENOSYS | libc::EINVAL | libc::EOPNOTSUPP
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn try_cow_clone_macos(
+    src_file: &File,
+    src_path: Option<&Path>,
+    src_offset: u64,
+    dst_path: &Path,
+    len: u64,
+) -> io::Result<bool> {
+    use std::ffi::CString;
+    use std::os::unix::ffi::OsStrExt;
+    use std::os::unix::io::AsRawFd;
+
+    // APFS clonefile operates on whole-file boundaries.
+    let total_size = src_file.metadata()?.len();
+    if src_offset != 0 || len != total_size {
+        let _ = src_path;
+        return Ok(false);
+    }
+
+    let dst_c = CString::new(dst_path.as_os_str().as_bytes())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "Invalid destination path"))?;
+
+    // Remove existing destination file to avoid EEXIST
+    if dst_path.exists() {
+        let _ = std::fs::remove_file(dst_path);
+    }
+
+    let ret = unsafe { fclonefileat(src_file.as_raw_fd(), libc::AT_FDCWD, dst_c.as_ptr(), 0) };
+    if ret == 0 {
+        return Ok(true);
+    }
+
+    // If fclonefileat failed, attempt clonefile via src_path if available
+    if let Some(src_p) = src_path {
+        if let Ok(src_c) = CString::new(src_p.as_os_str().as_bytes()) {
+            if unsafe { clonefile(src_c.as_ptr(), dst_c.as_ptr(), 0) } == 0 {
+                return Ok(true);
+            }
+        }
+    }
+
+    let err = io::Error::last_os_error();
+    if err.raw_os_error().is_some_and(is_unsupported_macos_cow_errno) {
+        return Ok(false);
+    }
+    Err(err)
+}
+
+#[cfg(target_os = "linux")]
+fn is_unsupported_linux_cow_errno(code: i32) -> bool {
+    matches!(
+        code,
+        libc::EOPNOTSUPP
+            | libc::ENOTSUP
+            | libc::EXDEV
+            | libc::EINVAL
+            | libc::ENOSYS
+            | libc::ENOTTY
+    )
+}
+
+#[cfg(target_os = "linux")]
+fn try_cow_clone_linux(
+    src_file: &File,
+    src_offset: u64,
+    dst_path: &Path,
+    len: u64,
+) -> io::Result<bool> {
+    use std::os::unix::io::AsRawFd;
+
+    #[repr(C)]
+    struct FileCloneRange {
+        src_fd: i64,
+        src_offset: u64,
+        src_length: u64,
+        dest_offset: u64,
+    }
+
+    const FICLONERANGE: libc::c_ulong = 0x4020940d;
+    const FICLONE: libc::c_ulong = 0x40049409;
+
+    let dst_file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(dst_path)?;
+
+    let src_fd = src_file.as_raw_fd();
+    let dst_fd = dst_file.as_raw_fd();
+
+    let ret = if src_offset == 0 && len == src_file.metadata()?.len() {
+        unsafe { libc::ioctl(dst_fd, FICLONE, src_fd) }
+    } else {
+        let range = FileCloneRange {
+            src_fd: src_fd as i64,
+            src_offset,
+            src_length: len,
+            dest_offset: 0,
+        };
+        unsafe { libc::ioctl(dst_fd, FICLONERANGE, &range) }
+    };
+
+    if ret == 0 {
+        let _ = dst_file.set_len(len);
+        return Ok(true);
+    }
+
+    let err = io::Error::last_os_error();
+    if err.raw_os_error().is_some_and(is_unsupported_linux_cow_errno) {
+        drop(dst_file);
+        let _ = std::fs::remove_file(dst_path);
+        return Ok(false);
+    }
+    Err(err)
+}
+
+#[cfg(windows)]
+fn try_cow_clone_windows(
+    src_file: &File,
+    src_offset: u64,
+    dst_path: &Path,
+    len: u64,
+) -> io::Result<bool> {
+    use std::os::windows::io::AsRawHandle;
+
+    let dst_file = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(dst_path)?;
+
+    dst_file.set_len(len)?;
+
+    #[repr(C)]
+    struct DUPLICATE_EXTENTS_DATA {
+        file_handle: *mut std::ffi::c_void,
+        source_file_offset: i64,
+        target_file_offset: i64,
+        byte_count: i64,
+    }
+
+    const FSCTL_DUPLICATE_EXTENTS_TO_FILE: u32 = 0x00098344;
+
+    extern "system" {
+        fn DeviceIoControl(
+            hDevice: *mut std::ffi::c_void,
+            dwIoControlCode: u32,
+            lpInBuffer: *mut std::ffi::c_void,
+            nInBufferSize: u32,
+            lpOutBuffer: *mut std::ffi::c_void,
+            nOutBufferSize: u32,
+            lpBytesReturned: *mut u32,
+            lpOverlapped: *mut std::ffi::c_void,
+        ) -> i32;
+    }
+
+    let mut dup_data = DUPLICATE_EXTENTS_DATA {
+        file_handle: src_file.as_raw_handle() as *mut std::ffi::c_void,
+        source_file_offset: src_offset as i64,
+        target_file_offset: 0,
+        byte_count: len as i64,
+    };
+
+    let mut bytes_returned: u32 = 0;
+    let ok = unsafe {
+        DeviceIoControl(
+            dst_file.as_raw_handle() as *mut std::ffi::c_void,
+            FSCTL_DUPLICATE_EXTENTS_TO_FILE,
+            &mut dup_data as *mut _ as *mut std::ffi::c_void,
+            std::mem::size_of::<DUPLICATE_EXTENTS_DATA>() as u32,
+            std::ptr::null_mut(),
+            0,
+            &mut bytes_returned,
+            std::ptr::null_mut(),
+        )
+    };
+
+    if ok != 0 {
+        return Ok(true);
+    }
+
+    let err = io::Error::last_os_error();
+    if err.raw_os_error().is_some_and(|code| matches!(code, 1 | 17 | 50 | 87)) {
+        drop(dst_file);
+        let _ = std::fs::remove_file(dst_path);
+        return Ok(false);
+    }
+    Err(err)
+}
+
 /// Attempts to perform a Copy-on-Write (CoW) clone of a source byte range into `dst_path`.
 ///
 /// Returns `Ok(true)` if native hardware/filesystem cloning succeeded.
@@ -103,200 +303,19 @@ pub fn try_cow_clone_file_range(
 
     #[cfg(target_os = "macos")]
     {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-        use std::os::unix::io::AsRawFd;
-
-        // APFS clonefile operates on whole-file boundaries.
-        let total_size = src_file.metadata()?.len();
-        if src_offset == 0 && len == total_size {
-            let dst_c = match CString::new(dst_path.as_os_str().as_bytes()) {
-                Ok(c) => c,
-                Err(_) => {
-                    return Err(io::Error::new(
-                        io::ErrorKind::InvalidInput,
-                        "Invalid destination path",
-                    ))
-                }
-            };
-
-            // Remove existing destination file to avoid EEXIST
-            if dst_path.exists() {
-                let _ = std::fs::remove_file(dst_path);
-            }
-
-            let ret = unsafe {
-                fclonefileat(
-                    src_file.as_raw_fd(),
-                    libc::AT_FDCWD,
-                    dst_c.as_ptr(),
-                    0,
-                )
-            };
-
-            if ret == 0 {
-                return Ok(true);
-            }
-
-            // If fclonefileat failed, attempt clonefile via src_path if available
-            if let Some(src_p) = src_path {
-                if let Ok(src_c) = CString::new(src_p.as_os_str().as_bytes()) {
-                    let ret_cf = unsafe { clonefile(src_c.as_ptr(), dst_c.as_ptr(), 0) };
-                    if ret_cf == 0 {
-                        return Ok(true);
-                    }
-                }
-            }
-
-            let err = io::Error::last_os_error();
-            if let Some(code) = err.raw_os_error() {
-                if code == libc::ENOTSUP
-                    || code == libc::EXDEV
-                    || code == libc::ENOSYS
-                    || code == libc::EINVAL
-                    || code == libc::EOPNOTSUPP
-                {
-                    return Ok(false);
-                }
-            }
-            return Err(err);
-        }
-
-        // Subrange CoW cloning is not natively exposed by APFS fclonefileat.
-        // Return Ok(false) for graceful fallback to copy_range_to_file.
-        let _ = src_path;
-        Ok(false)
+        try_cow_clone_macos(src_file, src_path, src_offset, dst_path, len)
     }
 
     #[cfg(target_os = "linux")]
     {
-        use std::os::unix::io::AsRawFd;
-
-        #[repr(C)]
-        struct FileCloneRange {
-            src_fd: i64,
-            src_offset: u64,
-            src_length: u64,
-            dest_offset: u64,
-        }
-
-        const FICLONERANGE: libc::c_ulong = 0x4020940d;
-        const FICLONE: libc::c_ulong = 0x40049409;
-
-        let dst_file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(dst_path)?;
-
-        let src_fd = src_file.as_raw_fd();
-        let dst_fd = dst_file.as_raw_fd();
-
-        let ret = if src_offset == 0 && len == src_file.metadata()?.len() {
-            unsafe { libc::ioctl(dst_fd, FICLONE, src_fd) }
-        } else {
-            let range = FileCloneRange {
-                src_fd: src_fd as i64,
-                src_offset,
-                src_length: len,
-                dest_offset: 0,
-            };
-            unsafe { libc::ioctl(dst_fd, FICLONERANGE, &range) }
-        };
-
-        if ret == 0 {
-            let _ = dst_file.set_len(len);
-            return Ok(true);
-        }
-
-        let err = io::Error::last_os_error();
-        if let Some(code) = err.raw_os_error() {
-            if code == libc::EOPNOTSUPP
-                || code == libc::ENOTSUP
-                || code == libc::EXDEV
-                || code == libc::EINVAL
-                || code == libc::ENOSYS
-                || code == libc::ENOTTY
-            {
-                drop(dst_file);
-                let _ = std::fs::remove_file(dst_path);
-                return Ok(false);
-            }
-        }
-        Err(err)
+        let _ = src_path;
+        try_cow_clone_linux(src_file, src_offset, dst_path, len)
     }
 
     #[cfg(windows)]
     {
-        use std::os::windows::io::AsRawHandle;
-
-        let dst_file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(dst_path)?;
-
-        dst_file.set_len(len)?;
-
-        #[repr(C)]
-        struct DUPLICATE_EXTENTS_DATA {
-            file_handle: *mut std::ffi::c_void,
-            source_file_offset: i64,
-            target_file_offset: i64,
-            byte_count: i64,
-        }
-
-        const FSCTL_DUPLICATE_EXTENTS_TO_FILE: u32 = 0x00098344;
-
-        extern "system" {
-            fn DeviceIoControl(
-                hDevice: *mut std::ffi::c_void,
-                dwIoControlCode: u32,
-                lpInBuffer: *mut std::ffi::c_void,
-                nInBufferSize: u32,
-                lpOutBuffer: *mut std::ffi::c_void,
-                nOutBufferSize: u32,
-                lpBytesReturned: *mut u32,
-                lpOverlapped: *mut std::ffi::c_void,
-            ) -> i32;
-        }
-
-        let mut dup_data = DUPLICATE_EXTENTS_DATA {
-            file_handle: src_file.as_raw_handle() as *mut std::ffi::c_void,
-            source_file_offset: src_offset as i64,
-            target_file_offset: 0,
-            byte_count: len as i64,
-        };
-
-        let mut bytes_returned: u32 = 0;
-        let ok = unsafe {
-            DeviceIoControl(
-                dst_file.as_raw_handle() as *mut std::ffi::c_void,
-                FSCTL_DUPLICATE_EXTENTS_TO_FILE,
-                &mut dup_data as *mut _ as *mut std::ffi::c_void,
-                std::mem::size_of::<DUPLICATE_EXTENTS_DATA>() as u32,
-                std::ptr::null_mut(),
-                0,
-                &mut bytes_returned,
-                std::ptr::null_mut(),
-            )
-        };
-
-        if ok != 0 {
-            return Ok(true);
-        }
-
-        let err = io::Error::last_os_error();
-        if let Some(code) = err.raw_os_error() {
-            if code == 50 || code == 1 || code == 87 || code == 17 {
-                drop(dst_file);
-                let _ = std::fs::remove_file(dst_path);
-                return Ok(false);
-            }
-        }
-        Err(err)
+        let _ = src_path;
+        try_cow_clone_windows(src_file, src_offset, dst_path, len)
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
@@ -304,6 +323,58 @@ pub fn try_cow_clone_file_range(
         let _ = (src_file, src_path, src_offset, dst_path, len);
         Ok(false)
     }
+}
+
+#[cfg(unix)]
+fn copy_range_unix(
+    src_file: &File,
+    dst_file: &mut File,
+    src_offset: u64,
+    len: u64,
+) -> io::Result<u64> {
+    use std::os::unix::fs::FileExt;
+    const CHUNK_SIZE: usize = 128 * 1024;
+    let mut buf = vec![0u8; CHUNK_SIZE];
+    let mut transferred = 0u64;
+
+    while transferred < len {
+        let to_read = ((len - transferred) as usize).min(CHUNK_SIZE);
+        let n = src_file.read_at(&mut buf[..to_read], src_offset + transferred)?;
+        if n == 0 {
+            break;
+        }
+        dst_file.write_all(&buf[..n])?;
+        transferred += n as u64;
+    }
+
+    dst_file.flush()?;
+    Ok(transferred)
+}
+
+#[cfg(windows)]
+fn copy_range_windows(
+    src_file: &File,
+    dst_file: &mut File,
+    src_offset: u64,
+    len: u64,
+) -> io::Result<u64> {
+    use std::os::windows::fs::FileExt;
+    const CHUNK_SIZE: usize = 128 * 1024;
+    let mut buf = vec![0u8; CHUNK_SIZE];
+    let mut transferred = 0u64;
+
+    while transferred < len {
+        let to_read = ((len - transferred) as usize).min(CHUNK_SIZE);
+        let n = src_file.seek_read(&mut buf[..to_read], src_offset + transferred)?;
+        if n == 0 {
+            break;
+        }
+        dst_file.write_all(&buf[..n])?;
+        transferred += n as u64;
+    }
+
+    dst_file.flush()?;
+    Ok(transferred)
 }
 
 /// Fallback helper: copies `len` bytes starting at `src_offset` into `dst_path` using chunked positioned reads.
@@ -325,44 +396,12 @@ pub fn copy_range_to_file(
 
     #[cfg(unix)]
     {
-        use std::os::unix::fs::FileExt;
-        const CHUNK_SIZE: usize = 128 * 1024;
-        let mut buf = vec![0u8; CHUNK_SIZE];
-        let mut transferred = 0u64;
-
-        while transferred < len {
-            let to_read = ((len - transferred) as usize).min(CHUNK_SIZE);
-            let n = src_file.read_at(&mut buf[..to_read], src_offset + transferred)?;
-            if n == 0 {
-                break;
-            }
-            dst_file.write_all(&buf[..n])?;
-            transferred += n as u64;
-        }
-
-        dst_file.flush()?;
-        Ok(transferred)
+        copy_range_unix(src_file, &mut dst_file, src_offset, len)
     }
 
     #[cfg(windows)]
     {
-        use std::os::windows::fs::FileExt;
-        const CHUNK_SIZE: usize = 128 * 1024;
-        let mut buf = vec![0u8; CHUNK_SIZE];
-        let mut transferred = 0u64;
-
-        while transferred < len {
-            let to_read = ((len - transferred) as usize).min(CHUNK_SIZE);
-            let n = src_file.seek_read(&mut buf[..to_read], src_offset + transferred)?;
-            if n == 0 {
-                break;
-            }
-            dst_file.write_all(&buf[..n])?;
-            transferred += n as u64;
-        }
-
-        dst_file.flush()?;
-        Ok(transferred)
+        copy_range_windows(src_file, &mut dst_file, src_offset, len)
     }
 
     #[cfg(not(any(unix, windows)))]

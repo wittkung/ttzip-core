@@ -19,7 +19,10 @@ const DAYS_PER_MONTH: [[u8; 12]; 2] = [
 
 /// Returns `true` if `year` is a leap year in the Gregorian calendar.
 #[inline]
-#[allow(clippy::manual_is_multiple_of)]
+#[allow(
+    clippy::manual_is_multiple_of,
+    reason = "const fn leap-year formula kept explicit for MSRV and readability"
+)]
 pub const fn is_leap_year(year: u16) -> bool {
     (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)
 }

@@ -68,32 +68,44 @@ impl From<ComplianceReport> for UniFFIStandardsComplianceReport {
     }
 }
 
+fn container_compliance_standard(format: DetectedFormat) -> Option<ComplianceStandard> {
+    match format {
+        DetectedFormat::Zip => Some(ComplianceStandard::PkwareAppnote),
+        DetectedFormat::SevenZip => Some(ComplianceStandard::SevenZipSpec),
+        DetectedFormat::Tar => Some(ComplianceStandard::Posix1Tar),
+        DetectedFormat::Rar => Some(ComplianceStandard::RarSpec),
+        DetectedFormat::Cab => Some(ComplianceStandard::CabSpec),
+        DetectedFormat::Iso => Some(ComplianceStandard::Iso9660),
+        DetectedFormat::Dmg => Some(ComplianceStandard::AppleDmgUdif),
+        DetectedFormat::Xar => Some(ComplianceStandard::XarSpec),
+        DetectedFormat::Aar => Some(ComplianceStandard::AarSpec),
+        DetectedFormat::Wim => Some(ComplianceStandard::WimSpec),
+        DetectedFormat::Ar => Some(ComplianceStandard::UnixArSpec),
+        _ => None,
+    }
+}
+
+fn stream_compliance_standard(format: DetectedFormat) -> ComplianceStandard {
+    match format {
+        DetectedFormat::Gzip => ComplianceStandard::Rfc1952Gzip,
+        DetectedFormat::Bzip2 => ComplianceStandard::Bzip2Spec,
+        DetectedFormat::Xz => ComplianceStandard::XzSpec,
+        DetectedFormat::Zstd => ComplianceStandard::Rfc8878Zstd,
+        DetectedFormat::Lzfse => ComplianceStandard::LzfseSpec,
+        DetectedFormat::Snappy => ComplianceStandard::SnappySpec,
+        DetectedFormat::Lz4 => ComplianceStandard::Lz4Spec,
+        DetectedFormat::Lzip => ComplianceStandard::LzipSpec,
+        DetectedFormat::Lrzip => ComplianceStandard::LrzipSpec,
+        DetectedFormat::Brotli => ComplianceStandard::BrotliSpec,
+        _ => ComplianceStandard::Generic,
+    }
+}
+
 /// Resolves authoritative canonical standard name for a detected archive format.
 fn canonical_standard_name(format: DetectedFormat) -> &'static str {
-    match format {
-        DetectedFormat::Zip => ComplianceStandard::PkwareAppnote.name(),
-        DetectedFormat::SevenZip => ComplianceStandard::SevenZipSpec.name(),
-        DetectedFormat::Tar => ComplianceStandard::Posix1Tar.name(),
-        DetectedFormat::Gzip => ComplianceStandard::Rfc1952Gzip.name(),
-        DetectedFormat::Bzip2 => ComplianceStandard::Bzip2Spec.name(),
-        DetectedFormat::Xz => ComplianceStandard::XzSpec.name(),
-        DetectedFormat::Zstd => ComplianceStandard::Rfc8878Zstd.name(),
-        DetectedFormat::Rar => ComplianceStandard::RarSpec.name(),
-        DetectedFormat::Cab => ComplianceStandard::CabSpec.name(),
-        DetectedFormat::Iso => ComplianceStandard::Iso9660.name(),
-        DetectedFormat::Dmg => ComplianceStandard::AppleDmgUdif.name(),
-        DetectedFormat::Xar => ComplianceStandard::XarSpec.name(),
-        DetectedFormat::Lzfse => ComplianceStandard::LzfseSpec.name(),
-        DetectedFormat::Snappy => ComplianceStandard::SnappySpec.name(),
-        DetectedFormat::Lz4 => ComplianceStandard::Lz4Spec.name(),
-        DetectedFormat::Lzip => ComplianceStandard::LzipSpec.name(),
-        DetectedFormat::Lrzip => ComplianceStandard::LrzipSpec.name(),
-        DetectedFormat::Brotli => ComplianceStandard::BrotliSpec.name(),
-        DetectedFormat::Aar => ComplianceStandard::AarSpec.name(),
-        DetectedFormat::Wim => ComplianceStandard::WimSpec.name(),
-        DetectedFormat::Ar => ComplianceStandard::UnixArSpec.name(),
-        _ => ComplianceStandard::Generic.name(),
-    }
+    container_compliance_standard(format)
+        .unwrap_or_else(|| stream_compliance_standard(format))
+        .name()
 }
 
 /// Audits an on-disk archive file against official container and codec standards.

@@ -20,11 +20,93 @@ fn find_third_party_or_vendor(start_dir: &Path) -> PathBuf {
     start_dir.join("vendor")
 }
 
+fn add_existing_sources(build: &mut cc::Build, base_dir: &Path, sources: &[&str]) {
+    for src in sources {
+        let path = base_dir.join(src);
+        if path.exists() {
+            build.file(path);
+        }
+    }
+}
+
+fn configure_libdeflate_sources(build: &mut cc::Build, libdeflate_dir: &Path, target: &str) {
+    if !libdeflate_dir.exists() {
+        return;
+    }
+    let deflate_sources = [
+        "lib/adler32.c",
+        "lib/crc32.c",
+        "lib/deflate_compress.c",
+        "lib/deflate_decompress.c",
+        "lib/gzip_compress.c",
+        "lib/gzip_decompress.c",
+        "lib/utils.c",
+        "lib/zlib_compress.c",
+        "lib/zlib_decompress.c",
+    ];
+    add_existing_sources(build, libdeflate_dir, &deflate_sources);
+    let cpu_src = if target.contains("aarch64") || target.contains("arm64") {
+        Some("lib/arm/cpu_features.c")
+    } else if target.contains("x86_64") {
+        Some("lib/x86/cpu_features.c")
+    } else {
+        None
+    };
+    if let Some(rel) = cpu_src {
+        add_existing_sources(build, libdeflate_dir, &[rel]);
+    }
+    build.include(libdeflate_dir.join("lib"));
+    build.include(libdeflate_dir);
+}
+
+fn configure_zstd_sources(build: &mut cc::Build, zstd_dir: &Path) {
+    if !zstd_dir.exists() {
+        return;
+    }
+    let zstd_sources = [
+        "common/debug.c",
+        "common/entropy_common.c",
+        "common/error_private.c",
+        "common/fse_decompress.c",
+        "common/pool.c",
+        "common/threading.c",
+        "common/xxhash.c",
+        "common/zstd_common.c",
+        "compress/fse_compress.c",
+        "compress/hist.c",
+        "compress/huf_compress.c",
+        "compress/zstd_compress.c",
+        "compress/zstd_compress_literals.c",
+        "compress/zstd_compress_sequences.c",
+        "compress/zstd_compress_superblock.c",
+        "compress/zstd_double_fast.c",
+        "compress/zstd_fast.c",
+        "compress/zstd_lazy.c",
+        "compress/zstd_ldm.c",
+        "compress/zstd_opt.c",
+        "compress/zstd_preSplit.c",
+        "compress/zstdmt_compress.c",
+        "decompress/huf_decompress.c",
+        "decompress/huf_decompress_amd64.S",
+        "decompress/zstd_ddict.c",
+        "decompress/zstd_decompress.c",
+        "decompress/zstd_decompress_block.c",
+        "dictBuilder/cover.c",
+        "dictBuilder/divsufsort.c",
+        "dictBuilder/fastcover.c",
+        "dictBuilder/zdict.c",
+    ];
+    add_existing_sources(build, zstd_dir, &zstd_sources);
+    build.include(zstd_dir);
+    build.include(zstd_dir.join("common"));
+    build.include(zstd_dir.join("dictBuilder"));
+    build.define("ZSTD_MULTITHREAD", None);
+}
+
 /// Compiles in-tree native C codecs (fast-lzma2, lzfse) for standalone Cargo builds.
 /// In Bazel, build.rs is short-circuited by BAZEL_BUILD and Bzlmod handles all codecs hermetically.
 fn compile_native_codecs(repo_root: &Path) {
     let top_vendor = find_third_party_or_vendor(repo_root);
-
     let fast_lzma2_dir = top_vendor.join("fast-lzma2");
     let lzfse_dir = if top_vendor.join("lzfse/src").exists() {
         top_vendor.join("lzfse/src")
@@ -43,7 +125,6 @@ fn compile_native_codecs(repo_root: &Path) {
         build.flag("-mmacosx-version-min=14.0");
     }
 
-    // 1. fast-lzma2
     if fast_lzma2_dir.exists() {
         let fl2_sources = [
             "dict_buffer.c",
@@ -61,16 +142,10 @@ fn compile_native_codecs(repo_root: &Path) {
             "util.c",
             "xxhash.c",
         ];
-        for src in fl2_sources {
-            let path = fast_lzma2_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
+        add_existing_sources(&mut build, &fast_lzma2_dir, &fl2_sources);
         build.include(&fast_lzma2_dir);
     }
 
-    // 2. lzfse
     if lzfse_dir.exists() {
         let lzfse_sources = [
             "lzfse_decode.c",
@@ -81,107 +156,19 @@ fn compile_native_codecs(repo_root: &Path) {
             "lzvn_decode_base.c",
             "lzvn_encode_base.c",
         ];
-        for src in lzfse_sources {
-            let path = lzfse_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
+        add_existing_sources(&mut build, &lzfse_dir, &lzfse_sources);
         build.include(&lzfse_dir);
     }
 
-    // 3. libdeflate
-    if libdeflate_dir.exists() {
-        let deflate_sources = [
-            "lib/adler32.c",
-            "lib/crc32.c",
-            "lib/deflate_compress.c",
-            "lib/deflate_decompress.c",
-            "lib/gzip_compress.c",
-            "lib/gzip_decompress.c",
-            "lib/utils.c",
-            "lib/zlib_compress.c",
-            "lib/zlib_decompress.c",
-        ];
-        for src in deflate_sources {
-            let path = libdeflate_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
-        if target.contains("aarch64") || target.contains("arm64") {
-            let arm_cpu = libdeflate_dir.join("lib/arm/cpu_features.c");
-            if arm_cpu.exists() {
-                build.file(arm_cpu);
-            }
-        } else if target.contains("x86_64") {
-            let x86_cpu = libdeflate_dir.join("lib/x86/cpu_features.c");
-            if x86_cpu.exists() {
-                build.file(x86_cpu);
-            }
-        }
-        build.include(libdeflate_dir.join("lib"));
-        build.include(&libdeflate_dir);
-    }
+    configure_libdeflate_sources(&mut build, &libdeflate_dir, &target);
 
-    // 4. lz4
     if lz4_dir.exists() {
         let lz4_sources = ["lz4.c", "lz4frame.c", "lz4hc.c"];
-        for src in lz4_sources {
-            let path = lz4_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
+        add_existing_sources(&mut build, &lz4_dir, &lz4_sources);
         build.include(&lz4_dir);
     }
 
-    // 5. zstd
-    if zstd_dir.exists() {
-        let zstd_sources = [
-            "common/debug.c",
-            "common/entropy_common.c",
-            "common/error_private.c",
-            "common/fse_decompress.c",
-            "common/pool.c",
-            "common/threading.c",
-            "common/xxhash.c",
-            "common/zstd_common.c",
-            "compress/fse_compress.c",
-            "compress/hist.c",
-            "compress/huf_compress.c",
-            "compress/zstd_compress.c",
-            "compress/zstd_compress_literals.c",
-            "compress/zstd_compress_sequences.c",
-            "compress/zstd_compress_superblock.c",
-            "compress/zstd_double_fast.c",
-            "compress/zstd_fast.c",
-            "compress/zstd_lazy.c",
-            "compress/zstd_ldm.c",
-            "compress/zstd_opt.c",
-            "compress/zstd_preSplit.c",
-            "compress/zstdmt_compress.c",
-            "decompress/huf_decompress.c",
-            "decompress/huf_decompress_amd64.S",
-            "decompress/zstd_ddict.c",
-            "decompress/zstd_decompress.c",
-            "decompress/zstd_decompress_block.c",
-            "dictBuilder/cover.c",
-            "dictBuilder/divsufsort.c",
-            "dictBuilder/fastcover.c",
-            "dictBuilder/zdict.c",
-        ];
-        for src in zstd_sources {
-            let path = zstd_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
-        build.include(&zstd_dir);
-        build.include(zstd_dir.join("common"));
-        build.include(zstd_dir.join("dictBuilder"));
-        build.define("ZSTD_MULTITHREAD", None);
-    }
+    configure_zstd_sources(&mut build, &zstd_dir);
 
     build.compile("ttzip_native_codecs");
 }
@@ -256,7 +243,7 @@ fn main() {
         return;
     }
 
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
     let repo_root = manifest_dir
         .parent()
         .and_then(|p| p.parent())

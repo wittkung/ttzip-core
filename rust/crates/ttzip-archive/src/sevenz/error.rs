@@ -207,23 +207,11 @@ impl SevenZError {
     pub fn is_io(&self) -> bool {
         self.as_io_error().is_some()
     }
-}
-
-impl Clone for SevenZError {
-    fn clone(&self) -> Self {
+    fn clone_runtime_variant(&self) -> Self {
         match self {
-            Self::CyclicBindPairs => Self::CyclicBindPairs,
-            Self::SelfLoop { coder_index } => Self::SelfLoop { coder_index: *coder_index },
-            Self::InvalidCoderIndex { index, num_coders } => Self::InvalidCoderIndex { index: *index, num_coders: *num_coders },
-            Self::InvalidStreamIndex { stream_index, max_streams } => Self::InvalidStreamIndex { stream_index: *stream_index, max_streams: *max_streams },
-            Self::InvalidSubstreamIndex { index, total } => Self::InvalidSubstreamIndex { index: *index, total: *total },
-            Self::StreamAlreadyBound { stream_index } => Self::StreamAlreadyBound { stream_index: *stream_index },
-            Self::CorruptHeader(s) => Self::CorruptHeader(s),
-            Self::CrcMismatch { expected, computed } => Self::CrcMismatch { expected: *expected, computed: *computed },
-            Self::UnexpectedEof { required, actual } => Self::UnexpectedEof { required: *required, actual: *actual },
-            Self::NoMainCoder => Self::NoMainCoder,
-            Self::EmptyFolder => Self::EmptyFolder,
-            Self::CountLimitExceeded { field_name, value, limit } => Self::CountLimitExceeded { field_name, value: *value, limit: *limit },
+            Self::CountLimitExceeded { field_name, value, limit } => {
+                Self::CountLimitExceeded { field_name, value: *value, limit: *limit }
+            }
             Self::InsecurePath(p) => Self::InsecurePath(p.clone()),
             Self::CryptoExhaustion => Self::CryptoExhaustion,
             Self::CompressionError(s) => Self::CompressionError(s.clone()),
@@ -233,7 +221,58 @@ impl Clone for SevenZError {
             Self::MaybeBadPassword => Self::MaybeBadPassword,
             Self::UnsupportedCodec(id) => Self::UnsupportedCodec(*id),
             Self::DecompressionFailed(s) => Self::DecompressionFailed(s.clone()),
-            Self::OutOfMemory => Self::OutOfMemory,
+            _ => Self::OutOfMemory,
+        }
+    }
+
+    fn eq_runtime_variant(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                Self::CountLimitExceeded { field_name: a1, value: a2, limit: a3 },
+                Self::CountLimitExceeded { field_name: b1, value: b2, limit: b3 },
+            ) => (a1, a2, a3) == (b1, b2, b3),
+            (Self::InsecurePath(a), Self::InsecurePath(b))
+            | (Self::CompressionError(a), Self::CompressionError(b))
+            | (Self::InvalidParameter(a), Self::InvalidParameter(b))
+            | (Self::DecompressionFailed(a), Self::DecompressionFailed(b)) => a == b,
+            (Self::Io(a), Self::Io(b)) => (a.kind(), a.to_string()) == (b.kind(), b.to_string()),
+            (Self::UnsupportedCodec(a), Self::UnsupportedCodec(b)) => a == b,
+            (Self::CryptoExhaustion, Self::CryptoExhaustion)
+            | (Self::BadPassword, Self::BadPassword)
+            | (Self::MaybeBadPassword, Self::MaybeBadPassword)
+            | (Self::OutOfMemory, Self::OutOfMemory) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Clone for SevenZError {
+    fn clone(&self) -> Self {
+        match self {
+            Self::CyclicBindPairs => Self::CyclicBindPairs,
+            Self::SelfLoop { coder_index } => Self::SelfLoop { coder_index: *coder_index },
+            Self::InvalidCoderIndex { index, num_coders } => {
+                Self::InvalidCoderIndex { index: *index, num_coders: *num_coders }
+            }
+            Self::InvalidStreamIndex { stream_index, max_streams } => {
+                Self::InvalidStreamIndex { stream_index: *stream_index, max_streams: *max_streams }
+            }
+            Self::InvalidSubstreamIndex { index, total } => {
+                Self::InvalidSubstreamIndex { index: *index, total: *total }
+            }
+            Self::StreamAlreadyBound { stream_index } => {
+                Self::StreamAlreadyBound { stream_index: *stream_index }
+            }
+            Self::CorruptHeader(s) => Self::CorruptHeader(s),
+            Self::CrcMismatch { expected, computed } => {
+                Self::CrcMismatch { expected: *expected, computed: *computed }
+            }
+            Self::UnexpectedEof { required, actual } => {
+                Self::UnexpectedEof { required: *required, actual: *actual }
+            }
+            Self::NoMainCoder => Self::NoMainCoder,
+            Self::EmptyFolder => Self::EmptyFolder,
+            _ => self.clone_runtime_variant(),
         }
     }
 }
@@ -241,29 +280,33 @@ impl Clone for SevenZError {
 impl PartialEq for SevenZError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::CyclicBindPairs, Self::CyclicBindPairs) => true,
+            (Self::CyclicBindPairs, Self::CyclicBindPairs)
+            | (Self::NoMainCoder, Self::NoMainCoder)
+            | (Self::EmptyFolder, Self::EmptyFolder) => true,
             (Self::SelfLoop { coder_index: a }, Self::SelfLoop { coder_index: b }) => a == b,
-            (Self::InvalidCoderIndex { index: a1, num_coders: a2 }, Self::InvalidCoderIndex { index: b1, num_coders: b2 }) => a1 == b1 && a2 == b2,
-            (Self::InvalidStreamIndex { stream_index: a1, max_streams: a2 }, Self::InvalidStreamIndex { stream_index: b1, max_streams: b2 }) => a1 == b1 && a2 == b2,
-            (Self::InvalidSubstreamIndex { index: a1, total: a2 }, Self::InvalidSubstreamIndex { index: b1, total: b2 }) => a1 == b1 && a2 == b2,
+            (
+                Self::InvalidCoderIndex { index: a1, num_coders: a2 },
+                Self::InvalidCoderIndex { index: b1, num_coders: b2 },
+            )
+            | (
+                Self::InvalidSubstreamIndex { index: a1, total: a2 },
+                Self::InvalidSubstreamIndex { index: b1, total: b2 },
+            ) => (a1, a2) == (b1, b2),
+            (
+                Self::InvalidStreamIndex { stream_index: a1, max_streams: a2 },
+                Self::InvalidStreamIndex { stream_index: b1, max_streams: b2 },
+            ) => (a1, a2) == (b1, b2),
             (Self::StreamAlreadyBound { stream_index: a }, Self::StreamAlreadyBound { stream_index: b }) => a == b,
             (Self::CorruptHeader(a), Self::CorruptHeader(b)) => a == b,
-            (Self::CrcMismatch { expected: a1, computed: a2 }, Self::CrcMismatch { expected: b1, computed: b2 }) => a1 == b1 && a2 == b2,
-            (Self::UnexpectedEof { required: a1, actual: a2 }, Self::UnexpectedEof { required: b1, actual: b2 }) => a1 == b1 && a2 == b2,
-            (Self::NoMainCoder, Self::NoMainCoder) => true,
-            (Self::EmptyFolder, Self::EmptyFolder) => true,
-            (Self::CountLimitExceeded { field_name: a1, value: a2, limit: a3 }, Self::CountLimitExceeded { field_name: b1, value: b2, limit: b3 }) => a1 == b1 && a2 == b2 && a3 == b3,
-            (Self::InsecurePath(a), Self::InsecurePath(b)) => a == b,
-            (Self::CryptoExhaustion, Self::CryptoExhaustion) => true,
-            (Self::CompressionError(a), Self::CompressionError(b)) => a == b,
-            (Self::Io(a), Self::Io(b)) => a.kind() == b.kind() && a.to_string() == b.to_string(),
-            (Self::InvalidParameter(a), Self::InvalidParameter(b)) => a == b,
-            (Self::BadPassword, Self::BadPassword) => true,
-            (Self::MaybeBadPassword, Self::MaybeBadPassword) => true,
-            (Self::UnsupportedCodec(a), Self::UnsupportedCodec(b)) => a == b,
-            (Self::DecompressionFailed(a), Self::DecompressionFailed(b)) => a == b,
-            (Self::OutOfMemory, Self::OutOfMemory) => true,
-            _ => false,
+            (
+                Self::CrcMismatch { expected: a1, computed: a2 },
+                Self::CrcMismatch { expected: b1, computed: b2 },
+            ) => (a1, a2) == (b1, b2),
+            (
+                Self::UnexpectedEof { required: a1, actual: a2 },
+                Self::UnexpectedEof { required: b1, actual: b2 },
+            ) => (a1, a2) == (b1, b2),
+            _ => self.eq_runtime_variant(other),
         }
     }
 }

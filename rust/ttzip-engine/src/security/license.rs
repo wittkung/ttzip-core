@@ -49,72 +49,15 @@ pub fn verify_license_key(
     license_key: String,
     public_key_base64: Option<String>,
 ) -> UniFFILicenseResult {
-    let trimmed = license_key.trim();
-    if !trimmed.starts_with("TTZIP1-") {
-        return UniFFILicenseResult::MalformedKey {
-            reason: "Missing TTZIP1- protocol prefix".to_string(),
-        };
-    }
-
-    let token = &trimmed["TTZIP1-".len()..];
-    let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 2 {
-        return UniFFILicenseResult::MalformedKey {
-            reason: "Invalid token format, expected <payload>.<signature>".to_string(),
-        };
-    }
-
-    let payload_b64 = parts[0];
-    let sig_b64 = parts[1];
-
-    let payload_bytes = match decode_base64(payload_b64) {
-        Ok(b) if !b.is_empty() => b,
-        _ => {
-            return UniFFILicenseResult::MalformedKey {
-                reason: "Failed to decode base64 payload".to_string(),
-            }
-        }
+    let (payload_bytes, signature) = match parse_license_token(&license_key) {
+        Ok(pair) => pair,
+        Err(reason) => return UniFFILicenseResult::MalformedKey { reason },
     };
 
-    let sig_bytes = match decode_base64(sig_b64) {
-        Ok(b) if b.len() == 64 => b,
-        _ => {
-            return UniFFILicenseResult::MalformedKey {
-                reason: "Failed to decode base64 signature".to_string(),
-            }
-        }
-    };
-
-    let pub_key_str = public_key_base64.as_deref().unwrap_or(DEFAULT_PUBLIC_KEY_BASE64);
-    let pub_key_bytes = match decode_base64(pub_key_str) {
-        Ok(b) if b.len() == 32 => b,
-        Ok(_) => {
-            return UniFFILicenseResult::MalformedKey {
-                reason: "Failed to initialize Ed25519 public key from raw bytes".to_string(),
-            }
-        }
-        Err(_) => {
-            return UniFFILicenseResult::MalformedKey {
-                reason: "Invalid base64 public key representation".to_string(),
-            }
-        }
-    };
-
-    let mut pk_arr = [0u8; 32];
-    pk_arr.copy_from_slice(&pub_key_bytes);
-
-    let verifying_key = match VerifyingKey::from_bytes(&pk_arr) {
+    let verifying_key = match decode_verifying_key(public_key_base64.as_deref()) {
         Ok(vk) => vk,
-        Err(_) => {
-            return UniFFILicenseResult::MalformedKey {
-                reason: "Failed to parse Ed25519 verifying key".to_string(),
-            };
-        }
+        Err(reason) => return UniFFILicenseResult::MalformedKey { reason },
     };
-
-    let mut sig_arr = [0u8; 64];
-    sig_arr.copy_from_slice(&sig_bytes);
-    let signature = Signature::from_bytes(&sig_arr);
 
     if verifying_key.verify_strict(&payload_bytes, &signature).is_err() {
         return UniFFILicenseResult::InvalidSignature;
@@ -138,6 +81,47 @@ pub fn verify_license_key(
             order_id: json_payload.order_id,
         },
     }
+}
+
+fn parse_license_token(license_key: &str) -> Result<(Vec<u8>, Signature), String> {
+    let trimmed = license_key.trim();
+    let Some(token) = trimmed.strip_prefix("TTZIP1-") else {
+        return Err("Missing TTZIP1- protocol prefix".to_string());
+    };
+
+    let parts: Vec<&str> = token.split('.').collect();
+    if parts.len() != 2 {
+        return Err("Invalid token format, expected <payload>.<signature>".to_string());
+    }
+
+    let payload_bytes = match decode_base64(parts[0]) {
+        Ok(b) if !b.is_empty() => b,
+        _ => return Err("Failed to decode base64 payload".to_string()),
+    };
+
+    let sig_bytes = match decode_base64(parts[1]) {
+        Ok(b) if b.len() == 64 => b,
+        _ => return Err("Failed to decode base64 signature".to_string()),
+    };
+
+    let mut sig_arr = [0u8; 64];
+    sig_arr.copy_from_slice(&sig_bytes);
+    Ok((payload_bytes, Signature::from_bytes(&sig_arr)))
+}
+
+fn decode_verifying_key(public_key_base64: Option<&str>) -> Result<VerifyingKey, String> {
+    let pub_key_str = public_key_base64.unwrap_or(DEFAULT_PUBLIC_KEY_BASE64);
+    let pub_key_bytes = match decode_base64(pub_key_str) {
+        Ok(b) if b.len() == 32 => b,
+        Ok(_) => return Err("Failed to initialize Ed25519 public key from raw bytes".to_string()),
+        Err(_) => return Err("Invalid base64 public key representation".to_string()),
+    };
+
+    let mut pk_arr = [0u8; 32];
+    pk_arr.copy_from_slice(&pub_key_bytes);
+
+    VerifyingKey::from_bytes(&pk_arr)
+        .map_err(|_| "Failed to parse Ed25519 verifying key".to_string())
 }
 
 fn decode_base64_char(c: u8) -> Option<u8> {

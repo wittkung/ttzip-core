@@ -65,7 +65,10 @@ pub trait FixedSizeBlock: Pod + Sized {
     const SIZE: usize = std::mem::size_of::<Self>();
 
     /// Converts all numerical fields in `self` from little-endian representation to host-endian.
-    #[allow(clippy::wrong_self_convention)]
+    #[allow(
+        clippy::wrong_self_convention,
+        reason = "in-place endian swap matches std integer from_le(self) convention"
+    )]
     fn from_le(self) -> Self;
 
     /// Converts all numerical fields in `self` from host-endian representation to little-endian.

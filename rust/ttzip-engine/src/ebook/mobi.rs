@@ -82,55 +82,14 @@ pub struct EbookMobiDecoder<'a> {
 impl<'a> EbookMobiDecoder<'a> {
     /// Parses a MOBI / AZW3 file from a raw byte slice.
     pub fn parse(data: &'a [u8]) -> EbookResult<Self> {
-        if data.len() < 78 {
-            return Err(EbookError::Mobi("Payload smaller than PDB header (78 bytes)".to_string()));
-        }
-
-        // PDB Type & Creator check: bytes 60..64 and 64..68
-        let db_type = &data[60..64];
-        let db_creator = &data[64..68];
-        let is_mobi_pdb = (db_type == b"BOOK" || db_type == b"TEXt")
-            && (db_creator == b"MOBI" || db_creator == b"REAd");
-
-        if !is_mobi_pdb {
-            // Also check Record 0 directly for "MOBI" identifier if PDB creator was non-standard
-            let num_records = read_u16_be(data, 76) as usize;
-            if num_records == 0 || data.len() < 78 + num_records * 8 {
-                return Err(EbookError::UnsupportedFormat("Not a valid Palm Database (PDB)".to_string()));
-            }
-        }
-
-        let num_records = read_u16_be(data, 76) as usize;
-        let record_table_end = 78 + num_records * 8;
-        if data.len() < record_table_end {
-            return Err(EbookError::Mobi("Truncated PDB record table".to_string()));
-        }
-
-        let mut records = Vec::with_capacity(num_records);
-        for i in 0..num_records {
-            let offset = 78 + i * 8;
-            let rec_offset = read_u32_be(data, offset);
-            let attributes = data[offset + 4];
-            let unique_id = ((data[offset + 5] as u32) << 16)
-                | ((data[offset + 6] as u32) << 8)
-                | (data[offset + 7] as u32);
-            records.push(PdbRecordEntry {
-                offset: rec_offset,
-                attributes,
-                unique_id,
-            });
-        }
-
-        if records.is_empty() {
-            return Err(EbookError::Mobi("PDB has 0 records".to_string()));
-        }
-
-        // Parse Record 0
+        let records = parse_pdb_records(data)?;
         let rec0 = get_record_slice(data, &records, 0)
             .ok_or_else(|| EbookError::Mobi("Missing Record 0 in PDB".to_string()))?;
 
         if rec0.len() < 16 {
-            return Err(EbookError::Mobi("Record 0 smaller than PalmDOC header (16 bytes)".to_string()));
+            return Err(EbookError::Mobi(
+                "Record 0 smaller than PalmDOC header (16 bytes)".to_string(),
+            ));
         }
 
         let palmdoc = PalmDocHeader {
@@ -141,106 +100,18 @@ impl<'a> EbookMobiDecoder<'a> {
             current_position: read_u32_be(rec0, 12),
         };
 
-        let mut mobi = MobiHeaderInfo::default();
-        let mut exth_map = HashMap::new();
-        let mut full_name = None;
-
-        if rec0.len() >= 40 && &rec0[16..20] == b"MOBI" {
-            let header_len = read_u32_be(rec0, 20);
-            let mobi_type = read_u32_be(rec0, 24);
-            let text_encoding = read_u32_be(rec0, 28);
-            let unique_id = read_u32_be(rec0, 32);
-            let file_version = read_u32_be(rec0, 36);
-
-            let full_name_offset = if rec0.len() >= 88 {
-                read_u32_be(rec0, 84)
-            } else {
-                0
-            };
-            let full_name_length = if rec0.len() >= 92 {
-                read_u32_be(rec0, 88)
-            } else {
-                0
-            };
-
-            let first_image_index = if rec0.len() >= 112 {
-                read_u32_be(rec0, 108)
-            } else {
-                0
-            };
-
-            let exth_flags = if rec0.len() >= 132 {
-                read_u32_be(rec0, 128)
-            } else {
-                0
-            };
-
-            let extra_data_flags = if rec0.len() >= 244 {
-                read_u16_be(rec0, 242)
-            } else {
-                0
-            };
-
-            mobi = MobiHeaderInfo {
-                header_length: header_len,
-                mobi_type,
-                text_encoding,
-                unique_id,
-                file_version,
-                full_name_offset,
-                full_name_length,
-                exth_flags,
-                first_image_index,
-                extra_data_flags,
-            };
-
-            // Parse Full Name if present
-            if full_name_offset > 0 && full_name_length > 0 {
-                let start = full_name_offset as usize;
-                let end = start + full_name_length as usize;
-                if end <= rec0.len() {
-                    let title_slice = &rec0[start..end];
-                    if let Ok(s) = std::str::from_utf8(title_slice) {
-                        full_name = Some(s.trim().to_string());
-                    } else {
-                        let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(title_slice);
-                        full_name = Some(cow.trim().to_string());
-                    }
-                }
-            }
-
-            // Parse EXTH Header if present
-            if (exth_flags & 0x40) != 0 {
-                let exth_start = 16 + header_len as usize;
-                if exth_start + 12 <= rec0.len() && &rec0[exth_start..exth_start + 4] == b"EXTH" {
-                    let exth_len = read_u32_be(rec0, exth_start + 4) as usize;
-                    let exth_count = read_u32_be(rec0, exth_start + 8) as usize;
-                    let mut curr = exth_start + 12;
-                    let exth_end = (exth_start + exth_len).min(rec0.len());
-
-                    for _ in 0..exth_count {
-                        if curr + 8 > exth_end {
-                            break;
-                        }
-                        let tag = read_u32_be(rec0, curr);
-                        let rec_len = read_u32_be(rec0, curr + 4) as usize;
-                        if rec_len < 8 || curr + rec_len > exth_end {
-                            break;
-                        }
-                        let tag_data = rec0[curr + 8..curr + rec_len].to_vec();
-                        exth_map.insert(tag, tag_data);
-                        curr += rec_len;
-                    }
-                }
-            }
-        }
+        let (mobi, exth, full_name) = if rec0.len() >= 40 && &rec0[16..20] == b"MOBI" {
+            parse_mobi_record0(rec0)
+        } else {
+            (MobiHeaderInfo::default(), HashMap::new(), None)
+        };
 
         Ok(Self {
             data,
             records,
             palmdoc,
             mobi,
-            exth: exth_map,
+            exth,
             full_name,
         })
     }
@@ -556,4 +427,122 @@ fn read_u32_be(slice: &[u8], offset: usize) -> u32 {
         slice[offset + 2],
         slice[offset + 3],
     ])
+}
+
+fn parse_pdb_records(data: &[u8]) -> EbookResult<Vec<PdbRecordEntry>> {
+    if data.len() < 78 {
+        return Err(EbookError::Mobi(
+            "Payload smaller than PDB header (78 bytes)".to_string(),
+        ));
+    }
+
+    let db_type = &data[60..64];
+    let db_creator = &data[64..68];
+    let is_mobi_pdb =
+        (db_type == b"BOOK" || db_type == b"TEXt") && (db_creator == b"MOBI" || db_creator == b"REAd");
+    let num_records = read_u16_be(data, 76) as usize;
+
+    if !is_mobi_pdb && (num_records == 0 || data.len() < 78 + num_records * 8) {
+        return Err(EbookError::UnsupportedFormat(
+            "Not a valid Palm Database (PDB)".to_string(),
+        ));
+    }
+
+    let record_table_end = 78 + num_records * 8;
+    if data.len() < record_table_end {
+        return Err(EbookError::Mobi("Truncated PDB record table".to_string()));
+    }
+    if num_records == 0 {
+        return Err(EbookError::Mobi("PDB has 0 records".to_string()));
+    }
+
+    let mut records = Vec::with_capacity(num_records);
+    for i in 0..num_records {
+        let offset = 78 + i * 8;
+        let rec_offset = read_u32_be(data, offset);
+        let attributes = data[offset + 4];
+        let unique_id = ((data[offset + 5] as u32) << 16)
+            | ((data[offset + 6] as u32) << 8)
+            | (data[offset + 7] as u32);
+        records.push(PdbRecordEntry {
+            offset: rec_offset,
+            attributes,
+            unique_id,
+        });
+    }
+    Ok(records)
+}
+
+fn parse_mobi_record0(rec0: &[u8]) -> (MobiHeaderInfo, HashMap<u32, Vec<u8>>, Option<String>) {
+    let header_len = read_u32_be(rec0, 20);
+    let full_name_offset = if rec0.len() >= 88 { read_u32_be(rec0, 84) } else { 0 };
+    let full_name_length = if rec0.len() >= 92 { read_u32_be(rec0, 88) } else { 0 };
+    let first_image_index = if rec0.len() >= 112 { read_u32_be(rec0, 108) } else { 0 };
+    let exth_flags = if rec0.len() >= 132 { read_u32_be(rec0, 128) } else { 0 };
+    let extra_data_flags = if rec0.len() >= 244 { read_u16_be(rec0, 242) } else { 0 };
+
+    let mobi = MobiHeaderInfo {
+        header_length: header_len,
+        mobi_type: read_u32_be(rec0, 24),
+        text_encoding: read_u32_be(rec0, 28),
+        unique_id: read_u32_be(rec0, 32),
+        file_version: read_u32_be(rec0, 36),
+        full_name_offset,
+        full_name_length,
+        exth_flags,
+        first_image_index,
+        extra_data_flags,
+    };
+
+    let full_name = decode_record0_full_name(rec0, full_name_offset, full_name_length);
+    let exth_map = if (exth_flags & 0x40) != 0 {
+        parse_exth_table(rec0, 16 + header_len as usize)
+    } else {
+        HashMap::new()
+    };
+
+    (mobi, exth_map, full_name)
+}
+
+fn decode_record0_full_name(rec0: &[u8], offset: u32, length: u32) -> Option<String> {
+    if offset == 0 || length == 0 {
+        return None;
+    }
+    let start = offset as usize;
+    let end = start + length as usize;
+    if end > rec0.len() {
+        return None;
+    }
+    let title_slice = &rec0[start..end];
+    if let Ok(s) = std::str::from_utf8(title_slice) {
+        Some(s.trim().to_string())
+    } else {
+        let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(title_slice);
+        Some(cow.trim().to_string())
+    }
+}
+
+fn parse_exth_table(rec0: &[u8], exth_start: usize) -> HashMap<u32, Vec<u8>> {
+    let mut exth_map = HashMap::new();
+    if exth_start + 12 > rec0.len() || &rec0[exth_start..exth_start + 4] != b"EXTH" {
+        return exth_map;
+    }
+    let exth_len = read_u32_be(rec0, exth_start + 4) as usize;
+    let exth_count = read_u32_be(rec0, exth_start + 8) as usize;
+    let mut curr = exth_start + 12;
+    let exth_end = (exth_start + exth_len).min(rec0.len());
+
+    for _ in 0..exth_count {
+        if curr + 8 > exth_end {
+            break;
+        }
+        let tag = read_u32_be(rec0, curr);
+        let rec_len = read_u32_be(rec0, curr + 4) as usize;
+        if rec_len < 8 || curr + rec_len > exth_end {
+            break;
+        }
+        exth_map.insert(tag, rec0[curr + 8..curr + rec_len].to_vec());
+        curr += rec_len;
+    }
+    exth_map
 }

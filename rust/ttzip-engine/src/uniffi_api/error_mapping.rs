@@ -100,64 +100,45 @@ impl From<std::io::Error> for UniFFIError {
     }
 }
 
+fn map_engine_error_code(code: i32) -> UniFFIError {
+    if code == TTZipStatus::ErrOutOfMemory.to_i32() {
+        UniFFIError::OutOfMemory { message: "Engine allocation failure".to_string() }
+    } else if code == TTZipStatus::ErrMmapFailed.to_i32() {
+        UniFFIError::MmapError { message: "Mmap allocation failed".to_string() }
+    } else if code == TTZipStatus::ErrUnsupportedFeature.to_i32() {
+        UniFFIError::UnsupportedCompression { method: "Unknown feature".to_string() }
+    } else {
+        UniFFIError::IoError { message: format!("Engine error with status code {code}") }
+    }
+}
+
+fn map_api_io_message(err: ApiTTZipError) -> String {
+    match err {
+        ApiTTZipError::FileNotFound { path } => format!("File not found: {path}"),
+        ApiTTZipError::IoError { message } | ApiTTZipError::CreateTransactionIncomplete { summary_message: message, .. } => message,
+        ApiTTZipError::Cancelled => "Operation was cancelled by caller".to_string(),
+        ApiTTZipError::InvalidSessionState { expected, actual } => format!("Invalid session state: expected {expected}, actual {actual:?}"),
+        ApiTTZipError::InvalidResolution { detail } => format!("Invalid resolution: {detail}"),
+        ApiTTZipError::DestinationUnavailable { errno } => format!("Destination unavailable (errno {errno})"),
+        ApiTTZipError::InvalidArgument { message } => format!("Invalid argument: {message}"),
+        _ => "Unknown API error".to_string(),
+    }
+}
+
 impl From<ApiTTZipError> for UniFFIError {
     fn from(err: ApiTTZipError) -> Self {
         match err {
-            ApiTTZipError::FileNotFound { path } => Self::IoError {
-                message: format!("File not found: {path}"),
-            },
-            ApiTTZipError::InvalidPassword => Self::InvalidPassword {
-                message: "Invalid or missing archive password".to_string(),
-            },
-            ApiTTZipError::CorruptHeader { details, offset } => Self::CorruptArchive {
-                message: details,
-                offset,
-            },
-            ApiTTZipError::SecurityViolation { reason } => Self::PermissionDenied {
-                path: reason,
-            },
-            ApiTTZipError::EngineError { code } => {
-                if code == TTZipStatus::ErrOutOfMemory.to_i32() {
-                    Self::OutOfMemory { message: "Engine allocation failure".to_string() }
-                } else if code == TTZipStatus::ErrMmapFailed.to_i32() {
-                    Self::MmapError { message: "Mmap allocation failed".to_string() }
-                } else if code == TTZipStatus::ErrUnsupportedFeature.to_i32() {
-                    Self::UnsupportedCompression { method: "Unknown feature".to_string() }
-                } else {
-                    Self::IoError {
-                        message: format!("Engine error with status code {code}"),
-                    }
-                }
-            }
-            ApiTTZipError::IoError { message } => Self::IoError { message },
-            ApiTTZipError::Cancelled => Self::IoError {
-                message: "Operation was cancelled by caller".to_string(),
-            },
-            ApiTTZipError::InvalidSessionState { expected, actual } => Self::IoError {
-                message: format!("Invalid session state: expected {expected}, actual {actual:?}"),
-            },
-            ApiTTZipError::InvalidResolution { detail } => Self::IoError {
-                message: format!("Invalid resolution: {detail}"),
-            },
-            ApiTTZipError::DestinationUnavailable { errno } => Self::IoError {
-                message: format!("Destination unavailable (errno {errno})"),
-            },
-            ApiTTZipError::InvalidArgument { message } => Self::IoError {
-                message: format!("Invalid argument: {message}"),
-            },
+            ApiTTZipError::InvalidPassword => Self::InvalidPassword { message: "Invalid or missing archive password".to_string() },
+            ApiTTZipError::CorruptHeader { details, offset } => Self::CorruptArchive { message: details, offset },
+            ApiTTZipError::SecurityViolation { reason } => Self::PermissionDenied { path: reason },
+            ApiTTZipError::EngineError { code } => map_engine_error_code(code),
             ApiTTZipError::OutOfMemory { details } => Self::OutOfMemory { message: details },
-            ApiTTZipError::DecompressionBombDetected { reason } => Self::PermissionDenied {
-                path: format!("Decompression bomb: {reason}"),
-            },
+            ApiTTZipError::DecompressionBombDetected { reason } => Self::PermissionDenied { path: format!("Decompression bomb: {reason}") },
             ApiTTZipError::ChecksumMismatch { expected, actual } => Self::CorruptArchive {
                 message: format!("Checksum mismatch: expected {expected:#x}, got {actual:#x}"),
                 offset: 0,
             },
-            ApiTTZipError::CreateTransactionIncomplete {
-                summary_message, ..
-            } => Self::IoError {
-                message: summary_message,
-            },
+            other => Self::IoError { message: map_api_io_message(other) },
         }
     }
 }
@@ -165,37 +146,19 @@ impl From<ApiTTZipError> for UniFFIError {
 impl From<TTZipStatus> for UniFFIError {
     fn from(status: TTZipStatus) -> Self {
         match status {
-            TTZipStatus::Ok | TTZipStatus::Eof => Self::IoError {
-                message: status.as_str().to_string(),
-            },
-            TTZipStatus::Cancelled => Self::IoError {
-                message: "Operation cancelled".to_string(),
-            },
-            TTZipStatus::ErrFileNotFound => Self::IoError {
-                message: "File not found".to_string(),
-            },
-            TTZipStatus::ErrMmapFailed => Self::MmapError {
-                message: "Memory mapping failed".to_string(),
-            },
+            TTZipStatus::Ok | TTZipStatus::Eof => Self::IoError { message: status.as_str().to_string() },
+            TTZipStatus::Cancelled => Self::IoError { message: "Operation cancelled".to_string() },
+            TTZipStatus::ErrFileNotFound => Self::IoError { message: "File not found".to_string() },
+            TTZipStatus::ErrMmapFailed => Self::MmapError { message: "Memory mapping failed".to_string() },
             TTZipStatus::ErrCorruptHeader | TTZipStatus::ErrInvalidOffset => Self::CorruptArchive {
                 message: status.as_str().to_string(),
                 offset: 0,
             },
-            TTZipStatus::ErrOutOfMemory => Self::OutOfMemory {
-                message: "System out of memory".to_string(),
-            },
-            TTZipStatus::ErrInvalidPassword => Self::InvalidPassword {
-                message: "Invalid password".to_string(),
-            },
-            TTZipStatus::ErrUnsupportedFeature => Self::UnsupportedCompression {
-                method: "Unsupported codec or feature".to_string(),
-            },
-            TTZipStatus::ErrSecurityViolation => Self::PermissionDenied {
-                path: "Security policy boundary violation".to_string(),
-            },
-            _ => Self::IoError {
-                message: status.as_str().to_string(),
-            },
+            TTZipStatus::ErrOutOfMemory => Self::OutOfMemory { message: "System out of memory".to_string() },
+            TTZipStatus::ErrInvalidPassword => Self::InvalidPassword { message: "Invalid password".to_string() },
+            TTZipStatus::ErrUnsupportedFeature => Self::UnsupportedCompression { method: "Unsupported codec or feature".to_string() },
+            TTZipStatus::ErrSecurityViolation => Self::PermissionDenied { path: "Security policy boundary violation".to_string() },
+            _ => Self::IoError { message: status.as_str().to_string() },
         }
     }
 }

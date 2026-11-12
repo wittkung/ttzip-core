@@ -158,87 +158,50 @@ impl VirtualSymlinkJail {
     }
 }
 
+fn assert_enclosed_clean(dest_dir: &Path, full: &Path, check_path: &Path, engine_name: &str) {
+    assert!(
+        full.starts_with(dest_dir),
+        "INVARIANT ESCAPE: {engine_name} produced {full:?} escaping {dest_dir:?}"
+    );
+    assert!(
+        !check_path
+            .components()
+            .any(|c| matches!(c, std::path::Component::ParentDir)),
+        "INVARIANT ESCAPE: {engine_name} contains ParentDir ('..'): {check_path:?}"
+    );
+    assert!(
+        !check_path.to_string_lossy().contains('\0'),
+        "INVARIANT ESCAPE: {engine_name} contains null byte: {check_path:?}"
+    );
+}
+
 /// Tests arbitrary path strings across all production sanitization engines.
 fn evaluate_path_sanitization_invariants(dest_dir: &Path, raw_path: &str) {
-    // 1. Production `sanitize_and_validate_path`
     if let Ok(resolved) = sanitize_and_validate_path(dest_dir, raw_path) {
-        assert!(
-            resolved.starts_with(dest_dir),
-            "INVARIANT ESCAPE: sanitize_and_validate_path produced {:?} escaping {:?}",
-            resolved,
-            dest_dir
-        );
-        let has_parent_dir = resolved
-            .components()
-            .any(|c| matches!(c, std::path::Component::ParentDir));
-        assert!(
-            !has_parent_dir,
-            "INVARIANT ESCAPE: resolved path contains ParentDir ('..'): {:?}",
-            resolved
-        );
-        let path_str = resolved.to_string_lossy();
-        assert!(
-            !path_str.contains('\0'),
-            "INVARIANT ESCAPE: resolved path contains null-byte: {:?}",
-            resolved
-        );
+        assert_enclosed_clean(dest_dir, &resolved, &resolved, "sanitize_and_validate_path");
     }
 
-    // 2. Production `enclosed_name`
     if let Some(enclosed) = enclosed_name(raw_path) {
         let full = dest_dir.join(&enclosed);
-        assert!(
-            full.starts_with(dest_dir),
-            "INVARIANT ESCAPE: enclosed_name produced {:?} escaping {:?}",
-            full,
-            dest_dir
-        );
-        assert!(
-            !enclosed.components().any(|c| matches!(c, std::path::Component::ParentDir)),
-            "enclosed_name contains ParentDir ('..'): {:?}",
-            enclosed
-        );
-        let s = enclosed.to_string_lossy();
-        assert!(!s.contains('\0'), "enclosed_name contains null byte: {:?}", s);
+        assert_enclosed_clean(dest_dir, &full, &enclosed, "enclosed_name");
     }
 
-    // 3. Production `simplified_components`
     if let Some(simplified) = simplified_components(raw_path) {
         let full = dest_dir.join(&simplified);
-        assert!(
-            full.starts_with(dest_dir),
-            "INVARIANT ESCAPE: simplified_components produced {:?} escaping {:?}",
-            full,
-            dest_dir
-        );
-        assert!(
-            !simplified.components().any(|c| matches!(c, std::path::Component::ParentDir)),
-            "simplified_components contains ParentDir ('..'): {:?}",
-            simplified
-        );
-        let s = simplified.to_string_lossy();
-        assert!(!s.contains('\0'), "simplified_components contains null: {:?}", s);
+        assert_enclosed_clean(dest_dir, &full, &simplified, "simplified_components");
     }
 
-    // 4. Production `PathTraversalProtectionGuard`
     let guard = PathTraversalProtectionGuard::strict();
     if let Ok(sanitized) = guard.sanitize_path(raw_path) {
         let full = dest_dir.join(&sanitized);
-        assert!(
-            full.starts_with(dest_dir),
-            "INVARIANT ESCAPE: PathTraversalProtectionGuard produced {:?} escaping {:?}",
-            full,
-            dest_dir
+        assert_enclosed_clean(
+            dest_dir,
+            &full,
+            Path::new(&sanitized),
+            "PathTraversalProtectionGuard",
         );
-        assert!(
-            !Path::new(&sanitized).components().any(|c| matches!(c, std::path::Component::ParentDir)),
-            "PathTraversalProtectionGuard contains ParentDir: {:?}",
-            sanitized
-        );
-        assert!(!sanitized.contains('\0'));
     }
 
-    // 5. Production `validate_symlink_target`
     if let Ok(resolved) = validate_symlink_target(dest_dir, raw_path, MAX_SYMLINK_RECURSION_DEPTH) {
         assert!(
             resolved.starts_with(dest_dir),
@@ -246,6 +209,55 @@ fn evaluate_path_sanitization_invariants(dest_dir: &Path, raw_path: &str) {
             resolved,
             dest_dir
         );
+    }
+}
+
+fn synthesize_adversarial_path(data: &[u8]) -> String {
+    let tokens: &[&str] = &[
+        "..", "../", "..\\", "/", "\\", "C:", "D:\\", "\\\\server\\share",
+        "\\\\?\\C:\\", "\\\\.\\PhysicalDrive0", "\0", "foo\0bar", "secret", "passwd",
+        "／", "＼", "‥", "．", "%2e%2e", "%2f", "%5c", "%00", "a", "b", "c",
+    ];
+    let mut path_builder = String::new();
+    for &byte in data.iter().take(16) {
+        let idx = (byte as usize) % tokens.len();
+        path_builder.push_str(tokens[idx]);
+        if (byte & 1) == 0 {
+            path_builder.push('/');
+        } else if (byte & 2) == 0 {
+            path_builder.push('\\');
+        }
+    }
+    path_builder
+}
+
+fn fuzz_virtual_symlink_graph(dest_dir: &Path, data: &[u8]) {
+    if data.len() < 4 {
+        return;
+    }
+    let mut jail = VirtualSymlinkJail::new(dest_dir);
+    let mut link_names = Vec::new();
+
+    for (i, chunk) in data.chunks_exact(4).enumerate().take(6) {
+        let from = format!("link_{i}");
+        let target = match chunk[0] % 5 {
+            0 => format!("link_{}", (chunk[1] as usize) % 6),
+            1 => format!("../outside_{}.txt", chunk[2]),
+            2 => format!("/etc/passwd_{}", chunk[3]),
+            3 => format!("valid_sub/target_{}.bin", chunk[2]),
+            _ => format!("nested/link_{}", (chunk[1] as usize) % 6),
+        };
+        jail.register_symlink(&from, &target);
+        link_names.push(from);
+    }
+
+    for link in link_names {
+        if let Ok(target) = jail.resolve_symlink(&link, MAX_SYMLINK_RECURSION_DEPTH) {
+            assert!(
+                target.starts_with(dest_dir),
+                "INVARIANT ESCAPE: Symlink jail produced target {target:?} outside {dest_dir:?}"
+            );
+        }
     }
 }
 
@@ -258,69 +270,16 @@ pub fn fuzz_target_symlink_traversal(data: &[u8]) {
             return;
         }
 
-        // 1. Direct raw string slice test
         if let Ok(raw_str) = std::str::from_utf8(data) {
             evaluate_path_sanitization_invariants(dest_dir, raw_str);
         } else {
-            // Lossy UTF-8 representation test
             let lossy_str = String::from_utf8_lossy(data);
             evaluate_path_sanitization_invariants(dest_dir, &lossy_str);
         }
 
-        // 2. Synthesized path permutations (joining segments from tokens)
-        let tokens: &[&str] = &[
-            "..", "../", "..\\", "/", "\\", "C:", "D:\\", "\\\\server\\share",
-            "\\\\?\\C:\\", "\\\\.\\PhysicalDrive0", "\0", "foo\0bar", "secret", "passwd",
-            "／", "＼", "‥", "．", "%2e%2e", "%2f", "%5c", "%00", "a", "b", "c",
-        ];
-
-        let mut path_builder = String::new();
-        for &byte in data.iter().take(16) {
-            let idx = (byte as usize) % tokens.len();
-            path_builder.push_str(tokens[idx]);
-            if (byte & 1) == 0 {
-                path_builder.push('/');
-            } else if (byte & 2) == 0 {
-                path_builder.push('\\');
-            }
-        }
+        let path_builder = synthesize_adversarial_path(data);
         evaluate_path_sanitization_invariants(dest_dir, &path_builder);
-
-        // 3. Virtual symlink graph cycle and depth fuzzing
-        if data.len() >= 4 {
-            let mut jail = VirtualSymlinkJail::new(dest_dir);
-
-            // Construct up to 4 virtual symlinks from data chunks
-            let chunks = data.chunks_exact(4);
-            let mut link_names = Vec::new();
-
-            for (i, chunk) in chunks.enumerate().take(6) {
-                let from = format!("link_{}", i);
-                let target_mode = chunk[0] % 5;
-                let target = match target_mode {
-                    0 => format!("link_{}", (chunk[1] as usize) % 6), // Reference another link (potential cycle)
-                    1 => format!("../outside_{}.txt", chunk[2]),       // Escaping relative target
-                    2 => format!("/etc/passwd_{}", chunk[3]),          // Absolute path target
-                    3 => format!("valid_sub/target_{}.bin", chunk[2]), // Enclosed legitimate target
-                    _ => format!("nested/link_{}", (chunk[1] as usize) % 6),
-                };
-                jail.register_symlink(&from, &target);
-                link_names.push(from);
-            }
-
-            // Attempt resolution on all registered links
-            for link in link_names {
-                let res = jail.resolve_symlink(&link, MAX_SYMLINK_RECURSION_DEPTH);
-                if let Ok(target) = res {
-                    assert!(
-                        target.starts_with(dest_dir),
-                        "INVARIANT ESCAPE: Symlink jail produced target {:?} outside {:?}",
-                        target,
-                        dest_dir
-                    );
-                }
-            }
-        }
+        fuzz_virtual_symlink_graph(dest_dir, data);
     }));
 
     if let Err(panic_payload) = result {

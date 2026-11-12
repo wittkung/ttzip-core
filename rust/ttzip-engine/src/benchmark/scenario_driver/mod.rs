@@ -8,6 +8,7 @@
 //! damaged archive self-healing, APFS clonefile, and 10-level VFS recursion.
 //! Integrates Mach Kernel `task_info`/`getrusage` physical resident memory bounds.
 
+mod evaluator_fixtures;
 pub mod evaluators;
 pub mod matrix;
 

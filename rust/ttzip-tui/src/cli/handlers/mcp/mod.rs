@@ -58,13 +58,70 @@ pub fn execute_mcp() -> Result<(), String> {
     Ok(())
 }
 
+fn handle_tools_call(id: Option<Value>, params: Option<Value>) -> JsonRpcResponse {
+    let params_val = params.unwrap_or(Value::Object(serde_json::Map::new()));
+    let Some(tool_name) = params_val.get("name").and_then(|v| v.as_str()) else {
+        return JsonRpcResponse::error(
+            id,
+            INVALID_PARAMS,
+            "Missing 'name' field in tools/call parameters",
+        );
+    };
+    let tool_args = params_val.get("arguments");
+    let tool_res = tools::execute_tool_call(tool_name, tool_args);
+
+    match serde_json::to_value(&tool_res) {
+        Ok(val) => JsonRpcResponse::success(id, val),
+        Err(e) => JsonRpcResponse::error(
+            id,
+            INTERNAL_ERROR,
+            format!("Failed to serialize tool result: {}", e),
+        ),
+    }
+}
+
+fn handle_resources_read(id: Option<Value>, params: Option<Value>) -> JsonRpcResponse {
+    let params_val = params.unwrap_or(Value::Object(serde_json::Map::new()));
+    let Some(uri) = params_val.get("uri").and_then(|v| v.as_str()) else {
+        return JsonRpcResponse::error(
+            id,
+            INVALID_PARAMS,
+            "Missing 'uri' field in resources/read parameters",
+        );
+    };
+
+    match resources::read_resource(uri) {
+        Ok(entry) => JsonRpcResponse::success(id, json!({ "contents": [entry] })),
+        Err(e) => JsonRpcResponse::error(id, INVALID_PARAMS, e),
+    }
+}
+
+fn handle_prompts_get(id: Option<Value>, params: Option<Value>) -> JsonRpcResponse {
+    let params_val = params.unwrap_or(Value::Object(serde_json::Map::new()));
+    let Some(prompt_name) = params_val.get("name").and_then(|v| v.as_str()) else {
+        return JsonRpcResponse::error(
+            id,
+            INVALID_PARAMS,
+            "Missing 'name' field in prompts/get parameters",
+        );
+    };
+    let prompt_args = params_val.get("arguments");
+
+    match prompts::get_prompt(prompt_name, prompt_args) {
+        Ok((desc, msgs)) => JsonRpcResponse::success(
+            id,
+            json!({ "description": desc, "messages": msgs }),
+        ),
+        Err(e) => JsonRpcResponse::error(id, INVALID_PARAMS, e),
+    }
+}
+
 /// Dispatches an incoming JSON-RPC request to the appropriate MCP subsystem.
 pub fn handle_request(req: JsonRpcRequest) -> Option<JsonRpcResponse> {
     let id = req.id;
-    let method = req.method.as_str();
     let params = req.params;
 
-    match method {
+    match req.method.as_str() {
         "initialize" => {
             let res = json!({
                 "protocolVersion": "2024-11-05",
@@ -81,39 +138,13 @@ pub fn handle_request(req: JsonRpcRequest) -> Option<JsonRpcResponse> {
             });
             Some(JsonRpcResponse::success(id, res))
         }
-        "notifications/initialized" => {
-            // Notification has no response
-            None
-        }
+        "notifications/initialized" => None,
         "ping" => Some(JsonRpcResponse::success(id, json!({}))),
         "tools/list" => {
             let tools_list = tools::get_tool_definitions();
             Some(JsonRpcResponse::success(id, json!({ "tools": tools_list })))
         }
-        "tools/call" => {
-            let params_val = params.unwrap_or(Value::Object(serde_json::Map::new()));
-            let tool_name = match params_val.get("name").and_then(|v| v.as_str()) {
-                Some(name) => name,
-                None => {
-                    return Some(JsonRpcResponse::error(
-                        id,
-                        INVALID_PARAMS,
-                        "Missing 'name' field in tools/call parameters",
-                    ));
-                }
-            };
-            let tool_args = params_val.get("arguments");
-            let tool_res = tools::execute_tool_call(tool_name, tool_args);
-
-            match serde_json::to_value(&tool_res) {
-                Ok(val) => Some(JsonRpcResponse::success(id, val)),
-                Err(e) => Some(JsonRpcResponse::error(
-                    id,
-                    INTERNAL_ERROR,
-                    format!("Failed to serialize tool result: {}", e),
-                )),
-            }
-        }
+        "tools/call" => Some(handle_tools_call(id, params)),
         "resources/list" => {
             let resources_list = resources::get_resource_definitions();
             Some(JsonRpcResponse::success(
@@ -121,24 +152,7 @@ pub fn handle_request(req: JsonRpcRequest) -> Option<JsonRpcResponse> {
                 json!({ "resources": resources_list }),
             ))
         }
-        "resources/read" => {
-            let params_val = params.unwrap_or(Value::Object(serde_json::Map::new()));
-            let uri = match params_val.get("uri").and_then(|v| v.as_str()) {
-                Some(u) => u,
-                None => {
-                    return Some(JsonRpcResponse::error(
-                        id,
-                        INVALID_PARAMS,
-                        "Missing 'uri' field in resources/read parameters",
-                    ));
-                }
-            };
-
-            match resources::read_resource(uri) {
-                Ok(entry) => Some(JsonRpcResponse::success(id, json!({ "contents": [entry] }))),
-                Err(e) => Some(JsonRpcResponse::error(id, INVALID_PARAMS, e)),
-            }
-        }
+        "resources/read" => Some(handle_resources_read(id, params)),
         "prompts/list" => {
             let prompts_list = prompts::get_prompt_definitions();
             Some(JsonRpcResponse::success(
@@ -146,38 +160,13 @@ pub fn handle_request(req: JsonRpcRequest) -> Option<JsonRpcResponse> {
                 json!({ "prompts": prompts_list }),
             ))
         }
-        "prompts/get" => {
-            let params_val = params.unwrap_or(Value::Object(serde_json::Map::new()));
-            let prompt_name = match params_val.get("name").and_then(|v| v.as_str()) {
-                Some(n) => n,
-                None => {
-                    return Some(JsonRpcResponse::error(
-                        id,
-                        INVALID_PARAMS,
-                        "Missing 'name' field in prompts/get parameters",
-                    ));
-                }
-            };
-            let prompt_args = params_val.get("arguments");
-
-            match prompts::get_prompt(prompt_name, prompt_args) {
-                Ok((desc, msgs)) => Some(JsonRpcResponse::success(
-                    id,
-                    json!({ "description": desc, "messages": msgs }),
-                )),
-                Err(e) => Some(JsonRpcResponse::error(id, INVALID_PARAMS, e)),
-            }
-        }
-        unknown => {
-            if id.is_none() {
-                None
-            } else {
-                Some(JsonRpcResponse::error(
-                    id,
-                    METHOD_NOT_FOUND,
-                    format!("Method '{}' not found", unknown),
-                ))
-            }
-        }
+        "prompts/get" => Some(handle_prompts_get(id, params)),
+        unknown => id.map(|req_id| {
+            JsonRpcResponse::error(
+                Some(req_id),
+                METHOD_NOT_FOUND,
+                format!("Method '{}' not found", unknown),
+            )
+        }),
     }
 }

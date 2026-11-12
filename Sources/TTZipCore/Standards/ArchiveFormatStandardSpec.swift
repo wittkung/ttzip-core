@@ -406,49 +406,23 @@ public enum ArchiveMagicSignatureScanner {
 
     // MARK: - Format Detection (File URL & Path)
 
+    private static let uniffiFormatMap: [ArchiveFormat: ArchiveCompressionFormat] = [
+        .zip: .zip, .sevenZip: .sevenZip, .tar: .tar,
+        .tarGz: .tarGz, .tarBz2: .tarBz2, .tarXz: .tarXz, .tarZstd: .tarZst,
+        .tarLz4: .tarLz4, .tarBrotli: .tarBrotli, .tarLzip: .tarLzip, .tarLrzip: .tarLrzip,
+        .gzip: .gz, .bzip2: .bz2, .xz: .xz, .zstd: .zst, .lz4: .lz4, .brotli: .brotli,
+        .iso: .iso, .cab: .cab, .wim: .wim, .dmg: .dmg, .aar: .aar,
+        .cpio: .cpio, .ar: .ar, .deb: .deb, .rpm: .rpm, .xar: .xar,
+        .rar: .rar, .squashfs: .squashfs, .lzfse: .lzfse, .lzh: .lzh,
+        .snappy: .snappy, .lzip: .lzip, .lrzip: .lrzip, .auto: .zip
+    ]
+
     public static func detectFormat(fileURL: URL) throws -> ArchiveCompressionFormat? {
         let path = fileURL.path
         guard FileManager.default.fileExists(atPath: path) else { return nil }
 
         if let uniffiFmt = try? detectArchiveFormat(path: path), uniffiFmt != .auto {
-            let format: ArchiveCompressionFormat
-            switch uniffiFmt {
-            case .zip: format = .zip
-            case .sevenZip: format = .sevenZip
-            case .tar: format = .tar
-            case .tarGz: format = .tarGz
-            case .tarBz2: format = .tarBz2
-            case .tarXz: format = .tarXz
-            case .tarZstd: format = .tarZst
-            case .tarLz4: format = .tarLz4
-            case .tarBrotli: format = .tarBrotli
-            case .tarLzip: format = .tarLzip
-            case .tarLrzip: format = .tarLrzip
-            case .gzip: format = .gz
-            case .bzip2: format = .bz2
-            case .xz: format = .xz
-            case .zstd: format = .zst
-            case .lz4: format = .lz4
-            case .brotli: format = .brotli
-            case .iso: format = .iso
-            case .cab: format = .cab
-            case .wim: format = .wim
-            case .dmg: format = .dmg
-            case .aar: format = .aar
-            case .cpio: format = .cpio
-            case .ar: format = .ar
-            case .deb: format = .deb
-            case .rpm: format = .rpm
-            case .xar: format = .xar
-            case .rar: format = .rar
-            case .squashfs: format = .squashfs
-            case .lzfse: format = .lzfse
-            case .lzh: format = .lzh
-            case .snappy: format = .snappy
-            case .lzip: format = .lzip
-            case .lrzip: format = .lrzip
-            case .auto: format = .zip
-            }
+            let format = uniffiFormatMap[uniffiFmt] ?? .zip
             return resolveCompoundFormat(detected: format, fileURL: fileURL)
         }
 
@@ -461,102 +435,87 @@ public enum ArchiveMagicSignatureScanner {
 
     // MARK: - Mapping & Compound Resolution Helpers
 
+    private static let detectedFormatCodeMap: [Int32: ArchiveCompressionFormat] = [
+        1: .zip, 2: .sevenZip, 3: .tar, 4: .gz, 5: .bz2, 6: .xz, 7: .zst,
+        10: .iso, 11: .dmg, 12: .cab, 13: .cpio, 14: .ar, 15: .deb,
+        16: .snappy, 17: .lz4, 18: .lzip, 19: .lrzip, 20: .brotli,
+        21: .aar, 22: .wim, 23: .rpm, 24: .xar, 25: .rar,
+        26: .squashfs, 27: .lzfse, 28: .lzh
+    ]
+
     @inline(__always)
     private static func mapDetectedFormat(_ code: Int32) -> ArchiveCompressionFormat? {
-        switch code {
-        case 1: return .zip
-        case 2: return .sevenZip
-        case 3: return .tar
-        case 4: return .gz
-        case 5: return .bz2
-        case 6: return .xz
-        case 7: return .zst
-        case 10: return .iso
-        case 11: return .dmg
-        case 12: return .cab
-        case 13: return .cpio
-        case 14: return .ar
-        case 15: return .deb
-        case 16: return .snappy
-        case 17: return .lz4
-        case 18: return .lzip
-        case 19: return .lrzip
-        case 20: return .brotli
-        case 21: return .aar
-        case 22: return .wim
-        case 23: return .rpm
-        case 24: return .xar
-        case 25: return .rar
-        case 26: return .squashfs
-        case 27: return .lzfse
-        case 28: return .lzh
-        default: return nil
-        }
+        detectedFormatCodeMap[code]
     }
+
+    private static let compoundSuffixRules: [(streamFormat: ArchiveCompressionFormat, suffixes: [String], compound: ArchiveCompressionFormat)] = [
+        (.gz, [".tar.gz", ".tgz"], .tarGz),
+        (.bz2, [".tar.bz2", ".tbz2", ".tbz"], .tarBz2),
+        (.xz, [".tar.xz", ".txz"], .tarXz),
+        (.zst, [".tar.zst", ".tzst"], .tarZst),
+        (.lz4, [".tar.lz4", ".tlz4"], .tarLz4),
+        (.brotli, [".tar.br", ".tbr"], .tarBrotli),
+        (.lzip, [".tar.lz", ".tlz"], .tarLzip),
+        (.lrzip, [".tar.lrz", ".tlrz"], .tarLrzip)
+    ]
 
     private static func resolveCompoundFormat(
         detected: ArchiveCompressionFormat,
         fileURL: URL
     ) -> ArchiveCompressionFormat {
         let lower = fileURL.lastPathComponent.lowercased()
-        switch detected {
-        case .gz where lower.hasSuffix(".tar.gz") || lower.hasSuffix(".tgz"):
-            return .tarGz
-        case .bz2 where lower.hasSuffix(".tar.bz2") || lower.hasSuffix(".tbz2") || lower.hasSuffix(".tbz"):
-            return .tarBz2
-        case .xz where lower.hasSuffix(".tar.xz") || lower.hasSuffix(".txz"):
-            return .tarXz
-        case .zst where lower.hasSuffix(".tar.zst") || lower.hasSuffix(".tzst"):
-            return .tarZst
-        case .lz4 where lower.hasSuffix(".tar.lz4") || lower.hasSuffix(".tlz4"):
-            return .tarLz4
-        case .brotli where lower.hasSuffix(".tar.br") || lower.hasSuffix(".tbr"):
-            return .tarBrotli
-        case .lzip where lower.hasSuffix(".tar.lz") || lower.hasSuffix(".tlz"):
-            return .tarLzip
-        case .lrzip where lower.hasSuffix(".tar.lrz") || lower.hasSuffix(".tlrz"):
-            return .tarLrzip
-        default:
-            return detected
+        for rule in compoundSuffixRules where rule.streamFormat == detected {
+            if rule.suffixes.contains(where: { lower.hasSuffix($0) }) {
+                return rule.compound
+            }
         }
+        return detected
     }
+
+    private static let extensionSuffixRules: [(suffixes: [String], format: ArchiveCompressionFormat)] = [
+        ([".tar.gz", ".tgz"], .tarGz),
+        ([".tar.bz2", ".tbz2", ".tbz"], .tarBz2),
+        ([".tar.xz", ".txz"], .tarXz),
+        ([".tar.zst", ".tzst"], .tarZst),
+        ([".tar.lz4", ".tlz4"], .tarLz4),
+        ([".tar.br", ".tbr"], .tarBrotli),
+        ([".tar.lz", ".tlz"], .tarLzip),
+        ([".tar.lrz", ".tlrz"], .tarLrzip),
+        ([".tar", ".cbt"], .tar),
+        ([".zip", ".zipx", ".jar", ".apk", ".cbz", ".epub"], .zip),
+        ([".7z", ".cb7"], .sevenZip),
+        ([".gz"], .gz),
+        ([".bz2"], .bz2),
+        ([".xz"], .xz),
+        ([".zst"], .zst),
+        ([".lz", ".lzip"], .lzip),
+        ([".lz4"], .lz4),
+        ([".br", ".brotli"], .brotli),
+        ([".lrz", ".lrzip"], .lrzip),
+        ([".aar", ".aea"], .aar),
+        ([".sz", ".snappy"], .snappy),
+        ([".wim", ".swm", ".esd"], .wim),
+        ([".dmg"], .dmg),
+        ([".iso", ".img"], .iso),
+        ([".cab"], .cab),
+        ([".cpio"], .cpio),
+        ([".ar", ".a"], .ar),
+        ([".deb"], .deb),
+        ([".rpm"], .rpm),
+        ([".xar", ".pkg"], .xar),
+        ([".rar", ".cbr"], .rar),
+        ([".squashfs", ".sqsh"], .squashfs),
+        ([".lzfse"], .lzfse),
+        ([".lzh", ".lha"], .lzh)
+    ]
 
     private static func detectFormatFromExtension(fileURL: URL) -> ArchiveCompressionFormat? {
         let lower = fileURL.lastPathComponent.lowercased()
-        if lower.hasSuffix(".tar.gz") || lower.hasSuffix(".tgz") { return .tarGz }
-        if lower.hasSuffix(".tar.bz2") || lower.hasSuffix(".tbz2") || lower.hasSuffix(".tbz") { return .tarBz2 }
-        if lower.hasSuffix(".tar.xz") || lower.hasSuffix(".txz") { return .tarXz }
-        if lower.hasSuffix(".tar.zst") || lower.hasSuffix(".tzst") { return .tarZst }
-        if lower.hasSuffix(".tar.lz4") || lower.hasSuffix(".tlz4") { return .tarLz4 }
-        if lower.hasSuffix(".tar.br") || lower.hasSuffix(".tbr") { return .tarBrotli }
-        if lower.hasSuffix(".tar.lz") || lower.hasSuffix(".tlz") { return .tarLzip }
-        if lower.hasSuffix(".tar.lrz") || lower.hasSuffix(".tlrz") { return .tarLrzip }
-        if lower.hasSuffix(".tar") || lower.hasSuffix(".cbt") { return .tar }
-        if lower.hasSuffix(".zip") || lower.hasSuffix(".zipx") || lower.hasSuffix(".jar") || lower.hasSuffix(".apk") || lower.hasSuffix(".cbz") || lower.hasSuffix(".epub") { return .zip }
-        if lower.hasSuffix(".7z") || lower.hasSuffix(".cb7") { return .sevenZip }
-        if lower.hasSuffix(".gz") { return .gz }
-        if lower.hasSuffix(".bz2") { return .bz2 }
-        if lower.hasSuffix(".xz") { return .xz }
-        if lower.hasSuffix(".zst") { return .zst }
-        if lower.hasSuffix(".lz") || lower.hasSuffix(".lzip") { return .lzip }
-        if lower.hasSuffix(".lz4") { return .lz4 }
-        if lower.hasSuffix(".br") || lower.hasSuffix(".brotli") { return .brotli }
-        if lower.hasSuffix(".lrz") || lower.hasSuffix(".lrzip") { return .lrzip }
-        if lower.hasSuffix(".aar") || lower.hasSuffix(".aea") { return .aar }
-        if lower.hasSuffix(".sz") || lower.hasSuffix(".snappy") { return .snappy }
-        if lower.hasSuffix(".wim") || lower.hasSuffix(".swm") || lower.hasSuffix(".esd") { return .wim }
-        if lower.hasSuffix(".dmg") { return .dmg }
-        if lower.hasSuffix(".iso") || lower.hasSuffix(".img") { return .iso }
-        if lower.hasSuffix(".cab") { return .cab }
-        if lower.hasSuffix(".cpio") { return .cpio }
-        if lower.hasSuffix(".ar") || lower.hasSuffix(".a") { return .ar }
-        if lower.hasSuffix(".deb") { return .deb }
-        if lower.hasSuffix(".rpm") { return .rpm }
-        if lower.hasSuffix(".xar") || lower.hasSuffix(".pkg") { return .xar }
-        if lower.hasSuffix(".rar") || lower.hasSuffix(".cbr") { return .rar }
-        if lower.hasSuffix(".squashfs") || lower.hasSuffix(".sqsh") { return .squashfs }
-        if lower.hasSuffix(".lzfse") { return .lzfse }
-        if lower.hasSuffix(".lzh") || lower.hasSuffix(".lha") { return .lzh }
+        for rule in extensionSuffixRules {
+            if rule.suffixes.contains(where: { lower.hasSuffix($0) }) {
+                return rule.format
+            }
+        }
         return nil
     }
 }

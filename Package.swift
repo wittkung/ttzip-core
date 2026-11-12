@@ -20,6 +20,14 @@ let package = Package(
     ],
     products: [
         .library(
+            name: "TTZipArchiveContract",
+            targets: ["TTZipArchiveContract"]
+        ),
+        .library(
+            name: "TTZipOperationContract",
+            targets: ["TTZipOperationContract"]
+        ),
+        .library(
             name: "TTZipCore",
             type: .dynamic,
             targets: ["TTZipCore"]
@@ -38,12 +46,37 @@ let package = Package(
             path: "Frameworks/TTZipVendor.xcframework"
         ),
         .target(
+            name: "TTZipArchiveContract",
+            dependencies: [],
+            path: "contracts/archive/Sources/TTZipArchiveContract",
+            swiftSettings: coreSwiftSettings
+        ),
+        .target(
+            name: "TTZipOperationContract",
+            dependencies: [
+                "TTZipArchiveContract"
+            ],
+            path: "contracts/operation/Sources/TTZipOperationContract",
+            swiftSettings: coreSwiftSettings
+        ),
+        .target(
+            name: "TTZipCoreBindings",
+            dependencies: ["TTZipVendor"],
+            path: "Sources/TTZipCore/Generated",
+            exclude: ["ttzip_engineFFI.h", "ttzip_engineFFI.modulemap"],
+            swiftSettings: coreSwiftSettings
+        ),
+        .target(
             name: "TTZipCore",
             dependencies: [
+                "TTZipArchiveContract",
+                "TTZipOperationContract",
+                "TTZipCoreBindings",
                 "TTZipVendor",
                 .product(name: "TTLogKit", package: ttlogPackageName)
             ],
             path: "Sources/TTZipCore",
+            exclude: ["Generated"],
             swiftSettings: coreSwiftSettings,
             linkerSettings: [
                 .linkedLibrary("archive"),
@@ -61,6 +94,23 @@ let package = Package(
                 "TTZipCore"
             ],
             path: "Sources/TTZipBench",
+            swiftSettings: coreSwiftSettings
+        ),
+        .testTarget(
+            name: "TTZipArchiveContractTests",
+            dependencies: [
+                "TTZipArchiveContract"
+            ],
+            path: "contracts/archive/Tests/TTZipArchiveContractTests",
+            swiftSettings: coreSwiftSettings
+        ),
+        .testTarget(
+            name: "TTZipOperationContractTests",
+            dependencies: [
+                "TTZipOperationContract",
+                "TTZipArchiveContract"
+            ],
+            path: "contracts/operation/Tests/TTZipOperationContractTests",
             swiftSettings: coreSwiftSettings
         ),
         .testTarget(

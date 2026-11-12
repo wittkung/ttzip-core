@@ -25,7 +25,7 @@ fn main() {
         return;
     }
 
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap_or_default());
     let c_src = manifest_dir.join("csrc/ttzip_llama_bridge.c");
     let c_hdr = manifest_dir.join("csrc/ttzip_llama_bridge.h");
 

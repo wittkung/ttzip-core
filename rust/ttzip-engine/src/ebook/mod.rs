@@ -6,8 +6,11 @@
 //! Supports EPUB 2, EPUB 3, MOBI, and AZW3 (KF8) formats with high-throughput streaming parsing,
 //! robust XML SAX/DOM traversal, PalmDOC LZ77 decompression, and Dublin Core / EXTH metadata extraction.
 
+pub mod container;
 pub mod mobi;
 pub mod navigation;
+pub mod ncx;
+pub mod opf;
 pub mod parser;
 pub mod resource;
 

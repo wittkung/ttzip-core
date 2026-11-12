@@ -23,10 +23,10 @@ where
     let idx = if level < 0 { 6 } else { level.clamp(0, 12) as usize };
     TLS_COMPRESSORS.with(|cell| {
         let mut pool = cell.borrow_mut();
-        if pool[idx].is_none() {
-            pool[idx] = Some(DeflateCompressor::new(idx as i32)?);
-        }
-        let compressor = pool[idx].as_mut().unwrap();
+        let compressor = match pool[idx].as_mut() {
+            Some(c) => c,
+            None => pool[idx].insert(DeflateCompressor::new(idx as i32)?),
+        };
         f(compressor)
     })
 }
@@ -38,10 +38,10 @@ where
 {
     TLS_DECOMPRESSOR.with(|cell| {
         let mut cached = cell.borrow_mut();
-        if cached.is_none() {
-            *cached = Some(DeflateDecompressor::new()?);
-        }
-        let decompressor = cached.as_mut().unwrap();
+        let decompressor = match cached.as_mut() {
+            Some(d) => d,
+            None => cached.insert(DeflateDecompressor::new()?),
+        };
         f(decompressor)
     })
 }

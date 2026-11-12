@@ -237,6 +237,66 @@ impl SolidEarlyExitExtractor {
         Ok((buffer, crc))
     }
 
+    fn discard_preceding_bytes<R: Read>(
+        stream: &mut R,
+        target_start: u64,
+    ) -> Result<u64, SevenZError> {
+        if target_start == 0 {
+            return Ok(0);
+        }
+        let mut skipped = 0u64;
+        let mut remaining_skip = target_start;
+        let buffer_cap = (remaining_skip as usize).min(Self::MICRO_BUFFER_SIZE);
+        let mut micro_buf = vec![0u8; buffer_cap];
+
+        while remaining_skip > 0 {
+            let chunk_len = remaining_skip.min(micro_buf.len() as u64) as usize;
+            let bytes_read = stream.read(&mut micro_buf[..chunk_len])?;
+            if bytes_read == 0 {
+                return Err(SevenZError::UnexpectedEof {
+                    required: remaining_skip,
+                    actual: target_start - remaining_skip,
+                });
+            }
+            remaining_skip -= bytes_read as u64;
+            skipped += bytes_read as u64;
+        }
+        Ok(skipped)
+    }
+
+    fn stream_target_substream<R: Read, W: Write>(
+        stream: &mut R,
+        output: &mut W,
+        target_size: u64,
+    ) -> Result<(u64, u32), SevenZError> {
+        if target_size == 0 {
+            return Ok((0, 0));
+        }
+        let mut extracted_bytes = 0u64;
+        let mut running_crc = 0u32;
+        let mut remaining_target = target_size;
+        let buffer_cap = (remaining_target as usize).min(Self::MICRO_BUFFER_SIZE);
+        let mut transfer_buf = vec![0u8; buffer_cap];
+
+        while remaining_target > 0 {
+            let chunk_len = remaining_target.min(transfer_buf.len() as u64) as usize;
+            let bytes_read = stream.read(&mut transfer_buf[..chunk_len])?;
+            if bytes_read == 0 {
+                return Err(SevenZError::UnexpectedEof {
+                    required: remaining_target,
+                    actual: target_size - remaining_target,
+                });
+            }
+            let chunk = &transfer_buf[..bytes_read];
+            output.write_all(chunk)?;
+            running_crc = crc32_fast(running_crc, chunk);
+            extracted_bytes += bytes_read as u64;
+            remaining_target -= bytes_read as u64;
+        }
+        output.flush()?;
+        Ok((extracted_bytes, running_crc))
+    }
+
     /// Selectively extracts a single substream and produces detailed execution telemetry.
     pub fn extract_substream_with_stats<R: Read, W: Write>(
         stream: &mut R,
@@ -253,68 +313,19 @@ impl SolidEarlyExitExtractor {
         let target_size = meta.size;
         let target_end = meta.end_offset();
 
-        // Stage 1: Zero-heap-allocation sliding discard for preceding substreams 0..K-1
-        let mut skipped_preceding_bytes = 0u64;
-        if target_start > 0 {
-            let mut remaining_skip = target_start;
-            let buffer_cap = (remaining_skip as usize).min(Self::MICRO_BUFFER_SIZE);
-            let mut micro_buf = vec![0u8; buffer_cap];
+        let skipped_preceding_bytes = Self::discard_preceding_bytes(stream, target_start)?;
+        let (extracted_bytes, running_crc) =
+            Self::stream_target_substream(stream, output, target_size)?;
 
-            while remaining_skip > 0 {
-                let chunk_len = remaining_skip.min(micro_buf.len() as u64) as usize;
-                let bytes_read = stream.read(&mut micro_buf[..chunk_len])?;
-                if bytes_read == 0 {
-                    return Err(SevenZError::UnexpectedEof {
-                        required: remaining_skip,
-                        actual: target_start - remaining_skip,
-                    });
-                }
-                remaining_skip -= bytes_read as u64;
-                skipped_preceding_bytes += bytes_read as u64;
+        if let Some(expected) = meta.crc {
+            if running_crc != expected {
+                return Err(SevenZError::CrcMismatch {
+                    expected,
+                    computed: running_crc,
+                });
             }
         }
 
-        // Stage 2: Stream target substream into output sink and incrementally compute CRC32
-        let mut extracted_bytes = 0u64;
-        let mut running_crc = 0u32;
-        if target_size > 0 {
-            let mut remaining_target = target_size;
-            let buffer_cap = (remaining_target as usize).min(Self::MICRO_BUFFER_SIZE);
-            let mut transfer_buf = vec![0u8; buffer_cap];
-
-            while remaining_target > 0 {
-                let chunk_len = remaining_target.min(transfer_buf.len() as u64) as usize;
-                let bytes_read = stream.read(&mut transfer_buf[..chunk_len])?;
-                if bytes_read == 0 {
-                    return Err(SevenZError::UnexpectedEof {
-                        required: remaining_target,
-                        actual: target_size - remaining_target,
-                    });
-                }
-                let chunk = &transfer_buf[..bytes_read];
-                output.write_all(chunk)?;
-                running_crc = crc32_fast(running_crc, chunk);
-                extracted_bytes += bytes_read as u64;
-                remaining_target -= bytes_read as u64;
-            }
-            output.flush()?;
-        }
-
-        // Verify expected CRC32 if specified
-        let crc_matched = match meta.crc {
-            Some(expected) => {
-                if running_crc != expected {
-                    return Err(SevenZError::CrcMismatch {
-                        expected,
-                        computed: running_crc,
-                    });
-                }
-                true
-            }
-            None => true,
-        };
-
-        // Stage 3: Early Exit Circuit Breaker (Zero reads for trailing substreams K+1..M)
         let early_exit_triggered = target_end < index.total_uncompressed_size();
 
         Ok(SolidExtractionReport {
@@ -325,7 +336,7 @@ impl SolidEarlyExitExtractor {
             extracted_bytes,
             computed_crc: running_crc,
             expected_crc: meta.crc,
-            crc_matched,
+            crc_matched: true,
             early_exit_triggered,
         })
     }

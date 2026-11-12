@@ -903,7 +903,8 @@ public protocol ExtractionSessionProtocol : AnyObject {
     func conflictPage(offset: UInt32, limit: UInt32) throws  -> ConflictPage
     
     /**
-     * Lists the archive and detects conflicts with the destination.
+     * Lists the archive and detects conflicts with the destination without holding
+     * the session state mutex across archive listing or filesystem `fstatat` probes.
      * State: Created -> Created | AwaitingDecision.
      */
     func preflight() throws  -> ConflictSummary?
@@ -1018,7 +1019,8 @@ open func conflictPage(offset: UInt32, limit: UInt32)throws  -> ConflictPage {
 }
     
     /**
-     * Lists the archive and detects conflicts with the destination.
+     * Lists the archive and detects conflicts with the destination without holding
+     * the session state mutex across archive listing or filesystem `fstatat` probes.
      * State: Created -> Created | AwaitingDecision.
      */
 open func preflight()throws  -> ConflictSummary? {
@@ -16744,7 +16746,7 @@ extension AppLanguage: Equatable, Hashable {}
  * Archive format enum exposed to Swift and UniFFI SDKs.
  */
 
-public enum ArchiveFormat {
+public enum ArchiveFormat: Sendable {
     
     case auto
     case zip
@@ -22337,17 +22339,6 @@ public func computeFileSha256(filePath: String)throws  -> String {
 }
 /**
  * Computes hash or checksum of a file in zero-copy chunked streaming fashion across all supported algorithms.
- *
- * Supported algorithms (case-insensitive):
- * - "blake3": 256-bit BLAKE3 tree hash (lowercase 64-character hex)
- * - "xxh3_64" / "xxh3-64": 64-bit XXH3 hash (lowercase 16-character hex)
- * - "xxh3_128" / "xxh3-128": 128-bit XXH3 hash (lowercase 32-character hex)
- * - "crc64": 64-bit CRC (ECMA-182) checksum (lowercase 16-character hex)
- * - "crc32": 32-bit CRC (IEEE 802.3) checksum (uppercase 8-character hex)
- * - "adler32": 32-bit Adler-32 checksum (uppercase 8-character hex)
- * - "sha256" / "sha-256": 256-bit SHA-256 digest (lowercase 64-character hex)
- * - "sha1" / "sha-1": 160-bit SHA-1 digest (lowercase 40-character hex)
- * - "md5": 128-bit MD5 digest (lowercase 32-character hex)
  */
 public func computeFileStreamHash(filePath: String, algorithm: String)throws  -> String {
     return try  FfiConverterString.lift(try rustCallWithError(FfiConverterTypeTTZipError.lift) {
@@ -24310,7 +24301,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_func_compute_file_sha256() != 31235) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_ttzip_engine_checksum_func_compute_file_stream_hash() != 60884) {
+    if (uniffi_ttzip_engine_checksum_func_compute_file_stream_hash() != 21618) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_create_archive_advanced() != 44444) {
@@ -24838,7 +24829,7 @@ private let initializationResult: InitializationResult = {
     if (uniffi_ttzip_engine_checksum_method_extractionsession_conflict_page() != 55010) {
         return InitializationResult.apiChecksumMismatch
     }
-    if (uniffi_ttzip_engine_checksum_method_extractionsession_preflight() != 43860) {
+    if (uniffi_ttzip_engine_checksum_method_extractionsession_preflight() != 51770) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_method_extractionsession_stage() != 15189) {

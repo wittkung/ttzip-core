@@ -211,7 +211,12 @@ pub fn apply_filters_decode(
     for idx in (0..pre_filter_count).rev() {
         let filter = &filters[idx];
         let start_ip = if filter.properties.len() >= 4 {
-            u32::from_le_bytes(filter.properties[0..4].try_into().unwrap())
+            u32::from_le_bytes([
+                filter.properties[0],
+                filter.properties[1],
+                filter.properties[2],
+                filter.properties[3],
+            ])
         } else {
             0
         };

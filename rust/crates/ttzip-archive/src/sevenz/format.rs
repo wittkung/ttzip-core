@@ -29,6 +29,8 @@ pub const METHOD_ARM64_ALT: u64 = 0x03030701;
 pub const METHOD_PPMD: u64 = 0x030401;
 pub const METHOD_DEFLATE: u64 = 0x040108;
 pub const METHOD_BZIP2: u64 = 0x040202;
+pub const METHOD_ZSTD: u64 = 0x04F71101;
+pub const METHOD_ZSTD_BYTES: &[u8] = &[0x04, 0xF7, 0x11, 0x01];
 pub const METHOD_BROTLI: u64 = 0x04F71102;
 pub const METHOD_LZ4: u64 = 0x04F71104;
 pub const METHOD_AES: u64 = 0x06F10701;
@@ -57,10 +59,26 @@ impl SevenZSignatureHeader {
 
         let major_version = mapped[6];
         let minor_version = mapped[7];
-        let start_header_crc = u32::from_le_bytes(mapped[8..12].try_into().unwrap());
-        let next_header_offset = u64::from_le_bytes(mapped[12..20].try_into().unwrap());
-        let next_header_size = u64::from_le_bytes(mapped[20..28].try_into().unwrap());
-        let next_header_crc = u32::from_le_bytes(mapped[28..32].try_into().unwrap());
+        let start_header_crc = u32::from_le_bytes(
+            mapped[8..12]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+        );
+        let next_header_offset = u64::from_le_bytes(
+            mapped[12..20]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+        );
+        let next_header_size = u64::from_le_bytes(
+            mapped[20..28]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+        );
+        let next_header_crc = u32::from_le_bytes(
+            mapped[28..32]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+        );
 
         // Validate start header CRC (over bytes 12..32)
         let computed_start_crc = crc32_fast(0, &mapped[12..32]);

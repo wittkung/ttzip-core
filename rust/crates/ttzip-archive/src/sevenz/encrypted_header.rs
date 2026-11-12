@@ -131,30 +131,7 @@ impl EncodedHeaderDecoder {
             password,
             self.max_unpack_limit,
         )?;
-
-        let mut final_info = SevenZHeaderInfo::default();
-        if !unpacked_bytes.is_empty() {
-            if is_aes_encrypted && !VALID_TOP_LEVEL_NIDS.contains(&unpacked_bytes[0]) {
-                return Err(SevenZError::BadPassword);
-            }
-            let stream = if unpacked_bytes[0] == K_HEADER {
-                &unpacked_bytes[1..]
-            } else {
-                &unpacked_bytes[..]
-            };
-            parse_7z_header_stream(stream, &mut final_info).map_err(|e| {
-                if is_aes_encrypted {
-                    SevenZError::BadPassword
-                } else {
-                    SevenZError::from(e)
-                }
-            })?;
-        }
-        if is_aes_encrypted {
-            final_info.is_encrypted = true;
-        }
-
-        Ok(final_info)
+        parse_unpacked_encoded_header(&unpacked_bytes, is_aes_encrypted)
     }
 
     /// Decodes the 7z header from any seekable reader (such as `VirtualMultiVolumeReader`),
@@ -249,29 +226,36 @@ impl EncodedHeaderDecoder {
             password,
             self.max_unpack_limit,
         )?;
-        let mut final_info = SevenZHeaderInfo::default();
-        if !unpacked_bytes.is_empty() {
-            if is_aes_encrypted && !VALID_TOP_LEVEL_NIDS.contains(&unpacked_bytes[0]) {
-                return Err(SevenZError::BadPassword);
-            }
-            let stream = if unpacked_bytes[0] == K_HEADER {
-                &unpacked_bytes[1..]
-            } else {
-                &unpacked_bytes[..]
-            };
-            parse_7z_header_stream(stream, &mut final_info).map_err(|e| {
-                if is_aes_encrypted {
-                    SevenZError::BadPassword
-                } else {
-                    SevenZError::from(e)
-                }
-            })?;
-        }
-        if is_aes_encrypted {
-            final_info.is_encrypted = true;
-        }
-        Ok(final_info)
+        parse_unpacked_encoded_header(&unpacked_bytes, is_aes_encrypted)
     }
+}
+
+fn parse_unpacked_encoded_header(
+    unpacked_bytes: &[u8],
+    is_aes_encrypted: bool,
+) -> Result<SevenZHeaderInfo, SevenZError> {
+    let mut final_info = SevenZHeaderInfo::default();
+    if !unpacked_bytes.is_empty() {
+        if is_aes_encrypted && !VALID_TOP_LEVEL_NIDS.contains(&unpacked_bytes[0]) {
+            return Err(SevenZError::BadPassword);
+        }
+        let stream = if unpacked_bytes[0] == K_HEADER {
+            &unpacked_bytes[1..]
+        } else {
+            unpacked_bytes
+        };
+        parse_7z_header_stream(stream, &mut final_info).map_err(|e| {
+            if is_aes_encrypted {
+                SevenZError::BadPassword
+            } else {
+                SevenZError::from(e)
+            }
+        })?;
+    }
+    if is_aes_encrypted {
+        final_info.is_encrypted = true;
+    }
+    Ok(final_info)
 }
 
 /// Decompresses and decrypts a specific 7z header folder with strict memory allocation bounds.
@@ -388,6 +372,99 @@ fn decompress_header_folder_slice(
     Ok(unpacked)
 }
 
+fn decompress_lzma2_header_bytes(
+    input: &[u8],
+    coder_props: &[u8],
+    expected_unpack_size: usize,
+    max_limit: usize,
+) -> Result<Vec<u8>, SevenZError> {
+    let mut dstream = crate::codecs::lzma2::Fl2DStream::new(1)
+        .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA2 init: {e:?}")))?;
+    if dstream.init(coder_props.first().copied()).is_err() {
+        dstream
+            .init(None)
+            .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA2 prop init fallback: {e:?}")))?;
+    }
+
+    let mut in_buf = crate::codecs::lzma2::Fl2InBuffer {
+        src: input.as_ptr() as *const libc::c_void,
+        size: input.len(),
+        pos: 0,
+    };
+
+    let alloc_sz = if expected_unpack_size > 0 {
+        expected_unpack_size
+    } else {
+        max_limit.min(64 * 1024)
+    };
+    let mut out = vec![0u8; alloc_sz];
+    let mut total_out = 0usize;
+
+    while in_buf.pos < in_buf.size {
+        let prev_in = in_buf.pos;
+        if total_out >= out.len() {
+            if out.len() >= max_limit {
+                return Err(SevenZError::CountLimitExceeded {
+                    field_name: "header unpack size",
+                    value: total_out as u64,
+                    limit: max_limit,
+                });
+            }
+            out.resize(out.len().saturating_mul(2).min(max_limit), 0);
+        }
+
+        let mut out_buf = crate::codecs::lzma2::Fl2OutBuffer {
+            dst: unsafe { out.as_mut_ptr().add(total_out) as *mut libc::c_void },
+            size: out.len() - total_out,
+            pos: 0,
+        };
+
+        let remaining = dstream
+            .decompress_stream(&mut in_buf, &mut out_buf)
+            .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA2 stream error: {e:?}")))?;
+        total_out += out_buf.pos;
+
+        if remaining == 0 {
+            break;
+        }
+        if out_buf.pos == 0 && in_buf.pos == prev_in {
+            return Err(SevenZError::DecompressionFailed(
+                "LZMA2 stall without progress".to_string(),
+            ));
+        }
+    }
+
+    out.truncate(total_out);
+    Ok(out)
+}
+
+fn decompress_single_shot_header_bytes(
+    input: &[u8],
+    method_id: u64,
+    coder_props: &[u8],
+    expected_unpack_size: usize,
+) -> Result<Vec<u8>, SevenZError> {
+    let mut out = vec![0u8; expected_unpack_size];
+    let decomp_len = match method_id {
+        METHOD_LZMA => {
+            if coder_props.len() < 5 {
+                return Err(SevenZError::CorruptHeader("LZMA properties too short"));
+            }
+            crate::codecs::lzma::lzma1_decompress(input, coder_props, expected_unpack_size as u64, &mut out)
+                .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA error: {e:?}")))?
+        }
+        METHOD_DEFLATE => deflate_decompress(input, &mut out)
+            .map_err(|e| SevenZError::DecompressionFailed(format!("Deflate error: {e:?}")))?,
+        METHOD_BZIP2 => crate::codecs::bzip2::bzip2_decompress(input, &mut out)
+            .map_err(|e| SevenZError::DecompressionFailed(format!("BZip2 error: {e:?}")))?,
+        METHOD_PPMD => crate::codecs::ppmd::ppmd_decompress_7z(input, &mut out, coder_props)
+            .map_err(|e| SevenZError::DecompressionFailed(format!("PPMd error: {e:?}")))?,
+        other => return Err(SevenZError::UnsupportedCodec(other)),
+    };
+    out.truncate(decomp_len);
+    Ok(out)
+}
+
 /// Decompresses raw in-memory header bytes according to the specified 7z compression method ID.
 fn decompress_header_bytes(
     input: &[u8],
@@ -411,101 +488,101 @@ fn decompress_header_bytes(
             }
             Ok(out)
         }
-        METHOD_LZMA2 => {
-            let mut dstream = crate::codecs::lzma2::Fl2DStream::new(1)
-                .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA2 init: {e:?}")))?;
-            let init_res = dstream.init(coder_props.first().copied());
-            if init_res.is_err() {
-                dstream.init(None)
-                    .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA2 prop init fallback: {e:?}")))?;
-            }
-
-            let mut in_buf = crate::codecs::lzma2::Fl2InBuffer {
-                src: input.as_ptr() as *const libc::c_void,
-                size: input.len(),
-                pos: 0,
-            };
-
-            let alloc_sz = if expected_unpack_size > 0 {
-                expected_unpack_size
-            } else {
-                max_limit.min(64 * 1024)
-            };
-            let mut out = vec![0u8; alloc_sz];
-            let mut total_out = 0usize;
-
-            while in_buf.pos < in_buf.size {
-                let prev_in = in_buf.pos;
-                if total_out >= out.len() {
-                    if out.len() >= max_limit {
-                        return Err(SevenZError::CountLimitExceeded {
-                            field_name: "header unpack size",
-                            value: total_out as u64,
-                            limit: max_limit,
-                        });
-                    }
-                    out.resize(out.len().saturating_mul(2).min(max_limit), 0);
-                }
-
-                let mut out_buf = crate::codecs::lzma2::Fl2OutBuffer {
-                    dst: unsafe { out.as_mut_ptr().add(total_out) as *mut libc::c_void },
-                    size: out.len() - total_out,
-                    pos: 0,
-                };
-
-                let remaining = dstream.decompress_stream(&mut in_buf, &mut out_buf)
-                    .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA2 stream error: {e:?}")))?;
-                total_out += out_buf.pos;
-
-                if remaining == 0 {
-                    break;
-                }
-                if out_buf.pos == 0 && in_buf.pos == prev_in {
-                    return Err(SevenZError::DecompressionFailed("LZMA2 stall without progress".to_string()));
-                }
-            }
-
-            out.truncate(total_out);
-            Ok(out)
-        }
-        METHOD_LZMA => {
-            if coder_props.len() < 5 {
-                return Err(SevenZError::CorruptHeader("LZMA properties too short"));
-            }
-            let mut out = vec![0u8; expected_unpack_size];
-            let decomp_len = crate::codecs::lzma::lzma1_decompress(
-                input,
-                coder_props,
-                expected_unpack_size as u64,
-                &mut out,
-            )
-            .map_err(|e| SevenZError::DecompressionFailed(format!("LZMA error: {e:?}")))?;
-            out.truncate(decomp_len);
-            Ok(out)
-        }
-        METHOD_DEFLATE => {
-            let mut out = vec![0u8; expected_unpack_size];
-            let decomp_len = deflate_decompress(input, &mut out)
-                .map_err(|e| SevenZError::DecompressionFailed(format!("Deflate error: {e:?}")))?;
-            out.truncate(decomp_len);
-            Ok(out)
-        }
-        METHOD_BZIP2 => {
-            let mut out = vec![0u8; expected_unpack_size];
-            let decomp_len = crate::codecs::bzip2::bzip2_decompress(input, &mut out)
-                .map_err(|e| SevenZError::DecompressionFailed(format!("BZip2 error: {e:?}")))?;
-            out.truncate(decomp_len);
-            Ok(out)
-        }
-        METHOD_PPMD => {
-            let mut out = vec![0u8; expected_unpack_size];
-            let decomp_len = crate::codecs::ppmd::ppmd_decompress_7z(input, &mut out, coder_props)
-                .map_err(|e| SevenZError::DecompressionFailed(format!("PPMd error: {e:?}")))?;
-            out.truncate(decomp_len);
-            Ok(out)
-        }
-        other => Err(SevenZError::UnsupportedCodec(other)),
+        METHOD_LZMA2 => decompress_lzma2_header_bytes(input, coder_props, expected_unpack_size, max_limit),
+        _ => decompress_single_shot_header_bytes(input, method_id, coder_props, expected_unpack_size),
     }
+}
+
+fn read_probe_next_header<R: Read + Seek>(reader: &mut R) -> Result<Option<Vec<u8>>, SevenZError> {
+    reader.seek(SeekFrom::Start(0))?;
+    let mut sig_buf = [0u8; 32];
+    reader.read_exact(&mut sig_buf)?;
+
+    let sig = SevenZSignatureHeader::parse(&sig_buf)?;
+    if sig.next_header_size == 0 {
+        return Ok(None);
+    }
+
+    let header_size = bounded_usize(sig.next_header_size, MAX_PREALLOC_BYTES, "probe next header size")?;
+    reader.seek(SeekFrom::Start(32 + sig.next_header_offset))?;
+
+    let mut next_header_bytes = vec![0u8; header_size];
+    reader.read_exact(&mut next_header_bytes)?;
+
+    if sig.next_header_crc != 0 {
+        let computed = crc32_fast(0, &next_header_bytes);
+        if computed != sig.next_header_crc {
+            return Err(SevenZError::CrcMismatch {
+                expected: sig.next_header_crc,
+                computed,
+            });
+        }
+    }
+    Ok(Some(next_header_bytes))
+}
+
+fn assert_probe_codec_header(
+    method_id: u64,
+    primary_coder: Option<&super::header::SevenZCoder>,
+    decrypted: &[u8],
+) -> Result<(), SevenZError> {
+    if method_id == METHOD_LZMA2 && !decrypted.is_empty() {
+        let ctrl = decrypted[0];
+        if (0x03..=0x7F).contains(&ctrl) {
+            return Err(SevenZError::BadPassword);
+        }
+        if ctrl >= 0x80 && (ctrl & 0x40) != 0 && decrypted.len() >= 2 && decrypted[1] >= 225 {
+            return Err(SevenZError::BadPassword);
+        }
+    } else if method_id == METHOD_LZMA
+        && primary_coder.is_some_and(|c| c.properties.len() >= 5 && c.properties[0] >= 225)
+    {
+        return Err(SevenZError::BadPassword);
+    }
+    Ok(())
+}
+
+fn verify_probe_decrypted_header(
+    folder: &SevenZFolder,
+    boot_info: &SevenZHeaderInfo,
+    decrypted: &[u8],
+) -> Result<bool, SevenZError> {
+    let non_aes_idx = folder.coders.iter().position(|c| c.method_id != METHOD_AES);
+    let primary_coder = non_aes_idx
+        .and_then(|idx| folder.coders.get(idx))
+        .or_else(|| folder.coders.first());
+    let method_id = primary_coder.map(|c| c.method_id).unwrap_or(boot_info.primary_method_id);
+
+    assert_probe_codec_header(method_id, primary_coder, decrypted)?;
+
+    let expected_unpack = non_aes_idx
+        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
+        .or_else(|| folder.unpack_sizes.last().copied())
+        .unwrap_or(0);
+    let unpack_limit = bounded_usize(expected_unpack, MAX_PREALLOC_BYTES, "probe header unpack size")?;
+
+    let coder_props = primary_coder.map(|c| c.properties.as_slice()).unwrap_or(&boot_info.coder_props);
+    let decomp = decompress_header_bytes(decrypted, method_id, coder_props, unpack_limit, MAX_PREALLOC_BYTES)
+        .map_err(|_| SevenZError::BadPassword)?;
+
+    if decomp.is_empty() {
+        return if expected_unpack > 0 {
+            Err(SevenZError::BadPassword)
+        } else {
+            Ok(true)
+        };
+    }
+
+    if !VALID_TOP_LEVEL_NIDS.contains(&decomp[0]) {
+        return Err(SevenZError::BadPassword);
+    }
+
+    if let Some(expected_crc) = folder.crc {
+        if crc32_fast(0, &decomp) != expected_crc {
+            return Err(SevenZError::BadPassword);
+        }
+    }
+    Ok(true)
 }
 
 /// Lightweight, sub-millisecond 7-Zip password probe (`probe_7z_password`).
@@ -524,37 +601,14 @@ pub fn probe_7z_password<R: Read + Seek>(
     reader: &mut R,
     password: &str,
 ) -> Result<bool, SevenZError> {
-    reader.seek(SeekFrom::Start(0))?;
-    let mut sig_buf = [0u8; 32];
-    reader.read_exact(&mut sig_buf)?;
-
-    let sig = SevenZSignatureHeader::parse(&sig_buf)?;
-    if sig.next_header_size == 0 {
+    let Some(next_header_bytes) = read_probe_next_header(reader)? else {
         return Ok(true);
-    }
-
-    let header_size = bounded_usize(sig.next_header_size, MAX_PREALLOC_BYTES, "probe next header size")?;
-    reader.seek(SeekFrom::Start(32 + sig.next_header_offset))?;
-
-    let mut next_header_bytes = vec![0u8; header_size];
-    reader.read_exact(&mut next_header_bytes)?;
-
-    if sig.next_header_crc != 0 {
-        let computed = crc32_fast(0, &next_header_bytes);
-        if computed != sig.next_header_crc {
-            return Err(SevenZError::CrcMismatch {
-                expected: sig.next_header_crc,
-                computed,
-            });
-        }
-    }
+    };
 
     let first_byte = next_header_bytes[0];
     if first_byte == K_HEADER {
-        // Plaintext header: no password required for header
         return Ok(true);
     }
-
     if first_byte != K_ENCODED_HEADER {
         return Err(SevenZError::CorruptHeader("Unexpected next header identifier"));
     }
@@ -564,120 +618,28 @@ pub fn probe_7z_password<R: Read + Seek>(
 
     let is_aes_encrypted = boot_info.is_encrypted
         || boot_info.folders.iter().any(|f| f.coders.iter().any(|c| c.method_id == METHOD_AES));
-
     if !is_aes_encrypted {
         return Ok(true);
-    }
-
-    if password.is_empty() {
-        return Err(SevenZError::BadPassword);
     }
 
     let folder = boot_info
         .folders
         .first()
         .ok_or(SevenZError::CorruptHeader("Missing folder in encoded header"))?;
-
-    let packed_len = folder.packed_len;
-    if packed_len == 0 {
-        return Ok(true);
-    }
-
-    if !packed_len.is_multiple_of(16) {
-        return Err(SevenZError::CorruptHeader("AES packed length not multiple of 16"));
+    if folder.packed_len == 0 {
+        return if password.is_empty() {
+            Err(SevenZError::BadPassword)
+        } else {
+            Ok(true)
+        };
     }
 
     reader.seek(SeekFrom::Start(folder.packed_offset as u64))?;
-
-    let mut packed_bytes = vec![0u8; packed_len];
+    let mut packed_bytes = vec![0u8; folder.packed_len];
     reader.read_exact(&mut packed_bytes)?;
 
-    let key = Zeroizing::new(sha256_7z_kdf(
-        password,
-        &boot_info.aes_salt[..boot_info.aes_salt_len],
-        boot_info.aes_num_cycles_power,
-    ));
-
-    let mut decrypted = Zeroizing::new(vec![0u8; packed_bytes.len()]);
-    aes256_cbc_decrypt(&key, &boot_info.aes_iv, &packed_bytes, &mut decrypted)
-        .map_err(|_| SevenZError::BadPassword)?;
-
-    let aes_coder_idx = folder.coders.iter().position(|c| c.method_id == METHOD_AES);
-    let aes_unpack_sz = aes_coder_idx
-        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
-        .unwrap_or(decrypted.len() as u64) as usize;
-    if aes_unpack_sz < decrypted.len() {
-        decrypted.truncate(aes_unpack_sz);
-    }
-
-    // ========================================================================
-    // Defense Line 1: Codec Header / Range Assertion
-    // ========================================================================
-    let non_aes_idx = folder.coders.iter().position(|c| c.method_id != METHOD_AES);
-    let primary_coder = non_aes_idx
-        .and_then(|idx| folder.coders.get(idx))
-        .or_else(|| folder.coders.first());
-
-    let method_id = primary_coder.map(|c| c.method_id).unwrap_or(boot_info.primary_method_id);
-
-    if method_id == METHOD_LZMA2 && !decrypted.is_empty() {
-        let ctrl = decrypted[0];
-        // 0x03..=0x7F are strictly invalid control bytes in LZMA2 specification
-        if (0x03..=0x7F).contains(&ctrl) {
-            return Err(SevenZError::BadPassword);
-        }
-        if ctrl >= 0x80 && (ctrl & 0x40) != 0 && decrypted.len() >= 2 {
-            let props = decrypted[1];
-            if props >= 225 {
-                return Err(SevenZError::BadPassword);
-            }
-        }
-    } else if method_id == METHOD_LZMA {
-        if let Some(coder) = primary_coder {
-            if coder.properties.len() >= 5 && coder.properties[0] >= 225 {
-                return Err(SevenZError::BadPassword);
-            }
-        }
-    }
-
-    // ========================================================================
-    // Defense Line 2: Decompression & Header NID Assertion
-    // ========================================================================
-    let expected_unpack = non_aes_idx
-        .and_then(|idx| folder.unpack_sizes.get(idx).copied())
-        .or_else(|| folder.unpack_sizes.last().copied())
-        .unwrap_or(0);
-    let unpack_limit = bounded_usize(expected_unpack, MAX_PREALLOC_BYTES, "probe header unpack size")?;
-
-    let coder_props = primary_coder.map(|c| c.properties.as_slice()).unwrap_or(&boot_info.coder_props);
-    let decomp = match decompress_header_bytes(&decrypted, method_id, coder_props, unpack_limit, MAX_PREALLOC_BYTES) {
-        Ok(d) => d,
-        Err(_) => return Err(SevenZError::BadPassword),
-    };
-
-    if decomp.is_empty() {
-        if expected_unpack > 0 {
-            return Err(SevenZError::BadPassword);
-        }
-        return Ok(true);
-    }
-
-    let first_tag = decomp[0];
-    if !VALID_TOP_LEVEL_NIDS.contains(&first_tag) {
-        return Err(SevenZError::BadPassword);
-    }
-
-    // ========================================================================
-    // Defense Line 3: CRC32 Checksum Validation
-    // ========================================================================
-    if let Some(expected_crc) = folder.crc {
-        let computed = crc32_fast(0, &decomp);
-        if computed != expected_crc {
-            return Err(SevenZError::BadPassword);
-        }
-    }
-
-    Ok(true)
+    let decrypted = decrypt_header_folder_slice(folder, &boot_info, &packed_bytes, Some(password))?;
+    verify_probe_decrypted_header(folder, &boot_info, &decrypted)
 }
 
 #[cfg(test)]

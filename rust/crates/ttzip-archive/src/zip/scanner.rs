@@ -282,7 +282,7 @@ pub fn find_eocd_candidate_offsets(window: &[u8]) -> Vec<usize> {
 }
 
 #[inline]
-#[allow(dead_code)]
+#[allow(dead_code, reason = "scalar fallback used on non-SIMD targets and parity tests")]
 pub fn find_eocd_candidates_scalar(window: &[u8], max_pos: usize, out: &mut Vec<usize>) {
     let mut pos = max_pos as isize;
     while pos >= 0 {
@@ -492,19 +492,17 @@ impl EocdScanner {
         Err(ZipEngineError::EocdNotFound)
     }
 
-    fn validate_and_parse_slice(
-        bytes: &[u8],
-        abs_eocd_offset: u64,
-        rel_pos: usize,
+    fn parse_eocd_window_fields(
         window: &[u8],
-    ) -> Result<CentralDirectoryEndInfo, ZipEngineError> {
-        let file_len = bytes.len() as u64;
-        let mut total_entries = read_u16_le(window, rel_pos + 10) as u64;
-        let mut cd_size = read_u32_le(window, rel_pos + 12) as u64;
-        let mut cd_offset = read_u32_le(window, rel_pos + 16) as u64;
+        rel_pos: usize,
+        abs_eocd_offset: u64,
+        file_len: u64,
+    ) -> Result<(u64, u64, u64, Vec<u8>), ZipEngineError> {
+        let total_entries = read_u16_le(window, rel_pos + 10) as u64;
+        let cd_size = read_u32_le(window, rel_pos + 12) as u64;
+        let cd_offset = read_u32_le(window, rel_pos + 16) as u64;
         let comment_len = read_u16_le(window, rel_pos + 20) as usize;
 
-        // Invariant: EOCD + declared comment must not exceed file boundary
         let eocd_record_end = abs_eocd_offset + (EOCD_MIN_SIZE as u64) + (comment_len as u64);
         if eocd_record_end > file_len {
             return Err(ZipEngineError::InvalidCommentLength {
@@ -515,8 +513,19 @@ impl EocdScanner {
 
         let comment_start = rel_pos + EOCD_MIN_SIZE;
         let comment = window[comment_start..comment_start + comment_len].to_vec();
+        Ok((total_entries, cd_size, cd_offset, comment))
+    }
 
-        // Check for Zip64 EOCD Locator (20 bytes before standard EOCD)
+    fn validate_and_parse_slice(
+        bytes: &[u8],
+        abs_eocd_offset: u64,
+        rel_pos: usize,
+        window: &[u8],
+    ) -> Result<CentralDirectoryEndInfo, ZipEngineError> {
+        let file_len = bytes.len() as u64;
+        let (mut total_entries, mut cd_size, mut cd_offset, comment) =
+            Self::parse_eocd_window_fields(window, rel_pos, abs_eocd_offset, file_len)?;
+
         if abs_eocd_offset >= 20 {
             let locator_pos = (abs_eocd_offset - 20) as usize;
             if read_u32_le(bytes, locator_pos) == MAGIC_ZIP64_LOCATOR {
@@ -531,27 +540,23 @@ impl EocdScanner {
             }
         }
 
-        // SFX / Shebang adaptive offset calculation
         let mut archive_offset = abs_eocd_offset.saturating_sub(cd_size + cd_offset);
-
         if total_entries > 0 {
             let probed_cdfh_relative = (archive_offset + cd_offset) as usize;
             let probed_cdfh_absolute = cd_offset as usize;
-
             let relative_has_cdfh = probed_cdfh_relative + 4 <= bytes.len()
                 && read_u32_le(bytes, probed_cdfh_relative) == MAGIC_CDFH;
             let absolute_has_cdfh = probed_cdfh_absolute + 4 <= bytes.len()
                 && read_u32_le(bytes, probed_cdfh_absolute) == MAGIC_CDFH;
 
-            if relative_has_cdfh {
-                // Standard or SFX archive with relative CD offset
-            } else if absolute_has_cdfh {
-                // SFX archive where CD offset is already written as absolute file offset
-                archive_offset = 0;
-            } else {
-                return Err(ZipEngineError::CorruptedHeader(
-                    "Probed CDFH magic mismatch at central directory offset".into(),
-                ));
+            if !relative_has_cdfh {
+                if absolute_has_cdfh {
+                    archive_offset = 0;
+                } else {
+                    return Err(ZipEngineError::CorruptedHeader(
+                        "Probed CDFH magic mismatch at central directory offset".into(),
+                    ));
+                }
             }
         }
 
@@ -580,75 +585,20 @@ impl EocdScanner {
         rel_pos: usize,
         window: &[u8],
     ) -> Result<CentralDirectoryEndInfo, ZipEngineError> {
-        let mut total_entries = read_u16_le(window, rel_pos + 10) as u64;
-        let mut cd_size = read_u32_le(window, rel_pos + 12) as u64;
-        let mut cd_offset = read_u32_le(window, rel_pos + 16) as u64;
-        let comment_len = read_u16_le(window, rel_pos + 20) as usize;
+        let (mut total_entries, mut cd_size, mut cd_offset, comment) =
+            Self::parse_eocd_window_fields(window, rel_pos, abs_eocd_offset, file_len)?;
 
-        let eocd_record_end = abs_eocd_offset + (EOCD_MIN_SIZE as u64) + (comment_len as u64);
-        if eocd_record_end > file_len {
-            return Err(ZipEngineError::InvalidCommentLength {
-                declared: comment_len,
-                available: (file_len.saturating_sub(abs_eocd_offset + EOCD_MIN_SIZE as u64)) as usize,
-            });
+        if let Some((z64_entries, z64_size, z64_offset)) =
+            Self::probe_zip64_reader_overrides(reader, abs_eocd_offset)?
+        {
+            total_entries = z64_entries;
+            cd_size = z64_size;
+            cd_offset = z64_offset;
         }
 
-        let comment_start = rel_pos + EOCD_MIN_SIZE;
-        let comment = window[comment_start..comment_start + comment_len].to_vec();
-
-        // Check for Zip64 locator
-        if abs_eocd_offset >= 20 {
-            reader.seek(SeekFrom::Start(abs_eocd_offset - 20))?;
-            let mut loc_buf = [0u8; 20];
-            if reader.read_exact(&mut loc_buf).is_ok() && read_u32_le(&loc_buf, 0) == MAGIC_ZIP64_LOCATOR {
-                let z64_eocd_off = read_u64_le(&loc_buf, 8);
-                if z64_eocd_off + 56 <= abs_eocd_offset {
-                    reader.seek(SeekFrom::Start(z64_eocd_off))?;
-                    let mut z64_buf = [0u8; 56];
-                    if reader.read_exact(&mut z64_buf).is_ok()
-                        && read_u32_le(&z64_buf, 0) == MAGIC_ZIP64_EOCD
-                    {
-                        total_entries = read_u64_le(&z64_buf, 32);
-                        cd_size = read_u64_le(&z64_buf, 40);
-                        cd_offset = read_u64_le(&z64_buf, 48);
-                    }
-                }
-            }
-        }
-
-        let mut archive_offset = abs_eocd_offset.saturating_sub(cd_size + cd_offset);
-
-        if total_entries > 0 {
-            let mut cdfh_buf = [0u8; 4];
-            let mut relative_valid = false;
-            let probed_relative = archive_offset + cd_offset;
-
-            if probed_relative + 4 <= file_len {
-                reader.seek(SeekFrom::Start(probed_relative))?;
-                if reader.read_exact(&mut cdfh_buf).is_ok() && read_u32_le(&cdfh_buf, 0) == MAGIC_CDFH {
-                    relative_valid = true;
-                }
-            }
-
-            if !relative_valid {
-                let mut absolute_valid = false;
-                if cd_offset + 4 <= file_len {
-                    reader.seek(SeekFrom::Start(cd_offset))?;
-                    if reader.read_exact(&mut cdfh_buf).is_ok() && read_u32_le(&cdfh_buf, 0) == MAGIC_CDFH {
-                        absolute_valid = true;
-                    }
-                }
-
-                if absolute_valid {
-                    archive_offset = 0;
-                } else {
-                    return Err(ZipEngineError::CorruptedHeader(
-                        "Probed CDFH magic mismatch at central directory offset".into(),
-                    ));
-                }
-            }
-        }
-
+        let archive_offset = Self::resolve_reader_archive_offset(
+            reader, file_len, abs_eocd_offset, cd_size, cd_offset, total_entries,
+        )?;
         if archive_offset + cd_offset + cd_size > abs_eocd_offset {
             return Err(ZipEngineError::InvalidCentralDirectoryBoundary {
                 offset: archive_offset + cd_offset,
@@ -656,7 +606,6 @@ impl EocdScanner {
                 file_len,
             });
         }
-
         Ok(CentralDirectoryEndInfo {
             eocd_offset: abs_eocd_offset,
             archive_offset,
@@ -665,6 +614,75 @@ impl EocdScanner {
             total_entries,
             comment,
         })
+    }
+
+    fn probe_zip64_reader_overrides<R: Read + Seek>(
+        reader: &mut R,
+        abs_eocd_offset: u64,
+    ) -> Result<Option<(u64, u64, u64)>, ZipEngineError> {
+        if abs_eocd_offset < 20 {
+            return Ok(None);
+        }
+        reader.seek(SeekFrom::Start(abs_eocd_offset - 20))?;
+        let mut loc_buf = [0u8; 20];
+        if reader.read_exact(&mut loc_buf).is_err()
+            || read_u32_le(&loc_buf, 0) != MAGIC_ZIP64_LOCATOR
+        {
+            return Ok(None);
+        }
+
+        let z64_eocd_off = read_u64_le(&loc_buf, 8);
+        if z64_eocd_off + 56 > abs_eocd_offset {
+            return Ok(None);
+        }
+        reader.seek(SeekFrom::Start(z64_eocd_off))?;
+        let mut z64_buf = [0u8; 56];
+        if reader.read_exact(&mut z64_buf).is_ok()
+            && read_u32_le(&z64_buf, 0) == MAGIC_ZIP64_EOCD
+        {
+            return Ok(Some((
+                read_u64_le(&z64_buf, 32),
+                read_u64_le(&z64_buf, 40),
+                read_u64_le(&z64_buf, 48),
+            )));
+        }
+        Ok(None)
+    }
+
+    fn resolve_reader_archive_offset<R: Read + Seek>(
+        reader: &mut R,
+        file_len: u64,
+        abs_eocd_offset: u64,
+        cd_size: u64,
+        cd_offset: u64,
+        total_entries: u64,
+    ) -> Result<u64, ZipEngineError> {
+        let archive_offset = abs_eocd_offset.saturating_sub(cd_size + cd_offset);
+        if total_entries == 0 {
+            return Ok(archive_offset);
+        }
+        if Self::probe_reader_cdfh_magic(reader, file_len, archive_offset + cd_offset)? {
+            return Ok(archive_offset);
+        }
+        if Self::probe_reader_cdfh_magic(reader, file_len, cd_offset)? {
+            return Ok(0);
+        }
+        Err(ZipEngineError::CorruptedHeader(
+            "Probed CDFH magic mismatch at central directory offset".into(),
+        ))
+    }
+
+    fn probe_reader_cdfh_magic<R: Read + Seek>(
+        reader: &mut R,
+        file_len: u64,
+        pos: u64,
+    ) -> Result<bool, ZipEngineError> {
+        if pos + 4 > file_len {
+            return Ok(false);
+        }
+        reader.seek(SeekFrom::Start(pos))?;
+        let mut cdfh_buf = [0u8; 4];
+        Ok(reader.read_exact(&mut cdfh_buf).is_ok() && read_u32_le(&cdfh_buf, 0) == MAGIC_CDFH)
     }
 }
 

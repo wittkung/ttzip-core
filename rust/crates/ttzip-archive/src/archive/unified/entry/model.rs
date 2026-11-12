@@ -100,11 +100,37 @@ impl TTZipEntry {
     }
 
     pub fn unset_field(&mut self, field: EntryFields) {
+        self.unset_path_and_link_fields(field);
+        self.unset_stat_and_time_fields(field);
+        self.unset_extended_metadata_fields(field);
+        self.fields.remove(field);
+    }
+
+    fn unset_path_and_link_fields(&mut self, field: EntryFields) {
         if field.contains(EntryFields::PATHNAME) {
             self.pathname.clear();
             self.pathname_mbs = None;
             self.pathname_wcs = None;
         }
+        if field.contains(EntryFields::SYMLINK) {
+            self.symlink_target = None;
+            self.symlink_target_mbs = None;
+            self.symlink_target_wcs = None;
+        }
+        if field.contains(EntryFields::HARDLINK) {
+            self.hardlink_target = None;
+            self.hardlink_target_mbs = None;
+            self.hardlink_target_wcs = None;
+        }
+        if field.contains(EntryFields::UNAME) {
+            self.uname = None;
+        }
+        if field.contains(EntryFields::GNAME) {
+            self.gname = None;
+        }
+    }
+
+    fn unset_stat_and_time_fields(&mut self, field: EntryFields) {
         if field.contains(EntryFields::SIZE) {
             self.size = 0;
         }
@@ -127,17 +153,14 @@ impl TTZipEntry {
             self.file_type = TTZipFileType::Unknown;
             self.mode &= 0o7777;
         }
+    }
+
+    fn unset_extended_metadata_fields(&mut self, field: EntryFields) {
         if field.contains(EntryFields::UID) {
             self.uid = 0;
         }
         if field.contains(EntryFields::GID) {
             self.gid = 0;
-        }
-        if field.contains(EntryFields::UNAME) {
-            self.uname = None;
-        }
-        if field.contains(EntryFields::GNAME) {
-            self.gname = None;
         }
         if field.contains(EntryFields::INO) {
             self.ino = 0;
@@ -150,16 +173,6 @@ impl TTZipEntry {
         }
         if field.contains(EntryFields::NLINK) {
             self.nlink = 0;
-        }
-        if field.contains(EntryFields::SYMLINK) {
-            self.symlink_target = None;
-            self.symlink_target_mbs = None;
-            self.symlink_target_wcs = None;
-        }
-        if field.contains(EntryFields::HARDLINK) {
-            self.hardlink_target = None;
-            self.hardlink_target_mbs = None;
-            self.hardlink_target_wcs = None;
         }
         if field.contains(EntryFields::XATTRS) {
             self.xattrs.clear();
@@ -176,7 +189,6 @@ impl TTZipEntry {
         if field.contains(EntryFields::FLAGS) {
             self.flags = 0;
         }
-        self.fields.remove(field);
     }
 
     pub fn set_pathname(&mut self, path: impl Into<String>) {

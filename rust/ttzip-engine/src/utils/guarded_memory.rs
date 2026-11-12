@@ -48,6 +48,17 @@ impl GuardedBuffer {
     ///
     /// Any read or write past `&buffer[buffer.len() - 1]` immediately hits the trailing guard page.
     pub fn right_aligned(data: &[u8]) -> Result<Self, String> {
+        Self::allocate_aligned(data, true)
+    }
+
+    /// Allocates a guarded buffer with `data` left-aligned against the leading guard page.
+    ///
+    /// Any read or write before `&buffer[0]` immediately hits the leading guard page.
+    pub fn left_aligned(data: &[u8]) -> Result<Self, String> {
+        Self::allocate_aligned(data, false)
+    }
+
+    fn allocate_aligned(data: &[u8], align_right: bool) -> Result<Self, String> {
         let page_size = Self::page_size();
         let guard_bytes = page_size;
         let data_len = data.len();
@@ -62,45 +73,8 @@ impl GuardedBuffer {
 
         #[cfg(unix)]
         {
-            let base_ptr = unsafe {
-                libc::mmap(
-                    std::ptr::null_mut(),
-                    total_len,
-                    libc::PROT_READ | libc::PROT_WRITE,
-                    libc::MAP_ANON | libc::MAP_PRIVATE,
-                    -1,
-                    0,
-                )
-            };
-
-            if base_ptr == libc::MAP_FAILED || base_ptr.is_null() {
-                return Err("Failed to allocate virtual memory via mmap".to_string());
-            }
-            let base_ptr = base_ptr as *mut u8;
-
-            // Protect leading guard page (PROT_NONE)
-            let ret1 = unsafe { libc::mprotect(base_ptr as *mut libc::c_void, guard_bytes, libc::PROT_NONE) };
-            if ret1 != 0 {
-                unsafe { libc::munmap(base_ptr as *mut libc::c_void, total_len) };
-                return Err("Failed to set leading guard page protection".to_string());
-            }
-
-            // Protect trailing guard page (PROT_NONE)
-            let trailing_guard_ptr = unsafe { base_ptr.add(guard_bytes + payload_bytes) };
-            let ret2 = unsafe {
-                libc::mprotect(
-                    trailing_guard_ptr as *mut libc::c_void,
-                    guard_bytes,
-                    libc::PROT_NONE,
-                )
-            };
-            if ret2 != 0 {
-                unsafe { libc::munmap(base_ptr as *mut libc::c_void, total_len) };
-                return Err("Failed to set trailing guard page protection".to_string());
-            }
-
-            // In right-aligned mode, align data to the very end of payload_bytes
-            let offset = payload_bytes - data_len;
+            let base_ptr = Self::allocate_guarded_region(guard_bytes, payload_bytes, total_len)?;
+            let offset = if align_right { payload_bytes - data_len } else { 0 };
             let data_ptr = unsafe { base_ptr.add(guard_bytes + offset) };
 
             if data_len > 0 {
@@ -118,6 +92,7 @@ impl GuardedBuffer {
         }
         #[cfg(not(unix))]
         {
+            let _ = (guard_bytes, payload_bytes, total_len, align_right);
             let mut vec = data.to_vec();
             let data_ptr = vec.as_mut_ptr();
             std::mem::forget(vec);
@@ -130,89 +105,48 @@ impl GuardedBuffer {
         }
     }
 
-    /// Allocates a guarded buffer with `data` left-aligned against the leading guard page.
-    ///
-    /// Any read or write before `&buffer[0]` immediately hits the leading guard page.
-    pub fn left_aligned(data: &[u8]) -> Result<Self, String> {
-        let page_size = Self::page_size();
-        let guard_bytes = page_size;
-        let data_len = data.len();
-
-        let payload_pages = if data_len == 0 {
-            1
-        } else {
-            data_len.div_ceil(page_size)
-        };
-        let payload_bytes = payload_pages * page_size;
-        let total_len = guard_bytes + payload_bytes + guard_bytes;
-
-        #[cfg(unix)]
-        {
-            let base_ptr = unsafe {
-                libc::mmap(
-                    std::ptr::null_mut(),
-                    total_len,
-                    libc::PROT_READ | libc::PROT_WRITE,
-                    libc::MAP_ANON | libc::MAP_PRIVATE,
-                    -1,
-                    0,
-                )
-            };
-
-            if base_ptr == libc::MAP_FAILED || base_ptr.is_null() {
-                return Err("Failed to allocate virtual memory via mmap".to_string());
-            }
-            let base_ptr = base_ptr as *mut u8;
-
-            // Protect leading guard page (PROT_NONE)
-            let ret1 = unsafe { libc::mprotect(base_ptr as *mut libc::c_void, guard_bytes, libc::PROT_NONE) };
-            if ret1 != 0 {
-                unsafe { libc::munmap(base_ptr as *mut libc::c_void, total_len) };
-                return Err("Failed to set leading guard page protection".to_string());
-            }
-
-            // Protect trailing guard page (PROT_NONE)
-            let trailing_guard_ptr = unsafe { base_ptr.add(guard_bytes + payload_bytes) };
-            let ret2 = unsafe {
-                libc::mprotect(
-                    trailing_guard_ptr as *mut libc::c_void,
-                    guard_bytes,
-                    libc::PROT_NONE,
-                )
-            };
-            if ret2 != 0 {
-                unsafe { libc::munmap(base_ptr as *mut libc::c_void, total_len) };
-                return Err("Failed to set trailing guard page protection".to_string());
-            }
-
-            // In left-aligned mode, data starts immediately after leading guard page
-            let data_ptr = unsafe { base_ptr.add(guard_bytes) };
-
-            if data_len > 0 {
-                unsafe {
-                    std::ptr::copy_nonoverlapping(data.as_ptr(), data_ptr, data_len);
-                }
-            }
-
-            Ok(Self {
-                base_ptr,
+    #[cfg(unix)]
+    fn allocate_guarded_region(
+        guard_bytes: usize,
+        payload_bytes: usize,
+        total_len: usize,
+    ) -> Result<*mut u8, String> {
+        let base_ptr = unsafe {
+            libc::mmap(
+                std::ptr::null_mut(),
                 total_len,
-                data_ptr,
-                data_len,
-            })
+                libc::PROT_READ | libc::PROT_WRITE,
+                libc::MAP_ANON | libc::MAP_PRIVATE,
+                -1,
+                0,
+            )
+        };
+
+        if base_ptr == libc::MAP_FAILED || base_ptr.is_null() {
+            return Err("Failed to allocate virtual memory via mmap".to_string());
         }
-        #[cfg(not(unix))]
-        {
-            let mut vec = data.to_vec();
-            let data_ptr = vec.as_mut_ptr();
-            std::mem::forget(vec);
-            Ok(Self {
-                base_ptr: data_ptr,
-                total_len: data_len,
-                data_ptr,
-                data_len,
-            })
+        let base_ptr = base_ptr as *mut u8;
+
+        let ret1 = unsafe { libc::mprotect(base_ptr as *mut libc::c_void, guard_bytes, libc::PROT_NONE) };
+        if ret1 != 0 {
+            unsafe { libc::munmap(base_ptr as *mut libc::c_void, total_len) };
+            return Err("Failed to set leading guard page protection".to_string());
         }
+
+        let trailing_guard_ptr = unsafe { base_ptr.add(guard_bytes + payload_bytes) };
+        let ret2 = unsafe {
+            libc::mprotect(
+                trailing_guard_ptr as *mut libc::c_void,
+                guard_bytes,
+                libc::PROT_NONE,
+            )
+        };
+        if ret2 != 0 {
+            unsafe { libc::munmap(base_ptr as *mut libc::c_void, total_len) };
+            return Err("Failed to set trailing guard page protection".to_string());
+        }
+
+        Ok(base_ptr)
     }
 
     /// Returns a slice over the accessible data.

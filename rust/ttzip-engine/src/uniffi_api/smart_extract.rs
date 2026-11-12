@@ -35,29 +35,54 @@ pub fn resolve_smart_extract_decision(
     archive_stem: String,
     collision_policy: String,
 ) -> UniFFISmartExtractDecision {
-    let parent_path = Path::new(&destination_parent);
     let mut effective_roots = BTreeSet::new();
-
-    for raw_path in entry_paths {
-        let normalized = normalize_entry_path(&raw_path);
-        if normalized.is_empty() {
-            continue;
-        }
-
-        if is_system_or_mac_junk(&normalized) {
-            continue;
-        }
-
-        let root_segment = match normalized.find('/') {
-            Some(idx) => &normalized[..idx],
-            None => &normalized,
-        };
-
-        if !root_segment.is_empty() {
-            effective_roots.insert(root_segment.to_string());
-        }
+    for raw_path in &entry_paths {
+        record_effective_root(&mut effective_roots, raw_path);
     }
+    finalize_smart_extract_decision(
+        effective_roots,
+        destination_parent,
+        archive_stem,
+        &collision_policy,
+    )
+}
 
+/// Resolves the optimal extraction destination directory directly from an in-memory `VfsCompactArena`
+/// by borrowing interned node paths without per-entry `String` allocations.
+pub fn analyze_vfs_arena_structure(
+    arena: &crate::fs::vfs::VfsCompactArena,
+    destination_parent: String,
+    archive_stem: String,
+    collision_policy: String,
+) -> UniFFISmartExtractDecision {
+    let mut effective_roots = BTreeSet::new();
+    for idx in 1..arena.total_nodes {
+        let path = arena.node_full_path_str(idx as u32);
+        record_effective_root(&mut effective_roots, path);
+    }
+    finalize_smart_extract_decision(
+        effective_roots,
+        destination_parent,
+        archive_stem,
+        &collision_policy,
+    )
+}
+
+fn record_effective_root(effective_roots: &mut BTreeSet<String>, raw_path: &str) {
+    if let Some(root_segment) = extract_effective_root_segment(raw_path)
+        && !effective_roots.contains(root_segment)
+    {
+        effective_roots.insert(root_segment.to_string());
+    }
+}
+
+fn finalize_smart_extract_decision(
+    effective_roots: BTreeSet<String>,
+    destination_parent: String,
+    archive_stem: String,
+    collision_policy: &str,
+) -> UniFFISmartExtractDecision {
+    let parent_path = Path::new(&destination_parent);
     let root_count = effective_roots.len() as u32;
 
     if root_count == 0 {
@@ -100,56 +125,78 @@ pub fn resolve_smart_extract_decision(
 // MARK: - Internal Path Normalization and Metadata Filtering
 
 #[inline]
-fn normalize_entry_path(path: &str) -> String {
-    let mut normalized = path.replace('\\', "/");
-    while normalized.starts_with("./") {
-        normalized.drain(..2);
+fn trim_relative_prefixes(mut path: &str) -> &str {
+    loop {
+        let stripped = path.trim_start_matches(['/', '\\']);
+        if let Some(rest) = stripped.strip_prefix("./").or_else(|| stripped.strip_prefix(".\\")) {
+            path = rest;
+        } else {
+            return stripped.trim_end_matches(['/', '\\']);
+        }
     }
-    let trimmed = normalized.trim_matches('/');
-    trimmed.to_string()
 }
 
 #[inline]
+fn extract_effective_root_segment(raw_path: &str) -> Option<&str> {
+    let trimmed = trim_relative_prefixes(raw_path);
+    if trimmed.is_empty() || is_system_or_mac_junk_slice(trimmed) {
+        return None;
+    }
+    let root_segment = trimmed.split(['/', '\\']).next().unwrap_or("");
+    (!root_segment.is_empty() && root_segment != ".").then_some(root_segment)
+}
+
+#[cfg(test)]
+#[inline]
+fn normalize_entry_path(path: &str) -> String {
+    let trimmed = trim_relative_prefixes(path);
+    if trimmed.contains('\\') {
+        trimmed.replace('\\', "/")
+    } else {
+        trimmed.to_string()
+    }
+}
+
+#[inline]
+fn is_macosx_metadata_slice(path: &str) -> bool {
+    path.split(['/', '\\']).any(|seg| seg == "__MACOSX")
+}
+
+#[inline]
+fn is_os_junk_filename(file_name: &str) -> bool {
+    const EXACT_MAC_NAMES: &[&str] = &[".DS_Store", ".localized", ".VolumeIcon.icns"];
+    const PREFIX_NAMES: &[&str] = &[
+        "._",
+        ".Spotlight-V100",
+        ".Trashes",
+        ".fseventsd",
+        ".TemporaryItems",
+        "PaxHeader",
+    ];
+    const WINDOWS_JUNK_NAMES: &[&str] = &["Thumbs.db", "desktop.ini", "ehthumbs.db", "$RECYCLE.BIN"];
+
+    EXACT_MAC_NAMES.contains(&file_name)
+        || PREFIX_NAMES.iter().any(|p| file_name.starts_with(p))
+        || WINDOWS_JUNK_NAMES
+            .iter()
+            .any(|w| file_name.eq_ignore_ascii_case(w))
+}
+
+#[inline]
+fn is_system_or_mac_junk_slice(path: &str) -> bool {
+    if is_macosx_metadata_slice(path) {
+        return true;
+    }
+    let file_name = path
+        .rfind(['/', '\\'])
+        .map_or(path, |idx| &path[idx + 1..]);
+    is_os_junk_filename(file_name)
+}
+
+#[cfg(test)]
+#[inline]
 fn is_system_or_mac_junk(normalized: &str) -> bool {
-    if normalized == "__MACOSX"
-        || normalized.starts_with("__MACOSX/")
-        || normalized.ends_with("/__MACOSX")
-        || normalized.contains("/__MACOSX/")
-    {
-        return true;
-    }
-
-    let file_name = match normalized.rfind('/') {
-        Some(idx) => &normalized[idx + 1..],
-        None => normalized,
-    };
-
-    if file_name.starts_with("._")
-        || file_name == ".DS_Store"
-        || file_name == ".localized"
-        || file_name == ".VolumeIcon.icns"
-    {
-        return true;
-    }
-
-    if file_name.starts_with(".Spotlight-V100")
-        || file_name.starts_with(".Trashes")
-        || file_name.starts_with(".fseventsd")
-        || file_name.starts_with(".TemporaryItems")
-        || file_name.starts_with("PaxHeader")
-    {
-        return true;
-    }
-
-    if file_name.eq_ignore_ascii_case("Thumbs.db")
-        || file_name.eq_ignore_ascii_case("desktop.ini")
-        || file_name.eq_ignore_ascii_case("ehthumbs.db")
-        || file_name.eq_ignore_ascii_case("$RECYCLE.BIN")
-    {
-        return true;
-    }
-
-    false
+    is_system_or_mac_junk_slice(normalized)
 }
 
 fn resolve_numbered_collision(target: &Path) -> PathBuf {
@@ -179,6 +226,7 @@ fn resolve_numbered_collision(target: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fs::vfs::{VfsCompactArena, VfsEntry};
     use tempfile::tempdir;
 
     #[test]
@@ -290,7 +338,6 @@ mod tests {
             parent_path.join("TargetFolder 2").to_str().unwrap()
         );
 
-        // Create "TargetFolder 2" and test increment to 3
         std::fs::create_dir(parent_path.join("TargetFolder 2")).unwrap();
         let decision3 = resolve_smart_extract_decision(
             entries,
@@ -305,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn test_path_normalization_variations() {
+    fn test_path_normalization_variations_and_arena_analysis() {
         assert_eq!(normalize_entry_path(".\\a\\b\\c"), "a/b/c");
         assert_eq!(normalize_entry_path("././a/b/"), "a/b");
         assert_eq!(normalize_entry_path("///folder/file///"), "folder/file");
@@ -313,5 +360,24 @@ mod tests {
         assert!(is_system_or_mac_junk("folder/sub/Thumbs.db"));
         assert!(is_system_or_mac_junk(".DS_Store"));
         assert!(!is_system_or_mac_junk("folder/DS_Store.txt"));
+
+        let e1 = VfsEntry {
+            path: "BundleRoot/src/lib.rs".to_string(),
+            ..Default::default()
+        };
+        let e2 = VfsEntry {
+            path: "__MACOSX/BundleRoot/._lib.rs".to_string(),
+            ..Default::default()
+        };
+        let arena = VfsCompactArena::build_from_entries(&[e1, e2], "Bundle.zip");
+        let decision = analyze_vfs_arena_structure(
+            &arena,
+            "/tmp/out".to_string(),
+            "Bundle".to_string(),
+            "autoRenameNumbered".to_string(),
+        );
+        assert_eq!(decision.mode, "directExtract");
+        assert_eq!(decision.effective_root_count, 1);
+        assert_eq!(decision.single_root_name.as_deref(), Some("BundleRoot"));
     }
 }

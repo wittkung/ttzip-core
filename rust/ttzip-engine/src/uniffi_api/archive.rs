@@ -3,10 +3,28 @@
 
 //! Mozilla UniFFI Archive Creation, Inspection, and Format Detection Scaffolding.
 
-#![allow(deprecated)]
+#![allow(
+    deprecated,
+    reason = "UniFFI scaffolding exports deprecated v1 compatibility endpoints"
+)]
 
 use std::sync::Arc;
-use super::types::{ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler, SniffMetadata, TTZipArchiveFormat, TTZipError, UniFFIEntryMetadata};
+use super::types::{
+    ArchiveFormat, CancellationToken, CompressionReport, PasswordRecoveryOutcome, ProgressHandler,
+    SniffMetadata, TTZipArchiveFormat, TTZipError, UniFFIEntryMetadata,
+};
+
+#[path = "archive_staging.rs"]
+mod archive_staging;
+pub use archive_staging::{
+    stage_next_create_tuning_options, ttzip_uniffi_stage_next_create_extra_options,
+    ttzip_uniffi_stage_next_create_recovery_record, ttzip_uniffi_stage_next_create_tuning_options,
+};
+use archive_staging::{
+    build_advanced_create_options, calculate_paths_uncompressed_bytes, create_progress_cb,
+    finalize_compression_report, map_create_level, plan_advanced_create_entries,
+    take_staged_create_options, CreateProgressContext, CreateProgressGuard,
+};
 
 /// Detects archive format from file using the full 16-format magic and SFX sniffer.
 #[uniffi::export]
@@ -80,7 +98,7 @@ pub fn recommend_codec(data: Vec<u8>, scenario: i32) -> String {
 /// # Deprecated
 /// Legacy monolithic entry inspection allocating intermediate structs for all entries.
 /// For UI tree construction and navigation, use `VfsSession` / `load_archive_vfs_tree`.
-#[allow(deprecated)]
+#[allow(deprecated, reason = "Retained for UniFFI backward compatibility")]
 #[deprecated(
     since = "0.2.0",
     note = "Monolithic entry inspection is deprecated. Use VfsSession or load_archive_vfs_tree for windowed VFS navigation."
@@ -161,6 +179,20 @@ pub fn extract_single_entry_stream_guarded(
 ) -> Result<Vec<u8>, TTZipError> {
     let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let p = std::path::Path::new(&archive_path);
+    let volume_chain = crate::archive::split::detect_volume_chain(p)
+        .map_err(|_| TTZipError::FileNotFound {
+            path: archive_path.clone(),
+        })?;
+    if volume_chain.len() > 1 {
+        return super::extraction::extract_single_entry_split_guarded(
+            &volume_chain,
+            p,
+            None,
+            entry_index as i64,
+            secure_pwd.as_deref(),
+            max_preceding_budget_mb as u64,
+        );
+    }
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
     }
@@ -173,21 +205,15 @@ pub fn extract_single_entry_stream_guarded(
 
     let budget_bytes = (max_preceding_budget_mb as u64) * 1024 * 1024;
     let idx = entry_index as usize;
+    let missing_label = format!("entry #{entry_index}");
 
     if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        let arch = crate::sevenz::decoder::SevenZArchive::open_slice(mapped)
-            .map_err(|_| TTZipError::CorruptHeader { details: "Invalid 7z header".to_string(), offset: 0 })?;
+        let arch = super::extraction::open_sevenz_slice_for_preview(mapped, secure_pwd.as_deref())?;
         if idx >= arch.files().len() {
-            return Err(TTZipError::FileNotFound {
-                path: format!("entry #{}", entry_index),
-            });
+            return Err(TTZipError::FileNotFound { path: missing_label });
         }
         if let Some(loc) = arch.seek_index().entries.get(idx) {
-            if loc.uncompressed_size > budget_bytes {
-                return Err(TTZipError::EngineError {
-                    code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
-                });
-            }
+            super::extraction::enforce_7z_entry_budget(loc, budget_bytes)?;
         }
         crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
             mapped,
@@ -196,16 +222,11 @@ pub fn extract_single_entry_stream_guarded(
             idx,
             secure_pwd.as_deref(),
             budget_bytes,
-        ).map_err(|status| match status {
-            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-            crate::types::TTZipStatus::ErrSolidBudgetExceeded => TTZipError::EngineError { code: -24 },
-            _ => TTZipError::EngineError { code: status as i32 },
-        })
+        )
+        .map_err(|s| super::extraction::map_single_entry_status(s, &missing_label))
     } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
         if idx >= zip_archive.entries().len() {
-            return Err(TTZipError::FileNotFound {
-                path: format!("entry #{}", entry_index),
-            });
+            return Err(TTZipError::FileNotFound { path: missing_label });
         }
         let entry = &zip_archive.entries()[idx];
         if entry.uncompressed_size > budget_bytes {
@@ -213,38 +234,43 @@ pub fn extract_single_entry_stream_guarded(
                 code: crate::types::TTZipStatus::ErrOutOfMemory as i32,
             });
         }
-        zip_archive.extract_entry_bytes(idx, secure_pwd.as_deref())
-            .map_err(|status| match status {
-                crate::types::TTZipStatus::ErrCorruptHeader => {
-                    TTZipError::CorruptHeader { details: "Corrupted entry CRC or payload".to_string(), offset: 0 }
-                }
-                crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-                _ => TTZipError::EngineError { code: status as i32 },
-            })
+        zip_archive
+            .extract_entry_bytes(idx, secure_pwd.as_deref())
+            .map_err(|s| super::extraction::map_single_entry_status(s, &missing_label))
     } else {
         crate::archive::unified::extract_single::extract_single_entry_memory(
             p,
             None,
             entry_index as i64,
             secure_pwd.as_deref(),
-        ).map_err(|status| match status {
-            crate::types::TTZipStatus::ErrFileNotFound => TTZipError::FileNotFound {
-                path: format!("entry #{}", entry_index),
-            },
-            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-            crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
-                details: "Corrupted entry CRC or payload".to_string(),
-                offset: 0,
-            },
-            crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
-                details: "Memory allocation failed during decompression".to_string(),
-            },
-            crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
-                reason: "Decompression ratio or overlap violation detected".to_string(),
-            },
-            _ => TTZipError::EngineError { code: status as i32 },
-        })
+        )
+        .map_err(|s| super::extraction::map_single_entry_status(s, &missing_label))
     }
+}
+
+fn validate_create_archive_inputs(
+    source_paths: &[String],
+    password: Option<&str>,
+    token: Option<&Arc<CancellationToken>>,
+) -> Result<Vec<std::path::PathBuf>, TTZipError> {
+    if token.is_some_and(|t| t.is_cancelled()) {
+        return Err(TTZipError::Cancelled);
+    }
+    if source_paths.is_empty() {
+        return Err(TTZipError::EngineError { code: -404 });
+    }
+    for src_str in source_paths {
+        let src_p = std::path::Path::new(src_str);
+        if !src_p.exists() && std::fs::symlink_metadata(src_p).is_err() {
+            return Err(TTZipError::FileNotFound {
+                path: src_str.clone(),
+            });
+        }
+    }
+    if password == Some("") {
+        return Err(TTZipError::InvalidPassword);
+    }
+    Ok(source_paths.iter().map(std::path::PathBuf::from).collect())
 }
 
 /// Compresses source paths into destination archive.
@@ -258,177 +284,65 @@ pub fn create_archive_stream(
     progress: Option<Box<dyn ProgressHandler>>,
     token: Option<Arc<CancellationToken>>,
 ) -> Result<CompressionReport, TTZipError> {
-    if let Some(ref t) = token {
-        if t.is_cancelled() {
-            return Err(TTZipError::Cancelled);
-        }
-    }
-    if source_paths.is_empty() {
-        return Err(TTZipError::EngineError { code: -404 });
-    }
-    for src_str in &source_paths {
-        let src_p = std::path::Path::new(src_str);
-        if !src_p.exists() && std::fs::symlink_metadata(src_p).is_err() {
-            return Err(TTZipError::FileNotFound {
-                path: src_str.clone(),
-            });
-        }
-    }
+    let paths =
+        validate_create_archive_inputs(&source_paths, password.as_deref(), token.as_ref())?;
     let out_p = std::path::Path::new(&output_path);
-    let paths: Vec<std::path::PathBuf> = source_paths.iter().map(std::path::PathBuf::from).collect();
-
-    if password.as_deref() == Some("") {
-        return Err(TTZipError::InvalidPassword);
-    }
     let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let start = std::time::Instant::now();
     let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
-
-    struct ProgressContext {
-        handler: Option<Box<dyn ProgressHandler>>,
-        token: Option<Arc<CancellationToken>>,
-    }
     let token_for_probe = token.clone();
-    let progress_ctx = Arc::new(ProgressContext {
+    let raw_ctx = Arc::into_raw(Arc::new(CreateProgressContext {
         handler: progress,
         token,
-    });
-    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
-
-    struct ContextGuard(*mut libc::c_void);
-    impl Drop for ContextGuard {
-        fn drop(&mut self) {
-            if !self.0.is_null() {
-                unsafe {
-                    drop(Arc::from_raw(self.0 as *const ProgressContext));
-                }
-            }
-        }
-    }
-    let _guard = ContextGuard(raw_ctx);
-
-    unsafe extern "C" fn progress_cb(
-        processed: u64,
-        total: u64,
-        entry_name: *const libc::c_char,
-        user_data: *mut libc::c_void,
-    ) -> bool {
-        if user_data.is_null() {
-            return true;
-        }
-        let p = unsafe { &*(user_data as *const ProgressContext) };
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
-            }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(unsafe { std::ffi::CStr::from_ptr(entry_name) }.to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            if !h.on_progress(processed, total, name) {
-                return false;
-            }
-        }
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
-            }
-        }
-        true
-    }
-    let raw_fmt: crate::types::TTZipArchiveFormat = format.into();
-
-    let comp_level = match level {
-        0 => crate::types::TTZipCompressionLevel::Store,
-        1 => crate::types::TTZipCompressionLevel::Fastest,
-        2..=4 => crate::types::TTZipCompressionLevel::Fast,
-        5..=6 => crate::types::TTZipCompressionLevel::Normal,
-        7..=9 => crate::types::TTZipCompressionLevel::Maximum,
-        10..=22 => crate::types::TTZipCompressionLevel::Ultra,
-        _ => crate::types::TTZipCompressionLevel::Normal,
-    };
-
-    let enc_method = if pwd_cstr.is_some() {
-        crate::types::TTZipEncryptionMethod::Aes256
-    } else {
-        crate::types::TTZipEncryptionMethod::None
-    };
+        override_total_bytes: None,
+    })) as *mut libc::c_void;
+    let _guard = CreateProgressGuard(raw_ctx);
 
     let options = crate::types::TTZipCreateOptions {
         struct_size: std::mem::size_of::<crate::types::TTZipCreateOptions>() as u32,
         abi_version: crate::types::TTZIP_ABI_VERSION_3,
-        format: raw_fmt,
-        level: comp_level,
-        encryption: enc_method,
+        format: format.into(),
+        level: map_create_level(level),
+        encryption: if pwd_cstr.is_some() {
+            crate::types::TTZipEncryptionMethod::Aes256
+        } else {
+            crate::types::TTZipEncryptionMethod::None
+        },
         password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
         thread_budget: 0,
         solid_block_size_mb: 64,
-        progress_callback: Some(progress_cb),
+        progress_callback: Some(create_progress_cb),
         user_data: raw_ctx,
     };
 
-    let commit_out = crate::archive::unified::create::create_archive_detailed_outcome_with_cancel(
-        &paths,
-        out_p,
-        &options,
-        0,
-        move || token_for_probe.as_ref().is_some_and(|t| t.is_cancelled()),
-    )
+    let ext_opts = crate::types::TTZipExtendedCreateOptions {
+        dictionary_size_mb: 0,
+        enable_ldm: false,
+        raw_level: u8::try_from(level.clamp(0, 22)).ok(),
+    };
+    let commit_out = crate::types::with_extended_create_options(ext_opts, || {
+        crate::archive::unified::create::create_archive_detailed_outcome_with_cancel(
+            &paths,
+            out_p,
+            &options,
+            0,
+            move || token_for_probe.as_ref().is_some_and(|t| t.is_cancelled()),
+        )
+    })
     .map_err(map_create_stage_commit_error)?;
-    let created_files = commit_out.committed_files;
     let outcome = build_post_commit_cleanup_outcome_from_issues(
-        created_files.len() as u64,
+        commit_out.committed_files.len() as u64,
         commit_out.post_commit_cleanup_issues,
     );
-
-    fn calculate_paths_uncompressed_bytes(paths: &[std::path::PathBuf]) -> u64 {
-        fn calculate_single(path: &std::path::Path) -> u64 {
-            if path.is_file() {
-                std::fs::metadata(path).map(|m| m.len()).unwrap_or(0)
-            } else if path.is_dir() {
-                let mut total = 0;
-                if let Ok(entries) = std::fs::read_dir(path) {
-                    for entry in entries.flatten() {
-                        total += calculate_single(&entry.path());
-                    }
-                }
-                total
-            } else {
-                0
-            }
-        }
-        paths.iter().map(|p| calculate_single(p)).sum()
-    }
-
-    let elapsed = start.elapsed();
-    let elapsed_nanos = elapsed.as_nanos() as u64;
-    let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
     let comp_size = std::fs::metadata(out_p).map(|m| m.len()).unwrap_or(0);
     let uncompressed_bytes = calculate_paths_uncompressed_bytes(&paths);
-    let benchmark_bytes = if uncompressed_bytes > 0 {
-        uncompressed_bytes
-    } else {
-        comp_size
-    };
-    let throughput_mbs = (benchmark_bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
-    let space_savings_pct = if uncompressed_bytes > 0 && comp_size <= uncompressed_bytes {
-        ((uncompressed_bytes - comp_size) as f64 / uncompressed_bytes as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    Ok(CompressionReport {
+    Ok(finalize_compression_report(
         uncompressed_bytes,
-        compressed_bytes: comp_size,
-        elapsed_nanos,
-        throughput_mbs,
-        space_savings_pct,
-        engine_provenance: "Mozilla UniFFI Native Create Pipeline".to_string(),
+        comp_size,
+        start,
+        "Mozilla UniFFI Native Create Pipeline",
         outcome,
-    })
+    ))
 }
 
 use super::error_mapping::{
@@ -457,24 +371,41 @@ pub struct UniFFICreateArchiveExtraOptions {
     pub encrypt_file_names: Option<bool>,
 }
 
-std::thread_local! {
-    static STAGED_NEXT_CREATE_EXTRA_OPTIONS: std::cell::Cell<Option<UniFFICreateArchiveExtraOptions>> =
-        const { std::cell::Cell::new(None) };
-}
+const INLINE_TUNING_TAG: i32 = 1 << 30;
 
-/// C-ABI bridge allowing `ArchiveWriter.swift` to stage typed extra options for the next
-/// `create_archive_advanced` invocation on the calling thread without mutating frozen `repr(C)` layouts.
-/// `encrypt_file_names_mode`: `1` => `Some(true)`, `0` => `Some(false)`, `< 0` => `None`.
-#[unsafe(no_mangle)]
-pub extern "C" fn ttzip_uniffi_stage_next_create_extra_options(encrypt_file_names_mode: i32) {
-    let encrypt_file_names = match encrypt_file_names_mode {
-        1 => Some(true),
-        0 => Some(false),
-        _ => None,
+fn decode_inline_create_config(
+    config: &mut UniFFICreateArchiveConfig,
+    recovery_redundancy_pct: &mut u8,
+    tuning: &mut super::types::UniFFICreateArchiveTuningOptions,
+) {
+    if (config.level & INLINE_TUNING_TAG) == 0 {
+        return;
+    }
+    let packed = config.level;
+    let base_level = packed & 0x3F;
+    let zstd_level = ((packed >> 6) & 0x3F) as u8;
+    let recovery_pct = ((packed >> 12) & 0xFF) as u8;
+    let enable_solid_archive = ((packed >> 20) & 1) != 0;
+    let use_zip_crypto = ((packed >> 21) & 1) != 0;
+    let enable_ldm = ((packed >> 22) & 1) != 0;
+
+    let cpu_threads = config.thread_budget & 0xFFFF;
+    let dictionary_size_mb = (config.thread_budget >> 16) & 0xFFFF;
+
+    config.level = base_level;
+    config.thread_budget = cpu_threads;
+    *recovery_redundancy_pct = recovery_pct;
+    *tuning = super::types::UniFFICreateArchiveTuningOptions {
+        dictionary_size_mb,
+        enable_solid_archive,
+        zip_encryption_method: if use_zip_crypto {
+            "ZipCrypto".to_string()
+        } else {
+            "AES-256".to_string()
+        },
+        zstd_level: (zstd_level > 0).then_some(zstd_level),
+        enable_ldm,
     };
-    STAGED_NEXT_CREATE_EXTRA_OPTIONS.with(|slot| {
-        slot.set(Some(UniFFICreateArchiveExtraOptions { encrypt_file_names }));
-    });
 }
 
 /// Advanced archive creation pipeline with explicit typed extension options (`UniFFICreateArchiveExtraOptions`).
@@ -485,10 +416,7 @@ pub fn create_archive_advanced_with_options(
     progress: Option<Box<dyn ProgressHandler>>,
     token: Option<Arc<CancellationToken>>,
 ) -> Result<CompressionReport, TTZipError> {
-    STAGED_NEXT_CREATE_EXTRA_OPTIONS.with(|slot| {
-        slot.set(Some(extra_options));
-    });
-    create_archive_advanced(config, progress, token)
+    create_archive_advanced_inner(config, Some(extra_options), progress, token)
 }
 
 /// Advanced archive creation pipeline with single-pass parallel scanning, filtering,
@@ -499,13 +427,16 @@ pub fn create_archive_advanced(
     progress: Option<Box<dyn ProgressHandler>>,
     token: Option<Arc<CancellationToken>>,
 ) -> Result<CompressionReport, TTZipError> {
-    let extra_options = STAGED_NEXT_CREATE_EXTRA_OPTIONS
-        .with(|slot| slot.take())
-        .unwrap_or_default();
-    if let Some(ref t) = token {
-        if t.is_cancelled() {
-            return Err(TTZipError::Cancelled);
-        }
+    create_archive_advanced_inner(config, None, progress, token)
+}
+
+fn validate_advanced_create_config(
+    config: &UniFFICreateArchiveConfig,
+    extra_options: UniFFICreateArchiveExtraOptions,
+    token: Option<&Arc<CancellationToken>>,
+) -> Result<(), TTZipError> {
+    if token.is_some_and(|t| t.is_cancelled()) {
+        return Err(TTZipError::Cancelled);
     }
     if config.source_paths.is_empty() {
         return Err(TTZipError::EngineError { code: -404 });
@@ -517,6 +448,20 @@ pub fn create_archive_advanced(
     if extra_options.encrypt_file_names == Some(true) && !has_non_empty_password {
         return Err(TTZipError::InvalidPassword);
     }
+    Ok(())
+}
+
+fn create_archive_advanced_inner(
+    mut config: UniFFICreateArchiveConfig,
+    explicit_extra_options: Option<UniFFICreateArchiveExtraOptions>,
+    progress: Option<Box<dyn ProgressHandler>>,
+    token: Option<Arc<CancellationToken>>,
+) -> Result<CompressionReport, TTZipError> {
+    let (staged_extra_options, mut recovery_redundancy_pct, mut tuning) =
+        take_staged_create_options();
+    let extra_options = explicit_extra_options.unwrap_or(staged_extra_options);
+    decode_inline_create_config(&mut config, &mut recovery_redundancy_pct, &mut tuning);
+    validate_advanced_create_config(&config, extra_options, token.as_ref())?;
 
     let out_path = std::path::Path::new(&config.output_path);
     let parent = out_path.parent().unwrap_or_else(|| std::path::Path::new("."));
@@ -524,204 +469,59 @@ pub fn create_archive_advanced(
         let _ = std::fs::create_dir_all(parent);
     }
 
-    let exc_refs: Vec<&str> = config.exclude_patterns.iter().map(|s| s.as_str()).collect();
-    let inc_refs: Vec<&str> = config.include_patterns.iter().map(|s| s.as_str()).collect();
-    let filter = crate::fs::filter::pattern::PathPatternFilter::new(
-        &inc_refs,
-        &exc_refs,
-        config.exclude_vcs,
-        config.no_mac_metadata,
-    )
-    .map_err(|e| TTZipError::IoError { message: e })?;
-
     let start = std::time::Instant::now();
-    let mut planned_entries: Vec<(std::path::PathBuf, String)> = Vec::new();
-    let mut total_uncompressed_bytes: u64 = 0;
-
-    for src_str in &config.source_paths {
-        if let Some(ref t) = token {
-            if t.is_cancelled() {
-                return Err(TTZipError::Cancelled);
-            }
-        }
-        let src_path = std::path::Path::new(src_str);
-        let sym_meta = match std::fs::symlink_metadata(src_path) {
-            Ok(m) => m,
-            Err(_) => return Err(TTZipError::FileNotFound { path: src_str.clone() }),
-        };
-        let (effective_src, meta) = if sym_meta.file_type().is_symlink() {
-            (src_path.to_path_buf(), sym_meta)
-        } else {
-            let canonical_src =
-                std::fs::canonicalize(src_path).unwrap_or_else(|_| src_path.to_path_buf());
-            let m = std::fs::metadata(&canonical_src).unwrap_or(sym_meta);
-            (canonical_src, m)
-        };
-
-        if meta.is_dir() && !meta.file_type().is_symlink() {
-            let scan_opts = crate::fs::scanner::ScanOptions {
-                include_hidden: true,
-                skip_mac_junk: config.no_mac_metadata,
-                max_depth: 0,
-                thread_budget: config.thread_budget,
-            };
-            let scanned_items =
-                crate::fs::scanner::scan_directory_parallel(&effective_src, &scan_opts);
-            for item in scanned_items {
-                if filter.should_include(&item.rel_path) {
-                    total_uncompressed_bytes =
-                        total_uncompressed_bytes.saturating_add(item.file_size);
-                    planned_entries.push((std::path::PathBuf::from(item.src_path), item.rel_path));
-                }
-            }
-        } else {
-            let file_name = src_path.file_name().and_then(|n| n.to_str()).unwrap_or(src_str);
-            if filter.should_include(file_name) {
-                let size = if meta.file_type().is_symlink() { 0 } else { meta.len() };
-                total_uncompressed_bytes = total_uncompressed_bytes.saturating_add(size);
-                planned_entries.push((effective_src, file_name.to_string()));
-            }
-        }
-    }
-
-    if planned_entries.is_empty() {
-        return Err(TTZipError::EngineError { code: -404 });
-    }
+    let (planned_entries, total_uncompressed_bytes) =
+        plan_advanced_create_entries(&config, token.as_ref())?;
 
     let secure_pwd = config
         .password
+        .clone()
         .filter(|s| !s.is_empty())
         .map(crate::crypto::ZeroizingString::new);
     let pwd_cstr = secure_pwd.as_ref().and_then(|p| p.to_c_string().ok());
-
-    struct ProgressContextExplicit {
-        handler: Option<Box<dyn ProgressHandler>>,
-        token: Option<Arc<CancellationToken>>,
-        total_bytes: u64,
-    }
     let token_for_probe = token.clone();
-    let progress_ctx = Arc::new(ProgressContextExplicit {
+    let raw_ctx = Arc::into_raw(Arc::new(CreateProgressContext {
         handler: progress,
         token,
-        total_bytes: total_uncompressed_bytes,
-    });
-    let raw_ctx = Arc::into_raw(progress_ctx) as *mut libc::c_void;
+        override_total_bytes: Some(total_uncompressed_bytes),
+    })) as *mut libc::c_void;
+    let _guard = CreateProgressGuard(raw_ctx);
 
-    struct ContextGuardExplicit(*mut libc::c_void);
-    impl Drop for ContextGuardExplicit {
-        fn drop(&mut self) {
-            if !self.0.is_null() {
-                unsafe {
-                    drop(Arc::from_raw(self.0 as *const ProgressContextExplicit));
-                }
-            }
-        }
-    }
-    let _guard = ContextGuardExplicit(raw_ctx);
-
-    unsafe extern "C" fn progress_cb(
-        processed: u64,
-        _total: u64,
-        entry_name: *const libc::c_char,
-        user_data: *mut libc::c_void,
-    ) -> bool {
-        if user_data.is_null() {
-            return true;
-        }
-        let p = unsafe { &*(user_data as *const ProgressContextExplicit) };
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
-            }
-        }
-        if let Some(ref h) = p.handler {
-            let name = if !entry_name.is_null() {
-                Some(unsafe { std::ffi::CStr::from_ptr(entry_name) }.to_string_lossy().into_owned())
-            } else {
-                None
-            };
-            if !h.on_progress(processed, p.total_bytes, name) {
-                return false;
-            }
-        }
-        if let Some(ref t) = p.token {
-            if t.is_cancelled() {
-                return false;
-            }
-        }
-        true
-    }
-
-    let raw_fmt: crate::types::TTZipArchiveFormat = config.format.into();
-    let comp_level = match config.level {
-        0 => crate::types::TTZipCompressionLevel::Store,
-        1 => crate::types::TTZipCompressionLevel::Fastest,
-        2..=4 => crate::types::TTZipCompressionLevel::Fast,
-        5..=6 => crate::types::TTZipCompressionLevel::Normal,
-        7..=9 => crate::types::TTZipCompressionLevel::Maximum,
-        10..=22 => crate::types::TTZipCompressionLevel::Ultra,
-        _ => crate::types::TTZipCompressionLevel::Normal,
-    };
-
-    let enc_method = if pwd_cstr.is_some() {
-        crate::types::TTZipEncryptionMethod::Aes256
-    } else {
-        crate::types::TTZipEncryptionMethod::None
-    };
-
-    let options = crate::types::TTZipCreateOptions {
-        struct_size: std::mem::size_of::<crate::types::TTZipCreateOptions>() as u32,
-        abi_version: crate::types::TTZIP_ABI_VERSION_3,
-        format: raw_fmt,
-        level: comp_level,
-        encryption: enc_method,
-        password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
-        thread_budget: config.thread_budget,
-        solid_block_size_mb: 64,
-        progress_callback: Some(progress_cb),
-        user_data: raw_ctx,
-    };
-
+    let (options, ext_opts) = build_advanced_create_options(
+        &config,
+        &tuning,
+        pwd_cstr.as_ref().map(|c| c.as_ptr()),
+        raw_ctx,
+    );
     let split_size = config.split_volume_size_bytes.unwrap_or(0);
-    let commit_out =
-        crate::archive::unified::create::create_archive_explicit_with_files_detailed_opts_outcome_with_cancel(
+    let commit_out = crate::types::with_extended_create_options(ext_opts, || {
+        crate::archive::unified::create::create_archive_explicit_with_files_detailed_full_opts_outcome_with_cancel(
             &planned_entries,
             out_path,
             &options,
             split_size,
             extra_options.encrypt_file_names,
+            recovery_redundancy_pct,
             move || token_for_probe.as_ref().is_some_and(|t| t.is_cancelled()),
         )
-        .map_err(map_create_stage_commit_error)?;
+    })
+    .map_err(map_create_stage_commit_error)?;
     let created_files = commit_out.committed_files;
     let outcome = build_post_commit_cleanup_outcome_from_issues(
         created_files.len() as u64,
         commit_out.post_commit_cleanup_issues,
     );
-
-    let elapsed = start.elapsed();
-    let elapsed_nanos = elapsed.as_nanos() as u64;
-    let elapsed_secs = elapsed.as_secs_f64().max(0.000001);
     let comp_size: u64 = created_files
         .iter()
         .map(|f| std::fs::metadata(f).map(|m| m.len()).unwrap_or(0))
         .sum();
-    let throughput_mbs = (total_uncompressed_bytes as f64 / (1024.0 * 1024.0)) / elapsed_secs;
-    let space_savings_pct = if total_uncompressed_bytes > 0 && comp_size <= total_uncompressed_bytes {
-        ((total_uncompressed_bytes - comp_size) as f64 / total_uncompressed_bytes as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    Ok(CompressionReport {
-        uncompressed_bytes: total_uncompressed_bytes,
-        compressed_bytes: comp_size,
-        elapsed_nanos,
-        throughput_mbs,
-        space_savings_pct,
-        engine_provenance: "Mozilla UniFFI Advanced Create Pipeline".to_string(),
+    Ok(finalize_compression_report(
+        total_uncompressed_bytes,
+        comp_size,
+        start,
+        "Mozilla UniFFI Advanced Create Pipeline",
         outcome,
-    })
+    ))
 }
 
 /// Recovers password against an encrypted archive using Rayon multi-core parallel probing.
@@ -793,5 +593,47 @@ fn recovery_stop_reason_to_error(reason: crate::recovery::RecoveryStopReason) ->
         other => TTZipError::EngineError {
             code: other.status_code(),
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decode_inline_create_config_extracts_tuning_and_recovery() {
+        let packed_level = INLINE_TUNING_TAG
+            | 6
+            | (15 << 6)
+            | (10 << 12)
+            | (1 << 21)
+            | (1 << 22);
+        let packed_threads = 3u32 | (32u32 << 16);
+        let mut cfg = UniFFICreateArchiveConfig {
+            source_paths: vec!["a.txt".to_string()],
+            output_path: "out.zst".to_string(),
+            format: ArchiveFormat::Zstd,
+            level: packed_level,
+            password: None,
+            split_volume_size_bytes: None,
+            exclude_patterns: vec![],
+            include_patterns: vec![],
+            exclude_vcs: false,
+            no_mac_metadata: false,
+            thread_budget: packed_threads,
+        };
+        let mut recovery_pct = 0u8;
+        let mut tuning = super::super::types::UniFFICreateArchiveTuningOptions::default();
+
+        decode_inline_create_config(&mut cfg, &mut recovery_pct, &mut tuning);
+
+        assert_eq!(cfg.level, 6);
+        assert_eq!(cfg.thread_budget, 3);
+        assert_eq!(recovery_pct, 10);
+        assert_eq!(tuning.dictionary_size_mb, 32);
+        assert!(!tuning.enable_solid_archive);
+        assert_eq!(tuning.zip_encryption_method, "ZipCrypto");
+        assert_eq!(tuning.zstd_level, Some(15));
+        assert!(tuning.enable_ldm);
     }
 }

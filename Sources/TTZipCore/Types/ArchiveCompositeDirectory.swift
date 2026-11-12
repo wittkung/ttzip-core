@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+import TTZipArchiveContract
 
 // MARK: - ArchiveComponentProtocol Composite Pattern Core
 

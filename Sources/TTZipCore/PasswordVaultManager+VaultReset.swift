@@ -40,7 +40,6 @@ extension PasswordVaultManager {
         }
     }
 
-    /// Creates a private recovery directory that holds the pre-reset artifacts.
     private func createVaultRecoveryDirectory() throws -> URL {
         let root = vaultFileURL.deletingLastPathComponent()
             .appendingPathComponent("VaultRecovery", isDirectory: true)
@@ -53,7 +52,6 @@ extension PasswordVaultManager {
         return directory
     }
 
-    /// Copies the encrypted vault, its config and the optional backup into the recovery directory.
     private func copyOriginalVaultFiles(into directory: URL) throws {
         try FileManager.default.copyItem(
             at: vaultFileURL,
@@ -71,7 +69,6 @@ extension PasswordVaultManager {
         }
     }
 
-    /// Derives the new master secret and writes the fresh, empty vault.
     private func installNewMasterPassword(_ newPassword: String, backupDirectory directory: URL) throws {
         var saltBytes = [UInt8](repeating: 0, count: 32)
         guard SecRandomCopyBytes(kSecRandomDefault, saltBytes.count, &saltBytes) == errSecSuccess else {
@@ -98,7 +95,6 @@ extension PasswordVaultManager {
         saveBiometricVaultKey(vaultKey: key)
     }
 
-    /// Confirms that the freshly written config and vault round-trip to the new verifier.
     private func verifyInstalledVault(key: SecureBytes, backupDirectory directory: URL) throws {
         guard let config = try? Data(contentsOf: configFileURL),
               let dictionary = try? JSONSerialization.jsonObject(with: config) as? [String: String],
@@ -108,7 +104,6 @@ extension PasswordVaultManager {
         }
     }
 
-    /// Restores the pre-reset vault and config after a failed installation.
     private func rollbackVaultReset(backupDirectory directory: URL) {
         activeMasterSecret?.wipeAndFree()
         activeDerivedVaultKey?.wipeAndFree()

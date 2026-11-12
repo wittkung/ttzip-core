@@ -56,8 +56,16 @@ pub(super) fn transcode_xar_bytes(raw: &[u8]) -> Result<TranscodedContainerStrea
     }
     let header_size = u16::from_be_bytes([raw[4], raw[5]]) as usize;
     let version = u16::from_be_bytes([raw[6], raw[7]]);
-    let toc_len_comp = u64::from_be_bytes(raw[8..16].try_into().unwrap()) as usize;
-    let toc_len_uncomp = u64::from_be_bytes(raw[16..24].try_into().unwrap()) as usize;
+    let toc_len_comp = u64::from_be_bytes(
+        raw[8..16]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    ) as usize;
+    let toc_len_uncomp = u64::from_be_bytes(
+        raw[16..24]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    ) as usize;
 
     if version != 1
         || header_size < 28
@@ -372,11 +380,12 @@ fn read_reshdr_short(buf: &[u8]) -> Option<(usize, u8, usize, usize)> {
 }
 
 type WimResources<'a> = HashMap<[u8; 20], &'a [u8]>;
+type WimOffsetTable<'a> = (WimResources<'a>, &'a [u8]);
 
 fn parse_wim_offset_table<'a>(
     raw: &'a [u8],
     ot_bytes: &'a [u8],
-) -> Result<(WimResources<'a>, &'a [u8]), TTZipStatus> {
+) -> Result<WimOffsetTable<'a>, TTZipStatus> {
     let mut hash_map: WimResources<'a> = HashMap::new();
     let mut meta_slice: Option<&'a [u8]> = None;
     let mut p = 0usize;
@@ -407,8 +416,16 @@ pub(super) fn transcode_wim_bytes(raw: &[u8]) -> Result<TranscodedContainerStrea
     if raw.len() < 208 || &raw[..8] != b"MSWIM\0\0\0" {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
-    let cb_size = u32::from_le_bytes(raw[8..12].try_into().unwrap());
-    let dw_flags = u32::from_le_bytes(raw[16..20].try_into().unwrap());
+    let cb_size = u32::from_le_bytes(
+        raw[8..12]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    );
+    let dw_flags = u32::from_le_bytes(
+        raw[16..20]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    );
     let total_parts = u16::from_le_bytes([raw[42], raw[43]]);
     if cb_size != 208 {
         return Err(TTZipStatus::ErrCorruptHeader);
@@ -427,7 +444,11 @@ pub(super) fn transcode_wim_bytes(raw: &[u8]) -> Result<TranscodedContainerStrea
     if meta.len() < 8 {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
-    let sec_len = u32::from_le_bytes(meta[0..4].try_into().unwrap()) as usize;
+    let sec_len = u32::from_le_bytes(
+        meta[0..4]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    ) as usize;
     let root_off = (sec_len.max(8) + 7) & !7;
     if root_off >= meta.len() {
         return Err(TTZipStatus::ErrCorruptHeader);
@@ -457,16 +478,32 @@ struct ParsedWimDirEntry {
 }
 
 fn parse_wim_direntry(meta: &[u8], pos: usize) -> Result<Option<ParsedWimDirEntry>, TTZipStatus> {
-    let li_len = u64::from_le_bytes(meta[pos..pos + 8].try_into().unwrap()) as usize;
+    let li_len = u64::from_le_bytes(
+        meta[pos..pos + 8]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    ) as usize;
     if li_len == 0 {
         return Ok(None);
     }
     if li_len < 102 || pos.saturating_add(li_len) > meta.len() {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
-    let attrs = u32::from_le_bytes(meta[pos + 8..pos + 12].try_into().unwrap());
-    let subdir_off = u64::from_le_bytes(meta[pos + 16..pos + 24].try_into().unwrap()) as usize;
-    let ft = u64::from_le_bytes(meta[pos + 48..pos + 56].try_into().unwrap());
+    let attrs = u32::from_le_bytes(
+        meta[pos + 8..pos + 12]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    );
+    let subdir_off = u64::from_le_bytes(
+        meta[pos + 16..pos + 24]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    ) as usize;
+    let ft = u64::from_le_bytes(
+        meta[pos + 48..pos + 56]
+            .try_into()
+            .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+    );
     let mtime = (ft / 10_000_000).saturating_sub(11_644_473_600);
     let mut sha1 = [0u8; 20];
     sha1.copy_from_slice(&meta[pos + 64..pos + 84]);

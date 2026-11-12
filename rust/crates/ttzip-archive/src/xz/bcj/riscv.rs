@@ -34,100 +34,20 @@ impl BcjRiscv {
 
     /// Encodes RISC-V JAL and AUIPC+inst2 instructions to normalized absolute forms.
     pub fn encode_buffer(&self, buffer: &mut [u8], now_pos: u32) -> usize {
-        let size = buffer.len();
-        if size < 8 {
+        if buffer.len() < 8 {
             return 0;
         }
 
-        let limit = size - 8;
+        let limit = buffer.len() - 8;
         let mut i = 0;
 
         while i <= limit {
             let inst0 = buffer[i];
-
+            let pc = now_pos.wrapping_add(i as u32);
             if inst0 == 0xEF {
-                // JAL
-                let b1 = buffer[i + 1] as u32;
-
-                // Only filter rd=x1(ra) and rd=x5(t0)
-                if (b1 & 0x0D) != 0 {
-                    i += 2;
-                    continue;
-                }
-
-                let b2 = buffer[i + 2] as u32;
-                let b3 = buffer[i + 3] as u32;
-                let pc = now_pos.wrapping_add(i as u32);
-
-                let mut addr = ((b1 & 0xF0) << 8)
-                    | ((b2 & 0x0F) << 16)
-                    | ((b2 & 0x10) << 7)
-                    | ((b2 & 0xE0) >> 4)
-                    | ((b3 & 0x7F) << 4)
-                    | ((b3 & 0x80) << 13);
-
-                addr = addr.wrapping_add(pc);
-
-                buffer[i + 1] = (b1 as u8 & 0x0F) | ((addr >> 13) as u8 & 0xF0);
-                buffer[i + 2] = (addr >> 9) as u8;
-                buffer[i + 3] = (addr >> 1) as u8;
-
-                i += 4;
+                i += Self::encode_jal(&mut buffer[i..i + 4], pc);
             } else if (inst0 & 0x7F) == 0x17 {
-                // AUIPC
-                let mut inst = (inst0 as u32)
-                    | ((buffer[i + 1] as u32) << 8)
-                    | ((buffer[i + 2] as u32) << 16)
-                    | ((buffer[i + 3] as u32) << 24);
-
-                if (inst & 0xE80) != 0 {
-                    // AUIPC rd != x0 and rd != x2
-                    let inst2 = u32::from_le_bytes([
-                        buffer[i + 4],
-                        buffer[i + 5],
-                        buffer[i + 6],
-                        buffer[i + 7],
-                    ]);
-
-                    if not_auipc_pair(inst, inst2) {
-                        i += 6;
-                        continue;
-                    }
-
-                    let mut addr = inst & 0xFFFF_F000;
-                    addr = addr
-                        .wrapping_add(inst2 >> 20)
-                        .wrapping_sub((inst2 >> 19) & 0x1000);
-                    addr = addr.wrapping_add(now_pos.wrapping_add(i as u32));
-
-                    inst = 0x17 | (2 << 7) | (inst2 << 12);
-                    buffer[i..i + 4].copy_from_slice(&inst.to_le_bytes());
-                    buffer[i + 4..i + 8].copy_from_slice(&addr.to_be_bytes());
-
-                    i += 8;
-                } else {
-                    // AUIPC rd == x0 or x2 -> Fake decode in encoder
-                    let fake_rs1 = inst >> 27;
-                    if not_special_auipc(inst, fake_rs1) {
-                        i += 4;
-                        continue;
-                    }
-
-                    let fake_addr = u32::from_le_bytes([
-                        buffer[i + 4],
-                        buffer[i + 5],
-                        buffer[i + 6],
-                        buffer[i + 7],
-                    ]);
-
-                    let fake_inst2 = (inst >> 12) | (fake_addr << 20);
-                    inst = 0x17 | (fake_rs1 << 7) | (fake_addr & 0xFFFF_F000);
-
-                    buffer[i..i + 4].copy_from_slice(&inst.to_le_bytes());
-                    buffer[i + 4..i + 8].copy_from_slice(&fake_inst2.to_le_bytes());
-
-                    i += 8;
-                }
+                i += Self::encode_auipc_pair(&mut buffer[i..i + 8], pc);
             } else {
                 i += 2;
             }
@@ -136,103 +56,128 @@ impl BcjRiscv {
         i
     }
 
+    #[inline(always)]
+    fn encode_jal(slot: &mut [u8], pc: u32) -> usize {
+        let b1 = slot[1] as u32;
+        if (b1 & 0x0D) != 0 {
+            return 2;
+        }
+
+        let b2 = slot[2] as u32;
+        let b3 = slot[3] as u32;
+        let addr = (((b1 & 0xF0) << 8)
+            | ((b2 & 0x0F) << 16)
+            | ((b2 & 0x10) << 7)
+            | ((b2 & 0xE0) >> 4)
+            | ((b3 & 0x7F) << 4)
+            | ((b3 & 0x80) << 13))
+            .wrapping_add(pc);
+
+        slot[1] = (b1 as u8 & 0x0F) | ((addr >> 13) as u8 & 0xF0);
+        slot[2] = (addr >> 9) as u8;
+        slot[3] = (addr >> 1) as u8;
+        4
+    }
+
+    #[inline(always)]
+    fn encode_auipc_pair(slot: &mut [u8], pc: u32) -> usize {
+        let mut inst = u32::from_le_bytes([slot[0], slot[1], slot[2], slot[3]]);
+        let inst2 = u32::from_le_bytes([slot[4], slot[5], slot[6], slot[7]]);
+
+        if (inst & 0xE80) != 0 {
+            if not_auipc_pair(inst, inst2) {
+                return 6;
+            }
+            let addr = (inst & 0xFFFF_F000)
+                .wrapping_add(inst2 >> 20)
+                .wrapping_sub((inst2 >> 19) & 0x1000)
+                .wrapping_add(pc);
+
+            inst = 0x17 | (2 << 7) | (inst2 << 12);
+            slot[..4].copy_from_slice(&inst.to_le_bytes());
+            slot[4..8].copy_from_slice(&addr.to_be_bytes());
+            8
+        } else {
+            let fake_rs1 = inst >> 27;
+            if not_special_auipc(inst, fake_rs1) {
+                return 4;
+            }
+            let fake_inst2 = (inst >> 12) | (inst2 << 20);
+            inst = 0x17 | (fake_rs1 << 7) | (inst2 & 0xFFFF_F000);
+            slot[..4].copy_from_slice(&inst.to_le_bytes());
+            slot[4..8].copy_from_slice(&fake_inst2.to_le_bytes());
+            8
+        }
+    }
+
     /// Decodes normalized RISC-V instructions back to relative offsets.
     pub fn decode_buffer(&self, buffer: &mut [u8], now_pos: u32) -> usize {
-        let size = buffer.len();
-        if size < 8 {
+        if buffer.len() < 8 {
             return 0;
         }
 
-        let limit = size - 8;
+        let limit = buffer.len() - 8;
         let mut i = 0;
 
         while i <= limit {
             let inst0 = buffer[i];
-
+            let pc = now_pos.wrapping_add(i as u32);
             if inst0 == 0xEF {
-                // JAL
-                let b1 = buffer[i + 1] as u32;
-
-                if (b1 & 0x0D) != 0 {
-                    i += 2;
-                    continue;
-                }
-
-                let b2 = buffer[i + 2] as u32;
-                let b3 = buffer[i + 3] as u32;
-                let pc = now_pos.wrapping_add(i as u32);
-
-                let mut addr = ((b1 & 0xF0) << 13) | (b2 << 9) | (b3 << 1);
-                addr = addr.wrapping_sub(pc);
-
-                buffer[i + 1] = (b1 as u8 & 0x0F) | ((addr >> 8) as u8 & 0xF0);
-                buffer[i + 2] = ((addr >> 16) as u8 & 0x0F)
-                    | ((addr >> 7) as u8 & 0x10)
-                    | ((addr << 4) as u8 & 0xE0);
-                buffer[i + 3] = ((addr >> 4) as u8 & 0x7F) | ((addr >> 13) as u8 & 0x80);
-
-                i += 4;
+                i += Self::decode_jal(&mut buffer[i..i + 4], pc);
             } else if (inst0 & 0x7F) == 0x17 {
-                // AUIPC
-                let mut inst = (inst0 as u32)
-                    | ((buffer[i + 1] as u32) << 8)
-                    | ((buffer[i + 2] as u32) << 16)
-                    | ((buffer[i + 3] as u32) << 24);
-
-                if (inst & 0xE80) != 0 {
-                    // Fake AUIPC+inst2 pair
-                    let inst2 = u32::from_le_bytes([
-                        buffer[i + 4],
-                        buffer[i + 5],
-                        buffer[i + 6],
-                        buffer[i + 7],
-                    ]);
-
-                    if not_auipc_pair(inst, inst2) {
-                        i += 6;
-                        continue;
-                    }
-
-                    let addr = (inst & 0xFFFF_F000).wrapping_add(inst2 >> 20);
-                    inst = 0x17 | (2 << 7) | (inst2 << 12);
-                    let inst2_out = addr;
-
-                    buffer[i..i + 4].copy_from_slice(&inst.to_le_bytes());
-                    buffer[i + 4..i + 8].copy_from_slice(&inst2_out.to_le_bytes());
-
-                    i += 8;
-                } else {
-                    // Real AUIPC pair decoding
-                    let inst2_rs1 = inst >> 27;
-                    if not_special_auipc(inst, inst2_rs1) {
-                        i += 4;
-                        continue;
-                    }
-
-                    let mut addr = u32::from_be_bytes([
-                        buffer[i + 4],
-                        buffer[i + 5],
-                        buffer[i + 6],
-                        buffer[i + 7],
-                    ]);
-                    addr = addr.wrapping_sub(now_pos.wrapping_add(i as u32));
-
-                    let inst2 = (inst >> 12) | (addr << 20);
-                    inst = 0x17
-                        | (inst2_rs1 << 7)
-                        | (addr.wrapping_add(0x800) & 0xFFFF_F000);
-
-                    buffer[i..i + 4].copy_from_slice(&inst.to_le_bytes());
-                    buffer[i + 4..i + 8].copy_from_slice(&inst2.to_le_bytes());
-
-                    i += 8;
-                }
+                i += Self::decode_auipc_pair(&mut buffer[i..i + 8], pc);
             } else {
                 i += 2;
             }
         }
 
         i
+    }
+
+    #[inline(always)]
+    fn decode_jal(slot: &mut [u8], pc: u32) -> usize {
+        let b1 = slot[1] as u32;
+        if (b1 & 0x0D) != 0 {
+            return 2;
+        }
+
+        let b2 = slot[2] as u32;
+        let b3 = slot[3] as u32;
+        let addr = (((b1 & 0xF0) << 13) | (b2 << 9) | (b3 << 1)).wrapping_sub(pc);
+
+        slot[1] = (b1 as u8 & 0x0F) | ((addr >> 8) as u8 & 0xF0);
+        slot[2] = ((addr >> 16) as u8 & 0x0F)
+            | ((addr >> 7) as u8 & 0x10)
+            | ((addr << 4) as u8 & 0xE0);
+        slot[3] = ((addr >> 4) as u8 & 0x7F) | ((addr >> 13) as u8 & 0x80);
+        4
+    }
+
+    #[inline(always)]
+    fn decode_auipc_pair(slot: &mut [u8], pc: u32) -> usize {
+        let mut inst = u32::from_le_bytes([slot[0], slot[1], slot[2], slot[3]]);
+        if (inst & 0xE80) != 0 {
+            let inst2 = u32::from_le_bytes([slot[4], slot[5], slot[6], slot[7]]);
+            if not_auipc_pair(inst, inst2) {
+                return 6;
+            }
+            let inst2_out = (inst & 0xFFFF_F000).wrapping_add(inst2 >> 20);
+            inst = 0x17 | (2 << 7) | (inst2 << 12);
+            slot[..4].copy_from_slice(&inst.to_le_bytes());
+            slot[4..8].copy_from_slice(&inst2_out.to_le_bytes());
+            8
+        } else {
+            let inst2_rs1 = inst >> 27;
+            if not_special_auipc(inst, inst2_rs1) {
+                return 4;
+            }
+            let addr = u32::from_be_bytes([slot[4], slot[5], slot[6], slot[7]]).wrapping_sub(pc);
+            let inst2 = (inst >> 12) | (addr << 20);
+            inst = 0x17 | (inst2_rs1 << 7) | (addr.wrapping_add(0x800) & 0xFFFF_F000);
+            slot[..4].copy_from_slice(&inst.to_le_bytes());
+            slot[4..8].copy_from_slice(&inst2.to_le_bytes());
+            8
+        }
     }
 }
 

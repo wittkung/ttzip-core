@@ -270,7 +270,7 @@ impl Hasher for Xxh32Hasher {
 mod tests {
     use super::*;
 
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "C reference FFI declaration for differential tests")]
     unsafe extern "C" {
         fn XXH32(input: *const libc::c_void, len: usize, seed: libc::c_uint) -> libc::c_uint;
     }

@@ -6,7 +6,9 @@
 //! Provides single canonical backend for Google Snappy raw block compression/decompression,
 //! official `.sz` framing with CRC-32C validation, and streaming pipe operations.
 
-use std::io::{Read, Write};
+use std::io::{Cursor, Read, Write};
+use std::sync::atomic::Ordering;
+use crate::codecs::{CountingReader, CountingWriter};
 use crate::types::TTZipStatus;
 
 pub const CASTAGNOLI_POLYNOMIAL: u32 = 0x82F63B78;
@@ -219,10 +221,7 @@ pub fn encode_varint32(mut val: u32, dst: &mut [u8]) -> usize {
 
 #[inline]
 pub fn emit_literal_tag(len: usize, dst: &mut [u8]) -> usize {
-    if dst.is_empty() {
-        return 0;
-    }
-    if len <= 60 {
+    if !dst.is_empty() && len <= 60 {
         dst[0] = ((len - 1) as u8) << 2;
         1
     } else {
@@ -231,33 +230,21 @@ pub fn emit_literal_tag(len: usize, dst: &mut [u8]) -> usize {
 }
 
 #[inline]
-pub fn emit_copy1_tag(_len: usize, _offset: usize, _dst: &mut [u8]) -> usize {
-    0
-}
+pub fn emit_copy1_tag(_len: usize, _offset: usize, _dst: &mut [u8]) -> usize { 0 }
 
 #[inline]
-pub fn emit_copy2_tag(_len: usize, _offset: usize, _dst: &mut [u8]) -> usize {
-    0
-}
+pub fn emit_copy2_tag(_len: usize, _offset: usize, _dst: &mut [u8]) -> usize { 0 }
 
 #[inline]
-pub fn emit_copy4_tag(_len: usize, _offset: usize, _dst: &mut [u8]) -> usize {
-    0
-}
+pub fn emit_copy4_tag(_len: usize, _offset: usize, _dst: &mut [u8]) -> usize { 0 }
 
 #[inline]
 pub fn parse_tag_header(_byte: u8) -> SnappyTagHeader {
-    SnappyTagHeader {
-        tag_type: SnappyTagType::Literal,
-        length: 0,
-        header_len: 1,
-    }
+    SnappyTagHeader { tag_type: SnappyTagType::Literal, length: 0, header_len: 1 }
 }
 
 #[inline]
-pub fn parse_element(_byte: u8) -> u8 {
-    0
-}
+pub fn parse_element(_byte: u8) -> u8 { 0 }
 
 // MARK: - Raw Block APIs
 
@@ -471,19 +458,38 @@ pub fn snappy_compress_stream_pipe<R: Read, W: Write>(
     writer: &mut W,
     progress: Option<&dyn Fn(u64, u64) -> bool>,
 ) -> Result<(u64, u64), TTZipStatus> {
-    let mut raw = Vec::new();
-    reader.read_to_end(&mut raw).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-    let in_bytes = raw.len() as u64;
+    let mut counting_writer = CountingWriter::new(writer);
+    let written_counter = counting_writer.counter();
+    let mut encoder = snap::write::FrameEncoder::new(&mut counting_writer);
+    let mut in_buf = vec![0u8; SNAPPY_PIPE_BUFFER_SIZE];
+    let mut total_read: u64 = 0;
 
-    let compressed = snappy_frame_encode_to_vec(&raw)?;
-    let out_bytes = compressed.len() as u64;
-    writer.write_all(&compressed).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-    if let Some(cb) = progress {
-        if !cb(in_bytes, out_bytes) {
-            return Err(TTZipStatus::Cancelled);
+    loop {
+        let n = reader.read(&mut in_buf).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        if n == 0 {
+            break;
+        }
+        total_read = total_read.saturating_add(n as u64);
+        encoder.write_all(&in_buf[..n]).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        encoder.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        if let Some(cb) = progress {
+            if !cb(total_read, written_counter.load(Ordering::Relaxed)) {
+                return Err(TTZipStatus::Cancelled);
+            }
         }
     }
-    Ok((in_bytes, out_bytes))
+
+    let inner_writer = encoder.into_inner().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    if total_read == 0 && written_counter.load(Ordering::Relaxed) == 0 {
+        inner_writer.write_all(&SNAPPY_STREAM_IDENTIFIER).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        if let Some(cb) = progress {
+            if !cb(0, written_counter.load(Ordering::Relaxed)) {
+                return Err(TTZipStatus::Cancelled);
+            }
+        }
+    }
+    inner_writer.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    Ok((total_read, written_counter.load(Ordering::Relaxed)))
 }
 
 pub fn snappy_decompress_stream_pipe<R: Read, W: Write>(
@@ -491,19 +497,50 @@ pub fn snappy_decompress_stream_pipe<R: Read, W: Write>(
     writer: &mut W,
     progress: Option<&dyn Fn(u64, u64) -> bool>,
 ) -> Result<(u64, u64), TTZipStatus> {
-    let mut raw_comp = Vec::new();
-    reader.read_to_end(&mut raw_comp).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-    let in_bytes = raw_comp.len() as u64;
+    let mut counting_reader = CountingReader::new(reader);
+    let read_counter = counting_reader.counter();
+    let mut header = [0u8; 10];
+    let mut header_pos = 0;
+    while header_pos < header.len() {
+        let n = counting_reader
+            .read(&mut header[header_pos..])
+            .map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        if n == 0 {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        header_pos += n;
+    }
+    if header != SNAPPY_STREAM_IDENTIFIER {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
 
-    let decompressed = snappy_frame_decode_to_vec(&raw_comp, usize::MAX)?;
-    let out_bytes = decompressed.len() as u64;
-    writer.write_all(&decompressed).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-    if let Some(cb) = progress {
-        if !cb(in_bytes, out_bytes) {
-            return Err(TTZipStatus::Cancelled);
+    let mut decoder = snap::read::FrameDecoder::new(Cursor::new(header).chain(&mut counting_reader));
+    let mut out_buf = vec![0u8; SNAPPY_PIPE_BUFFER_SIZE];
+    let mut total_written: u64 = 0;
+
+    loop {
+        let n = decoder.read(&mut out_buf).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        if n == 0 {
+            break;
+        }
+        writer.write_all(&out_buf[..n]).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        total_written = total_written.saturating_add(n as u64);
+        if let Some(cb) = progress {
+            if !cb(read_counter.load(Ordering::Relaxed), total_written) {
+                return Err(TTZipStatus::Cancelled);
+            }
         }
     }
-    Ok((in_bytes, out_bytes))
+
+    if total_written == 0 {
+        if let Some(cb) = progress {
+            if !cb(read_counter.load(Ordering::Relaxed), 0) {
+                return Err(TTZipStatus::Cancelled);
+            }
+        }
+    }
+    writer.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+    Ok((read_counter.load(Ordering::Relaxed), total_written))
 }
 
 pub fn snappy_compress_file<P: AsRef<std::path::Path>, Q: AsRef<std::path::Path>>(
@@ -625,6 +662,35 @@ mod tests {
             .expect("decompress pipe failed");
         assert_eq!(dec_read, compressed.len() as u64);
         assert_eq!(dec_written, payload.len() as u64);
+        assert_eq!(decompressed, payload);
+    }
+
+    #[test]
+    fn test_snappy_pipe_incremental_chunks_and_cancellation() {
+        let payload = vec![0x5Au8; SNAPPY_PIPE_BUFFER_SIZE * 4 + 1234];
+        let mut reader = Cursor::new(&payload);
+        let mut compressed = Vec::new();
+        let comp_steps = std::cell::Cell::new(0usize);
+        let comp_cb = |_in_b: u64, _out_b: u64| {
+            comp_steps.set(comp_steps.get() + 1);
+            true
+        };
+        let (read_b, _) = snappy_compress_stream_pipe(&mut reader, &mut compressed, Some(&comp_cb))
+            .expect("incremental compress pipe");
+        assert_eq!(read_b, payload.len() as u64);
+        assert_eq!(comp_steps.get(), 5);
+
+        let mut comp_reader = Cursor::new(&compressed);
+        let mut decompressed = Vec::new();
+        let dec_steps = std::cell::Cell::new(0usize);
+        let dec_cb = |_in_b: u64, _out_b: u64| {
+            dec_steps.set(dec_steps.get() + 1);
+            true
+        };
+        let (_, written_b) = snappy_decompress_stream_pipe(&mut comp_reader, &mut decompressed, Some(&dec_cb))
+            .expect("incremental decompress pipe");
+        assert_eq!(written_b, payload.len() as u64);
+        assert!(dec_steps.get() >= 5);
         assert_eq!(decompressed, payload);
     }
 }

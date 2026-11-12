@@ -13,6 +13,49 @@
 use std::path::{Path, PathBuf};
 use crate::types::TTZipStatus;
 
+#[inline]
+fn has_drive_letter_prefix(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+#[inline]
+fn is_relative_archive_name(s: &str) -> bool {
+    !s.is_empty()
+        && !s.contains('\0')
+        && !s.starts_with(['/', '\\'])
+        && !has_drive_letter_prefix(s)
+}
+
+fn strip_unc_and_drive_root(raw_path: &str) -> &str {
+    let mut raw = raw_path;
+    if raw.starts_with(r"\\?\UNC\") || raw.starts_with(r"//?/UNC/") {
+        raw = &raw[8..];
+    } else if raw.starts_with(r"\\?\") || raw.starts_with(r"\\.\") || raw.starts_with("//?/") {
+        raw = &raw[4..];
+    }
+    if has_drive_letter_prefix(raw) {
+        raw = &raw[2..];
+    }
+    raw.trim_start_matches(['/', '\\'])
+}
+
+#[inline]
+fn strip_drive_prefix(seg: &str) -> &str {
+    if has_drive_letter_prefix(seg) {
+        &seg[2..]
+    } else {
+        seg
+    }
+}
+
+fn join_path_stack<S: AsRef<Path>>(mut base: PathBuf, stack: &[S]) -> PathBuf {
+    for seg in stack {
+        base.push(seg);
+    }
+    base
+}
+
 /// Resolves a sanitized relative path strictly enclosed within a destination sandbox root.
 ///
 /// Depth-aware path stack tracking is performed:
@@ -24,21 +67,7 @@ use crate::types::TTZipStatus;
 /// - Rejects embedded Windows drive colons or Windows device reserved stems.
 #[must_use]
 pub fn enclosed_name(file_name: &str) -> Option<PathBuf> {
-    if file_name.is_empty() || file_name.contains('\0') || file_name.contains("://") {
-        return None;
-    }
-
-    // Reject absolute paths, UNC paths, and Windows drive letters at root
-    if file_name.starts_with('/')
-        || file_name.starts_with('\\')
-        || file_name.starts_with("//")
-        || file_name.starts_with(r"\\")
-    {
-        return None;
-    }
-
-    let bytes = file_name.as_bytes();
-    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+    if file_name.contains("://") || !is_relative_archive_name(file_name) {
         return None;
     }
 
@@ -48,22 +77,13 @@ pub fn enclosed_name(file_name: &str) -> Option<PathBuf> {
         if seg.is_empty() || seg == "." {
             continue;
         }
-
         if seg == ".." {
-            if stack.is_empty() {
-                // Stack underflow: attempting to escape above sandbox root
-                return None;
-            }
-            stack.pop();
+            stack.pop()?;
             continue;
         }
-
-        // Reject embedded drive letters (e.g. "foo/C:/bar")
-        let seg_bytes = seg.as_bytes();
-        if seg_bytes.len() >= 2 && seg_bytes[0].is_ascii_alphabetic() && seg_bytes[1] == b':' {
+        if has_drive_letter_prefix(seg) {
             return None;
         }
-
         stack.push(seg.to_string());
     }
 
@@ -71,12 +91,7 @@ pub fn enclosed_name(file_name: &str) -> Option<PathBuf> {
         return None;
     }
 
-    let mut path_buf = PathBuf::new();
-    for seg in stack {
-        path_buf.push(seg);
-    }
-
-    Some(path_buf)
+    Some(join_path_stack(PathBuf::new(), &stack))
 }
 
 /// Cleanses arbitrary absolute paths or Windows drive letters into safe relative components.
@@ -89,23 +104,7 @@ pub fn simplified_components(file_name: &str) -> Option<PathBuf> {
         return None;
     }
 
-    let mut raw = file_name;
-
-    // Strip UNC prefixes
-    if raw.starts_with(r"\\?\UNC\") || raw.starts_with(r"//?/UNC/") {
-        raw = &raw[8..];
-    } else if raw.starts_with(r"\\?\") || raw.starts_with(r"\\.\") || raw.starts_with("//?/") {
-        raw = &raw[4..];
-    }
-
-    // Strip leading Windows drive letters (e.g. "C:" or "c:")
-    let raw_bytes = raw.as_bytes();
-    if raw_bytes.len() >= 2 && raw_bytes[0].is_ascii_alphabetic() && raw_bytes[1] == b':' {
-        raw = &raw[2..];
-    }
-
-    // Strip leading slashes/backslashes
-    let trimmed = raw.trim_start_matches(['/', '\\']);
+    let trimmed = strip_unc_and_drive_root(file_name);
     if trimmed.is_empty() {
         return None;
     }
@@ -116,23 +115,11 @@ pub fn simplified_components(file_name: &str) -> Option<PathBuf> {
         if seg.is_empty() || seg == "." {
             continue;
         }
-
         if seg == ".." {
-            if !stack.is_empty() {
-                stack.pop();
-            }
-            // If stack is empty, safely ignore leading '..' rather than underflowing
+            let _ = stack.pop();
             continue;
         }
-
-        // Clean any inner drive letter segment (e.g. "D:")
-        let seg_bytes = seg.as_bytes();
-        let clean_seg = if seg_bytes.len() >= 2 && seg_bytes[0].is_ascii_alphabetic() && seg_bytes[1] == b':' {
-            &seg[2..]
-        } else {
-            seg
-        };
-
+        let clean_seg = strip_drive_prefix(seg);
         if !clean_seg.is_empty() {
             stack.push(clean_seg.to_string());
         }
@@ -142,12 +129,7 @@ pub fn simplified_components(file_name: &str) -> Option<PathBuf> {
         return None;
     }
 
-    let mut path_buf = PathBuf::new();
-    for seg in stack {
-        path_buf.push(seg);
-    }
-
-    Some(path_buf)
+    Some(join_path_stack(PathBuf::new(), &stack))
 }
 
 /// Detects 42.zip style overlapping payload intervals across archive entries.
@@ -338,25 +320,7 @@ pub fn validate_symlink_target(
     symlink_target: &str,
     depth_limit: usize,
 ) -> Result<PathBuf, TTZipStatus> {
-    if symlink_target.is_empty() || symlink_target.contains('\0') {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    if depth_limit == 0 {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    // Reject absolute paths, UNC paths, and Windows drive letters
-    if symlink_target.starts_with('/')
-        || symlink_target.starts_with('\\')
-        || symlink_target.starts_with("//")
-        || symlink_target.starts_with(r"\\")
-    {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-
-    let bytes = symlink_target.as_bytes();
-    if bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':' {
+    if depth_limit == 0 || !is_relative_archive_name(symlink_target) {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
@@ -366,13 +330,10 @@ pub fn validate_symlink_target(
         if comp.is_empty() || comp == "." {
             continue;
         }
-
         if comp == ".." {
-            if stack.is_empty() {
-                // Escapes sandbox root!
+            if stack.pop().is_none() {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
-            stack.pop();
         } else {
             stack.push(comp);
         }
@@ -382,10 +343,5 @@ pub fn validate_symlink_target(
         return Err(TTZipStatus::ErrSecurityViolation);
     }
 
-    let mut resolved = dest_root.to_path_buf();
-    for seg in &stack {
-        resolved.push(seg);
-    }
-
-    Ok(resolved)
+    Ok(join_path_stack(dest_root.to_path_buf(), &stack))
 }

@@ -64,7 +64,12 @@ pub fn ppmd_parse_7z_props(coder_props: &[u8]) -> Result<(u32, usize), TTZipStat
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    let mem_raw = u32::from_le_bytes(coder_props[1..5].try_into().unwrap()) as usize;
+    let mem_raw = u32::from_le_bytes([
+        coder_props[1],
+        coder_props[2],
+        coder_props[3],
+        coder_props[4],
+    ]) as usize;
     let mem_size = mem_raw.clamp(PPMD_MIN_MEMORY_SIZE, PPMD_MAX_MEMORY_SIZE);
 
     Ok((order, mem_size))

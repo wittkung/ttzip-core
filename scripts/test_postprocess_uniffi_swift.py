@@ -58,6 +58,10 @@ import Foundation
 import ttzip_engineFFI
 #endif
 
+public enum ArchiveFormat {
+    case zip
+}
+
 fileprivate extension RustBuffer {
     func deallocate() {
         try! rustCall { ffi_ttzip_engine_rustbuffer_free(self, $0) }
@@ -169,6 +173,7 @@ class TestPostprocessUniFFISwift(unittest.TestCase):
         # Invariants assertion
         self.assertTrue(patched.startswith("// Copyright 2026 MetastudyLine"))
         self.assertIn("#if canImport(TTZipEngineFFI)", patched)
+        self.assertIn("public enum ArchiveFormat: Sendable {", patched)
         self.assertIn("nonisolated(unsafe) static var vtable:", patched)
         self.assertIn("nonisolated(unsafe) fileprivate static var handleMap =", patched)
         self.assertIn("private let initializationResult:", patched)
@@ -189,6 +194,7 @@ class TestPostprocessUniFFISwift(unittest.TestCase):
         # Re-running verification on patched output must pass
         is_compliant, violations = verify_invariants(patched)
         self.assertTrue(is_compliant, f"Violations detected: {violations}")
+        self.assertEqual(postprocess_content(patched), (patched, False))
 
     def test_fail_fast_on_missing_required_pattern(self):
         """If a required patch cannot match and its invariant is missing, aborts with RuntimeError."""

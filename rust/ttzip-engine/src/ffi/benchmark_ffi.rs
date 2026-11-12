@@ -301,7 +301,7 @@ mod tests {
     use std::ffi::CStr;
 
     #[test]
-    #[allow(deprecated)]
+    #[allow(deprecated, reason = "Exercises deprecated C-ABI benchmark entrypoints")]
     fn test_ffi_matrix_and_gate_functions() {
         let gate_status = ttzip_rust_bench_run_gate();
         assert_eq!(gate_status, 0);

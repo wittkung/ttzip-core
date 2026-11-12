@@ -135,6 +135,111 @@ mod arm64 {
         }
     }
 
+    #[inline]
+    #[target_feature(enable = "crc")]
+    unsafe fn fold_pmull_4way(
+        crc: u32,
+        mut p: *const u8,
+        mut len: usize,
+    ) -> (uint8x16_t, *const u8, usize) {
+        static MULTS: [[u64; 2]; 3] = [
+            [CRC32_X543_MODG, CRC32_X479_MODG],
+            [CRC32_X287_MODG, CRC32_X223_MODG],
+            [CRC32_X159_MODG, CRC32_X95_MODG],
+        ];
+        unsafe {
+            let mult_4 = load_multipliers(&MULTS[0]);
+            let mult_2 = load_multipliers(&MULTS[1]);
+            let mult_1 = load_multipliers(&MULTS[2]);
+
+            let mut v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
+            let mut v1 = vld1q_u8(p.add(16));
+            let mut v2 = vld1q_u8(p.add(32));
+            let mut v3 = vld1q_u8(p.add(48));
+            p = p.add(64);
+            len -= 64;
+
+            while len >= 64 {
+                v0 = fold_vec(v0, vld1q_u8(p), mult_4);
+                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_4);
+                v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_4);
+                v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_4);
+                p = p.add(64);
+                len -= 64;
+            }
+
+            v0 = fold_vec(v0, v2, mult_2);
+            v1 = fold_vec(v1, v3, mult_2);
+            if len >= 32 {
+                v0 = fold_vec(v0, vld1q_u8(p), mult_2);
+                v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_2);
+                p = p.add(32);
+                len -= 32;
+            }
+            v0 = fold_vec(v0, v1, mult_1);
+            (v0, p, len)
+        }
+    }
+
+    #[inline]
+    #[target_feature(enable = "crc")]
+    unsafe fn fold_pmull_12way(
+        crc: u32,
+        mut p: *const u8,
+        mut len: usize,
+    ) -> (uint8x16_t, *const u8, usize) {
+        static MULTS: [[u64; 2]; 4] = [
+            [CRC32_X1567_MODG, CRC32_X1503_MODG],
+            [CRC32_X799_MODG, CRC32_X735_MODG],
+            [CRC32_X415_MODG, CRC32_X351_MODG],
+            [CRC32_X159_MODG, CRC32_X95_MODG],
+        ];
+        unsafe {
+            let mult_12 = load_multipliers(&MULTS[0]);
+            let mult_6 = load_multipliers(&MULTS[1]);
+            let mult_3 = load_multipliers(&MULTS[2]);
+            let mult_1 = load_multipliers(&MULTS[3]);
+
+            let mut v: [uint8x16_t; 12] = core::array::from_fn(|i| vld1q_u8(p.add(i * 16)));
+            v[0] = veorq_u8(v[0], u32_to_bytevec(crc));
+            p = p.add(192);
+            len -= 192;
+
+            while len >= 192 {
+                for i in 0..12 {
+                    v[i] = fold_vec(v[i], vld1q_u8(p.add(i * 16)), mult_12);
+                }
+                p = p.add(192);
+                len -= 192;
+            }
+
+            for i in 0..6 {
+                v[i] = fold_vec(v[i], v[i + 6], mult_6);
+            }
+            if len >= 96 {
+                for i in 0..6 {
+                    v[i] = fold_vec(v[i], vld1q_u8(p.add(i * 16)), mult_6);
+                }
+                p = p.add(96);
+                len -= 96;
+            }
+
+            for i in 0..3 {
+                v[i] = fold_vec(v[i], v[i + 3], mult_3);
+            }
+            if len >= 48 {
+                for i in 0..3 {
+                    v[i] = fold_vec(v[i], vld1q_u8(p.add(i * 16)), mult_3);
+                }
+                p = p.add(48);
+                len -= 48;
+            }
+
+            let v0 = fold_vec(fold_vec(v[0], v[1], mult_1), v[2], mult_1);
+            (v0, p, len)
+        }
+    }
+
     /// Computes CRC-32 using ARM PMULL vector folding.
     ///
     /// # Safety
@@ -147,141 +252,20 @@ mod arm64 {
             p = aligned_p;
             len = aligned_len;
 
-            let mut v0: uint8x16_t;
-            let mut v1: uint8x16_t;
-            let mut v2: uint8x16_t;
-            let mut v3: uint8x16_t;
-            let mut v4: uint8x16_t;
-            let mut v5: uint8x16_t;
-            let mut v6: uint8x16_t;
-            let mut v7: uint8x16_t;
-            let mut v8: uint8x16_t;
-            let mut v9: uint8x16_t;
-            let mut v10: uint8x16_t;
-            let mut v11: uint8x16_t;
-
-            if len < 3 * 192 {
-                static MULTS: [[u64; 2]; 3] = [
-                    [CRC32_X543_MODG, CRC32_X479_MODG],
-                    [CRC32_X287_MODG, CRC32_X223_MODG],
-                    [CRC32_X159_MODG, CRC32_X95_MODG],
-                ];
-
-                if len < 128 {
-                    return crc32_arm64_direct_hw(crc, p, len);
-                }
-
-                let mult_4 = load_multipliers(&MULTS[0]);
-                let mult_2 = load_multipliers(&MULTS[1]);
-                let mult_1 = load_multipliers(&MULTS[2]);
-
-                v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
-                v1 = vld1q_u8(p.add(16));
-                v2 = vld1q_u8(p.add(32));
-                v3 = vld1q_u8(p.add(48));
-                p = p.add(64);
-                len -= 64;
-
-                while len >= 64 {
-                    v0 = fold_vec(v0, vld1q_u8(p), mult_4);
-                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_4);
-                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_4);
-                    v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_4);
-                    p = p.add(64);
-                    len -= 64;
-                }
-
-                v0 = fold_vec(v0, v2, mult_2);
-                v1 = fold_vec(v1, v3, mult_2);
-                if len >= 32 {
-                    v0 = fold_vec(v0, vld1q_u8(p), mult_2);
-                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_2);
-                    p = p.add(32);
-                    len -= 32;
-                }
-                v0 = fold_vec(v0, v1, mult_1);
-            } else {
-                static MULTS: [[u64; 2]; 4] = [
-                    [CRC32_X1567_MODG, CRC32_X1503_MODG],
-                    [CRC32_X799_MODG, CRC32_X735_MODG],
-                    [CRC32_X415_MODG, CRC32_X351_MODG],
-                    [CRC32_X159_MODG, CRC32_X95_MODG],
-                ];
-                let mult_12 = load_multipliers(&MULTS[0]);
-                let mult_6 = load_multipliers(&MULTS[1]);
-                let mult_3 = load_multipliers(&MULTS[2]);
-                let mult_1 = load_multipliers(&MULTS[3]);
-
-                v0 = veorq_u8(vld1q_u8(p), u32_to_bytevec(crc));
-                v1 = vld1q_u8(p.add(16));
-                v2 = vld1q_u8(p.add(32));
-                v3 = vld1q_u8(p.add(48));
-                v4 = vld1q_u8(p.add(64));
-                v5 = vld1q_u8(p.add(80));
-                v6 = vld1q_u8(p.add(96));
-                v7 = vld1q_u8(p.add(112));
-                v8 = vld1q_u8(p.add(128));
-                v9 = vld1q_u8(p.add(144));
-                v10 = vld1q_u8(p.add(160));
-                v11 = vld1q_u8(p.add(176));
-                p = p.add(192);
-                len -= 192;
-
-                while len >= 192 {
-                    v0 = fold_vec(v0, vld1q_u8(p), mult_12);
-                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_12);
-                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_12);
-                    v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_12);
-                    v4 = fold_vec(v4, vld1q_u8(p.add(64)), mult_12);
-                    v5 = fold_vec(v5, vld1q_u8(p.add(80)), mult_12);
-                    v6 = fold_vec(v6, vld1q_u8(p.add(96)), mult_12);
-                    v7 = fold_vec(v7, vld1q_u8(p.add(112)), mult_12);
-                    v8 = fold_vec(v8, vld1q_u8(p.add(128)), mult_12);
-                    v9 = fold_vec(v9, vld1q_u8(p.add(144)), mult_12);
-                    v10 = fold_vec(v10, vld1q_u8(p.add(160)), mult_12);
-                    v11 = fold_vec(v11, vld1q_u8(p.add(176)), mult_12);
-                    p = p.add(192);
-                    len -= 192;
-                }
-
-                v0 = fold_vec(v0, v6, mult_6);
-                v1 = fold_vec(v1, v7, mult_6);
-                v2 = fold_vec(v2, v8, mult_6);
-                v3 = fold_vec(v3, v9, mult_6);
-                v4 = fold_vec(v4, v10, mult_6);
-                v5 = fold_vec(v5, v11, mult_6);
-
-                if len >= 96 {
-                    v0 = fold_vec(v0, vld1q_u8(p), mult_6);
-                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_6);
-                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_6);
-                    v3 = fold_vec(v3, vld1q_u8(p.add(48)), mult_6);
-                    v4 = fold_vec(v4, vld1q_u8(p.add(64)), mult_6);
-                    v5 = fold_vec(v5, vld1q_u8(p.add(80)), mult_6);
-                    p = p.add(96);
-                    len -= 96;
-                }
-
-                v0 = fold_vec(v0, v3, mult_3);
-                v1 = fold_vec(v1, v4, mult_3);
-                v2 = fold_vec(v2, v5, mult_3);
-
-                if len >= 48 {
-                    v0 = fold_vec(v0, vld1q_u8(p), mult_3);
-                    v1 = fold_vec(v1, vld1q_u8(p.add(16)), mult_3);
-                    v2 = fold_vec(v2, vld1q_u8(p.add(32)), mult_3);
-                    p = p.add(48);
-                    len -= 48;
-                }
-
-                v0 = fold_vec(v0, v1, mult_1);
-                v0 = fold_vec(v0, v2, mult_1);
+            if len < 128 {
+                return crc32_arm64_direct_hw(crc, p, len);
             }
+
+            let (v0, next_p, next_len) = if len < 3 * 192 {
+                fold_pmull_4way(crc, p, len)
+            } else {
+                fold_pmull_12way(crc, p, len)
+            };
 
             crc = __crc32d(0, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 0));
             crc = __crc32d(crc, vgetq_lane_u64(vreinterpretq_u64_u8(v0), 1));
 
-            crc32_arm64_direct_hw(crc, p, len)
+            crc32_arm64_direct_hw(crc, next_p, next_len)
         }
     }
 

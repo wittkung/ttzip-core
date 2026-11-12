@@ -45,6 +45,7 @@ typedef enum TTZipStatus {
     TTZIP_STATUS_ERR_COMPRESSION_FAILED = -12,
     TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE = -13,
     TTZIP_STATUS_ERR_BUFFER_TOO_SMALL = -14,
+    TTZIP_STATUS_ERR_IO = -15,
     TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED = -24,
     TTZIP_STATUS_ERR_SECURITY_VIOLATION = -30,
     TTZIP_STATUS_ERR_ABI_MISMATCH = -40,
@@ -169,6 +170,8 @@ typedef enum TTZipEngineTag {
 // MARK: - Data Structures
 
 typedef struct TTZipExecutionProvenance {
+    uint32_t struct_size;
+    uint32_t abi_version;
     TTZipEngineTag engine_tag;
     uint32_t thread_count;
     uint64_t uncompressed_bytes;
@@ -234,6 +237,8 @@ typedef struct TTZipErrorInfo {
 } TTZipErrorInfo;
 
 typedef struct TTZipCpuCapsRaw {
+    uint32_t struct_size;
+    uint32_t abi_version;
     uint32_t logical_cores;
     size_t physical_page_size;
     uint32_t p_cores;
@@ -567,6 +572,7 @@ static inline const char *ttzip_status_string(TTZipStatus status) {
         case TTZIP_STATUS_ERR_COMPRESSION_FAILED: return "Compression Failed";
         case TTZIP_STATUS_ERR_UNSUPPORTED_FEATURE: return "Unsupported Feature";
         case TTZIP_STATUS_ERR_BUFFER_TOO_SMALL: return "Buffer Too Small";
+        case TTZIP_STATUS_ERR_IO: return "I/O Error";
         case TTZIP_STATUS_ERR_SOLID_BUDGET_EXCEEDED: return "Solid Decompression Budget Exceeded";
         case TTZIP_STATUS_ERR_SECURITY_VIOLATION: return "Security Violation";
         case TTZIP_STATUS_ERR_ABI_MISMATCH: return "ABI Version Mismatch";

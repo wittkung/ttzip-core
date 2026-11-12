@@ -4,7 +4,6 @@
 //! Request-ID isolated hybrid semantic search coordinator, incremental scope indexer,
 //! and cooperative cancellation manager.
 
-use crate::chunker::is_excluded_relative_path;
 use crate::index::{IndexLoadOutcome, PersistentScopeIndex};
 use crate::llama_ffi::{LlamaRuntimeConfig, LlamaRuntimeEngine};
 use crate::model::{
@@ -20,10 +19,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, RwLock};
-use std::time::UNIX_EPOCH;
 
 mod directory;
 mod ingest;
+
+pub(super) use directory::collect_authorized_files;
 
 pub use crate::scoring::{DeterministicEmbeddingProvider, EmbeddingProvider as _};
 
@@ -157,6 +157,8 @@ pub struct SemanticSearchCoordinator {
     latest_window_request: RwLock<BTreeMap<String, u64>>,
     cancelled_requests: RwLock<HashSet<u64>>,
     next_sequence: AtomicU64,
+    skipped_error_count: AtomicU64,
+    last_embedding_error: RwLock<Option<String>>,
 }
 
 impl SemanticSearchCoordinator {
@@ -169,7 +171,54 @@ impl SemanticSearchCoordinator {
             latest_window_request: RwLock::new(BTreeMap::new()),
             cancelled_requests: RwLock::new(HashSet::new()),
             next_sequence: AtomicU64::new(1),
+            skipped_error_count: AtomicU64::new(0),
+            last_embedding_error: RwLock::new(None),
         }
+    }
+
+    /// Returns the total count of skipped or failed embedding operations.
+    pub fn skipped_error_count(&self) -> u64 {
+        self.skipped_error_count.load(Ordering::SeqCst)
+    }
+
+    /// Returns the diagnostic message for the most recent skipped embedding error, if any.
+    pub fn last_embedding_error(&self) -> Option<String> {
+        self.last_embedding_error
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
+    }
+
+    pub(crate) fn record_skipped_error(&self, err: &SemanticModelError) {
+        self.skipped_error_count.fetch_add(1, Ordering::SeqCst);
+        *self
+            .last_embedding_error
+            .write()
+            .unwrap_or_else(|e| e.into_inner()) = Some(err.to_string());
+    }
+
+    /// Embeds a batch of document text chunks, counting and skipping any failed chunks.
+    pub fn embed_batch(&self, relative_path: Option<&str>, chunks: &[&str]) -> Vec<[i8; 128]> {
+        let mut vectors = Vec::with_capacity(chunks.len());
+        for &chunk in chunks {
+            match self.provider.encode_document(relative_path, chunk) {
+                Ok(vec_i8) => match validate_non_zero_int8_vector(&vec_i8) {
+                    Ok(()) => vectors.push(vec_i8),
+                    Err(err) => self.record_skipped_error(&err),
+                },
+                Err(err) => self.record_skipped_error(&err),
+            }
+        }
+        vectors
+    }
+
+    /// Indexes a batch of file events into a scope, accounting for any skipped chunk errors.
+    pub fn index_entries(
+        &self,
+        scope_id: &str,
+        entries: &[SemanticFileEvent],
+    ) -> Result<SemanticIndexProgress, SemanticModelError> {
+        self.apply_file_events(scope_id, entries)
     }
 
     /// Canonical production constructor backed exclusively by [`LlamaRuntimeEngine`].
@@ -250,7 +299,7 @@ impl SemanticSearchCoordinator {
         };
 
         let auth_epoch = self.next_sequence.fetch_add(1, Ordering::SeqCst);
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if let Some(prev) = guard.get(&descriptor.scope_id) {
             prev.cancel_flag.store(true, Ordering::SeqCst);
         }
@@ -271,7 +320,7 @@ impl SemanticSearchCoordinator {
     /// Revokes an authorized scope, cancels any active indexing, purges memory, and deletes disk files.
     pub fn revoke_scope(&self, scope_id: &str) -> bool {
         let removed = {
-            let mut guard = self.scopes.write().expect("scopes lock poisoned");
+            let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
             if let Some(mut managed) = guard.remove(scope_id) {
                 managed.cancel_flag.store(true, Ordering::SeqCst);
                 managed.active_run_token = 0;
@@ -289,7 +338,7 @@ impl SemanticSearchCoordinator {
 
     /// Signals cooperative cancellation for an active scope indexing job.
     pub fn cancel_indexing(&self, scope_id: &str) {
-        let mut guard = self.scopes.write().expect("scopes lock poisoned");
+        let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if let Some(managed) = guard.get_mut(scope_id) {
             managed.cancel_flag.store(true, Ordering::SeqCst);
             managed.active_run_token = 0;
@@ -299,13 +348,13 @@ impl SemanticSearchCoordinator {
 
     /// Returns a cancellation handle for a scope.
     pub fn scope_cancellation_flag(&self, scope_id: &str) -> Option<Arc<AtomicBool>> {
-        let guard = self.scopes.read().expect("scopes lock poisoned");
+        let guard = self.scopes.read().unwrap_or_else(|e| e.into_inner());
         guard.get(scope_id).map(|m| Arc::clone(&m.cancel_flag))
     }
 
     /// Returns current indexing progress for a scope.
     pub fn scope_progress(&self, scope_id: &str) -> Option<SemanticIndexProgress> {
-        let guard = self.scopes.read().expect("scopes lock poisoned");
+        let guard = self.scopes.read().unwrap_or_else(|e| e.into_inner());
         guard.get(scope_id).map(|m| m.progress.clone())
     }
 
@@ -361,7 +410,7 @@ impl SemanticSearchCoordinator {
         events: &[SemanticFileEvent],
     ) -> Result<SemanticIndexProgress, SemanticModelError> {
         let (run_identity, cancel_flag) = {
-            let mut guard = self.scopes.write().expect("scopes lock poisoned");
+            let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
             let Some(managed) = guard.get_mut(scope_id) else {
                 return Err(SemanticModelError::RuntimeFailed {
                     reason: format!("Unknown scope_id: {}", scope_id),
@@ -387,8 +436,17 @@ impl SemanticSearchCoordinator {
         if !matches!(self.provider.prepare(), SemanticModelState::Ready(_)) {
             return None;
         }
-        let embedding = self.provider.encode_query(query, is_code).ok()?;
-        validate_non_zero_int8_vector(&embedding).ok()?;
+        let embedding = match self.provider.encode_query(query, is_code) {
+            Ok(vec_i8) => vec_i8,
+            Err(err) => {
+                self.record_skipped_error(&err);
+                return None;
+            }
+        };
+        if let Err(err) = validate_non_zero_int8_vector(&embedding) {
+            self.record_skipped_error(&err);
+            return None;
+        }
         Some(embedding)
     }
 
@@ -397,7 +455,7 @@ impl SemanticSearchCoordinator {
         let mut guard = self
             .cancelled_requests
             .write()
-            .expect("cancelled_requests lock poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         guard.insert(request_id);
     }
 
@@ -405,14 +463,14 @@ impl SemanticSearchCoordinator {
         if self
             .cancelled_requests
             .read()
-            .expect("cancelled_requests lock poisoned")
+            .unwrap_or_else(|e| e.into_inner())
             .contains(&request_id)
         {
             return true;
         }
         self.latest_window_request
             .read()
-            .expect("latest_window_request lock poisoned")
+            .unwrap_or_else(|e| e.into_inner())
             .get(window_id)
             .is_some_and(|&latest| latest > request_id)
     }
@@ -421,7 +479,7 @@ impl SemanticSearchCoordinator {
         let mut win_guard = self
             .latest_window_request
             .write()
-            .expect("latest_window_request lock poisoned");
+            .unwrap_or_else(|e| e.into_inner());
         let entry = win_guard.entry(request.window_id.clone()).or_insert(0);
         if request.request_id > *entry {
             *entry = request.request_id;
@@ -444,7 +502,7 @@ impl SemanticSearchCoordinator {
         let query_vec_opt = self.prepare_query_embedding(clean_query, is_code_query);
         let degraded_lexical_only = query_vec_opt.is_none();
 
-        let scopes_guard = self.scopes.read().expect("scopes lock poisoned");
+        let scopes_guard = self.scopes.read().unwrap_or_else(|e| e.into_inner());
         let mut candidate_hits = Vec::new();
 
         for (scope_id, managed) in scopes_guard.iter() {
@@ -458,19 +516,22 @@ impl SemanticSearchCoordinator {
                 return empty_search_response(request, true, degraded_lexical_only);
             }
 
-            if degraded_lexical_only || managed.index.segments().is_empty() {
+            let Some(ref query_vec) = query_vec_opt else {
+                score_lexical_only_scope(managed, clean_query, &mut candidate_hits);
+                continue;
+            };
+            if managed.index.segments().is_empty() {
                 score_lexical_only_scope(managed, clean_query, &mut candidate_hits);
                 continue;
             }
 
-            let query_vec = query_vec_opt.expect("checked Some above");
             score_hybrid_scope_index(
                 &managed.descriptor,
                 &managed.index,
                 HybridScoringQuery {
                     clean_query,
                     is_code_query,
-                    query_vec: &query_vec,
+                    query_vec,
                     lexical_weight: request.lexical_weight,
                     semantic_weight: request.semantic_weight,
                 },
@@ -581,89 +642,4 @@ fn compute_scope_fingerprint(scope_id: &str, root_path: &str) -> u64 {
     hasher.update(root_path.as_bytes());
     let bytes = hasher.finalize();
     u64::from_le_bytes(bytes.as_bytes()[0..8].try_into().unwrap_or([0u8; 8]))
-}
-
-pub(super) fn collect_authorized_files(
-    root: &Path,
-    current: &Path,
-    out: &mut Vec<(String, PathBuf, u64, i64)>,
-    cancel_flag: &AtomicBool,
-    had_directory_read_error: &mut bool,
-) {
-    if cancel_flag.load(Ordering::SeqCst) {
-        return;
-    }
-    let Ok(entries) = fs::read_dir(current) else {
-        *had_directory_read_error = true;
-        return;
-    };
-    let mut sorted_entries = Vec::new();
-    for entry_res in entries {
-        let Ok(entry) = entry_res else {
-            *had_directory_read_error = true;
-            return;
-        };
-        sorted_entries.push(entry);
-    }
-    sorted_entries.sort_by_key(|e| e.file_name());
-
-    for entry in sorted_entries {
-        if cancel_flag.load(Ordering::SeqCst) {
-            return;
-        }
-        let path = entry.path();
-        let Ok(rel) = path.strip_prefix(root) else {
-            continue;
-        };
-        let rel_str = rel.to_string_lossy().replace('\\', "/");
-        if is_excluded_relative_path(&rel_str) {
-            continue;
-        }
-        let Ok(ft) = entry.file_type() else {
-            *had_directory_read_error = true;
-            return;
-        };
-        if ft.is_symlink() {
-            continue;
-        }
-        if ft.is_dir() {
-            collect_authorized_files(
-                root,
-                &path,
-                out,
-                cancel_flag,
-                had_directory_read_error,
-            );
-            if *had_directory_read_error {
-                return;
-            }
-        } else if ft.is_file() {
-            let Ok(meta) = entry.metadata() else {
-                *had_directory_read_error = true;
-                return;
-            };
-            if is_dataless_metadata(&meta) {
-                continue;
-            }
-            let mtime_ns = meta
-                .modified()
-                .ok()
-                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
-                .map(|d| d.as_nanos() as i64)
-                .unwrap_or(0);
-            out.push((rel_str, path, meta.len(), mtime_ns));
-        }
-    }
-}
-
-#[cfg(target_os = "macos")]
-fn is_dataless_metadata(meta: &fs::Metadata) -> bool {
-    use std::os::macos::fs::MetadataExt;
-    const SF_DATALESS_FLAG: u32 = 0x4000_0000;
-    (meta.st_flags() & SF_DATALESS_FLAG) != 0
-}
-
-#[cfg(not(target_os = "macos"))]
-fn is_dataless_metadata(_meta: &fs::Metadata) -> bool {
-    false
 }

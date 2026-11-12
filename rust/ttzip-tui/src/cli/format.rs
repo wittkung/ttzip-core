@@ -13,10 +13,13 @@ use ttzip_engine::archive::source::mmap::MmapSource;
 use ttzip_engine::archive::source::StorageMedium;
 use ttzip_engine::archive::split::{detect_volume_chain as glue_detect_volume_chain, VirtualMultiVolumeReader};
 use ttzip_engine::archive::tar::TarArchive;
+use ttzip_engine::archive::unified::inspect::inspect_archive;
 use ttzip_engine::codecs::brotli::brotli_decompress_to_vec;
 use ttzip_engine::codecs::snappy::snappy_frame_decode_to_vec;
 use ttzip_engine::crypto::crc32::crc32_fast;
 use ttzip_engine::sevenz::SevenZArchive;
+use ttzip_engine::standards::detect_format_buffer;
+use ttzip_engine::standards::signatures::{CompoundFormat, DetectedFormat};
 use ttzip_engine::zip::ZipArchive;
 
 /// Segmented seek view over a multi-volume archive chain without reading all volumes into heap.
@@ -100,33 +103,99 @@ pub struct ArchiveEntryInfo {
     pub is_encrypted: bool,
 }
 
-/// Detected archive container format.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum ContainerFormat {
-    Zip,
-    SevenZip,
-    Tar,
-    Snappy,
-    Brotli,
-    TarBrotli,
-    Unknown,
-}
-
-impl ContainerFormat {
-    pub fn name(&self) -> &'static str {
-        match self {
-            ContainerFormat::Zip => "ZIP",
-            ContainerFormat::SevenZip => "7Z",
-            ContainerFormat::Tar => "TAR",
-            ContainerFormat::Snappy => "SNAPPY",
-            ContainerFormat::Brotli => "BROTLI",
-            ContainerFormat::TarBrotli => "TAR.BR",
-            ContainerFormat::Unknown => "UNKNOWN",
+impl ArchiveEntryInfo {
+    fn from_path(
+        relative_path: String,
+        is_directory: bool,
+        uncompressed_size: u64,
+        compressed_size: u64,
+        crc32: u32,
+        is_encrypted: bool,
+    ) -> Self {
+        let name = Path::new(&relative_path)
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_else(|| relative_path.clone());
+        Self {
+            name,
+            relative_path,
+            is_directory,
+            uncompressed_size,
+            compressed_size,
+            crc32,
+            is_encrypted,
         }
     }
+}
 
+/// Detected archive container format.
+#[repr(usize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ContainerFormat {
+    Zip = 0,
+    SevenZip = 1,
+    Tar = 2,
+    Snappy = 3,
+    Brotli = 4,
+    TarBrotli = 5,
+    Gzip = 6,
+    Bzip2 = 7,
+    Xz = 8,
+    Zstd = 9,
+    Lz4 = 10,
+    Lzip = 11,
+    Lrzip = 12,
+    Iso = 13,
+    Cab = 14,
+    Wim = 15,
+    Dmg = 16,
+    Aar = 17,
+    Cpio = 18,
+    Ar = 19,
+    Deb = 20,
+    Rpm = 21,
+    Xar = 22,
+    Rar = 23,
+    Squashfs = 24,
+    Lzfse = 25,
+    Lzh = 26,
+    Unknown = 27,
+}
+
+const CONTAINER_FORMAT_NAMES: [&str; 28] = [
+    "ZIP", "7Z", "TAR", "SNAPPY", "BROTLI", "TAR.BR", "GZIP", "BZIP2", "XZ", "ZSTD", "LZ4",
+    "LZIP", "LRZIP", "ISO", "CAB", "WIM", "DMG", "AAR", "CPIO", "AR", "DEB", "RPM", "XAR", "RAR",
+    "SQUASHFS", "LZFSE", "LZH", "UNKNOWN",
+];
+
+#[allow(
+    non_upper_case_globals,
+    reason = "Compound tar format aliases matching enum variant naming convention"
+)]
+impl ContainerFormat {
+    pub const TarGz: Self = Self::Gzip;
+    pub const TarBz2: Self = Self::Bzip2;
+    pub const TarXz: Self = Self::Xz;
+    pub const TarZstd: Self = Self::Zstd;
+    pub const TarZst: Self = Self::Zstd;
+    pub const TarLz4: Self = Self::Lz4;
+    pub const TarLzip: Self = Self::Lzip;
+    pub const TarLrzip: Self = Self::Lrzip;
+    pub const TarSnappy: Self = Self::Snappy;
+
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        CONTAINER_FORMAT_NAMES[*self as usize]
+    }
+
+    #[inline]
     pub fn as_str(&self) -> &'static str {
         self.name()
+    }
+
+    #[inline]
+    pub fn detect(path: &Path, data: &[u8]) -> Self {
+        detect_archive_format(path, data)
     }
 }
 
@@ -155,58 +224,149 @@ pub fn read_archive_data_auto(path: &Path) -> Result<(Vec<PathBuf>, ArchiveBuffe
     }
 }
 
+const PREFIX_MAGIC_TABLE: &[(&[u8], ContainerFormat)] = &[
+    (b"7z\xBC\xAF\x27\x1C", ContainerFormat::SevenZip),
+    (b"\xFF\x06\x00\x00sNaPpY", ContainerFormat::Snappy),
+    (b"PK\x03\x04", ContainerFormat::Zip), (b"PK\x05\x06", ContainerFormat::Zip),
+    (b"PK\x07\x08", ContainerFormat::Zip), (b"MSWIM\0\0\0", ContainerFormat::Wim),
+    (b"WLPWM\0\0\0", ContainerFormat::Wim), (b"pbze", ContainerFormat::Aar),
+    (b"AA01", ContainerFormat::Aar), (b"YAA1", ContainerFormat::Aar),
+    (b"AEA1", ContainerFormat::Aar), (b"bvx2", ContainerFormat::Lzfse),
+    (b"bvx-", ContainerFormat::Lzfse), (b"bvx1", ContainerFormat::Lzfse),
+    (b"bvxn", ContainerFormat::Lzfse),
+];
+
+const DETECTED_TO_CONTAINER: &[(DetectedFormat, ContainerFormat)] = &[
+    (DetectedFormat::Zip, ContainerFormat::Zip), (DetectedFormat::Zip64, ContainerFormat::Zip),
+    (DetectedFormat::SevenZip, ContainerFormat::SevenZip), (DetectedFormat::Tar, ContainerFormat::Tar),
+    (DetectedFormat::Snappy, ContainerFormat::Snappy), (DetectedFormat::Brotli, ContainerFormat::Brotli),
+    (DetectedFormat::Gzip, ContainerFormat::Gzip), (DetectedFormat::Bzip2, ContainerFormat::Bzip2),
+    (DetectedFormat::Xz, ContainerFormat::Xz), (DetectedFormat::Zstd, ContainerFormat::Zstd),
+    (DetectedFormat::Lz4, ContainerFormat::Lz4), (DetectedFormat::Lzip, ContainerFormat::Lzip),
+    (DetectedFormat::Lrzip, ContainerFormat::Lrzip), (DetectedFormat::Iso, ContainerFormat::Iso),
+    (DetectedFormat::Cab, ContainerFormat::Cab), (DetectedFormat::Wim, ContainerFormat::Wim),
+    (DetectedFormat::Dmg, ContainerFormat::Dmg), (DetectedFormat::Aar, ContainerFormat::Aar),
+    (DetectedFormat::Cpio, ContainerFormat::Cpio), (DetectedFormat::Ar, ContainerFormat::Ar),
+    (DetectedFormat::Deb, ContainerFormat::Deb), (DetectedFormat::Rpm, ContainerFormat::Rpm),
+    (DetectedFormat::Xar, ContainerFormat::Xar), (DetectedFormat::Rar, ContainerFormat::Rar),
+    (DetectedFormat::Squashfs, ContainerFormat::Squashfs), (DetectedFormat::Lzfse, ContainerFormat::Lzfse),
+    (DetectedFormat::Lzh, ContainerFormat::Lzh),
+];
+
+fn detect_offset_magic(data: &[u8]) -> Option<ContainerFormat> {
+    if data.len() >= 262 && data[257..262] == *b"ustar" {
+        return Some(ContainerFormat::Tar);
+    }
+    if data.len() >= 7 && data[6] == b'-' && matches!(&data[2..4], b"-l" | b"-p") {
+        return Some(ContainerFormat::Lzh);
+    }
+    if data.len() >= 512 && &data[data.len() - 512..data.len() - 508] == b"koly" {
+        return Some(ContainerFormat::Dmg);
+    }
+    None
+}
+
+fn detect_special_magic(path: &Path, data: &[u8]) -> Option<ContainerFormat> {
+    if data.starts_with(b"!<arch>\n") {
+        let is_deb = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .is_some_and(|s| s.to_ascii_lowercase().ends_with(".deb"));
+        return Some(if is_deb { ContainerFormat::Deb } else { ContainerFormat::Ar });
+    }
+    for (magic, fmt) in PREFIX_MAGIC_TABLE {
+        if data.starts_with(magic) {
+            return Some(*fmt);
+        }
+    }
+    detect_offset_magic(data)
+}
+
+fn detect_format_by_magic(path: &Path, data: &[u8]) -> Option<ContainerFormat> {
+    if data.is_empty() {
+        return None;
+    }
+    if let Some(fmt) = detect_special_magic(path, data) {
+        return Some(fmt);
+    }
+    let hint = path.file_name().and_then(|s| s.to_str());
+    let sniff = detect_format_buffer(data, hint);
+    if sniff.compound_format == Some(CompoundFormat::TarBrotli) {
+        return Some(ContainerFormat::TarBrotli);
+    }
+    DETECTED_TO_CONTAINER
+        .iter()
+        .find_map(|&(det, fmt)| (det == sniff.format).then_some(fmt))
+}
+
+const SUFFIX_FORMATS: &[(&[&str], ContainerFormat)] = &[
+    (&[".tar.br", ".tbr"], ContainerFormat::TarBrotli),
+    (&[".tar.gz", ".tgz", ".taz", ".gz", ".z"], ContainerFormat::Gzip),
+    (&[".tar.bz2", ".tbz2", ".tbz", ".tb2", ".bz2"], ContainerFormat::Bzip2),
+    (&[".tar.xz", ".txz", ".xz", ".lzma"], ContainerFormat::Xz),
+    (&[".tar.zst", ".tzst", ".zst"], ContainerFormat::Zstd),
+    (&[".tar.lz4", ".tlz4", ".lz4"], ContainerFormat::Lz4),
+    (&[".tar.lz", ".tlz", ".lz", ".lzip"], ContainerFormat::Lzip),
+    (&[".tar.lrz", ".tlrz", ".lrz", ".lrzip"], ContainerFormat::Lrzip),
+    (&[".tar.sz", ".tar.snappy", ".sz", ".snappy"], ContainerFormat::Snappy),
+    (&[".br"], ContainerFormat::Brotli),
+    (&[".tar", ".cbt"], ContainerFormat::Tar),
+    (&[".7z", ".cb7"], ContainerFormat::SevenZip),
+    (&[".zip", ".jar", ".apk", ".cbz", ".epub", ".z01", ".z02"], ContainerFormat::Zip),
+    (&[".iso", ".img"], ContainerFormat::Iso),
+    (&[".cab"], ContainerFormat::Cab),
+    (&[".wim", ".swm", ".esd"], ContainerFormat::Wim),
+    (&[".dmg"], ContainerFormat::Dmg),
+    (&[".aar", ".aea"], ContainerFormat::Aar),
+    (&[".cpio"], ContainerFormat::Cpio),
+    (&[".deb"], ContainerFormat::Deb),
+    (&[".ar", ".a"], ContainerFormat::Ar),
+    (&[".rpm"], ContainerFormat::Rpm),
+    (&[".xar", ".pkg"], ContainerFormat::Xar),
+    (&[".rar", ".cbr"], ContainerFormat::Rar),
+    (&[".squashfs", ".sqsh"], ContainerFormat::Squashfs),
+    (&[".lzfse"], ContainerFormat::Lzfse),
+    (&[".lzh", ".lha"], ContainerFormat::Lzh),
+];
+
+fn strip_split_volume_suffix(name_lower: &str) -> &str {
+    if let Some((stem, ext)) = name_lower.rsplit_once('.') {
+        let is_num = ext.len() >= 3 && ext.bytes().all(|b| b.is_ascii_digit());
+        let is_z = ext.starts_with('z')
+            && ext.len() >= 3
+            && ext.as_bytes()[1..].iter().all(|b| b.is_ascii_digit());
+        if is_num || is_z {
+            return stem;
+        }
+    }
+    name_lower
+}
+
 /// Detects archive container format from file extension and magic signature bytes.
 pub fn detect_archive_format(path: &Path, data: &[u8]) -> ContainerFormat {
-    if data.len() >= 6 && &data[0..6] == b"7z\xBC\xAF\x27\x1C" {
-        return ContainerFormat::SevenZip;
-    }
-    if data.len() >= 10 && &data[0..10] == b"\xFF\x06\x00\x00sNaPpY" {
-        return ContainerFormat::Snappy;
-    }
-    if data.len() >= 265
-        && (&data[257..262] == b"ustar"
-            || &data[257..265] == b"ustar  \0"
-            || &data[257..263] == b"ustar\0")
-    {
-        return ContainerFormat::Tar;
-    }
-    if data.len() >= 4
-        && (&data[0..4] == b"PK\x03\x04"
-            || &data[0..4] == b"PK\x05\x06"
-            || &data[0..4] == b"PK\x07\x08")
-    {
-        return ContainerFormat::Zip;
+    if let Some(fmt) = detect_format_by_magic(path, data) {
+        return fmt;
     }
 
-    let filename_lower = path
+    let raw_lower = path
         .file_name()
         .and_then(|s| s.to_str())
         .map(|s| s.to_lowercase())
         .unwrap_or_default();
+    let filename_lower = strip_split_volume_suffix(&raw_lower);
 
-    if filename_lower.ends_with(".tar.br") || filename_lower.ends_with(".tbr") {
-        return ContainerFormat::TarBrotli;
+    for (suffixes, fmt) in SUFFIX_FORMATS {
+        if suffixes.iter().any(|suf| filename_lower.ends_with(suf)) {
+            return *fmt;
+        }
     }
-    if filename_lower.ends_with(".br") {
-        return ContainerFormat::Brotli;
-    }
-    if filename_lower.ends_with(".sz") || filename_lower.ends_with(".snappy") {
-        return ContainerFormat::Snappy;
-    }
-    if filename_lower.ends_with(".tar") || filename_lower.contains(".tar.") {
+    if filename_lower.contains(".tar.") {
         return ContainerFormat::Tar;
     }
-    if filename_lower.ends_with(".7z") || filename_lower.ends_with(".cb7") || filename_lower.contains(".7z.") {
+    if filename_lower.contains(".7z.") {
         return ContainerFormat::SevenZip;
     }
-    if filename_lower.ends_with(".zip")
-        || filename_lower.ends_with(".jar")
-        || filename_lower.ends_with(".apk")
-        || filename_lower.ends_with(".cbz")
-        || filename_lower.contains(".zip.")
-        || filename_lower.ends_with(".z01")
-        || filename_lower.ends_with(".z02")
-    {
+    if filename_lower.contains(".zip.") {
         return ContainerFormat::Zip;
     }
 
@@ -234,139 +394,228 @@ fn extract_tar_entries(tar: &TarArchive) -> Vec<ArchiveEntryInfo> {
     tar.entries()
         .iter()
         .map(|entry| {
-            let name = Path::new(entry.path.as_ref())
-                .file_name()
-                .map(|n| n.to_string_lossy().to_string())
-                .unwrap_or_else(|| entry.path.to_string());
-            ArchiveEntryInfo {
-                name,
-                relative_path: entry.path.to_string(),
-                is_directory: entry.is_directory,
-                uncompressed_size: entry.size,
-                compressed_size: entry.size,
-                crc32: 0,
-                is_encrypted: false,
-            }
+            ArchiveEntryInfo::from_path(
+                entry.path.to_string(),
+                entry.is_directory,
+                entry.size,
+                entry.size,
+                0,
+                false,
+            )
         })
         .collect()
 }
 
-/// Parses ZIP Central Directory entries from a multi-volume chain via segmented Seek without heap exhaustion.
-fn parse_multi_volume_zip_entries(chain: &[PathBuf]) -> Result<Vec<ArchiveEntryInfo>, String> {
-    let mut reader = VirtualMultiVolumeReader::from_volumes(chain.to_vec())
-        .map_err(|e| format!("Failed to open multi-volume chain: {}", e))?;
-    let total_size = reader.total_size();
-    if total_size < 22 {
-        return Ok(Vec::new());
+fn parse_zip_entries_slice(data: &[u8]) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let archive = ZipArchive::open_slice(data)
+        .map_err(|e| format!("Failed to parse ZIP archive: {:?}", e))?;
+    Ok(archive
+        .entries()
+        .iter()
+        .map(|entry| {
+            ArchiveEntryInfo::from_path(
+                entry.rel_path.clone(),
+                entry.is_directory,
+                entry.uncompressed_size,
+                entry.compressed_size,
+                entry.crc32,
+                entry.is_encrypted,
+            )
+        })
+        .collect())
+}
+
+fn parse_sevenz_entries_slice(data: &[u8]) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let archive = SevenZArchive::open_slice(data)
+        .map_err(|e| format!("Failed to parse 7z archive: {:?}", e))?;
+    let mut entries = Vec::with_capacity(archive.len());
+    let info = archive.info();
+    let is_archive_enc = info.is_encrypted;
+    let mut stream_idx = 0usize;
+    let stream_count = info.stream_sizes.len().max(1) as u64;
+
+    for file in &info.files {
+        let (u_sz, crc) = if !file.is_directory && !file.is_empty_stream {
+            let sz = info.stream_sizes.get(stream_idx).copied().unwrap_or(0);
+            let c = info.stream_crcs.get(stream_idx).copied().unwrap_or(0);
+            stream_idx += 1;
+            (sz, c)
+        } else {
+            (0, 0)
+        };
+        let comp_sz = if u_sz > 0 { info.payload_len as u64 / stream_count } else { 0 };
+        entries.push(ArchiveEntryInfo::from_path(
+            file.rel_path.clone(),
+            file.is_directory,
+            u_sz,
+            comp_sz,
+            crc,
+            is_archive_enc,
+        ));
     }
+    Ok(entries)
+}
 
-    let search_len = (total_size.min(65557)) as usize;
-    let search_start = total_size - search_len as u64;
-    reader
-        .seek(SeekFrom::Start(search_start))
-        .map_err(|e| format!("Seek failed: {}", e))?;
-    let mut tail = vec![0u8; search_len];
-    reader
-        .read_exact(&mut tail)
-        .map_err(|e| format!("Read tail failed: {}", e))?;
-
-    // Search backwards for EOCD signature (0x06054B50)
-    let mut eocd_offset = None;
-    for pos in (0..=search_len.saturating_sub(22)).rev() {
-        if tail[pos..pos + 4] == [0x50, 0x4B, 0x05, 0x06] {
-            let comment_len = u16::from_le_bytes([tail[pos + 20], tail[pos + 21]]) as usize;
-            if pos + 22 + comment_len == search_len {
-                eocd_offset = Some(pos);
-                break;
+fn build_stream_entries(
+    path: &Path,
+    decompressed: &[u8],
+    compressed_len: u64,
+    is_tar: bool,
+    suffixes: &[&str],
+) -> Vec<ArchiveEntryInfo> {
+    if is_tar {
+        if let Ok(tar) = TarArchive::open_slice(decompressed) {
+            if !tar.is_empty() {
+                return extract_tar_entries(&tar);
             }
         }
     }
 
-    let eocd_pos = match eocd_offset {
-        Some(p) => p,
-        None => {
-            tail.windows(4)
-                .rposition(|w| w == [0x50, 0x4B, 0x05, 0x06])
-                .ok_or_else(|| "Failed to find ZIP EOCD record in multi-volume chain".to_string())?
-        }
-    };
-
-    let total_entries = u16::from_le_bytes([tail[eocd_pos + 10], tail[eocd_pos + 11]]) as usize;
-    let cd_size = u32::from_le_bytes([
-        tail[eocd_pos + 12],
-        tail[eocd_pos + 13],
-        tail[eocd_pos + 14],
-        tail[eocd_pos + 15],
-    ]) as usize;
-    let cd_offset = u32::from_le_bytes([
-        tail[eocd_pos + 16],
-        tail[eocd_pos + 17],
-        tail[eocd_pos + 18],
-        tail[eocd_pos + 19],
-    ]) as u64;
-
-    reader
-        .seek(SeekFrom::Start(cd_offset))
-        .map_err(|e| format!("Seek to central directory failed: {}", e))?;
-    let mut cd_bytes = vec![0u8; cd_size];
-    reader
-        .read_exact(&mut cd_bytes)
-        .map_err(|e| format!("Read central directory failed: {}", e))?;
-
-    let mut entries = Vec::with_capacity(total_entries.min(65536));
-    let mut cursor = 0;
-    while cursor + 46 <= cd_bytes.len() {
-        if cd_bytes[cursor..cursor + 4] != [0x50, 0x4B, 0x01, 0x02] {
+    let file_name = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("decompressed.bin");
+    let mut inner_name = file_name;
+    for suf in suffixes {
+        if let Some(stripped) = file_name.strip_suffix(suf) {
+            inner_name = stripped;
             break;
         }
-
-        let flag = u16::from_le_bytes([cd_bytes[cursor + 8], cd_bytes[cursor + 9]]);
-        let crc32 = u32::from_le_bytes([
-            cd_bytes[cursor + 16],
-            cd_bytes[cursor + 17],
-            cd_bytes[cursor + 18],
-            cd_bytes[cursor + 19],
-        ]);
-        let comp_size = u32::from_le_bytes([
-            cd_bytes[cursor + 20],
-            cd_bytes[cursor + 21],
-            cd_bytes[cursor + 22],
-            cd_bytes[cursor + 23],
-        ]) as u64;
-        let uncomp_size = u32::from_le_bytes([
-            cd_bytes[cursor + 24],
-            cd_bytes[cursor + 25],
-            cd_bytes[cursor + 26],
-            cd_bytes[cursor + 27],
-        ]) as u64;
-        let fn_len = u16::from_le_bytes([cd_bytes[cursor + 28], cd_bytes[cursor + 29]]) as usize;
-        let extra_len = u16::from_le_bytes([cd_bytes[cursor + 30], cd_bytes[cursor + 31]]) as usize;
-        let comment_len = u16::from_le_bytes([cd_bytes[cursor + 32], cd_bytes[cursor + 33]]) as usize;
-
-        let name_start = cursor + 46;
-        let name_end = (name_start + fn_len).min(cd_bytes.len());
-        let rel_path = String::from_utf8_lossy(&cd_bytes[name_start..name_end]).to_string();
-        let name = Path::new(&rel_path)
-            .file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| rel_path.clone());
-        let is_directory = rel_path.ends_with('/');
-        let is_encrypted = (flag & 1) != 0;
-
-        entries.push(ArchiveEntryInfo {
-            name,
-            relative_path: rel_path,
-            is_directory,
-            uncompressed_size: uncomp_size,
-            compressed_size: comp_size,
-            crc32,
-            is_encrypted,
-        });
-
-        cursor += 46 + fn_len + extra_len + comment_len;
     }
 
+    vec![ArchiveEntryInfo::from_path(
+        inner_name.to_string(),
+        false,
+        decompressed.len() as u64,
+        compressed_len,
+        crc32_fast(0, decompressed),
+        false,
+    )]
+}
+
+fn parse_snappy_entries(path: &Path, data: &[u8]) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let decompressed = snappy_frame_decode_to_vec(data, 1024 * 1024 * 512)
+        .map_err(|e| format!("Failed to decompress Snappy stream: {:?}", e))?;
+    let fname_lower = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    Ok(build_stream_entries(
+        path,
+        &decompressed,
+        data.len() as u64,
+        fname_lower.contains(".tar."),
+        &[".sz", ".snappy"],
+    ))
+}
+
+fn parse_brotli_entries(
+    path: &Path,
+    data: &[u8],
+    format: ContainerFormat,
+) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let decompressed = brotli_decompress_to_vec(data, 1024 * 1024 * 512)
+        .map_err(|e| format!("Failed to decompress Brotli stream: {:?}", e))?;
+    let fname_lower = path
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    let is_tar = format == ContainerFormat::TarBrotli
+        || fname_lower.contains(".tar.")
+        || fname_lower.ends_with(".tbr");
+    Ok(build_stream_entries(
+        path,
+        &decompressed,
+        data.len() as u64,
+        is_tar,
+        &[".br"],
+    ))
+}
+
+fn parse_engine_archive_entries(
+    path: &Path,
+    data: &[u8],
+    password: Option<&str>,
+) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let mut temp_dir = None;
+    let target_path = if path.exists() {
+        path.to_path_buf()
+    } else {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("ttzip_tui_inspect_{}_{}", std::process::id(), nanos));
+        fs::create_dir_all(&dir)
+            .map_err(|e| format!("Failed to create temporary inspect directory: {}", e))?;
+        let fname = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("archive.bin");
+        let tmp_file = dir.join(fname);
+        fs::write(&tmp_file, data)
+            .map_err(|e| format!("Failed to stage archive buffer for inspection: {}", e))?;
+        temp_dir = Some(dir);
+        tmp_file
+    };
+
+    let mut entries = Vec::new();
+    let res = inspect_archive(&target_path, password, true, |entry| {
+        entries.push(ArchiveEntryInfo::from_path(
+            entry.path.to_string(),
+            entry.is_directory,
+            entry.uncompressed_size,
+            entry.compressed_size,
+            entry.crc32,
+            entry.is_encrypted,
+        ));
+        true
+    });
+
+    if let Some(dir) = temp_dir {
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    res.map_err(|e| format!("Failed to inspect archive {}: {:?}", path.display(), e))?;
     Ok(entries)
+}
+
+/// Parses archive metadata with optional password and returns unified entry records.
+pub fn parse_archive_entries_with_password(
+    path: &Path,
+    data: &[u8],
+    password: Option<&str>,
+) -> Result<(ContainerFormat, Vec<ArchiveEntryInfo>), String> {
+    let format = detect_archive_format(path, data);
+    if format == ContainerFormat::Unknown {
+        return Err(format!(
+            "Unsupported or unrecognized archive format for: {}",
+            path.display()
+        ));
+    }
+
+    let chain = detect_volume_chain(path).unwrap_or_default();
+    if chain.len() > 1 {
+        return parse_engine_archive_entries(path, data, password).map(|entries| (format, entries));
+    }
+
+    let entries = match format {
+        ContainerFormat::Zip => parse_zip_entries_slice(data)?,
+        ContainerFormat::SevenZip => parse_sevenz_entries_slice(data)?,
+        ContainerFormat::Tar => {
+            let archive = TarArchive::open_slice(data)
+                .map_err(|e| format!("Failed to parse TAR archive: {:?}", e))?;
+            extract_tar_entries(&archive)
+        }
+        ContainerFormat::Snappy => parse_snappy_entries(path, data)?,
+        ContainerFormat::Brotli | ContainerFormat::TarBrotli => {
+            parse_brotli_entries(path, data, format)?
+        }
+        _ => parse_engine_archive_entries(path, data, password)?,
+    };
+    Ok((format, entries))
 }
 
 /// Parses archive metadata and returns unified entry records.
@@ -374,153 +623,57 @@ pub fn parse_archive_entries(
     path: &Path,
     data: &[u8],
 ) -> Result<(ContainerFormat, Vec<ArchiveEntryInfo>), String> {
-    let format = detect_archive_format(path, data);
-    let chain = detect_volume_chain(path).unwrap_or_default();
-    if chain.len() > 1 && format == ContainerFormat::Zip {
-        return parse_multi_volume_zip_entries(&chain).map(|entries| (format, entries));
+    parse_archive_entries_with_password(path, data, None)
+}
+
+fn skip_st_terminated_seq(chars: &[char], mut i: usize) -> usize {
+    let len = chars.len();
+    while i < len {
+        if chars[i] == '\x07' {
+            return i + 1;
+        }
+        if chars[i] == '\x1b' && i + 1 < len && chars[i + 1] == '\\' {
+            return i + 2;
+        }
+        i += 1;
     }
+    i
+}
 
-    match format {
-        ContainerFormat::Zip => {
-            let archive =
-                ZipArchive::open_slice(data).map_err(|e| format!("Failed to parse ZIP archive: {:?}", e))?;
-            let mut entries = Vec::with_capacity(archive.len());
-            for entry in archive.entries() {
-                let name = Path::new(&entry.rel_path)
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| entry.rel_path.clone());
-                entries.push(ArchiveEntryInfo {
-                    name,
-                    relative_path: entry.rel_path.clone(),
-                    is_directory: entry.is_directory,
-                    uncompressed_size: entry.uncompressed_size,
-                    compressed_size: entry.compressed_size,
-                    crc32: entry.crc32,
-                    is_encrypted: entry.is_encrypted,
-                });
+fn skip_ansi_escape_seq(chars: &[char], mut i: usize) -> usize {
+    let len = chars.len();
+    if i >= len {
+        return i;
+    }
+    match chars[i] {
+        '[' => {
+            i += 1;
+            while i < len && matches!(chars[i], '\x30'..='\x3F') {
+                i += 1;
             }
-            Ok((format, entries))
-        }
-        ContainerFormat::SevenZip => {
-            let archive =
-                SevenZArchive::open_slice(data).map_err(|e| format!("Failed to parse 7z archive: {:?}", e))?;
-            let mut entries = Vec::with_capacity(archive.len());
-            let info = archive.info();
-            let is_archive_enc = info.is_encrypted;
-            let mut stream_idx = 0usize;
-            for file in &info.files {
-                let (u_sz, crc) = if !file.is_directory && !file.is_empty_stream {
-                    let sz = info.stream_sizes.get(stream_idx).copied().unwrap_or(0);
-                    let c = info.stream_crcs.get(stream_idx).copied().unwrap_or(0);
-                    stream_idx += 1;
-                    (sz, c)
-                } else {
-                    (0, 0)
-                };
-
-                let name = Path::new(&file.rel_path)
-                    .file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| file.rel_path.clone());
-                entries.push(ArchiveEntryInfo {
-                    name,
-                    relative_path: file.rel_path.clone(),
-                    is_directory: file.is_directory,
-                    uncompressed_size: u_sz,
-                    compressed_size: if u_sz > 0 {
-                        info.payload_len as u64 / info.stream_sizes.len().max(1) as u64
-                    } else {
-                        0
-                    },
-                    crc32: crc,
-                    is_encrypted: is_archive_enc,
-                });
+            while i < len && matches!(chars[i], '\x20'..='\x2F') {
+                i += 1;
             }
-            Ok((format, entries))
-        }
-        ContainerFormat::Tar => {
-            let archive =
-                TarArchive::open_slice(data).map_err(|e| format!("Failed to parse TAR archive: {:?}", e))?;
-            Ok((format, extract_tar_entries(&archive)))
-        }
-        ContainerFormat::Snappy => {
-            let decompressed = snappy_frame_decode_to_vec(data, 1024 * 1024 * 512)
-                .map_err(|e| format!("Failed to decompress Snappy stream: {:?}", e))?;
-
-            let file_name = path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("decompressed.bin");
-            let is_tar = file_name.to_lowercase().contains(".tar.");
-
-            if is_tar {
-                if let Ok(tar) = TarArchive::open_slice(&decompressed) {
-                    if !tar.is_empty() {
-                        return Ok((format, extract_tar_entries(&tar)));
-                    }
-                }
+            if i < len && matches!(chars[i], '\x40'..='\x7E') {
+                i += 1;
             }
-
-            let inner_name = file_name
-                .strip_suffix(".sz")
-                .or_else(|| file_name.strip_suffix(".snappy"))
-                .unwrap_or(file_name)
-                .to_string();
-
-            let crc = crc32_fast(0, &decompressed);
-            let entry = ArchiveEntryInfo {
-                name: inner_name.clone(),
-                relative_path: inner_name,
-                is_directory: false,
-                uncompressed_size: decompressed.len() as u64,
-                compressed_size: data.len() as u64,
-                crc32: crc,
-                is_encrypted: false,
-            };
-            Ok((format, vec![entry]))
+            i
         }
-        ContainerFormat::Brotli | ContainerFormat::TarBrotli => {
-            let decompressed = brotli_decompress_to_vec(data, 1024 * 1024 * 512)
-                .map_err(|e| format!("Failed to decompress Brotli stream: {:?}", e))?;
+        ']' | 'P' | '_' | '^' | 'X' => skip_st_terminated_seq(chars, i + 1),
+        '(' | ')' | '*' | '+' => i + 2,
+        _ => i + 1,
+    }
+}
 
-            let file_name = path
-                .file_name()
-                .and_then(|s| s.to_str())
-                .unwrap_or("decompressed.bin");
-            let is_tar = format == ContainerFormat::TarBrotli
-                || file_name.to_lowercase().contains(".tar.")
-                || file_name.to_lowercase().ends_with(".tbr");
-
-            if is_tar {
-                if let Ok(tar) = TarArchive::open_slice(&decompressed) {
-                    if !tar.is_empty() {
-                        return Ok((format, extract_tar_entries(&tar)));
-                    }
-                }
-            }
-
-            let inner_name = file_name
-                .strip_suffix(".br")
-                .unwrap_or(file_name)
-                .to_string();
-
-            let crc = crc32_fast(0, &decompressed);
-            let entry = ArchiveEntryInfo {
-                name: inner_name.clone(),
-                relative_path: inner_name,
-                is_directory: false,
-                uncompressed_size: decompressed.len() as u64,
-                compressed_size: data.len() as u64,
-                crc32: crc,
-                is_encrypted: false,
-            };
-            Ok((format, vec![entry]))
-        }
-        ContainerFormat::Unknown => Err(format!(
-            "Unsupported or unrecognized archive format for: {}",
-            path.display()
-        )),
+fn append_sanitized_char(out: &mut String, ch: char) {
+    match ch {
+        '\x07' => {}
+        '\r' => out.push_str("\\r"),
+        '\n' => out.push_str("\\n"),
+        '\t' => out.push_str("\\t"),
+        c if c.is_ascii_control() => out.push_str(&format!("\\x{:02x}", c as u32)),
+        '\u{200B}'..='\u{200D}' | '\u{FEFF}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}' => {}
+        c => out.push(c),
     }
 }
 
@@ -535,86 +688,9 @@ pub fn sanitize_terminal_display(input: &str) -> String {
     while i < len {
         let ch = chars[i];
         if ch == '\x1b' {
-            // ANSI Escape Sequence start
-            i += 1;
-            if i >= len {
-                break;
-            }
-            match chars[i] {
-                '[' => {
-                    // CSI: ESC [ Parameter* Intermediate* Final
-                    i += 1;
-                    // Parameter bytes: 0x30..=0x3F ('0'..='?' / '0'..='9', ';', etc.)
-                    while i < len && matches!(chars[i], '\x30'..='\x3F') {
-                        i += 1;
-                    }
-                    // Intermediate bytes: 0x20..=0x2F (' '..='/')
-                    while i < len && matches!(chars[i], '\x20'..='\x2F') {
-                        i += 1;
-                    }
-                    // Final byte: 0x40..=0x7E ('@'..='~')
-                    if i < len && matches!(chars[i], '\x40'..='\x7E') {
-                        i += 1;
-                    }
-                }
-                ']' => {
-                    // OSC: ESC ] ... (terminated by BEL '\x07' or ST '\x1b\\')
-                    i += 1;
-                    while i < len {
-                        if chars[i] == '\x07' {
-                            i += 1;
-                            break;
-                        }
-                        if chars[i] == '\x1b' && i + 1 < len && chars[i + 1] == '\\' {
-                            i += 2;
-                            break;
-                        }
-                        i += 1;
-                    }
-                }
-                'P' | '_' | '^' | 'X' => {
-                    // DCS / APC / PM / SOS: ESC ... (terminated by BEL or ST)
-                    i += 1;
-                    while i < len {
-                        if chars[i] == '\x07' {
-                            i += 1;
-                            break;
-                        }
-                        if chars[i] == '\x1b' && i + 1 < len && chars[i + 1] == '\\' {
-                            i += 2;
-                            break;
-                        }
-                        i += 1;
-                    }
-                }
-                '(' | ')' | '*' | '+' => {
-                    // Charset designation: ESC ( C
-                    i += 2;
-                }
-                _ => {
-                    // 2-byte escape: skip the byte after ESC
-                    i += 1;
-                }
-            }
-        } else if ch == '\x07' {
-            // Stray BEL character
-            i += 1;
-        } else if ch == '\r' || ch == '\n' || ch == '\t' {
-            match ch {
-                '\r' => out.push_str("\\r"),
-                '\n' => out.push_str("\\n"),
-                '\t' => out.push_str("\\t"),
-                _ => unreachable!(),
-            }
-            i += 1;
-        } else if ch.is_ascii_control() {
-            out.push_str(&format!("\\x{:02x}", ch as u32));
-            i += 1;
-        } else if matches!(ch, '\u{200B}'..='\u{200D}' | '\u{FEFF}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}') {
-            // Filter invisible zero-width and Bidi override characters
-            i += 1;
+            i = skip_ansi_escape_seq(&chars, i + 1);
         } else {
-            out.push(ch);
+            append_sanitized_char(&mut out, ch);
             i += 1;
         }
     }
@@ -650,5 +726,63 @@ mod tests {
         assert_eq!(sanitize_terminal_display("bidi\u{202E}txt.exe"), "biditxt.exe");
         assert_eq!(sanitize_terminal_display("zero\u{200B}width"), "zerowidth");
         assert_eq!(sanitize_terminal_display("clean/path/to/file.txt"), "clean/path/to/file.txt");
+    }
+
+    #[test]
+    fn test_detect_compound_tar_and_engine_archive_formats() {
+        let cases: &[(&str, ContainerFormat)] = &[
+            ("bundle.tar.gz", ContainerFormat::Gzip),
+            ("bundle.tgz", ContainerFormat::Gzip),
+            ("bundle.taz", ContainerFormat::Gzip),
+            ("bundle.tar.bz2", ContainerFormat::Bzip2),
+            ("bundle.tbz2", ContainerFormat::Bzip2),
+            ("bundle.tbz", ContainerFormat::Bzip2),
+            ("bundle.tb2", ContainerFormat::Bzip2),
+            ("bundle.tar.xz", ContainerFormat::Xz),
+            ("bundle.txz", ContainerFormat::Xz),
+            ("bundle.tar.zst", ContainerFormat::Zstd),
+            ("bundle.tzst", ContainerFormat::Zstd),
+            ("bundle.tar.lz4", ContainerFormat::Lz4),
+            ("bundle.tlz4", ContainerFormat::Lz4),
+            ("bundle.tar.lz", ContainerFormat::Lzip),
+            ("bundle.tlz", ContainerFormat::Lzip),
+            ("bundle.tar.lrz", ContainerFormat::Lrzip),
+            ("bundle.tlrz", ContainerFormat::Lrzip),
+            ("bundle.tar.br", ContainerFormat::TarBrotli),
+            ("bundle.tbr", ContainerFormat::TarBrotli),
+            ("bundle.tar.sz", ContainerFormat::Snappy),
+            ("stream.gz", ContainerFormat::Gzip),
+            ("stream.z", ContainerFormat::Gzip),
+            ("stream.bz2", ContainerFormat::Bzip2),
+            ("stream.xz", ContainerFormat::Xz),
+            ("stream.lzma", ContainerFormat::Xz),
+            ("stream.zst", ContainerFormat::Zstd),
+            ("stream.lz4", ContainerFormat::Lz4),
+            ("stream.lz", ContainerFormat::Lzip),
+            ("stream.lrz", ContainerFormat::Lrzip),
+            ("stream.br", ContainerFormat::Brotli),
+            ("stream.sz", ContainerFormat::Snappy),
+            ("stream.snappy", ContainerFormat::Snappy),
+            ("image.iso", ContainerFormat::Iso),
+            ("setup.cab", ContainerFormat::Cab),
+            ("install.wim", ContainerFormat::Wim),
+            ("macos.dmg", ContainerFormat::Dmg),
+            ("payload.aar", ContainerFormat::Aar),
+            ("initramfs.cpio", ContainerFormat::Cpio),
+            ("libfoo.ar", ContainerFormat::Ar),
+            ("pkg.deb", ContainerFormat::Deb),
+            ("pkg.rpm", ContainerFormat::Rpm),
+            ("installer.xar", ContainerFormat::Xar),
+            ("archive.rar", ContainerFormat::Rar),
+            ("rootfs.squashfs", ContainerFormat::Squashfs),
+            ("cache.lzfse", ContainerFormat::Lzfse),
+            ("legacy.lzh", ContainerFormat::Lzh),
+            ("legacy.lha", ContainerFormat::Lzh),
+        ];
+        for (name, expected) in cases {
+            let detected = ContainerFormat::detect(Path::new(name), b"");
+            assert_eq!(detected, *expected, "unexpected format for {}", name);
+            assert_ne!(detected, ContainerFormat::Unknown, "{} must not be Unknown", name);
+        }
     }
 }

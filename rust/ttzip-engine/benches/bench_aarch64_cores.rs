@@ -16,8 +16,8 @@
 use std::hint::black_box;
 use std::time::Instant;
 
-mod bench_aarch64_helpers;
-use bench_aarch64_helpers::*;
+mod bench_aarch64_neon_kernels;
+use bench_aarch64_neon_kernels::*;
 
 use ttzip_crypto::adler32::adler32_fast;
 use ttzip_crypto::aes256::{simd::aes256_ctr_crypt_neon, Aes256Context};

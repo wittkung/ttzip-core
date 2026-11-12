@@ -152,106 +152,95 @@ impl<'a> PaxZeroScanner<'a> {
     pub fn remaining(&self) -> &'a [u8] {
         self.remaining
     }
+
+    fn parse_record_length(&self, space_pos: usize) -> Result<usize, TarPaxError> {
+        let len_slice = &self.remaining[..space_pos];
+        let len_str = str::from_utf8(len_slice)
+            .map_err(|_| TarPaxError::InvalidLength {
+                raw: String::from_utf8_lossy(len_slice).into_owned(),
+            })?
+            .trim();
+
+        let record_len: usize = match len_str.parse() {
+            Ok(n) if n > 0 => n,
+            _ => {
+                return Err(TarPaxError::InvalidLength {
+                    raw: len_str.to_string(),
+                });
+            }
+        };
+
+        if record_len > MAX_PAX_RECORD_SIZE {
+            return Err(TarPaxError::RecordTooLarge {
+                size: record_len,
+                max: MAX_PAX_RECORD_SIZE,
+            });
+        }
+        if record_len > self.remaining.len() {
+            return Err(TarPaxError::TruncatedRecord {
+                expected: record_len,
+                available: self.remaining.len(),
+            });
+        }
+
+        let min_len = space_pos + 4;
+        if record_len < min_len {
+            return Err(TarPaxError::LengthTooSmall {
+                length: record_len,
+                prefix_len: min_len,
+            });
+        }
+        Ok(record_len)
+    }
+
+    fn parse_key_value_slice(
+        record_bytes: &'a [u8],
+        space_pos: usize,
+    ) -> Result<(&'a str, &'a [u8]), TarPaxError> {
+        let record_len = record_bytes.len();
+        if record_bytes[record_len - 1] != b'\n' {
+            return Err(TarPaxError::MissingNewlineDelimiter);
+        }
+
+        let kv_bytes = &record_bytes[space_pos + 1..record_len - 1];
+        let eq_pos = kv_bytes
+            .iter()
+            .position(|&b| b == b'=')
+            .ok_or(TarPaxError::MissingEqualDelimiter)?;
+
+        let key = str::from_utf8(&kv_bytes[..eq_pos]).map_err(|e| TarPaxError::InvalidUtf8Key {
+            reason: e.to_string(),
+        })?;
+        Ok((key, &kv_bytes[eq_pos + 1..]))
+    }
 }
 
 impl<'a> Iterator for PaxZeroScanner<'a> {
     type Item = Result<PaxZeroEntry<'a>, TarPaxError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Fast-path: Check for empty input or standard TAR 512-byte zero sector padding
         if self.remaining.is_empty() || self.remaining[0] == 0 {
             return None;
         }
 
-        // 1. Locate the first ASCII space (' ') delimiter separating length from key
         let space_pos = match self.remaining.iter().position(|&b| b == b' ') {
             Some(pos) => pos,
-            None => {
-                // If trailing bytes are all zeros, terminate cleanly; otherwise error
-                if self.remaining.iter().all(|&b| b == 0) {
-                    return None;
-                }
-                return Some(Err(TarPaxError::MissingSpaceDelimiter));
-            }
+            None if self.remaining.iter().all(|&b| b == 0) => return None,
+            None => return Some(Err(TarPaxError::MissingSpaceDelimiter)),
         };
 
-        // 2. Parse the decimal length string
-        let len_slice = &self.remaining[..space_pos];
-        let len_str = match str::from_utf8(len_slice) {
-            Ok(s) => s.trim(),
-            Err(_) => {
-                return Some(Err(TarPaxError::InvalidLength {
-                    raw: String::from_utf8_lossy(len_slice).into_owned(),
-                }));
-            }
+        let record_len = match self.parse_record_length(space_pos) {
+            Ok(len) => len,
+            Err(e) => return Some(Err(e)),
         };
-
-        let record_len: usize = match len_str.parse() {
-            Ok(n) if n > 0 => n,
-            _ => {
-                return Some(Err(TarPaxError::InvalidLength {
-                    raw: len_str.to_string(),
-                }));
-            }
-        };
-
-        // 3. Security bound check against oversized records
-        if record_len > MAX_PAX_RECORD_SIZE {
-            return Some(Err(TarPaxError::RecordTooLarge {
-                size: record_len,
-                max: MAX_PAX_RECORD_SIZE,
-            }));
-        }
-
-        // 4. Verify buffer sufficiency
-        if record_len > self.remaining.len() {
-            return Some(Err(TarPaxError::TruncatedRecord {
-                expected: record_len,
-                available: self.remaining.len(),
-            }));
-        }
-
-        // Minimum valid record is "<len> k=\n" -> at least space_pos + 1 (space) + 1 (key) + 1 (=) + 1 (\n)
-        let min_len = space_pos + 4;
-        if record_len < min_len {
-            return Some(Err(TarPaxError::LengthTooSmall {
-                length: record_len,
-                prefix_len: min_len,
-            }));
-        }
 
         let record_bytes = &self.remaining[..record_len];
-
-        // 5. Verify mandatory trailing newline delimiter ('\n')
-        if record_bytes[record_len - 1] != b'\n' {
-            return Some(Err(TarPaxError::MissingNewlineDelimiter));
-        }
-
-        // 6. Slice between '<length> ' and trailing '\n'
-        let kv_bytes = &record_bytes[space_pos + 1..record_len - 1];
-
-        // 7. Locate '=' delimiter
-        let eq_pos = match kv_bytes.iter().position(|&b| b == b'=') {
-            Some(pos) => pos,
-            None => return Some(Err(TarPaxError::MissingEqualDelimiter)),
+        let (key, val_bytes) = match Self::parse_key_value_slice(record_bytes, space_pos) {
+            Ok(kv) => kv,
+            Err(e) => return Some(Err(e)),
         };
 
-        let key_bytes = &kv_bytes[..eq_pos];
-        let val_bytes = &kv_bytes[eq_pos + 1..];
-
-        // 8. Validate UTF-8 keyword
-        let key = match str::from_utf8(key_bytes) {
-            Ok(k) => k,
-            Err(e) => {
-                return Some(Err(TarPaxError::InvalidUtf8Key {
-                    reason: e.to_string(),
-                }));
-            }
-        };
-
-        // Advance internal cursor past consumed record
         self.remaining = &self.remaining[record_len..];
-
         Some(Ok(PaxZeroEntry {
             total_len: record_len,
             key,
@@ -662,61 +651,46 @@ impl PaxExtensionMap {
     /// PAX `size` strictly overrides the 512-byte header size. The header size is used
     /// only as a fallback if PAX `size` is absent.
     pub fn apply_to_entry(&self, header: &TarHeader) -> PaxTarEntry {
+        let non_empty = |s: &str| (!s.is_empty()).then(|| s.to_string());
         let size = self.size().unwrap_or_else(|| header.size());
         let path = self.path().map(ToString::to_string).unwrap_or_else(|| {
             let prefix = header.prefix();
             let name = header.name();
-            if !prefix.is_empty() {
-                format!("{}/{}", prefix, name)
-            } else {
+            if prefix.is_empty() {
                 name.to_string()
-            }
-        });
-        let linkpath = self.linkpath().map(ToString::to_string).or_else(|| {
-            let l = header.linkname();
-            if !l.is_empty() {
-                Some(l.to_string())
             } else {
-                None
+                format!("{}/{}", prefix, name)
             }
         });
-        let uid = self.uid().unwrap_or_else(|| header.uid());
-        let gid = self.gid().unwrap_or_else(|| header.gid());
-        let uname = self.uname().map(ToString::to_string).or_else(|| {
-            let u = header.uname();
-            if !u.is_empty() {
-                Some(u.to_string())
-            } else {
-                None
-            }
-        });
-        let gname = self.gname().map(ToString::to_string).or_else(|| {
-            let g = header.gname();
-            if !g.is_empty() {
-                Some(g.to_string())
-            } else {
-                None
-            }
-        });
+        let linkpath = self
+            .linkpath()
+            .map(ToString::to_string)
+            .or_else(|| non_empty(header.linkname()));
+        let uname = self
+            .uname()
+            .map(ToString::to_string)
+            .or_else(|| non_empty(header.uname()));
+        let gname = self
+            .gname()
+            .map(ToString::to_string)
+            .or_else(|| non_empty(header.gname()));
         let (mtime_secs, mtime_nanos) = self
             .mtime()
             .unwrap_or_else(|| (header.mtime() as i64, 0));
-        let atime = self.atime();
-        let ctime = self.ctime();
 
         PaxTarEntry {
             path,
             linkpath,
             size,
             mode: header.mode(),
-            uid,
-            gid,
+            uid: self.uid().unwrap_or_else(|| header.uid()),
+            gid: self.gid().unwrap_or_else(|| header.gid()),
             uname,
             gname,
             mtime_secs,
             mtime_nanos,
-            atime,
-            ctime,
+            atime: self.atime(),
+            ctime: self.ctime(),
             typeflag: header.typeflag_byte(),
         }
     }

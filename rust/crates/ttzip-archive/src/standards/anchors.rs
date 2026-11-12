@@ -19,6 +19,15 @@ pub enum Anchor {
     TarOffset(usize),
 }
 
+#[inline]
+fn resolve_bounded_offset(offset: usize, match_len: usize, stream_len: usize) -> Option<usize> {
+    if offset.checked_add(match_len)? <= stream_len {
+        Some(offset)
+    } else {
+        None
+    }
+}
+
 impl Anchor {
     /// Resolves the absolute byte offset within a stream of total length `stream_len`.
     ///
@@ -30,13 +39,7 @@ impl Anchor {
         }
 
         match self {
-            Anchor::Head(offset) => {
-                if offset.checked_add(match_len)? <= stream_len {
-                    Some(offset)
-                } else {
-                    None
-                }
-            }
+            Anchor::Head(offset) => resolve_bounded_offset(offset, match_len, stream_len),
             Anchor::Tail(tail_dist) => {
                 if tail_dist >= match_len && tail_dist <= stream_len {
                     Some(stream_len - tail_dist)
@@ -46,19 +49,12 @@ impl Anchor {
             }
             Anchor::Sector(sector_idx) => {
                 let sector_offset = sector_idx.checked_mul(2048)?;
-                if sector_offset.checked_add(match_len)? <= stream_len {
-                    Some(sector_offset)
-                } else {
-                    None
-                }
+                resolve_bounded_offset(sector_offset, match_len, stream_len)
             }
-            Anchor::TarOffset(offset) => {
-                if offset < 512 && offset.checked_add(match_len)? <= stream_len {
-                    Some(offset)
-                } else {
-                    None
-                }
+            Anchor::TarOffset(offset) if offset < 512 => {
+                resolve_bounded_offset(offset, match_len, stream_len)
             }
+            Anchor::TarOffset(_) => None,
         }
     }
 

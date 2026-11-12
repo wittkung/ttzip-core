@@ -33,38 +33,36 @@ impl ZstdCCtx {
         }
     }
 
+    fn set_positive_u32(&mut self, param: ZstdCParameter, value: u32) -> Result<(), TTZipStatus> {
+        if value > 0 {
+            self.set_parameter(param, value as i32)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn apply_ldm_config(&mut self, config: &ZstdConfig) -> Result<(), TTZipStatus> {
+        if !config.enable_ldm {
+            return Ok(());
+        }
+        self.set_parameter(ZstdCParameter::EnableLongDistanceMatching, 1)?;
+        self.set_positive_u32(ZstdCParameter::LdmHashLog, config.ldm_hash_log)?;
+        self.set_positive_u32(ZstdCParameter::LdmMinMatch, config.ldm_min_match)?;
+        self.set_positive_u32(ZstdCParameter::LdmBucketSizeLog, config.ldm_bucket_size_log)?;
+        self.set_positive_u32(ZstdCParameter::LdmHashRateLog, config.ldm_hash_rate_log)
+    }
+
     /// Applies full configuration parameters (workers, LDM, windowLog, tuning, etc.).
     pub fn apply_config(&mut self, config: &ZstdConfig) -> Result<(), TTZipStatus> {
         self.set_parameter(ZstdCParameter::CompressionLevel, config.level)?;
-
-        if config.nb_workers > 0 {
-            self.set_parameter(ZstdCParameter::NbWorkers, config.nb_workers as i32)?;
-        }
+        self.set_positive_u32(ZstdCParameter::NbWorkers, config.nb_workers)?;
         if config.job_size_mb > 0 {
             let job_size_bytes = (config.job_size_mb as i32).saturating_mul(1024 * 1024);
             self.set_parameter(ZstdCParameter::JobSize, job_size_bytes)?;
         }
-        if config.overlap_log > 0 {
-            self.set_parameter(ZstdCParameter::OverlapLog, config.overlap_log as i32)?;
-        }
-        if config.window_log > 0 {
-            self.set_parameter(ZstdCParameter::WindowLog, config.window_log as i32)?;
-        }
-        if config.enable_ldm {
-            self.set_parameter(ZstdCParameter::EnableLongDistanceMatching, 1)?;
-            if config.ldm_hash_log > 0 {
-                self.set_parameter(ZstdCParameter::LdmHashLog, config.ldm_hash_log as i32)?;
-            }
-            if config.ldm_min_match > 0 {
-                self.set_parameter(ZstdCParameter::LdmMinMatch, config.ldm_min_match as i32)?;
-            }
-            if config.ldm_bucket_size_log > 0 {
-                self.set_parameter(ZstdCParameter::LdmBucketSizeLog, config.ldm_bucket_size_log as i32)?;
-            }
-            if config.ldm_hash_rate_log > 0 {
-                self.set_parameter(ZstdCParameter::LdmHashRateLog, config.ldm_hash_rate_log as i32)?;
-            }
-        }
+        self.set_positive_u32(ZstdCParameter::OverlapLog, config.overlap_log)?;
+        self.set_positive_u32(ZstdCParameter::WindowLog, config.window_log)?;
+        self.apply_ldm_config(config)?;
         if config.enable_checksum {
             self.set_parameter(ZstdCParameter::ChecksumFlag, 1)?;
         }
@@ -97,14 +95,24 @@ impl ZstdCCtx {
         }
     }
 
-    /// Resets the compression context for reuse.
+    /// Resets the compression session, parameters, and dictionary references for clean reuse.
     pub fn reset(&mut self) -> Result<(), TTZipStatus> {
-        let res = unsafe { ZSTD_CCtx_reset(self.handle.as_ptr(), 1) }; // ZSTD_reset_session_only
+        self.reset_session_and_parameters()
+    }
+
+    /// Resets both active session state, compression parameters, and dictionary references to library defaults.
+    pub fn reset_session_and_parameters(&mut self) -> Result<(), TTZipStatus> {
+        let res = unsafe { ZSTD_CCtx_reset(self.handle.as_ptr(), 3) };
         if unsafe { ZSTD_isError(res) } != 0 {
-            Err(TTZipStatus::ErrArchiveInitFailed)
-        } else {
-            Ok(())
+            return Err(TTZipStatus::ErrArchiveInitFailed);
         }
+        self.ref_cdict_raw(std::ptr::null())
+    }
+
+    /// Returns the raw underlying `ZSTD_CCtx` pointer.
+    #[inline]
+    pub fn as_ptr(&self) -> *mut ZstdCCtxOpaque {
+        self.handle.as_ptr()
     }
 
     /// Compresses a buffer in a single pass into destination.
@@ -241,10 +249,10 @@ where
 {
     TLS_ZSTD_CCTX.with(|cell| {
         let mut cached = cell.borrow_mut();
-        if cached.is_none() {
-            *cached = Some(ZstdCCtx::new()?);
-        }
-        let ctx = cached.as_mut().unwrap();
+        let ctx = match cached.as_mut() {
+            Some(c) => c,
+            None => cached.insert(ZstdCCtx::new()?),
+        };
         f(ctx)
     })
 }
@@ -268,9 +276,12 @@ pub fn zstd_compress_advanced(
     dst: &mut [u8],
     config: &ZstdConfig,
 ) -> Result<usize, TTZipStatus> {
-    let mut cctx = ZstdCCtx::new()?;
-    cctx.apply_config(config)?;
-    cctx.compress2(src, dst)
+    with_thread_local_zstd_cctx(|cctx| {
+        cctx.reset_session_and_parameters()?;
+        let result = cctx.apply_config(config).and_then(|()| cctx.compress2(src, dst));
+        let _ = cctx.reset_session_and_parameters();
+        result
+    })
 }
 
 /// Zero-copy Zstandard LDM compression (64MB .. 2GB deduplication window).
@@ -282,6 +293,72 @@ pub fn zstd_compress_ldm(
 ) -> Result<usize, TTZipStatus> {
     let config = ZstdConfig::ldm(level, 26).with_ldm_window_mb(window_mb);
     zstd_compress_advanced(src, dst, &config)
+}
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::zstd::zstd_decompress;
+
+    #[test]
+    fn test_zstd_compress_advanced_reuses_thread_local_cctx() {
+        let ptr_before = with_thread_local_zstd_cctx(|cctx| Ok(cctx.as_ptr() as usize))
+            .expect("borrow thread-local cctx before");
+
+        let payload = b"Thread-local ZSTD_CCtx pooling verification payload across varying ZstdConfig parameters.".repeat(64);
+        let mut comp_ldm = vec![0u8; zstd_compress_bound(payload.len())];
+        let ldm_cfg = ZstdConfig::ldm(6, 20);
+        let ldm_len = zstd_compress_advanced(&payload, &mut comp_ldm, &ldm_cfg)
+            .expect("advanced ldm compress");
+
+        let ptr_after_ldm = with_thread_local_zstd_cctx(|cctx| Ok(cctx.as_ptr() as usize))
+            .expect("borrow thread-local cctx after ldm");
+        assert_eq!(ptr_before, ptr_after_ldm);
+
+        let mut comp_std = vec![0u8; zstd_compress_bound(payload.len())];
+        let std_cfg = ZstdConfig {
+            level: 1,
+            enable_checksum: false,
+            ..Default::default()
+        };
+        let std_len = zstd_compress_advanced(&payload, &mut comp_std, &std_cfg)
+            .expect("advanced standard compress");
+
+        let ptr_after_std = with_thread_local_zstd_cctx(|cctx| Ok(cctx.as_ptr() as usize))
+            .expect("borrow thread-local cctx after std");
+        assert_eq!(ptr_before, ptr_after_std);
+
+        let mut decomp = vec![0u8; payload.len()];
+        let d1 = zstd_decompress(&comp_ldm[..ldm_len], &mut decomp).expect("decompress ldm");
+        assert_eq!(&decomp[..d1], payload.as_slice());
+
+        let d2 = zstd_decompress(&comp_std[..std_len], &mut decomp).expect("decompress std");
+        assert_eq!(&decomp[..d2], payload.as_slice());
+    }
+
+    #[test]
+    fn test_cctx_reset_clears_referenced_cdict() {
+        let dict_bytes = b"shared dictionary prefix tokens for zstd cctx reset test 0123456789".repeat(8);
+        let dict = crate::zstd::ZstdDictionary::from_bytes("reset_dict", dict_bytes, 3)
+            .expect("create dictionary");
+        let payload = b"shared dictionary prefix tokens for zstd cctx reset test payload body";
+
+        let mut cctx = ZstdCCtx::new().expect("create cctx");
+        cctx.ref_cdict_raw(dict.cdict().as_ptr()).expect("ref cdict");
+        let mut dict_comp = vec![0u8; zstd_compress_bound(payload.len())];
+        let dict_len = cctx.compress2(payload, &mut dict_comp).expect("compress with cdict");
+        drop(dict);
+
+        cctx.reset().expect("reset cctx");
+        cctx.set_parameter(ZstdCParameter::CompressionLevel, 3).expect("set level");
+        let mut plain_comp = vec![0u8; zstd_compress_bound(payload.len())];
+        let plain_len = cctx.compress2(payload, &mut plain_comp).expect("compress without dict");
+        assert_ne!(&dict_comp[..dict_len], &plain_comp[..plain_len]);
+
+        let mut decomp = vec![0u8; payload.len()];
+        let d_len = zstd_decompress(&plain_comp[..plain_len], &mut decomp)
+            .expect("plain decompress must succeed after cctx.reset()");
+        assert_eq!(&decomp[..d_len], payload.as_slice());
+    }
 }
 

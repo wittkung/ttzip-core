@@ -41,7 +41,7 @@ impl SecureBuffer {
                 ptr: std::ptr::NonNull::dangling().as_ptr(),
                 len: 0,
                 capacity: 0,
-                layout: Layout::from_size_align(0, 1).unwrap(),
+                layout: Layout::from_size_align(0, 1).ok()?,
             });
         }
         let layout = Layout::from_size_align(capacity, 16).ok()?;
@@ -154,7 +154,7 @@ pub unsafe extern "C" fn ttzip_rust_free_aligned(ptr: *mut u8, alignment: usize,
 
 /// C-ABI: Queries process RSS, peak RSS, and virtual memory snapshot.
 #[unsafe(no_mangle)]
-#[allow(deprecated)]
+#[allow(deprecated, reason = "Uses libc::mach_task_self for Darwin task_info query")]
 pub unsafe extern "C" fn ttzip_rust_memory_usage(
     out_current_rss: *mut u64,
     out_peak_rss: *mut u64,
@@ -168,7 +168,7 @@ pub unsafe extern "C" fn ttzip_rust_memory_usage(
 
             #[cfg(target_os = "macos")]
             {
-                #[allow(deprecated)]
+                #[allow(deprecated, reason = "libc::mach_task_self required for task_info syscall")]
                 use libc::{integer_t, mach_msg_type_number_t, mach_task_self, natural_t, task_info, KERN_SUCCESS};
 
                 #[repr(C)]

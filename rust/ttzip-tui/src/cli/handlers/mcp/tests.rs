@@ -219,3 +219,55 @@ fn test_e2e_archive_workflow() {
     let extract_resp = handle_request(extract_req).expect("Response");
     assert!(extract_resp.error.is_none());
 }
+
+#[test]
+fn test_ttzip_cat_bounded_truncation_zip_and_7z() {
+    let dir = tempdir().expect("tempdir");
+    let src_dir = dir.path().join("src");
+    fs::create_dir_all(&src_dir).expect("create src dir");
+    let large_payload = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\n".repeat(400);
+    fs::write(src_dir.join("large.txt"), large_payload.as_bytes()).expect("write large file");
+
+    for ext in ["zip", "7z"] {
+        let archive_path = dir.path().join(format!("large.{}", ext));
+        let create_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: Some(json!(20)),
+            method: "tools/call".to_string(),
+            params: Some(json!({
+                "name": "ttzip_create",
+                "arguments": {
+                    "archive_path": archive_path.to_str().unwrap(),
+                    "source_paths": [src_dir.to_str().unwrap()],
+                    "level": 6
+                }
+            })),
+        };
+        let create_resp = handle_request(create_req).expect("Response");
+        assert!(create_resp.error.is_none());
+
+        let cat_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: Some(json!(21)),
+            method: "tools/call".to_string(),
+            params: Some(json!({
+                "name": "ttzip_cat",
+                "arguments": {
+                    "archive_path": archive_path.to_str().unwrap(),
+                    "entry_path": "large.txt",
+                    "max_bytes": 128
+                }
+            })),
+        };
+        let cat_resp = handle_request(cat_req).expect("Response");
+        assert!(cat_resp.error.is_none());
+        let result = cat_resp.result.expect("Result");
+        assert_eq!(result["isError"], false);
+        let text = result["content"][0]["text"].as_str().expect("JSON text");
+        let parsed: serde_json::Value = serde_json::from_str(text).expect("parse cat payload");
+        assert_eq!(parsed["truncated"], true);
+        assert_eq!(parsed["returned_bytes"], 128);
+        assert_eq!(parsed["size_bytes"], large_payload.len());
+        assert_eq!(parsed["content"].as_str().unwrap(), &large_payload[..128]);
+    }
+}

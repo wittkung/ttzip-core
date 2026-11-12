@@ -315,7 +315,14 @@ impl XzError {
 
 impl Clone for XzError {
     fn clone(&self) -> Self {
-        match self {
+        self.clone_stream_error()
+            .unwrap_or_else(|| self.clone_payload_error())
+    }
+}
+
+impl XzError {
+    fn clone_stream_error(&self) -> Option<Self> {
+        let cloned = match self {
             Self::InvalidHeaderMagic { expected, actual } => Self::InvalidHeaderMagic { expected: *expected, actual: *actual },
             Self::InvalidFooterMagic { expected, actual } => Self::InvalidFooterMagic { expected: *expected, actual: *actual },
             Self::HeaderCrcMismatch { expected, actual } => Self::HeaderCrcMismatch { expected: *expected, actual: *actual },
@@ -327,6 +334,13 @@ impl Clone for XzError {
             Self::TruncatedData { expected, actual } => Self::TruncatedData { expected: *expected, actual: *actual },
             Self::InvalidIndexIndicator(b) => Self::InvalidIndexIndicator(*b),
             Self::IndexCrcMismatch { expected, actual } => Self::IndexCrcMismatch { expected: *expected, actual: *actual },
+            _ => return None,
+        };
+        Some(cloned)
+    }
+
+    fn clone_payload_error(&self) -> Self {
+        match self {
             Self::NonZeroIndexPadding => Self::NonZeroIndexPadding,
             Self::IndexRecordCountMismatch { expected, actual } => Self::IndexRecordCountMismatch { expected: *expected, actual: *actual },
             Self::BackwardSizeMismatch { expected, actual } => Self::BackwardSizeMismatch { expected: *expected, actual: *actual },
@@ -338,27 +352,33 @@ impl Clone for XzError {
             Self::DecompressError(s) => Self::DecompressError(s.clone()),
             Self::UnsupportedFilter(f) => Self::UnsupportedFilter(*f),
             Self::Io(err) => Self::Io(std::io::Error::new(err.kind(), err.to_string())),
+            _ => Self::NonZeroIndexPadding,
         }
     }
-}
 
-impl PartialEq for XzError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::InvalidHeaderMagic { expected: e1, actual: a1 }, Self::InvalidHeaderMagic { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
-            (Self::InvalidFooterMagic { expected: e1, actual: a1 }, Self::InvalidFooterMagic { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
-            (Self::HeaderCrcMismatch { expected: e1, actual: a1 }, Self::HeaderCrcMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
-            (Self::FooterCrcMismatch { expected: e1, actual: a1 }, Self::FooterCrcMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
-            (Self::ReservedFlagsNonZero { byte0: b1, reserved_bits: r1 }, Self::ReservedFlagsNonZero { byte0: b2, reserved_bits: r2 }) => b1 == b2 && r1 == r2,
+    fn eq_stream_error(&self, other: &Self) -> Option<bool> {
+        let matched = match (self, other) {
+            (Self::InvalidHeaderMagic { expected: e1, actual: a1 }, Self::InvalidHeaderMagic { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
+            (Self::InvalidFooterMagic { expected: e1, actual: a1 }, Self::InvalidFooterMagic { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
+            (Self::HeaderCrcMismatch { expected: e1, actual: a1 }, Self::HeaderCrcMismatch { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
+            (Self::FooterCrcMismatch { expected: e1, actual: a1 }, Self::FooterCrcMismatch { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
+            (Self::ReservedFlagsNonZero { byte0: b1, reserved_bits: r1 }, Self::ReservedFlagsNonZero { byte0: b2, reserved_bits: r2 }) => (b1, r1) == (b2, r2),
             (Self::UnsupportedCheckType(a), Self::UnsupportedCheckType(b)) => a == b,
             (Self::InvalidBackwardSize(a), Self::InvalidBackwardSize(b)) => a == b,
-            (Self::FlagsMismatch { header: h1, footer: f1 }, Self::FlagsMismatch { header: h2, footer: f2 }) => h1 == h2 && f1 == f2,
-            (Self::TruncatedData { expected: e1, actual: a1 }, Self::TruncatedData { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::FlagsMismatch { header: h1, footer: f1 }, Self::FlagsMismatch { header: h2, footer: f2 }) => (h1, f1) == (h2, f2),
+            (Self::TruncatedData { expected: e1, actual: a1 }, Self::TruncatedData { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
             (Self::InvalidIndexIndicator(a), Self::InvalidIndexIndicator(b)) => a == b,
-            (Self::IndexCrcMismatch { expected: e1, actual: a1 }, Self::IndexCrcMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::IndexCrcMismatch { expected: e1, actual: a1 }, Self::IndexCrcMismatch { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
+            _ => return None,
+        };
+        Some(matched)
+    }
+
+    fn eq_payload_error(&self, other: &Self) -> bool {
+        match (self, other) {
             (Self::NonZeroIndexPadding, Self::NonZeroIndexPadding) => true,
-            (Self::IndexRecordCountMismatch { expected: e1, actual: a1 }, Self::IndexRecordCountMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
-            (Self::BackwardSizeMismatch { expected: e1, actual: a1 }, Self::BackwardSizeMismatch { expected: e2, actual: a2 }) => e1 == e2 && a1 == a2,
+            (Self::IndexRecordCountMismatch { expected: e1, actual: a1 }, Self::IndexRecordCountMismatch { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
+            (Self::BackwardSizeMismatch { expected: e1, actual: a1 }, Self::BackwardSizeMismatch { expected: e2, actual: a2 }) => (e1, a1) == (e2, a2),
             (Self::SizeOverflow(a), Self::SizeOverflow(b)) => a == b,
             (Self::InvalidUnpaddedSize(a), Self::InvalidUnpaddedSize(b)) => a == b,
             (Self::InvalidVli(a), Self::InvalidVli(b)) => a == b,
@@ -366,9 +386,16 @@ impl PartialEq for XzError {
             (Self::ChecksumError(a), Self::ChecksumError(b)) => a == b,
             (Self::DecompressError(a), Self::DecompressError(b)) => a == b,
             (Self::UnsupportedFilter(a), Self::UnsupportedFilter(b)) => a == b,
-            (Self::Io(a), Self::Io(b)) => a.kind() == b.kind() && a.to_string() == b.to_string(),
+            (Self::Io(a), Self::Io(b)) => (a.kind(), a.to_string()) == (b.kind(), b.to_string()),
             _ => false,
         }
+    }
+}
+
+impl PartialEq for XzError {
+    fn eq(&self, other: &Self) -> bool {
+        self.eq_stream_error(other)
+            .unwrap_or_else(|| self.eq_payload_error(other))
     }
 }
 

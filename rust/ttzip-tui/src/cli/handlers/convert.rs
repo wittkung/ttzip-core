@@ -3,7 +3,9 @@
 
 //! Subcommand execution handler: convert.
 
-use crate::cli::handlers::create::execute_create_silent;
+use crate::cli::handlers::create::{
+    execute_create_silent, execute_extract_unified, prefers_unified_archive_handler,
+};
 use crate::cli::handlers::extract::{execute_extract, CliExtractParams};
 use std::path::Path;
 use std::time::Instant;
@@ -48,23 +50,32 @@ fn execute_convert_internal(
     if !silent {
         println!("-> Extracting source archive {}...", source_archive.display());
     }
-    let extract_res = execute_extract(CliExtractParams {
-        archive_path: source_archive,
-        output_dir: Some(&staging_path),
-        password: None,
-        threads: 4,
-        verbose: false,
-        dry_run: false,
-        include: &[],
-        exclude: &[],
-    });
+    let extract_res = if prefers_unified_archive_handler(source_archive) {
+        execute_extract_unified(source_archive, Some(&staging_path), None, false, &[], &[])
+    } else {
+        execute_extract(CliExtractParams {
+            archive_path: source_archive,
+            output_dir: Some(&staging_path),
+            password: None,
+            threads: 4,
+            verbose: false,
+            dry_run: false,
+            include: &[],
+            exclude: &[],
+        })
+        .or_else(|_| execute_extract_unified(source_archive, Some(&staging_path), None, false, &[], &[]))
+    };
     if let Err(e) = extract_res {
         let _ = std::fs::remove_dir_all(&staging_path);
         return Err(e);
     }
 
     if !silent {
-        println!("-> Recompressing into destination {} (level: {})...", destination_archive.display(), level);
+        println!(
+            "-> Recompressing into destination {} (level: {})...",
+            destination_archive.display(),
+            level
+        );
     }
     let mut sources = Vec::new();
     if let Ok(entries) = std::fs::read_dir(&staging_path) {
@@ -75,21 +86,18 @@ fn execute_convert_internal(
     if sources.is_empty() {
         sources.push(staging_path.clone());
     }
-    let create_res = execute_create_silent(
-        destination_archive,
-        &sources,
-        format,
-        level,
-        None,
-        4,
-        None,
-    );
+    let create_res = execute_create_silent(destination_archive, &sources, format, level, None, 4, None);
     let _ = std::fs::remove_dir_all(&staging_path);
     create_res?;
 
     let elapsed = start.elapsed().as_millis();
     if !silent {
-        println!("✅ Converted {} -> {} successfully ({}ms).", source_archive.display(), destination_archive.display(), elapsed);
+        println!(
+            "✅ Converted {} -> {} successfully ({}ms).",
+            source_archive.display(),
+            destination_archive.display(),
+            elapsed
+        );
     }
 
     Ok(())

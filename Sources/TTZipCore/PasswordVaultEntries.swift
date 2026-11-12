@@ -65,4 +65,40 @@ extension PasswordVaultManager {
         }
         if saved { notifyChange() }
     }
+
+    // MARK: - Password Generation & Strength Evaluation
+
+    /// Generates high-entropy pseudo-random password string.
+    public func generateRandomPassword(length: Int = 16, includeSymbols: Bool = true) -> String {
+        let letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        let symbols = "!@#$%^&*()_+-=[]{}|;:,.<>?"
+        let charset = includeSymbols ? (letters + symbols) : letters
+
+        var result = ""
+        for _ in 0..<length {
+            if let randomChar = charset.randomElement() {
+                result.append(randomChar)
+            }
+        }
+        return result
+    }
+
+    /// Evaluates password entropy and strength score (0 to 5) with strongly-typed tier.
+    public func evaluatePasswordStrength(_ pwd: String) -> (score: Int, tier: PasswordStrengthTier) {
+        if pwd.isEmpty { return (0, .veryWeak) }
+        var score = 0
+        if pwd.count >= 8 { score += 1 }
+        if pwd.count >= 12 { score += 1 }
+        if pwd.rangeOfCharacter(from: .decimalDigits) != nil { score += 1 }
+        if pwd.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;:,.<>?")) != nil { score += 1 }
+        if pwd.rangeOfCharacter(from: .uppercaseLetters) != nil && pwd.rangeOfCharacter(from: .lowercaseLetters) != nil { score += 1 }
+
+        switch score {
+        case 0...1: return (score, .veryWeak)
+        case 2: return (score, .weak)
+        case 3: return (score, .medium)
+        case 4: return (score, .strong)
+        default: return (score, .veryStrong)
+        }
+    }
 }

@@ -74,71 +74,44 @@ public enum QuickLookFormatIdentifier: String, Codable, Sendable, CaseIterable {
     case squashfs
     case lzfse
     case lzh
+    case brotli = "br"
+    case tarBrotli = "tar.br"
     
+    private static let formatIdentifierMap: [ArchiveCompressionFormat: QuickLookFormatIdentifier] = [
+        .zip: .zip, .sevenZip: .sevenZip, .tar: .tar,
+        .gz: .gz, .tarGz: .gz, .bz2: .bz2, .tarBz2: .bz2,
+        .xz: .xz, .tarXz: .xz, .zst: .zst, .tarZst: .zst,
+        .lz4: .lz4, .tarLz4: .lz4, .lzip: .lz, .tarLzip: .lz,
+        .lrzip: .lrz, .tarLrzip: .lrz, .aar: .aar, .snappy: .sz,
+        .wim: .wim, .dmg: .dmg, .iso: .iso, .cab: .cab, .cpio: .cpio,
+        .ar: .ar, .deb: .deb, .rpm: .rpm, .xar: .xar, .rar: .rar,
+        .squashfs: .squashfs, .lzfse: .lzfse, .lzh: .lzh,
+        .brotli: .brotli, .tarBrotli: .tarBrotli
+    ]
+
+    private static let extensionIdentifierMap: [String: QuickLookFormatIdentifier] = [
+        "zip": .zip, "zipx": .zip, "cbz": .zip, "7z": .sevenZip, "cb7": .sevenZip,
+        "tar": .tar, "gz": .gz, "tgz": .gz, "bz2": .bz2, "tbz2": .bz2, "tbz": .bz2,
+        "xz": .xz, "txz": .xz, "zst": .zst, "tzst": .zst, "lz4": .lz4,
+        "lz": .lz, "lzip": .lz, "lrz": .lrz, "lrzip": .lrz,
+        "aar": .aar, "applearchive": .aar, "sz": .sz, "snappy": .sz,
+        "wim": .wim, "dmg": .dmg, "iso": .iso, "rar": .rar, "cbr": .rar,
+        "cab": .cab, "cpio": .cpio, "ar": .ar, "a": .ar, "deb": .deb,
+        "rpm": .rpm, "xar": .xar, "pkg": .xar, "squashfs": .squashfs, "sqsh": .squashfs,
+        "lzfse": .lzfse, "lzh": .lzh, "lha": .lzh,
+        "br": .brotli, "brotli": .brotli, "tar.br": .tarBrotli, "tbr": .tarBrotli
+    ]
+
     /// Maps from an `ArchiveCompressionFormat`.
     public static func from(format: ArchiveCompressionFormat) -> QuickLookFormatIdentifier {
-        switch format {
-        case .zip: return .zip
-        case .sevenZip: return .sevenZip
-        case .tar: return .tar
-        case .gz, .tarGz: return .gz
-        case .bz2, .tarBz2: return .bz2
-        case .xz, .tarXz: return .xz
-        case .zst, .tarZst: return .zst
-        case .lz4, .tarLz4: return .lz4
-        case .lzip, .tarLzip: return .lz
-        case .lrzip, .tarLrzip: return .lrz
-        case .aar: return .aar
-        case .snappy: return .sz
-        case .wim: return .wim
-        case .dmg: return .dmg
-        case .iso: return .iso
-        case .cab: return .cab
-        case .cpio: return .cpio
-        case .ar: return .ar
-        case .deb: return .deb
-        case .rpm: return .rpm
-        case .xar: return .xar
-        case .rar: return .rar
-        case .squashfs: return .squashfs
-        case .lzfse: return .lzfse
-        case .lzh: return .lzh
-        case .brotli, .tarBrotli: return .zip
-        @unknown default: return .zip
-        }
+        formatIdentifierMap[format] ?? .zip
     }
-    
+
     /// Maps from a file extension or filename string.
     public static func from(extensionString: String) -> QuickLookFormatIdentifier {
-        let cleanExt = extensionString.trimmingCharacters(in: .init(charactersIn: ".")).lowercased()
-        switch cleanExt {
-        case "zip", "zipx", "cbz": return .zip
-        case "7z", "cb7": return .sevenZip
-        case "tar": return .tar
-        case "gz", "tgz": return .gz
-        case "bz2", "tbz2", "tbz": return .bz2
-        case "xz", "txz": return .xz
-        case "zst", "tzst": return .zst
-        case "lz4": return .lz4
-        case "lz", "lzip": return .lz
-        case "lrz", "lrzip": return .lrz
-        case "aar", "applearchive": return .aar
-        case "sz", "snappy": return .sz
-        case "wim": return .wim
-        case "dmg": return .dmg
-        case "iso": return .iso
-        case "rar", "cbr": return .rar
-        case "cab": return .cab
-        case "cpio": return .cpio
-        case "ar", "a": return .ar
-        case "deb": return .deb
-        case "rpm": return .rpm
-        case "xar", "pkg": return .xar
-        case "squashfs", "sqsh": return .squashfs
-        case "lzfse": return .lzfse
-        case "lzh", "lha": return .lzh
-        default: return .zip
-        }
+        let dotSet = CharacterSet(charactersIn: ".")
+        let cleanExt = extensionString.trimmingCharacters(in: dotSet).lowercased()
+        return extensionIdentifierMap[cleanExt] ?? .zip
     }
 }
 
@@ -267,6 +240,94 @@ public enum QuickLookPreviewEngine: Sendable {
         )
     }
     
+    private static let previewStylesheet: String = """
+        :root {
+            --bg-color: #FFFFFF;
+            --text-color: #1D1D1F;
+            --secondary-text: #86868B;
+            --border-color: #E5E5EA;
+            --header-bg: #F5F5F7;
+            --badge-bg: #0071E3;
+            --badge-text: #FFFFFF;
+            --accent-gold: #D4AF37;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1C1C1E;
+                --text-color: #F5F5F7;
+                --secondary-text: #98989D;
+                --border-color: #2C2C2E;
+                --header-bg: #2C2C2E;
+                --badge-bg: #0A84FF;
+                --badge-text: #FFFFFF;
+            }
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 24px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+        }
+        .title-section h1 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 4px 0;
+            letter-spacing: -0.01em;
+        }
+        .meta-stats {
+            font-size: 12px;
+            color: var(--secondary-text);
+            display: flex;
+            gap: 12px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            background-color: var(--badge-bg);
+            color: var(--badge-text);
+        }
+        .badge.enc { background-color: var(--accent-gold); }
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--secondary-text);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-color);
+            padding: 6px 12px;
+        }
+        td { padding: 6px 12px; border-bottom: 1px solid var(--border-color); }
+        .name-col { width: 75%; }
+        .size-col {
+            width: 25%;
+            text-align: right;
+            color: var(--secondary-text);
+            font-variant-numeric: tabular-nums;
+        }
+        .icon { margin-right: 6px; }
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 11px;
+            color: var(--secondary-text);
+        }
+    """
+
     /// Generates a rich, responsive, dark/light adaptive HTML5 preview document for QuickLook rendering.
     public static func generateHTMLPreview(
         for archivePath: String,
@@ -277,50 +338,11 @@ public enum QuickLookPreviewEngine: Sendable {
         let targetLang = language ?? manager.currentLanguage
         let locale = Locale(identifier: targetLang.bcp47)
         let data = try await inspectForPreview(archivePath: archivePath, password: password)
-        
+
         let formattedUncompressed = ByteSizeFormatter.format(bytes: data.uncompressedSizeBytes, language: targetLang)
         let formattedCompressed = ByteSizeFormatter.format(bytes: data.compressedSizeBytes, language: targetLang)
-        
-        var rowsHTML = ""
-        var renderedCount = 0
-        let maxRenderCount = 500
-        
-        func renderNodes(_ nodes: [PreviewTreeNode], depth: Int) {
-            for node in nodes {
-                if renderedCount >= maxRenderCount {
-                    let omittedCount = data.totalEntriesCount - maxRenderCount
-                    let omittedTemplate = manager.string(for: L10n.QuickLook.itemsOmittedFormat, language: targetLang)
-                    let omittedText = String(format: omittedTemplate, locale: locale, maxRenderCount, omittedCount)
-                    rowsHTML += """
-                    <tr>
-                        <td colspan="2" class="name-col" style="text-align: center; color: var(--secondary-text); padding: 12px;">
-                            \(escapeHTML(omittedText))
-                        </td>
-                    </tr>
-                    """
-                    return
-                }
-                
-                renderedCount += 1
-                let indent = String(repeating: "&nbsp;&nbsp;&nbsp;&nbsp;", count: depth)
-                let icon = node.isDirectory ? "📁" : fileIconEmoji(for: node.name)
-                let sizeStr = node.isDirectory ? "--" : ByteSizeFormatter.format(bytes: node.uncompressedSizeBytes, language: targetLang)
-                let isEnc = node.isEncrypted
-                let encBadge = isEnc ? "<span class='badge enc'>🔒</span>" : ""
-                
-                rowsHTML += """
-                <tr>
-                    <td class="name-col">\(indent)<span class="icon">\(icon)</span> \(escapeHTML(node.name)) \(encBadge)</td>
-                    <td class="size-col">\(sizeStr)</td>
-                </tr>
-                """
-                if node.isDirectory, let children = node.children, !children.isEmpty {
-                    renderNodes(children, depth: depth + 1)
-                }
-            }
-        }
-        renderNodes(data.rootNodes, depth: 0)
-        
+        let rowsHTML = renderTreeRowsHTML(data: data, manager: manager, language: targetLang, locale: locale)
+
         let nameHeader = manager.string(for: L10n.Explorer.nameHeader, language: targetLang)
         let sizeHeader = manager.string(for: L10n.Explorer.sizeHeader, language: targetLang)
         let encryptedText = manager.string(for: L10n.QuickLook.encryptedBadge, language: targetLang)
@@ -329,7 +351,9 @@ public enum QuickLookPreviewEngine: Sendable {
         let itemsCountTemplate = manager.string(for: L10n.Units.itemsCount, language: targetLang)
         let itemsCountLabel = String(format: itemsCountTemplate, locale: locale, data.totalEntriesCount)
         let footerText = manager.string(for: L10n.QuickLook.renderedFooter, language: targetLang)
-        
+        let formatTitle = (data.format?.displayName ?? data.formatIdentifier).uppercased()
+        let encryptedMarkup = data.isEncrypted ? "• <span class='badge enc'>\(escapeHTML(encryptedText))</span>" : ""
+
         return """
         <!DOCTYPE html>
         <html lang="\(targetLang.bcp47)">
@@ -337,115 +361,17 @@ public enum QuickLookPreviewEngine: Sendable {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>\(escapeHTML(data.archiveName)) — TTZip QuickLook</title>
-            <style>
-                :root {
-                    --bg-color: #FFFFFF;
-                    --text-color: #1D1D1F;
-                    --secondary-text: #86868B;
-                    --border-color: #E5E5EA;
-                    --header-bg: #F5F5F7;
-                    --badge-bg: #0071E3;
-                    --badge-text: #FFFFFF;
-                    --accent-gold: #D4AF37;
-                }
-                @media (prefers-color-scheme: dark) {
-                    :root {
-                        --bg-color: #1C1C1E;
-                        --text-color: #F5F5F7;
-                        --secondary-text: #98989D;
-                        --border-color: #2C2C2E;
-                        --header-bg: #2C2C2E;
-                        --badge-bg: #0A84FF;
-                        --badge-text: #FFFFFF;
-                    }
-                }
-                body {
-                    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-                    background-color: var(--bg-color);
-                    color: var(--text-color);
-                    margin: 0;
-                    padding: 24px;
-                    font-size: 13px;
-                    line-height: 1.5;
-                }
-                .header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    border-bottom: 1px solid var(--border-color);
-                    padding-bottom: 16px;
-                    margin-bottom: 16px;
-                }
-                .title-section h1 {
-                    font-size: 18px;
-                    font-weight: 600;
-                    margin: 0 0 4px 0;
-                    letter-spacing: -0.01em;
-                }
-                .meta-stats {
-                    font-size: 12px;
-                    color: var(--secondary-text);
-                    display: flex;
-                    gap: 12px;
-                }
-                .badge {
-                    display: inline-block;
-                    padding: 2px 8px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: 600;
-                    background-color: var(--badge-bg);
-                    color: var(--badge-text);
-                }
-                .badge.enc {
-                    background-color: var(--accent-gold);
-                }
-                table {
-                    width: 100%;
-                    border-collapse: collapse;
-                }
-                th {
-                    text-align: left;
-                    font-size: 11px;
-                    font-weight: 600;
-                    color: var(--secondary-text);
-                    text-transform: uppercase;
-                    border-bottom: 1px solid var(--border-color);
-                    padding: 6px 12px;
-                }
-                td {
-                    padding: 6px 12px;
-                    border-bottom: 1px solid var(--border-color);
-                }
-                .name-col {
-                    width: 75%;
-                }
-                .size-col {
-                    width: 25%;
-                    text-align: right;
-                    color: var(--secondary-text);
-                    font-variant-numeric: tabular-nums;
-                }
-                .icon {
-                    margin-right: 6px;
-                }
-                .footer {
-                    margin-top: 20px;
-                    text-align: center;
-                    font-size: 11px;
-                    color: var(--secondary-text);
-                }
-            </style>
+            <style>\(previewStylesheet)</style>
         </head>
         <body>
             <div class="header">
                 <div class="title-section">
                     <h1>\(escapeHTML(data.archiveName))</h1>
                     <div class="meta-stats">
-                        <span>\((data.format?.displayName ?? data.formatIdentifier).uppercased())</span> •
+                        <span>\(formatTitle)</span> •
                         <span>\(itemsCountLabel)</span> •
                         <span>\(formattedUncompressed) \(compressedLabel)</span>
-                        \(data.isEncrypted ? "• <span class='badge enc'>\(escapeHTML(encryptedText))</span>" : "")
+                        \(encryptedMarkup)
                     </div>
                 </div>
                 <div class="badge">TTZip ⚡️</div>
@@ -467,6 +393,81 @@ public enum QuickLookPreviewEngine: Sendable {
         </body>
         </html>
         """
+    }
+
+    private static func renderTreeRowsHTML(
+        data: QuickLookPreviewPayload,
+        manager: TTZipLocalizationManager,
+        language: AppLanguage,
+        locale: Locale
+    ) -> String {
+        var rowsHTML = ""
+        var renderedCount = 0
+        let maxRenderCount = 500
+        let omittedTemplate = manager.string(for: L10n.QuickLook.itemsOmittedFormat, language: language)
+        appendNodeRows(
+            nodes: data.rootNodes,
+            depth: 0,
+            totalEntriesCount: data.totalEntriesCount,
+            maxRenderCount: maxRenderCount,
+            omittedTemplate: omittedTemplate,
+            language: language,
+            locale: locale,
+            renderedCount: &renderedCount,
+            rowsHTML: &rowsHTML
+        )
+        return rowsHTML
+    }
+
+    private static func appendNodeRows(
+        nodes: [PreviewTreeNode],
+        depth: Int,
+        totalEntriesCount: Int,
+        maxRenderCount: Int,
+        omittedTemplate: String,
+        language: AppLanguage,
+        locale: Locale,
+        renderedCount: inout Int,
+        rowsHTML: inout String
+    ) {
+        for node in nodes {
+            if renderedCount >= maxRenderCount {
+                let omittedCount = totalEntriesCount - maxRenderCount
+                let omittedText = String(format: omittedTemplate, locale: locale, maxRenderCount, omittedCount)
+                rowsHTML += """
+                <tr>
+                    <td colspan="2" class="name-col" style="text-align: center; color: var(--secondary-text); padding: 12px;">
+                        \(escapeHTML(omittedText))
+                    </td>
+                </tr>
+                """
+                return
+            }
+            renderedCount += 1
+            let indent = String(repeating: "&nbsp;&nbsp;&nbsp;&nbsp;", count: depth)
+            let icon = node.isDirectory ? "📁" : fileIconEmoji(for: node.name)
+            let sizeStr = node.isDirectory ? "--" : ByteSizeFormatter.format(bytes: node.uncompressedSizeBytes, language: language)
+            let encBadge = node.isEncrypted ? "<span class='badge enc'>🔒</span>" : ""
+            rowsHTML += """
+            <tr>
+                <td class="name-col">\(indent)<span class="icon">\(icon)</span> \(escapeHTML(node.name)) \(encBadge)</td>
+                <td class="size-col">\(sizeStr)</td>
+            </tr>
+            """
+            if node.isDirectory, let children = node.children, !children.isEmpty {
+                appendNodeRows(
+                    nodes: children,
+                    depth: depth + 1,
+                    totalEntriesCount: totalEntriesCount,
+                    maxRenderCount: maxRenderCount,
+                    omittedTemplate: omittedTemplate,
+                    language: language,
+                    locale: locale,
+                    renderedCount: &renderedCount,
+                    rowsHTML: &rowsHTML
+                )
+            }
+        }
     }
     
     private static func fileIconEmoji(for filename: String) -> String {

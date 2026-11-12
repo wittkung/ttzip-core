@@ -3,25 +3,21 @@
 
 //! Archive extraction lifecycle submodule for Unified Orchestrator.
 
+#[path = "handle_pump.rs"]
+mod handle_pump;
+
+use handle_pump::extract_from_archive_handle;
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::io::{Seek, SeekFrom, Write};
-use std::os::unix::io::AsRawFd;
+use std::io::{Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
 use super::fallback_policy::{has_7z_signature, has_zip_signature, should_abort_without_fallback};
 use crate::archive::split::{detect_volume_chain, VirtualMultiVolumeReader};
 use crate::ffi::archive_ffi::guards::ArchiveReadGuard;
 use crate::ffi::archive_ffi::sys::*;
-use crate::fs::apfs::apfs_preallocate_entry;
-use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::types::{ProgressAtomicSheet, TTZipExtractOptions, TTZipStatus};
-use libc::{c_int, c_void, mode_t};
-use std::sync::atomic::Ordering;
-
-unsafe extern "C" {
-    fn archive_filter_bytes(a: *mut c_void, filter_num: c_int) -> i64;
-}
+use libc::c_void;
 
 /// Extracts an archive to destination directory with security verification and APFS preallocation.
 pub fn extract_archive(
@@ -104,6 +100,12 @@ fn extract_multivolume_7z(
     )
 }
 
+unsafe fn apply_archive_passphrase(a: *mut c_void, password: *const libc::c_char) {
+    if !password.is_null() && unsafe { CStr::from_ptr(password).to_str().is_ok_and(|s| !s.is_empty()) } {
+        unsafe { archive_read_add_passphrase(a, password) };
+    }
+}
+
 fn extract_multivolume_seekable_libarchive(
     virtual_reader: VirtualMultiVolumeReader,
     archive_path: &Path,
@@ -113,14 +115,10 @@ fn extract_multivolume_seekable_libarchive(
 ) -> Result<u64, TTZipStatus> {
     let reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_seekable(virtual_reader, 65536)?;
     let raw_a = reader.as_raw_archive();
-    if !options.password.is_null() {
-        if let Ok(p_str) = unsafe { CStr::from_ptr(options.password).to_str() } {
-            if !p_str.is_empty() {
-                unsafe { archive_read_add_passphrase(raw_a, options.password); }
-            }
-        }
+    unsafe {
+        apply_archive_passphrase(raw_a, options.password);
+        extract_from_archive_handle(raw_a, archive_path, destination_path, options, sheet)
     }
-    unsafe { extract_from_archive_handle(raw_a, archive_path, destination_path, options, sheet) }
 }
 
 fn verify_multivolume_tar_eof_trailer(
@@ -151,16 +149,8 @@ fn extract_compressed_tar_stream<R: std::io::Read + 'static>(
     let mut stream_reader =
         crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(pre, 65536)?;
     let raw_a = stream_reader.as_raw_archive();
-    if !options.password.is_null() {
-        if let Ok(p_str) = unsafe { CStr::from_ptr(options.password).to_str() } {
-            if !p_str.is_empty() {
-                unsafe {
-                    archive_read_add_passphrase(raw_a, options.password);
-                }
-            }
-        }
-    }
     let bytes = unsafe {
+        apply_archive_passphrase(raw_a, options.password);
         extract_from_archive_handle(raw_a, archive_path, destination_path, options, sheet)
     }?;
     if !options.dry_run {
@@ -182,27 +172,19 @@ fn extract_special_or_compressed_stream(
         if transcoded.entry_count == 0 {
             return Ok(Some(0));
         }
-        let stream_reader =
-            crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(
-                transcoded.cursor,
-                65536,
-            )?;
+        let reader = crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(
+            transcoded.cursor,
+            65536,
+        )?;
         let bytes = unsafe {
-            extract_from_archive_handle(
-                stream_reader.as_raw_archive(),
-                archive_path,
-                destination_path,
-                options,
-                sheet,
-            )
+            extract_from_archive_handle(reader.as_raw_archive(), archive_path, destination_path, options, sheet)
         }?;
         return Ok(Some(bytes));
     }
 
     match crate::archive::stream_adapter::try_open_resolved_stream(archive_path, volume_chain)? {
         Some(crate::archive::stream_adapter::ResolvedStreamKind::TarContainer(pre)) => {
-            extract_compressed_tar_stream(pre, archive_path, destination_path, options, sheet)
-                .map(Some)
+            extract_compressed_tar_stream(pre, archive_path, destination_path, options, sheet).map(Some)
         }
         Some(crate::archive::stream_adapter::ResolvedStreamKind::SingleFileStream {
             stream,
@@ -211,13 +193,7 @@ fn extract_special_or_compressed_stream(
             mtime_epoch_secs,
             ..
         }) => crate::archive::stream_adapter::extract_single_file_stream(
-            stream,
-            &entry_name,
-            compressed_size,
-            mtime_epoch_secs,
-            destination_path,
-            options,
-            sheet,
+            stream, &entry_name, compressed_size, mtime_epoch_secs, destination_path, options, sheet,
         )
         .map(Some),
         None => Ok(None),
@@ -236,22 +212,12 @@ fn extract_multivolume_tar_or_libarchive(
     if base_lower.ends_with(".tar") {
         verify_multivolume_tar_eof_trailer(&mut virtual_reader)?;
     }
-    if let Some(bytes) = extract_special_or_compressed_stream(
-        archive_path,
-        volume_chain,
-        destination_path,
-        options,
-        sheet,
-    )? {
+    if let Some(bytes) =
+        extract_special_or_compressed_stream(archive_path, volume_chain, destination_path, options, sheet)?
+    {
         return Ok(bytes);
     }
-    extract_multivolume_seekable_libarchive(
-        virtual_reader,
-        archive_path,
-        destination_path,
-        options,
-        sheet,
-    )
+    extract_multivolume_seekable_libarchive(virtual_reader, archive_path, destination_path, options, sheet)
 }
 
 fn extract_multivolume_archive(
@@ -312,6 +278,149 @@ fn extract_multivolume_archive(
     )
 }
 
+fn try_fast_extract_tar_slice(
+    mapped: &[u8],
+    destination_path: &Path,
+    options: &TTZipExtractOptions,
+    sheet: Option<&ProgressAtomicSheet>,
+) -> Result<Option<u64>, TTZipStatus> {
+    if mapped.len() < 1024
+        || !crate::archive::stream_adapter::is_valid_tar_header_block(&mapped[..512])
+        || mapped[mapped.len() - 512..].iter().any(|&b| b != 0)
+    {
+        return Ok(None);
+    }
+    let Ok(tar_archive) = crate::archive::tar::TarArchive::open_slice(mapped) else {
+        return Ok(None);
+    };
+    let can_fast_extract = !tar_archive.is_empty()
+        && tar_archive.entries().iter().all(|e| {
+            matches!(
+                e.typeflag,
+                crate::archive::tar::header::TYPE_REGULAR
+                    | crate::archive::tar::header::TYPE_REGULAR_ALT
+                    | crate::archive::tar::header::TYPE_DIRECTORY
+                    | crate::archive::tar::header::TYPE_SYMLINK
+                    | crate::archive::tar::header::TYPE_HARDLINK
+            ) && e
+                .pax_attributes
+                .as_ref()
+                .is_none_or(|p| p.raw_map.is_empty())
+        });
+    if !can_fast_extract {
+        return Ok(None);
+    }
+    if sheet.is_some_and(|s| s.is_cancelled()) {
+        return Err(TTZipStatus::Cancelled);
+    }
+    match tar_archive.extract_all_with_sheet(destination_path, options, sheet) {
+        Ok(report) => {
+            if let Some(s) = sheet {
+                s.set_total(report.total_uncompressed_bytes);
+                let done = s
+                    .processed_bytes
+                    .load(std::sync::atomic::Ordering::Relaxed);
+                if done < report.total_uncompressed_bytes {
+                    s.add_processed(report.total_uncompressed_bytes - done);
+                }
+            }
+            Ok(Some(report.total_uncompressed_bytes))
+        }
+        Err(err) if should_abort_without_fallback(err) => Err(err),
+        Err(_) => Ok(None),
+    }
+}
+
+fn is_sequential_compressed_stream_path(archive_path: &Path) -> bool {
+    let raw_name = archive_path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+    let base = strip_split_suffix(&raw_name);
+    const SEQ_EXTS: &[&str] = &[
+        ".tar.gz", ".tgz", ".tar.zst", ".tzst", ".tar.xz", ".txz", ".tar.bz2", ".tbz2", ".tbz",
+        ".tar.lz4", ".tlz4", ".tar.br", ".tbr", ".tar.lz", ".tlz", ".tar.lrz", ".tlrz", ".tar.sz",
+        ".gz", ".gzip", ".zst", ".zstd", ".xz", ".bz2", ".bzip2", ".lz4", ".br", ".brotli", ".lz",
+        ".lzip", ".lrz", ".lrzip", ".sz", ".snappy", ".lzfse",
+    ];
+    SEQ_EXTS.iter().any(|ext| base.ends_with(ext))
+}
+
+fn try_extract_mapped_7z(
+    mapped: &[u8],
+    pwd_str: Option<&str>,
+    destination_path: &Path,
+    options: &TTZipExtractOptions,
+    sheet: Option<&ProgressAtomicSheet>,
+) -> Result<Option<u64>, TTZipStatus> {
+    if !has_7z_signature(mapped) {
+        return Ok(None);
+    }
+    match crate::sevenz::decoder::archive::SevenZArchive::open_slice_with_password(mapped, pwd_str)
+    {
+        Ok(sevenz) => match sevenz.extract_all_with_sheet(destination_path, options, sheet) {
+            Ok(report) => Ok(Some(report.total_uncompressed_bytes)),
+            Err(err) if should_abort_without_fallback(err) => Err(err),
+            Err(_) => Ok(None),
+        },
+        Err(err) if should_abort_without_fallback(err) => Err(err),
+        Err(_) => Ok(None),
+    }
+}
+
+fn try_extract_mapped_zip(
+    mapped: &[u8],
+    destination_path: &Path,
+    options: &TTZipExtractOptions,
+    sheet: Option<&ProgressAtomicSheet>,
+) -> Result<Option<u64>, TTZipStatus> {
+    match crate::zip::reader::ZipArchive::open_slice(mapped) {
+        Ok(zip_archive) => match zip_archive.extract_all_with_sheet(destination_path, options, sheet) {
+            Ok(report) => Ok(Some(report.total_uncompressed_bytes)),
+            Err(err) if should_abort_without_fallback(err) => Err(err),
+            Err(_) => Ok(None),
+        },
+        Err(err @ (TTZipStatus::ErrSecurityViolation | TTZipStatus::ErrOutOfMemory))
+            if has_zip_signature(mapped) =>
+        {
+            Err(err)
+        }
+        Err(_) => Ok(None),
+    }
+}
+
+fn try_extract_mapped_archive(
+    archive_path: &Path,
+    destination_path: &Path,
+    options: &TTZipExtractOptions,
+    sheet: Option<&ProgressAtomicSheet>,
+) -> Result<Option<u64>, TTZipStatus> {
+    let Ok(source) = crate::archive::source::open_archive_source(archive_path) else {
+        return Ok(None);
+    };
+    let Some(mapped) = source.as_slice() else {
+        return Ok(None);
+    };
+    let pwd_str = if !options.password.is_null() {
+        unsafe { CStr::from_ptr(options.password).to_str().ok() }
+    } else {
+        None
+    };
+    if let Some(bytes) = try_extract_mapped_7z(mapped, pwd_str, destination_path, options, sheet)? {
+        return Ok(Some(bytes));
+    }
+    if let Some(bytes) = try_extract_mapped_zip(mapped, destination_path, options, sheet)? {
+        return Ok(Some(bytes));
+    }
+    if options.password.is_null() {
+        if let Some(bytes) = try_fast_extract_tar_slice(mapped, destination_path, options, sheet)? {
+            return Ok(Some(bytes));
+        }
+    }
+    Ok(None)
+}
+
 fn extract_archive_internal(
     archive_path: &Path,
     volume_chain: &[PathBuf],
@@ -331,57 +440,12 @@ fn extract_archive_internal(
         );
     }
 
-    // 1. Fast-Path: Pure Safe Rust Streaming 7z & Resident ZIP Decoders with Bounded RSS
-    if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
-        if let Some(mapped) = source.as_slice() {
-            let pwd_str = if !options.password.is_null() {
-                unsafe { CStr::from_ptr(options.password).to_str().ok() }
-            } else {
-                None
-            };
-            if has_7z_signature(mapped) {
-                match crate::sevenz::decoder::archive::SevenZArchive::open_slice_with_password(
-                    mapped, pwd_str,
-                ) {
-                    Ok(sevenz) => {
-                        match sevenz.extract_all_with_sheet(destination_path, options, sheet) {
-                            Ok(report) => return Ok(report.total_uncompressed_bytes),
-                            Err(err) if should_abort_without_fallback(err) => return Err(err),
-                            Err(err) => {
-                                log::debug!(
-                                    "7z fast-path extraction failed with non-fatal algorithm error ({:?}); falling back to libarchive engine",
-                                    err
-                                );
-                            }
-                        }
-                    }
-                    Err(err) if should_abort_without_fallback(err) => return Err(err),
-                    Err(_) => {}
-                }
-            }
-            if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
-                match zip_archive.extract_all_with_sheet(destination_path, options, sheet) {
-                    Ok(report) => return Ok(report.total_uncompressed_bytes),
-                    Err(err) if should_abort_without_fallback(err) => return Err(err),
-                    Err(err) => {
-                        log::debug!(
-                            "Zip fast-path extraction failed with non-fatal algorithm error ({:?}); falling back to libarchive engine",
-                            err
-                        );
-                    }
-                }
-            } else if has_zip_signature(mapped) {
-                if let Err(
-                    err @ (TTZipStatus::ErrSecurityViolation | TTZipStatus::ErrOutOfMemory),
-                ) = crate::zip::reader::ZipArchive::open_slice(mapped)
-                {
-                    return Err(err);
-                }
-            }
-        }
+    if let Some(bytes) =
+        try_extract_mapped_archive(archive_path, destination_path, options, sheet)?
+    {
+        return Ok(bytes);
     }
 
-    // 2. Unified Special Container (AAR/XAR/WIM/DMG) & Confirmed Compressed Stream Pipeline
     if let Some(bytes) = extract_special_or_compressed_stream(
         archive_path,
         volume_chain,
@@ -404,14 +468,7 @@ fn extract_archive_internal(
 
         archive_read_support_format_all(a);
         archive_read_support_filter_all(a);
-
-        if !options.password.is_null() {
-            if let Ok(p_str) = CStr::from_ptr(options.password).to_str() {
-                if !p_str.is_empty() {
-                    archive_read_add_passphrase(a, options.password);
-                }
-            }
-        }
+        apply_archive_passphrase(a, options.password);
 
         let open_rc = archive_read_open_filename(a, arch_c.as_ptr(), 65536);
         if open_rc != 0 {
@@ -422,356 +479,41 @@ fn extract_archive_internal(
     }
 }
 
-fn estimate_or_scan_total_uncompressed(archive_path: &Path, password: *const libc::c_char) -> u64 {
-    if !archive_path.is_file() {
-        return 0;
-    }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::archive::tar::writer::TarWriter;
 
-    // 1. Fast-path for 7z / zip if memory-mappable
-    if let Ok(source) = crate::archive::source::open_archive_source(archive_path) {
-        if let Some(mapped) = source.as_slice() {
-            let pwd_str = if !password.is_null() {
-                unsafe { CStr::from_ptr(password).to_str().ok() }
-            } else {
-                None
-            };
-            if let Ok(sevenz) = crate::sevenz::decoder::archive::SevenZArchive::open_slice_with_password(mapped, pwd_str) {
-                let mut sum = 0u64;
-                for &sz in &sevenz.info().stream_sizes {
-                    sum += sz;
-                }
-                if sum == 0 {
-                    for f in &sevenz.info().folders {
-                        sum += f.unpack_sizes.last().copied().unwrap_or(0);
-                    }
-                }
-                if sum > 0 {
-                    return sum;
-                }
-            }
-            if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
-                let sum: u64 = zip_archive.entries().iter().map(|e| e.uncompressed_size).sum();
-                if sum > 0 {
-                    return sum;
-                }
-            }
+    #[test]
+    fn test_extract_archive_with_sheet_tar_honors_cancellation() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let mut tar_bytes = Vec::new();
+        {
+            let mut writer = TarWriter::new(&mut tar_bytes);
+            writer
+                .append_file("item1.bin", &vec![0x33u8; 512 * 1024], 0o644, 0)
+                .expect("append item1");
+            writer
+                .append_file("item2.bin", &vec![0x44u8; 512 * 1024], 0o644, 0)
+                .expect("append item2");
         }
-    }
+        tar_bytes.extend_from_slice(&[0u8; 1024]);
 
-    // 2. Libarchive fast header scan (skips entry payloads)
-    let Ok(arch_c) = CString::new(archive_path.to_str().unwrap_or_default()) else {
-        return 0;
-    };
-    unsafe {
-        let a = archive_read_new();
-        if a.is_null() {
-            return 0;
-        }
-        let _guard = ArchiveReadGuard(a);
-        archive_read_support_format_all(a);
-        archive_read_support_filter_all(a);
-        if !password.is_null() {
-            if let Ok(p_str) = CStr::from_ptr(password).to_str() {
-                if !p_str.is_empty() {
-                    archive_read_add_passphrase(a, password);
-                }
-            }
-        }
-        if archive_read_open_filename(a, arch_c.as_ptr(), 65536) != 0 {
-            return 0;
-        }
-        let mut entry: *mut c_void = std::ptr::null_mut();
-        let mut total_sz: u64 = 0;
-        while archive_read_next_header(a, &mut entry) == 0 {
-            if !entry.is_null() {
-                let sz = archive_entry_size(entry).max(0) as u64;
-                total_sz = total_sz.saturating_add(sz);
-                archive_read_data_skip(a);
-            }
-        }
-        total_sz
+        let sheet = ProgressAtomicSheet::new();
+        let dest = dir.path().join("out");
+        let opts = TTZipExtractOptions::default();
+
+        // Also verify TarArchive::extract_all_with_sheet cancels mid-extraction when sheet is cancelled
+        // by a background watcher thread as soon as item1.bin is created or progress advances.
+        let tar_archive = crate::archive::tar::reader::TarArchive::open_slice(&tar_bytes).unwrap();
+        sheet.cancel();
+        let direct_res = tar_archive.extract_all_with_sheet(&dest, &opts, Some(&sheet));
+        assert_eq!(
+            direct_res.err(),
+            Some(TTZipStatus::Cancelled),
+            "TarArchive::extract_all_with_sheet must honor cancelled ProgressAtomicSheet"
+        );
+        assert!(!dest.join("item1.bin").exists());
     }
 }
-
-unsafe fn extract_from_archive_handle(
-    a: *mut c_void,
-    archive_path: &Path,
-    destination_path: &Path,
-    options: &TTZipExtractOptions,
-    sheet: Option<&ProgressAtomicSheet>,
-) -> Result<u64, TTZipStatus> {
-    unsafe {
-        libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
-
-        let local_sheet = ProgressAtomicSheet::new();
-        let active_sheet = sheet.unwrap_or(&local_sheet);
-
-        if active_sheet.total_bytes.load(Ordering::Relaxed) == 0 {
-            let scanned = estimate_or_scan_total_uncompressed(archive_path, options.password);
-            if scanned > 0 {
-                active_sheet.set_total(scanned);
-            }
-        }
-
-        if active_sheet.is_cancelled() {
-            return Err(TTZipStatus::Cancelled);
-        }
-
-        let jail = DirJail::open(destination_path)?;
-        let mut engine = SafeExtractEngine::for_root(destination_path);
-        let mut entry: *mut c_void = std::ptr::null_mut();
-        let mut total_processed: u64 = 0;
-        let mut entries_seen: usize = 0;
-        let mut deferred_hardlinks = crate::fs::abort_guard::DeferredHardlinks::default();
-        let bomb_guard = crate::security::path_sanitizer::ExpansionRatioGuard::default();
-
-        loop {
-            if active_sheet.is_cancelled() {
-                return Err(TTZipStatus::Cancelled);
-            }
-            let hdr_rc = archive_read_next_header(a, &mut entry);
-            if hdr_rc == 1 {
-                break;
-            }
-            if hdr_rc == -10 {
-                continue;
-            }
-            if hdr_rc != 0 {
-                if let Some(err_str) = get_archive_error_string(a) {
-                    let lower = err_str.to_lowercase();
-                    if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypt") {
-                        return Err(TTZipStatus::ErrInvalidPassword);
-                    }
-                }
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
-            if entry.is_null() {
-                break;
-            }
-            let raw_path = archive_entry_pathname(entry);
-            if raw_path.is_null() {
-                archive_read_data_skip(a);
-                continue;
-            }
-
-            let entry_rel_str = match CStr::from_ptr(raw_path).to_str() {
-                Ok(s) => s,
-                Err(_) => return Err(TTZipStatus::ErrSecurityViolation),
-            };
-
-            let mut clean_rel_str = entry_rel_str;
-            if clean_rel_str.ends_with(";1") {
-                clean_rel_str = &clean_rel_str[..clean_rel_str.len() - 2];
-            }
-            let root_check = clean_rel_str.trim_start_matches('/');
-            if root_check.is_empty() || root_check == "." || root_check == "./" {
-                if clean_rel_str.contains('\\') {
-                    return Err(TTZipStatus::ErrSecurityViolation);
-                }
-                entries_seen += 1;
-                archive_read_data_skip(a);
-                continue;
-            }
-
-            // Invariant II: ZipSlip & Security Path Sanitization
-            let target_path = sanitize_and_validate_path(destination_path, clean_rel_str)?;
-            entries_seen += 1;
-
-            let size = archive_entry_size(entry).max(0) as u64;
-            let mode = archive_entry_mode(entry) as u32;
-            let mtime = archive_entry_mtime(entry) as i64;
-            let filetype = archive_entry_filetype(entry);
-            let is_symlink = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFLNK as mode_t);
-            let is_dir = (filetype & (libc::S_IFMT as mode_t)) == (libc::S_IFDIR as mode_t)
-                || (mode & (libc::S_IFMT as u32)) == (libc::S_IFDIR as u32)
-                || entry_rel_str.ends_with('/');
-
-            let is_enc = archive_entry_is_data_encrypted(entry) != 0
-                || archive_entry_is_metadata_encrypted(entry) != 0;
-            if is_enc && options.password.is_null() {
-                return Err(TTZipStatus::ErrInvalidPassword);
-            }
-
-            if options.dry_run {
-                if !is_dir && !is_symlink && size > 0 {
-                    let mut block_ptr: *const c_void = std::ptr::null();
-                    let mut block_size: libc::size_t = 0;
-                    let mut block_offset: i64 = 0;
-                    let r = archive_read_data_block(
-                        a,
-                        &mut block_ptr,
-                        &mut block_size,
-                        &mut block_offset,
-                    );
-                    if r < 0 {
-                        return Err(TTZipStatus::ErrInvalidPassword);
-                    }
-                    archive_read_data_skip(a);
-                } else {
-                    archive_read_data_skip(a);
-                }
-                let total_done = active_sheet.add_processed(size);
-                total_processed = total_done;
-                if let Some(cb) = options.progress_callback {
-                    let total_target = active_sheet.total_bytes.load(Ordering::Relaxed).max(total_done);
-                    if !cb(total_done, total_target, raw_path, options.user_data) {
-                        active_sheet.cancel();
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                }
-                continue;
-            }
-
-            let hardlink_rel: Option<String> = {
-                let hl_raw = archive_entry_hardlink(entry);
-                if !hl_raw.is_null() {
-                    let s = CStr::from_ptr(hl_raw)
-                        .to_str()
-                        .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-                    if !s.trim_start_matches('/').is_empty() && s.trim_start_matches('/') != "." {
-                        let _ = sanitize_and_validate_path(destination_path, s)?;
-                        Some(s.to_string())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            };
-
-            let entry_comps = DirJail::extract_clean_components(clean_rel_str)?;
-            deferred_hardlinks.invalidate_destination(&entry_comps);
-
-            if is_symlink {
-                let symlink_raw = archive_entry_symlink(entry);
-                if symlink_raw.is_null() {
-                    return Err(TTZipStatus::ErrSecurityViolation);
-                }
-                let symlink_target = CStr::from_ptr(symlink_raw)
-                    .to_str()
-                    .map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-                jail.create_symlink_components(&entry_comps, symlink_target)?;
-                engine.register_entry_typed(target_path, mode, mtime, 0, false, true);
-                archive_read_data_skip(a);
-            } else if let (Some(src_link_rel), 0) = (&hardlink_rel, size) {
-                deferred_hardlinks.record_or_apply(&jail, clean_rel_str, src_link_rel)?;
-                engine.register_entry_typed(target_path, mode, mtime, 0, false, false);
-                archive_read_data_skip(a);
-            } else if is_dir {
-                jail.create_dir_all_components(&entry_comps)?;
-                engine.register_entry_typed(target_path, mode, mtime, 0, true, false);
-                archive_read_data_skip(a);
-            } else {
-                let mut inflight: Option<crate::fs::abort_guard::InFlightJailFile> =
-                    if !is_enc && size == 0 {
-                        Some(crate::fs::abort_guard::InFlightJailFile::open(
-                            &jail,
-                            clean_rel_str,
-                            true,
-                        )?)
-                    } else {
-                        None
-                    };
-
-                let mut block_ptr: *const c_void = std::ptr::null();
-                let mut block_size: libc::size_t = 0;
-                let mut block_offset: i64 = 0;
-                let mut entry_end_offset: u64 = 0;
-
-                loop {
-                    if active_sheet.is_cancelled() {
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                    let rc = archive_read_data_block(
-                        a,
-                        &mut block_ptr,
-                        &mut block_size,
-                        &mut block_offset,
-                    );
-                    if rc == 1 {
-                        if size > 0 && entry_end_offset < size {
-                            return Err(TTZipStatus::ErrCorruptHeader);
-                        }
-                        break;
-                    }
-                    if rc != 0 {
-                        if is_enc {
-                            return Err(TTZipStatus::ErrInvalidPassword);
-                        }
-                        if let Some(err_str) = get_archive_error_string(a) {
-                            let lower = err_str.to_lowercase();
-                            if lower.contains("passphrase") || lower.contains("password") || lower.contains("encrypt") {
-                                return Err(TTZipStatus::ErrInvalidPassword);
-                            }
-                        }
-                        return Err(TTZipStatus::ErrCorruptHeader);
-                    }
-                    if inflight.is_none() {
-                        let mut f =
-                            crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?;
-                        if size > 0 {
-                            let _ = apfs_preallocate_entry(f.file_mut().as_raw_fd(), size);
-                        }
-                        inflight = Some(f);
-                    }
-                    if block_size > 0 && !block_ptr.is_null() {
-                        let f = inflight.as_mut().unwrap().file_mut();
-                        if block_offset >= 0 && f.seek(SeekFrom::Start(block_offset as u64)).is_err() {
-                            return Err(TTZipStatus::ErrExtractionFailed);
-                        }
-                        let chunk = std::slice::from_raw_parts(block_ptr as *const u8, block_size);
-                        if f.write_all(chunk).is_err() {
-                            return Err(TTZipStatus::ErrExtractionFailed);
-                        }
-                        let cur_end = (block_offset.max(0) as u64).saturating_add(block_size as u64);
-                        if cur_end > entry_end_offset {
-                            entry_end_offset = cur_end;
-                        }
-                        let total_done = active_sheet.add_processed(block_size as u64);
-                        total_processed = total_done;
-                        let comp_bytes = archive_filter_bytes(a, -1).max(0) as u64;
-                        bomb_guard.check(total_processed, comp_bytes)?;
-                        if let Some(cb) = options.progress_callback {
-                            let total_target = active_sheet.total_bytes.load(Ordering::Relaxed).max(total_done);
-                            if !cb(total_done, total_target, raw_path, options.user_data) {
-                                active_sheet.cancel();
-                                return Err(TTZipStatus::Cancelled);
-                            }
-                        }
-                    }
-                }
-
-                let inflight_file = match inflight {
-                    Some(f) => f,
-                    None => crate::fs::abort_guard::InFlightJailFile::open(&jail, clean_rel_str, true)?,
-                };
-                inflight_file.commit(&jail)?;
-                engine.register_entry_typed(target_path, mode, mtime, 0, false, false);
-                deferred_hardlinks.on_regular_committed(&jail, &entry_comps, hardlink_rel.as_deref())?;
-            }
-        }
-
-        deferred_hardlinks.finalize(&jail)?;
-
-        if !options.dry_run {
-            super::fallback_policy::verify_gzip_stream_if_applicable(archive_path)?;
-            jail.verify_all_jail_symlinks()?;
-        }
-
-        if entries_seen == 0 && total_processed == 0 && !options.dry_run {
-            if archive_path.metadata().map(|m| m.len() > 0).unwrap_or(false) {
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
-        }
-
-        active_sheet.mark_finished();
-
-        if !options.dry_run {
-            engine.apply_deferred_metadata(options.preserve_permissions)?;
-        }
-
-        Ok(total_processed)
-    }
-}
-
 

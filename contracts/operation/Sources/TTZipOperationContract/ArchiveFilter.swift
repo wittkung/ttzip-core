@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+import TTZipArchiveContract
 
 /// Compiled Filter evaluator and facade.
 public final class ArchiveFilter: Sendable {
@@ -167,6 +168,19 @@ public struct ArchiveFilterOptions: Sendable, Equatable {
     public static let defaultClean = ArchiveFilterOptions(excludePatterns: [], includePatterns: [], stripComponents: 0, excludeVCS: false, noMacMetadata: true)
     public static let preserveAll = ArchiveFilterOptions(excludePatterns: [], includePatterns: [], stripComponents: 0, excludeVCS: false, noMacMetadata: false)
     
+    private static let exactSystemMetadataSegments: Set<String> = [
+        "__MACOSX", ".DS_Store", ".localized", ".VolumeIcon.icns", "PaxHeader"
+    ]
+
+    private static let systemMetadataPrefixes: [String] = [
+        "._", ".Spotlight-V100", ".Trashes", ".fseventsd",
+        ".TemporaryItems", "PaxHeaders.", "PaxHeader."
+    ]
+
+    private static let lowercasedWindowsMetadataSegments: Set<String> = [
+        "thumbs.db", "desktop.ini", "ehthumbs.db", "$recycle.bin"
+    ]
+
     /// Returns true if the entry path represents macOS, Windows, or POSIX PaxHeader system metadata artifacts.
     public static func isSystemMetadata(path: String) -> Bool {
         var normalized = path.replacingOccurrences(of: "\\", with: "/")
@@ -174,35 +188,17 @@ public struct ArchiveFilterOptions: Sendable, Equatable {
             normalized.removeFirst(2)
         }
         let segments = normalized.split(separator: "/", omittingEmptySubsequences: true)
-        if segments.isEmpty {
-            return false
+        return segments.contains { isSystemMetadataSegment(String($0)) }
+    }
+
+    private static func isSystemMetadataSegment(_ segment: String) -> Bool {
+        if exactSystemMetadataSegments.contains(segment) {
+            return true
         }
-        
-        for seg in segments {
-            let s = String(seg)
-            if s == "__MACOSX" {
-                return true
-            }
-            if s.hasPrefix("._") {
-                return true
-            }
-            if s == ".DS_Store" || s == ".localized" || s == ".VolumeIcon.icns" {
-                return true
-            }
-            if s.hasPrefix(".Spotlight-V100") || s.hasPrefix(".Trashes") || s.hasPrefix(".fseventsd") || s.hasPrefix(".TemporaryItems") {
-                return true
-            }
-            if s == "PaxHeader" || s.hasPrefix("PaxHeaders.") || s.hasPrefix("PaxHeader.") {
-                return true
-            }
-            if s.caseInsensitiveCompare("Thumbs.db") == .orderedSame ||
-               s.caseInsensitiveCompare("desktop.ini") == .orderedSame ||
-               s.caseInsensitiveCompare("ehthumbs.db") == .orderedSame ||
-               s.caseInsensitiveCompare("$RECYCLE.BIN") == .orderedSame {
-                return true
-            }
+        if systemMetadataPrefixes.contains(where: { segment.hasPrefix($0) }) {
+            return true
         }
-        return false
+        return lowercasedWindowsMetadataSegments.contains(segment.lowercased())
     }
 }
 

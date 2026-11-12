@@ -41,33 +41,8 @@ impl<R: Read + Send> UuencodeFilter<R> {
         self.out_buf.clear();
         self.out_pos = 0;
 
-        if self.ended {
-            return Ok(());
-        }
-
         while self.out_buf.is_empty() && !self.ended {
-            self.line_buf.clear();
-            let mut read_any = false;
-
-            // Read a single line
-            loop {
-                let mut b = [0u8; 1];
-                let n = self.reader.read(&mut b)?;
-                if n == 0 {
-                    break;
-                }
-                read_any = true;
-                self.bytes_consumed += 1;
-                let ch = b[0];
-                if ch == b'\n' {
-                    break;
-                }
-                if ch != b'\r' {
-                    self.line_buf.push(ch);
-                }
-            }
-
-            if !read_any && self.line_buf.is_empty() {
+            if !self.read_next_line()? {
                 self.ended = true;
                 break;
             }
@@ -87,41 +62,63 @@ impl<R: Read + Send> UuencodeFilter<R> {
                 continue;
             }
 
-            let len_char = line_slice[0];
-            let line_len = (len_char.wrapping_sub(b' ') & 0x3F) as usize;
-            if line_len == 0 {
-                continue;
-            }
-
-            let encoded_chunks = &line_slice[1..];
-            let mut i = 0;
-            while i < encoded_chunks.len() && self.out_buf.len() < line_len {
-                let c0 = encoded_chunks.get(i).copied().unwrap_or(b' ');
-                let c1 = encoded_chunks.get(i + 1).copied().unwrap_or(b' ');
-                let c2 = encoded_chunks.get(i + 2).copied().unwrap_or(b' ');
-                let c3 = encoded_chunks.get(i + 3).copied().unwrap_or(b' ');
-                i += 4;
-
-                let b0 = c0.wrapping_sub(b' ') & 0x3F;
-                let b1 = c1.wrapping_sub(b' ') & 0x3F;
-                let b2 = c2.wrapping_sub(b' ') & 0x3F;
-                let b3 = c3.wrapping_sub(b' ') & 0x3F;
-
-                let out0 = (b0 << 2) | (b1 >> 4);
-                let out1 = ((b1 & 0x0F) << 4) | (b2 >> 2);
-                let out2 = ((b2 & 0x03) << 6) | b3;
-
-                self.out_buf.push(out0);
-                if self.out_buf.len() < line_len {
-                    self.out_buf.push(out1);
-                }
-                if self.out_buf.len() < line_len {
-                    self.out_buf.push(out2);
-                }
-            }
+            decode_uu_line(line_slice, &mut self.out_buf);
         }
 
         Ok(())
+    }
+
+    fn read_next_line(&mut self) -> io::Result<bool> {
+        self.line_buf.clear();
+        let mut read_any = false;
+        loop {
+            let mut b = [0u8; 1];
+            let n = self.reader.read(&mut b)?;
+            if n == 0 {
+                break;
+            }
+            read_any = true;
+            self.bytes_consumed += 1;
+            let ch = b[0];
+            if ch == b'\n' {
+                break;
+            }
+            if ch != b'\r' {
+                self.line_buf.push(ch);
+            }
+        }
+        Ok(read_any || !self.line_buf.is_empty())
+    }
+}
+
+fn decode_uu_line(line_slice: &[u8], out_buf: &mut Vec<u8>) {
+    let len_char = line_slice[0];
+    let line_len = (len_char.wrapping_sub(b' ') & 0x3F) as usize;
+    if line_len == 0 {
+        return;
+    }
+
+    let encoded_chunks = &line_slice[1..];
+    let mut i = 0;
+    while i < encoded_chunks.len() && out_buf.len() < line_len {
+        let c0 = encoded_chunks.get(i).copied().unwrap_or(b' ');
+        let c1 = encoded_chunks.get(i + 1).copied().unwrap_or(b' ');
+        let c2 = encoded_chunks.get(i + 2).copied().unwrap_or(b' ');
+        let c3 = encoded_chunks.get(i + 3).copied().unwrap_or(b' ');
+        i += 4;
+
+        let b0 = c0.wrapping_sub(b' ') & 0x3F;
+        let b1 = c1.wrapping_sub(b' ') & 0x3F;
+        let b2 = c2.wrapping_sub(b' ') & 0x3F;
+        let b3 = c3.wrapping_sub(b' ') & 0x3F;
+
+        out_buf.push((b0 << 2) | (b1 >> 4));
+        if out_buf.len() < line_len {
+            out_buf.push(((b1 & 0x0F) << 4) | (b2 >> 2));
+        }
+        if out_buf.len() < line_len {
+            out_buf.push(((b2 & 0x03) << 6) | b3);
+        }
     }
 }
 

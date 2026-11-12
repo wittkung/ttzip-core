@@ -226,15 +226,20 @@ impl UniFFIMmapReader {
             });
         }
 
-        if self.mapping.is_none() || self.file_size == 0 || length == 0 {
+        let Some(m) = self.mapping.as_ref() else {
+            return Ok(UniFFIMmapSlice {
+                offset,
+                length: 0,
+                data: Vec::new(),
+            });
+        };
+        if self.file_size == 0 || length == 0 {
             return Ok(UniFFIMmapSlice {
                 offset,
                 length: 0,
                 data: Vec::new(),
             });
         }
-
-        let m = self.mapping.as_ref().unwrap();
         let avail = (self.file_size - offset) as usize;
         let to_read = (length as usize).min(avail);
         let slice = unsafe { std::slice::from_raw_parts(m.ptr.add(offset as usize), to_read) };
@@ -289,11 +294,10 @@ impl UniFFIMmapReader {
             return Some(start_offset.min(self.file_size));
         }
 
-        if start_offset >= self.file_size || self.mapping.is_none() {
+        if start_offset >= self.file_size {
             return None;
         }
-
-        let m = self.mapping.as_ref().unwrap();
+        let m = self.mapping.as_ref()?;
         let remaining_len = (self.file_size - start_offset) as usize;
         if pattern.len() > remaining_len {
             return None;
@@ -314,11 +318,12 @@ impl UniFFIMmapReader {
             });
         }
 
-        if self.mapping.is_none() || self.file_size == 0 || length == 0 {
+        let Some(m) = self.mapping.as_ref() else {
+            return Ok(0);
+        };
+        if self.file_size == 0 || length == 0 {
             return Ok(0);
         }
-
-        let m = self.mapping.as_ref().unwrap();
         let avail = (self.file_size - offset) as usize;
         let to_read = (length as usize).min(avail);
         let slice = unsafe { std::slice::from_raw_parts(m.ptr.add(offset as usize), to_read) };
@@ -336,11 +341,12 @@ impl UniFFIMmapReader {
             });
         }
 
-        if self.mapping.is_none() || self.file_size == 0 || length == 0 {
+        let Some(m) = self.mapping.as_ref() else {
+            return Ok(crate::crypto::xxh3::xxh3_64(b""));
+        };
+        if self.file_size == 0 || length == 0 {
             return Ok(crate::crypto::xxh3::xxh3_64(b""));
         }
-
-        let m = self.mapping.as_ref().unwrap();
         let avail = (self.file_size - offset) as usize;
         let to_read = (length as usize).min(avail);
         let slice = unsafe { std::slice::from_raw_parts(m.ptr.add(offset as usize), to_read) };

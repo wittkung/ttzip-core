@@ -112,26 +112,7 @@ impl FilterPipeline {
                 }
 
                 filters.push(kind);
-
-                // Instantiate corresponding filter
-                let next_reader: Box<dyn Read + Send> = match kind {
-                    FilterKind::Uuencode => Box::new(UuencodeFilter::new(lookahead)),
-                    FilterKind::Rpm => Box::new(RpmLeadFilter::new(lookahead)),
-                    FilterKind::Compress => Box::new(CompressFilter::new(lookahead)),
-                    FilterKind::Gzip => Box::new(GzipFilter::new(lookahead)),
-                    FilterKind::Bzip2 => Box::new(Bzip2Filter::new(lookahead)?),
-                    FilterKind::Xz => Box::new(XzFilter::new(lookahead)?),
-                    FilterKind::Zstd => Box::new(ZstdFilter::new(lookahead)?),
-                    FilterKind::Snappy => Box::new(SnappyFilter::new(lookahead)),
-                    FilterKind::Brotli => Box::new(BrotliFilter::new(lookahead)),
-                    _ => {
-                        return Err(FilterPipelineError::UnsupportedFormat(
-                            kind.as_str().to_string(),
-                        ));
-                    }
-                };
-
-                current_reader = next_reader;
+                current_reader = wrap_filter_layer(kind, lookahead)?;
                 continue;
             }
 
@@ -149,5 +130,25 @@ impl FilterPipeline {
                 terminal_format,
             });
         }
+    }
+}
+
+fn wrap_filter_layer<R: Read + Send + 'static>(
+    kind: FilterKind,
+    lookahead: SlidingLookaheadReader<R>,
+) -> Result<Box<dyn Read + Send>, FilterPipelineError> {
+    match kind {
+        FilterKind::Uuencode => Ok(Box::new(UuencodeFilter::new(lookahead))),
+        FilterKind::Rpm => Ok(Box::new(RpmLeadFilter::new(lookahead))),
+        FilterKind::Compress => Ok(Box::new(CompressFilter::new(lookahead))),
+        FilterKind::Gzip => Ok(Box::new(GzipFilter::new(lookahead))),
+        FilterKind::Bzip2 => Ok(Box::new(Bzip2Filter::new(lookahead)?)),
+        FilterKind::Xz => Ok(Box::new(XzFilter::new(lookahead)?)),
+        FilterKind::Zstd => Ok(Box::new(ZstdFilter::new(lookahead)?)),
+        FilterKind::Snappy => Ok(Box::new(SnappyFilter::new(lookahead))),
+        FilterKind::Brotli => Ok(Box::new(BrotliFilter::new(lookahead))),
+        _ => Err(FilterPipelineError::UnsupportedFormat(
+            kind.as_str().to_string(),
+        )),
     }
 }

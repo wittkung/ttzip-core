@@ -47,15 +47,7 @@ mod tests {
         assemble_zip_archive(&compressed).expect("zip assemble")
     }
 
-    fn make_synthetic_epub() -> Vec<u8> {
-        let container_xml = br#"<?xml version="1.0"?>
-<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
-  <rootfiles>
-    <rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/>
-  </rootfiles>
-</container>"#;
-
-        let package_opf = br#"<?xml version="1.0" encoding="utf-8"?>
+    const SYNTHETIC_EPUB_PACKAGE_OPF: &[u8] = br#"<?xml version="1.0" encoding="utf-8"?>
 <package version="3.0" xmlns="http://www.idpf.org/2007/opf" unique-identifier="pub-id">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="pub-id">urn:uuid:12345-67890-abcdef</dc:identifier>
@@ -86,7 +78,7 @@ mod tests {
   </spine>
 </package>"#;
 
-        let toc_ncx = br#"<?xml version="1.0" encoding="UTF-8"?>
+    const SYNTHETIC_EPUB_TOC_NCX: &[u8] = br#"<?xml version="1.0" encoding="UTF-8"?>
 <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
   <navMap>
     <navPoint id="np-1" playOrder="1">
@@ -103,6 +95,14 @@ mod tests {
     </navPoint>
   </navMap>
 </ncx>"#;
+
+    fn make_synthetic_epub() -> Vec<u8> {
+        let container_xml = br#"<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>"#;
 
         let nav_xhtml = br#"<?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE html>
@@ -126,8 +126,8 @@ mod tests {
 
         make_test_zip(&[
             ("META-INF/container.xml", container_xml),
-            ("EPUB/package.opf", package_opf),
-            ("EPUB/toc.ncx", toc_ncx),
+            ("EPUB/package.opf", SYNTHETIC_EPUB_PACKAGE_OPF),
+            ("EPUB/toc.ncx", SYNTHETIC_EPUB_TOC_NCX),
             ("EPUB/nav.xhtml", nav_xhtml),
             ("EPUB/images/cover.jpg", dummy_cover_jpg),
             ("EPUB/styles/main.css", style_css),

@@ -193,6 +193,176 @@ impl Bcj2StreamArbitrator {
         self.total_out
     }
 
+    fn step_init_rc(&mut self, mut bytes_read: u8, rc: &mut &[u8]) -> Option<Bcj2ArbitratorStatus> {
+        while bytes_read < 5 {
+            let Some((&b, rest)) = rc.split_first() else {
+                self.state = Bcj2State::InitRc { bytes_read };
+                return Some(Bcj2ArbitratorStatus::NeedsMoreInput(Bcj2StreamId::StreamRc));
+            };
+            *rc = rest;
+            self.rc_state.code = (self.rc_state.code << 8) | (b as u32);
+            bytes_read += 1;
+        }
+        self.state = Bcj2State::FetchMain;
+        None
+    }
+
+    fn step_fetch_main(
+        &mut self,
+        main: &mut &[u8],
+        main_is_eof: bool,
+    ) -> Option<Bcj2ArbitratorStatus> {
+        let Some((&b, rest)) = main.split_first() else {
+            if main_is_eof {
+                self.state = Bcj2State::Finished;
+                return Some(Bcj2ArbitratorStatus::Finished);
+            }
+            return Some(Bcj2ArbitratorStatus::NeedsMoreInput(Bcj2StreamId::StreamMain));
+        };
+        *main = rest;
+
+        if b == 0xE8 || b == 0xE9 {
+            let ctx = if b == 0xE8 {
+                self.prev_byte as usize
+            } else if self.prev_byte == 0x0F {
+                257
+            } else {
+                256
+            };
+
+            let bound =
+                (self.rc_state.range >> NUM_BIT_MODEL_TOTAL_BITS) * (self.probs[ctx] as u32);
+
+            let bit = if self.rc_state.code < bound {
+                self.rc_state.range = bound;
+                self.probs[ctx] += (BIT_MODEL_TOTAL as u16 - self.probs[ctx]) >> NUM_MOVE_BITS;
+                0
+            } else {
+                self.rc_state.range -= bound;
+                self.rc_state.code -= bound;
+                self.probs[ctx] -= self.probs[ctx] >> NUM_MOVE_BITS;
+                1
+            };
+
+            self.state = Bcj2State::RenormalizeRc { opcode: b, bit };
+        } else {
+            self.out_buf[0] = b;
+            self.state = Bcj2State::FlushOutput {
+                out_len: 1,
+                out_pos: 0,
+            };
+        }
+        None
+    }
+
+    fn step_renormalize_rc(
+        &mut self,
+        opcode: u8,
+        bit: u8,
+        rc: &mut &[u8],
+    ) -> Option<Bcj2ArbitratorStatus> {
+        while self.rc_state.range < (1 << 24) {
+            let Some((&b, rest)) = rc.split_first() else {
+                return Some(Bcj2ArbitratorStatus::NeedsMoreInput(Bcj2StreamId::StreamRc));
+            };
+            *rc = rest;
+            self.rc_state.range <<= 8;
+            self.rc_state.code = (self.rc_state.code << 8) | (b as u32);
+        }
+
+        if bit == 0 {
+            self.out_buf[0] = opcode;
+            self.state = Bcj2State::FlushOutput {
+                out_len: 1,
+                out_pos: 0,
+            };
+        } else {
+            self.dest_buf = [0; 4];
+            self.state = Bcj2State::FetchDestination {
+                opcode,
+                bytes_read: 0,
+            };
+        }
+        None
+    }
+
+    fn pop_aux_byte(
+        stream: &mut &[u8],
+        stream_id: Bcj2StreamId,
+    ) -> Result<u8, Bcj2ArbitratorStatus> {
+        let Some((&b, rest)) = stream.split_first() else {
+            return Err(Bcj2ArbitratorStatus::NeedsMoreInput(stream_id));
+        };
+        *stream = rest;
+        Ok(b)
+    }
+
+    fn step_fetch_destination(
+        &mut self,
+        opcode: u8,
+        mut bytes_read: u8,
+        call: &mut &[u8],
+        jump: &mut &[u8],
+    ) -> Option<Bcj2ArbitratorStatus> {
+        while bytes_read < 4 {
+            let res = if opcode == 0xE8 {
+                Self::pop_aux_byte(call, Bcj2StreamId::StreamCall)
+            } else {
+                Self::pop_aux_byte(jump, Bcj2StreamId::StreamJump)
+            };
+            match res {
+                Ok(b) => {
+                    self.dest_buf[bytes_read as usize] = b;
+                    bytes_read += 1;
+                }
+                Err(status) => {
+                    self.state = Bcj2State::FetchDestination { opcode, bytes_read };
+                    return Some(status);
+                }
+            }
+        }
+
+        let dest = u32::from_be_bytes(self.dest_buf);
+        let next_ip = self.ip.wrapping_add(5);
+        let rel = (dest as u64).wrapping_sub(next_ip) as u32;
+        let rel_le = rel.to_le_bytes();
+
+        self.out_buf[0] = opcode;
+        self.out_buf[1..5].copy_from_slice(&rel_le);
+        self.state = Bcj2State::FlushOutput {
+            out_len: 5,
+            out_pos: 0,
+        };
+        None
+    }
+
+    fn step_flush_output(
+        &mut self,
+        out_len: u8,
+        mut out_pos: u8,
+        out: &mut &mut [u8],
+    ) -> Option<Bcj2ArbitratorStatus> {
+        while out_pos < out_len {
+            if out.is_empty() {
+                self.state = Bcj2State::FlushOutput { out_len, out_pos };
+                return Some(Bcj2ArbitratorStatus::NeedsMoreOutput);
+            }
+
+            let b = self.out_buf[out_pos as usize];
+            let (first, rest) = std::mem::take(out).split_at_mut(1);
+            first[0] = b;
+            *out = rest;
+
+            self.prev_byte = b;
+            self.ip = self.ip.wrapping_add(1);
+            self.total_out = self.total_out.wrapping_add(1);
+            out_pos += 1;
+        }
+
+        self.state = Bcj2State::FetchMain;
+        None
+    }
+
     /// Processes slices from the 4 input channels and writes decompressed bytes to `out`.
     ///
     /// Slices are advanced in-place as data is consumed or produced.
@@ -206,168 +376,22 @@ impl Bcj2StreamArbitrator {
         main_is_eof: bool,
     ) -> Result<Bcj2ArbitratorStatus, TTZipStatus> {
         loop {
-            match self.state {
-                Bcj2State::InitRc { mut bytes_read } => {
-                    while bytes_read < 5 {
-                        if rc.is_empty() {
-                            self.state = Bcj2State::InitRc { bytes_read };
-                            return Ok(Bcj2ArbitratorStatus::NeedsMoreInput(Bcj2StreamId::StreamRc));
-                        }
-                        let b = rc[0];
-                        *rc = &rc[1..];
-                        self.rc_state.code = (self.rc_state.code << 8) | (b as u32);
-                        bytes_read += 1;
-                    }
-                    self.state = Bcj2State::FetchMain;
-                }
-                Bcj2State::FetchMain => {
-                    if main.is_empty() {
-                        if main_is_eof {
-                            self.state = Bcj2State::Finished;
-                            return Ok(Bcj2ArbitratorStatus::Finished);
-                        }
-                        return Ok(Bcj2ArbitratorStatus::NeedsMoreInput(Bcj2StreamId::StreamMain));
-                    }
-                    let b = main[0];
-                    *main = &main[1..];
-
-                    if b == 0xE8 || b == 0xE9 {
-                        let ctx = if b == 0xE8 {
-                            self.prev_byte as usize
-                        } else if self.prev_byte == 0x0F {
-                            257
-                        } else {
-                            256
-                        };
-
-                        let bound = (self.rc_state.range >> NUM_BIT_MODEL_TOTAL_BITS)
-                            * (self.probs[ctx] as u32);
-
-                        let bit = if self.rc_state.code < bound {
-                            self.rc_state.range = bound;
-                            self.probs[ctx] +=
-                                (BIT_MODEL_TOTAL as u16 - self.probs[ctx]) >> NUM_MOVE_BITS;
-                            0
-                        } else {
-                            self.rc_state.range -= bound;
-                            self.rc_state.code -= bound;
-                            self.probs[ctx] -= self.probs[ctx] >> NUM_MOVE_BITS;
-                            1
-                        };
-
-                        self.state = Bcj2State::RenormalizeRc { opcode: b, bit };
-                    } else {
-                        self.out_buf[0] = b;
-                        self.state = Bcj2State::FlushOutput {
-                            out_len: 1,
-                            out_pos: 0,
-                        };
-                    }
-                }
+            let status_opt = match self.state {
+                Bcj2State::InitRc { bytes_read } => self.step_init_rc(bytes_read, rc),
+                Bcj2State::FetchMain => self.step_fetch_main(main, main_is_eof),
                 Bcj2State::RenormalizeRc { opcode, bit } => {
-                    while self.rc_state.range < (1 << 24) {
-                        if rc.is_empty() {
-                            return Ok(Bcj2ArbitratorStatus::NeedsMoreInput(Bcj2StreamId::StreamRc));
-                        }
-                        let b = rc[0];
-                        *rc = &rc[1..];
-                        self.rc_state.range <<= 8;
-                        self.rc_state.code = (self.rc_state.code << 8) | (b as u32);
-                    }
-
-                    if bit == 0 {
-                        self.out_buf[0] = opcode;
-                        self.state = Bcj2State::FlushOutput {
-                            out_len: 1,
-                            out_pos: 0,
-                        };
-                    } else {
-                        self.dest_buf = [0; 4];
-                        self.state = Bcj2State::FetchDestination {
-                            opcode,
-                            bytes_read: 0,
-                        };
-                    }
+                    self.step_renormalize_rc(opcode, bit, rc)
                 }
-                Bcj2State::FetchDestination {
-                    opcode,
-                    mut bytes_read,
-                } => {
-                    let stream_id = if opcode == 0xE8 {
-                        Bcj2StreamId::StreamCall
-                    } else {
-                        Bcj2StreamId::StreamJump
-                    };
-
-                    while bytes_read < 4 {
-                        let (is_empty, b) = if opcode == 0xE8 {
-                            if call.is_empty() {
-                                (true, 0)
-                            } else {
-                                let byte = (*call)[0];
-                                *call = &(*call)[1..];
-                                (false, byte)
-                            }
-                        } else if jump.is_empty() {
-                            (true, 0)
-                        } else {
-                            let byte = (*jump)[0];
-                            *jump = &(*jump)[1..];
-                            (false, byte)
-                        };
-
-                        if is_empty {
-                            self.state = Bcj2State::FetchDestination { opcode, bytes_read };
-                            return Ok(Bcj2ArbitratorStatus::NeedsMoreInput(stream_id));
-                        }
-
-                        self.dest_buf[bytes_read as usize] = b;
-                        bytes_read += 1;
-                    }
-
-                    let dest = u32::from_be_bytes(self.dest_buf);
-                    // 64-bit sign-extended displacement reconstruction: Target = PC + 5 + Offset
-                    let next_ip = self.ip.wrapping_add(5);
-                    let rel = (dest as u64).wrapping_sub(next_ip) as u32;
-                    let rel_le = rel.to_le_bytes();
-
-                    self.out_buf[0] = opcode;
-                    self.out_buf[1] = rel_le[0];
-                    self.out_buf[2] = rel_le[1];
-                    self.out_buf[3] = rel_le[2];
-                    self.out_buf[4] = rel_le[3];
-
-                    self.state = Bcj2State::FlushOutput {
-                        out_len: 5,
-                        out_pos: 0,
-                    };
+                Bcj2State::FetchDestination { opcode, bytes_read } => {
+                    self.step_fetch_destination(opcode, bytes_read, call, jump)
                 }
-                Bcj2State::FlushOutput {
-                    out_len,
-                    mut out_pos,
-                } => {
-                    while out_pos < out_len {
-                        if out.is_empty() {
-                            self.state = Bcj2State::FlushOutput { out_len, out_pos };
-                            return Ok(Bcj2ArbitratorStatus::NeedsMoreOutput);
-                        }
-
-                        let b = self.out_buf[out_pos as usize];
-                        let (first, rest) = std::mem::take(out).split_at_mut(1);
-                        first[0] = b;
-                        *out = rest;
-
-                        self.prev_byte = b;
-                        self.ip = self.ip.wrapping_add(1);
-                        self.total_out = self.total_out.wrapping_add(1);
-                        out_pos += 1;
-                    }
-
-                    self.state = Bcj2State::FetchMain;
+                Bcj2State::FlushOutput { out_len, out_pos } => {
+                    self.step_flush_output(out_len, out_pos, out)
                 }
-                Bcj2State::Finished => {
-                    return Ok(Bcj2ArbitratorStatus::Finished);
-                }
+                Bcj2State::Finished => Some(Bcj2ArbitratorStatus::Finished),
+            };
+            if let Some(status) = status_opt {
+                return Ok(status);
             }
         }
     }
@@ -475,10 +499,10 @@ impl<R0: Read, R1: Read, R2: Read, R3: Read> Bcj2StreamReader<R0, R1, R2, R3> {
             call_reader,
             jump_reader,
             rc_reader,
-            main_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
-            call_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
-            jump_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
-            rc_buf: vec![0u8; BCJ2_STREAM_BUFFER_SIZE].into_boxed_slice().try_into().unwrap(),
+            main_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
+            call_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
+            jump_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
+            rc_buf: Box::new([0u8; BCJ2_STREAM_BUFFER_SIZE]),
             main_pos: 0,
             main_len: 0,
             call_pos: 0,
@@ -566,27 +590,19 @@ impl<R0: Read, R1: Read, R2: Read, R3: Read> Read for Bcj2StreamReader<R0, R1, R
             let bytes_written = orig_len - out_slice.len();
 
             match res {
-                Ok(Bcj2ArbitratorStatus::Finished) => {
-                    return Ok(bytes_written);
-                }
-                Ok(Bcj2ArbitratorStatus::NeedsMoreOutput) => {
+                Ok(Bcj2ArbitratorStatus::Finished | Bcj2ArbitratorStatus::NeedsMoreOutput) => {
                     return Ok(bytes_written);
                 }
                 Ok(Bcj2ArbitratorStatus::NeedsMoreInput(stream_id)) => {
-                    let bytes_refilled = self.refill_stream(stream_id)?;
-                    if bytes_refilled == 0 {
+                    if self.refill_stream(stream_id)? == 0 {
                         if stream_id == Bcj2StreamId::StreamMain {
                             self.main_is_eof = true;
                             continue;
-                        } else {
-                            return Err(io::Error::new(
-                                io::ErrorKind::UnexpectedEof,
-                                format!(
-                                    "BCJ2 auxiliary stream {:?} reached unexpected EOF",
-                                    stream_id
-                                ),
-                            ));
                         }
+                        return Err(io::Error::new(
+                            io::ErrorKind::UnexpectedEof,
+                            format!("BCJ2 auxiliary stream {:?} reached unexpected EOF", stream_id),
+                        ));
                     }
                     continue;
                 }
@@ -635,32 +651,21 @@ mod tests {
     #[test]
     fn test_arbitrator_single_byte_steps() {
         let code = vec![
-            0x55, 0x48, 0x89, 0xE5,
-            0xE8, 0x20, 0x00, 0x00, 0x00,
-            0x90,
-            0xE9, 0x40, 0x00, 0x00, 0x00,
-            0x5D, 0xC3,
+            0x55, 0x48, 0x89, 0xE5, 0xE8, 0x20, 0x00, 0x00, 0x00, 0x90, 0xE9, 0x40, 0x00, 0x00,
+            0x00, 0x5D, 0xC3,
         ];
         let encoded = encode_bcj2(&code, 0x1000);
-
         let mut arb = Bcj2StreamArbitrator::new(0x1000);
-        let mut main_slice = &encoded.main[..];
-        let mut call_slice = &encoded.call[..];
-        let mut jump_slice = &encoded.jump[..];
-        let mut rc_slice = &encoded.rc[..];
-
+        let (mut main_s, mut call_s, mut jump_s, mut rc_s) = (
+            &encoded.main[..],
+            &encoded.call[..],
+            &encoded.jump[..],
+            &encoded.rc[..],
+        );
         let mut output = vec![0u8; code.len()];
         let mut out_slice = &mut output[..];
-
         let status = arb
-            .process(
-                &mut main_slice,
-                &mut call_slice,
-                &mut jump_slice,
-                &mut rc_slice,
-                &mut out_slice,
-                true,
-            )
+            .process(&mut main_s, &mut call_s, &mut jump_s, &mut rc_s, &mut out_slice, true)
             .expect("process should succeed");
 
         assert_eq!(status, Bcj2ArbitratorStatus::Finished);
@@ -671,13 +676,9 @@ mod tests {
     #[test]
     fn test_stream_reader_pipe() {
         let code = vec![
-            0x90, 0x90,
-            0xE8, 0x10, 0x00, 0x00, 0x00,
-            0xCC,
-            0xE9, 0x20, 0x00, 0x00, 0x00,
+            0x90, 0x90, 0xE8, 0x10, 0x00, 0x00, 0x00, 0xCC, 0xE9, 0x20, 0x00, 0x00, 0x00,
         ];
         let encoded = encode_bcj2(&code, 0x2000);
-
         let mut out = Vec::new();
         let bytes_copied = decode_bcj2_stream(
             &encoded.main[..],

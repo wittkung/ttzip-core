@@ -206,6 +206,44 @@ impl XzDefenseGuard {
         }
     }
 
+    fn validate_lzma2_filter(filter: &XzFilterConfig, is_last: bool) -> Result<(), TTZipStatus> {
+        if !is_last {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        if filter.properties.len() != 1 || filter.properties[0] > 39 {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        Ok(())
+    }
+
+    fn validate_delta_filter(
+        filter: &XzFilterConfig,
+        is_last: bool,
+        delta_count: &mut usize,
+    ) -> Result<(), TTZipStatus> {
+        if is_last {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        *delta_count += 1;
+        if *delta_count > 1 {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        if filter.properties.len() != 1 {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        Ok(())
+    }
+
+    fn validate_bcj_filter(filter: &XzFilterConfig, is_last: bool) -> Result<(), TTZipStatus> {
+        if is_last {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        if !filter.properties.is_empty() && filter.properties.len() != 4 {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
+        Ok(())
+    }
+
     /// Validates the structure and filter properties of a Block Header filter chain.
     ///
     /// # Rules (§3.1.2 & §5.3):
@@ -227,7 +265,6 @@ impl XzDefenseGuard {
 
         let last_filter = filters.last().ok_or(TTZipStatus::ErrSecurityViolation)?;
         if last_filter.filter_id != FILTER_ID_LZMA2 {
-            // Last filter in XZ block MUST be LZMA2
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
@@ -235,33 +272,9 @@ impl XzDefenseGuard {
 
         for (idx, filter) in filters.iter().enumerate() {
             let is_last = idx == filters.len() - 1;
-
             match filter.filter_id {
-                FILTER_ID_LZMA2 => {
-                    if !is_last {
-                        // LZMA2 is only permitted at terminal position
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    if filter.properties.len() != 1 {
-                        return Err(TTZipStatus::ErrCorruptHeader);
-                    }
-                    if filter.properties[0] > 39 {
-                        // Dictionary property > 39 is reserved and invalid
-                        return Err(TTZipStatus::ErrCorruptHeader);
-                    }
-                }
-                FILTER_ID_DELTA => {
-                    if is_last {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    delta_count += 1;
-                    if delta_count > 1 {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    if filter.properties.len() != 1 {
-                        return Err(TTZipStatus::ErrCorruptHeader);
-                    }
-                }
+                FILTER_ID_LZMA2 => Self::validate_lzma2_filter(filter, is_last)?,
+                FILTER_ID_DELTA => Self::validate_delta_filter(filter, is_last, &mut delta_count)?,
                 FILTER_ID_X86
                 | FILTER_ID_POWERPC
                 | FILTER_ID_IA64
@@ -269,14 +282,7 @@ impl XzDefenseGuard {
                 | FILTER_ID_ARMTHUMB
                 | FILTER_ID_SPARC
                 | FILTER_ID_ARM64
-                | FILTER_ID_RISCV => {
-                    if is_last {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    if !filter.properties.is_empty() && filter.properties.len() != 4 {
-                        return Err(TTZipStatus::ErrCorruptHeader);
-                    }
-                }
+                | FILTER_ID_RISCV => Self::validate_bcj_filter(filter, is_last)?,
                 _ => return Err(TTZipStatus::ErrUnsupportedFeature),
             }
         }

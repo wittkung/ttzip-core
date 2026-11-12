@@ -6,7 +6,10 @@
 //! Provides hardware-accelerated crypto/checksum routines, safe codec wrappers,
 //! unified archive streaming, ZIP/7z archive engines, and VFS processing.
 
-#![allow(non_camel_case_types)]
+#![allow(
+    non_camel_case_types,
+    reason = "C-ABI and UniFFI exported symbols preserve external naming conventions"
+)]
 
 uniffi::setup_scaffolding!();
 

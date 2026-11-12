@@ -3,22 +3,42 @@
 
 //! Zero-allocation slice transcoder and filename sanitizer powered by `encoding_rs`.
 
-use crate::charset::detector::detect_charset;
 use crate::types::TTZipStatus;
 use encoding_rs::Encoding;
 
-/// Maps standard charset label to `encoding_rs` Encoding instance.
+/// Maps standard charset label to `encoding_rs` Encoding instance without heap allocation.
 pub fn lookup_encoding(charset: &str) -> &'static Encoding {
-    let lower = charset.to_ascii_lowercase();
-    match lower.as_str() {
-        "utf-8" | "utf8" | "ascii" => encoding_rs::UTF_8,
-        "gb18030" | "gbk" | "gb2312" | "cp936" => encoding_rs::GB18030,
-        "shift_jis" | "shift-jis" | "sjis" | "cp932" | "windows-31j" => encoding_rs::SHIFT_JIS,
-        "big5" | "cp950" | "big5-hkscs" => encoding_rs::BIG5,
-        "euc-kr" | "cp949" | "korean" => encoding_rs::EUC_KR,
-        "windows-1252" | "cp1252" | "iso-8859-1" | "latin1" => encoding_rs::WINDOWS_1252,
-        other => Encoding::for_label(other.as_bytes()).unwrap_or(encoding_rs::UTF_8),
+    const ALIASES: &[(&str, &Encoding)] = &[
+        ("utf-8", encoding_rs::UTF_8),
+        ("utf8", encoding_rs::UTF_8),
+        ("ascii", encoding_rs::UTF_8),
+        ("gb18030", encoding_rs::GB18030),
+        ("gbk", encoding_rs::GB18030),
+        ("gb2312", encoding_rs::GB18030),
+        ("cp936", encoding_rs::GB18030),
+        ("shift_jis", encoding_rs::SHIFT_JIS),
+        ("shift-jis", encoding_rs::SHIFT_JIS),
+        ("sjis", encoding_rs::SHIFT_JIS),
+        ("cp932", encoding_rs::SHIFT_JIS),
+        ("windows-31j", encoding_rs::SHIFT_JIS),
+        ("big5", encoding_rs::BIG5),
+        ("cp950", encoding_rs::BIG5),
+        ("big5-hkscs", encoding_rs::BIG5),
+        ("euc-kr", encoding_rs::EUC_KR),
+        ("cp949", encoding_rs::EUC_KR),
+        ("korean", encoding_rs::EUC_KR),
+        ("windows-1252", encoding_rs::WINDOWS_1252),
+        ("cp1252", encoding_rs::WINDOWS_1252),
+        ("iso-8859-1", encoding_rs::WINDOWS_1252),
+        ("latin1", encoding_rs::WINDOWS_1252),
+    ];
+    let trimmed = charset.trim();
+    for &(alias, enc) in ALIASES {
+        if trimmed.eq_ignore_ascii_case(alias) {
+            return enc;
+        }
     }
+    Encoding::for_label(trimmed.as_bytes()).unwrap_or(encoding_rs::UTF_8)
 }
 
 /// Transcodes raw byte sequence to UTF-8 String given character set encoding name.
@@ -53,9 +73,9 @@ pub fn sanitize_filename_to_slice(data: &[u8], out_buf: &mut [u8]) -> Result<usi
         return Ok(data.len());
     }
 
-    // 2. Sniff charset and transcode
-    let detected = detect_charset(data).unwrap_or_else(|| "UTF-8".to_string());
-    let encoding = lookup_encoding(&detected);
+    // 2. Sniff charset and transcode without intermediate String allocation
+    let (detected, _) = crate::charset::detect_charset_with_confidence(data);
+    let encoding = lookup_encoding(detected);
 
     let mut decoder = encoding.new_decoder();
     let max_needed = decoder
@@ -92,13 +112,8 @@ pub fn sanitize_filename(data: &[u8]) -> String {
     if data.is_empty() {
         return String::new();
     }
-    // SIMD ASCII Fast-Path
-    if data.is_ascii() {
-        // SAFETY: Pure ASCII bytes are guaranteed valid UTF-8.
-        return unsafe { String::from_utf8_unchecked(data.to_vec()) };
-    }
     if let Ok(s) = std::str::from_utf8(data) {
-        return s.to_string();
+        return s.to_owned();
     }
     let (detected, conf) = crate::charset::detect_charset_with_confidence(data);
     if conf >= 0.20 && detected != "UTF-8" {
@@ -108,4 +123,18 @@ pub fn sanitize_filename(data: &[u8]) -> String {
     }
     // Fallback: decode via CP437 for DOS legacy extended ASCII strings
     crate::zip::cp437::decode_cp437(data).into_owned()
+}
+
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    #[test]
+    fn test_lookup_encoding_and_sanitize_ascii_utf8_fast_path() {
+        assert_eq!(lookup_encoding("UTF-8"), encoding_rs::UTF_8);
+        assert_eq!(lookup_encoding("gbk"), encoding_rs::GB18030);
+        assert_eq!(lookup_encoding("SHIFT-JIS"), encoding_rs::SHIFT_JIS);
+        assert_eq!(sanitize_filename(b"pure_ascii_entry.txt"), "pure_ascii_entry.txt");
+        assert_eq!(sanitize_filename("中文_utf8.txt".as_bytes()), "中文_utf8.txt");
+    }
 }

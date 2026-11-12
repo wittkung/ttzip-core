@@ -344,6 +344,7 @@ mod tests {
 
     #[test]
     fn test_7z_official_vectors() {
+        let _guard = crate::sevenz_kdf::GLOBAL_CACHE_TEST_LOCK.lock();
         SevenZKeyCache::global().clear();
 
         // 7-Zip Standard KDF Test Vectors:
@@ -397,6 +398,7 @@ mod tests {
 
     #[test]
     fn test_524288_cycles_performance_benchmark() {
+        let _guard = crate::sevenz_kdf::GLOBAL_CACHE_TEST_LOCK.lock();
         let password = "SuperSecretMasterKey2026!#$";
         let salt = [0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C];
         let num_cycles_power = 19; // 524,288 cycles

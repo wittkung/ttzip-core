@@ -105,7 +105,8 @@ pub fn safe_copy_bytes(src: &[u8], dst: &mut [u8]) -> Result<usize> {
     Ok(to_copy)
 }
 
-#[cfg(all(unix, test))]
+#[cfg(test)]
+#[cfg(unix)]
 mod tests {
     use super::*;
 

@@ -187,27 +187,7 @@ impl BumpWorkspace {
 
         let target_slice = unsafe {
             let slice_ptr = aligned_ptr as *mut T;
-            let type_id = std::any::TypeId::of::<T>();
-            if type_id == std::any::TypeId::of::<u8>()
-                || type_id == std::any::TypeId::of::<u16>()
-                || type_id == std::any::TypeId::of::<u32>()
-                || type_id == std::any::TypeId::of::<u64>()
-                || type_id == std::any::TypeId::of::<usize>()
-                || type_id == std::any::TypeId::of::<i8>()
-                || type_id == std::any::TypeId::of::<i16>()
-                || type_id == std::any::TypeId::of::<i32>()
-                || type_id == std::any::TypeId::of::<i64>()
-                || type_id == std::any::TypeId::of::<isize>()
-                || type_id == std::any::TypeId::of::<bool>()
-                || type_id == std::any::TypeId::of::<f32>()
-                || type_id == std::any::TypeId::of::<f64>()
-            {
-                std::ptr::write_bytes(slice_ptr as *mut u8, 0, total_bytes);
-            } else {
-                for i in 0..count {
-                    std::ptr::write(slice_ptr.add(i), T::default());
-                }
-            }
+            initialize_allocated_slice(slice_ptr, count, total_bytes);
             std::slice::from_raw_parts_mut(slice_ptr, count)
         };
 
@@ -358,6 +338,38 @@ impl Drop for BumpWorkspace {
     fn drop(&mut self) {
         unsafe {
             dealloc(self.ptr.as_ptr(), self.layout);
+        }
+    }
+}
+
+unsafe fn initialize_allocated_slice<T: Default + 'static>(
+    slice_ptr: *mut T,
+    count: usize,
+    total_bytes: usize,
+) {
+    let type_id = std::any::TypeId::of::<T>();
+    let zeroable_types = [
+        std::any::TypeId::of::<u8>(),
+        std::any::TypeId::of::<u16>(),
+        std::any::TypeId::of::<u32>(),
+        std::any::TypeId::of::<u64>(),
+        std::any::TypeId::of::<usize>(),
+        std::any::TypeId::of::<i8>(),
+        std::any::TypeId::of::<i16>(),
+        std::any::TypeId::of::<i32>(),
+        std::any::TypeId::of::<i64>(),
+        std::any::TypeId::of::<isize>(),
+        std::any::TypeId::of::<bool>(),
+        std::any::TypeId::of::<f32>(),
+        std::any::TypeId::of::<f64>(),
+    ];
+    unsafe {
+        if zeroable_types.contains(&type_id) {
+            std::ptr::write_bytes(slice_ptr as *mut u8, 0, total_bytes);
+        } else {
+            for i in 0..count {
+                std::ptr::write(slice_ptr.add(i), T::default());
+            }
         }
     }
 }

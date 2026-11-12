@@ -48,78 +48,20 @@ public final class TTZipVfsSchemeHandler: NSObject, WKURLSchemeHandler {
 
         let taskId = ObjectIdentifier(urlSchemeTask)
         let requestUri = url.absoluteString
-
         let rangeHeader = urlSchemeTask.request.value(forHTTPHeaderField: "Range")
         let parsedRange = parseRangeHeader(rangeHeader)
 
         let executionTask = Task { @MainActor [weak self, provider] in
-            let fetchResult = await Task.detached(priority: .userInitiated) { () -> Result<(HTTPURLResponse, Data), Error> in
-                do {
-                    if let (data, fullSize, mimeType) = try await provider.loadResourceRange(uri: requestUri, byteRange: parsedRange) {
-                        let isPartial = parsedRange != nil
-                        let statusCode = isPartial ? 206 : 200
-
-                        var headers: [String: String] = [
-                            "Content-Type": mimeType,
-                            "Content-Length": "\(data.count)",
-                            "Accept-Ranges": "bytes",
-                            "Access-Control-Allow-Origin": "*",
-                            "Cache-Control": "max-age=3600, immutable"
-                        ]
-
-                        if let range = parsedRange {
-                            let rangeEnd = min(Int64(range.upperBound), fullSize - 1)
-                            headers["Content-Range"] = "bytes \(range.lowerBound)-\(rangeEnd)/\(fullSize)"
-                        }
-
-                        guard let response = HTTPURLResponse(
-                            url: url,
-                            statusCode: statusCode,
-                            httpVersion: "HTTP/1.1",
-                            headerFields: headers
-                        ) else {
-                            return .failure(URLError(.cannotParseResponse))
-                        }
-
-                        return .success((response, data))
-                    } else if let (data, mimeType) = try await provider.loadResource(uri: requestUri) {
-                        let headers: [String: String] = [
-                            "Content-Type": mimeType,
-                            "Content-Length": "\(data.count)",
-                            "Accept-Ranges": "bytes",
-                            "Access-Control-Allow-Origin": "*",
-                            "Cache-Control": "max-age=3600, immutable"
-                        ]
-
-                        guard let response = HTTPURLResponse(
-                            url: url,
-                            statusCode: 200,
-                            httpVersion: "HTTP/1.1",
-                            headerFields: headers
-                        ) else {
-                            return .failure(URLError(.cannotParseResponse))
-                        }
-
-                        return .success((response, data))
-                    } else {
-                        if let notFoundResponse = HTTPURLResponse(
-                            url: url,
-                            statusCode: 404,
-                            httpVersion: "HTTP/1.1",
-                            headerFields: ["Content-Type": "text/plain; charset=utf-8"]
-                        ) {
-                            return .success((notFoundResponse, Data("404 VFS Resource Not Found".utf8)))
-                        } else {
-                            return .failure(URLError(.fileDoesNotExist))
-                        }
-                    }
-                } catch {
-                    return .failure(error)
-                }
+            let fetchResult = await Task.detached(priority: .userInitiated) {
+                await Self.fetchVfsResource(
+                    provider: provider,
+                    url: url,
+                    requestUri: requestUri,
+                    parsedRange: parsedRange
+                )
             }.value
 
             guard let self else { return }
-
             guard !self.stoppedTasks.contains(taskId), self.activeTasks[taskId] != nil else {
                 self.stoppedTasks.remove(taskId)
                 return
@@ -137,6 +79,78 @@ public final class TTZipVfsSchemeHandler: NSObject, WKURLSchemeHandler {
         }
 
         activeTasks[taskId] = executionTask
+    }
+
+    private nonisolated static func fetchVfsResource(
+        provider: TTZipVfsResourceProvider,
+        url: URL,
+        requestUri: String,
+        parsedRange: ClosedRange<Int>?
+    ) async -> Result<(HTTPURLResponse, Data), Error> {
+        do {
+            if let (data, fullSize, mimeType) = try await provider.loadResourceRange(uri: requestUri, byteRange: parsedRange) {
+                let statusCode = parsedRange != nil ? 206 : 200
+                let contentRange = parsedRange.map { range in
+                    let rangeEnd = min(Int64(range.upperBound), fullSize - 1)
+                    return "bytes \(range.lowerBound)-\(rangeEnd)/\(fullSize)"
+                }
+                return buildStreamingResponse(
+                    url: url,
+                    statusCode: statusCode,
+                    data: data,
+                    mimeType: mimeType,
+                    contentRange: contentRange
+                )
+            }
+            if let (data, mimeType) = try await provider.loadResource(uri: requestUri) {
+                return buildStreamingResponse(
+                    url: url,
+                    statusCode: 200,
+                    data: data,
+                    mimeType: mimeType,
+                    contentRange: nil
+                )
+            }
+            guard let notFoundResponse = HTTPURLResponse(
+                url: url,
+                statusCode: 404,
+                httpVersion: "HTTP/1.1",
+                headerFields: ["Content-Type": "text/plain; charset=utf-8"]
+            ) else {
+                return .failure(URLError(.fileDoesNotExist))
+            }
+            return .success((notFoundResponse, Data("404 VFS Resource Not Found".utf8)))
+        } catch {
+            return .failure(error)
+        }
+    }
+
+    private nonisolated static func buildStreamingResponse(
+        url: URL,
+        statusCode: Int,
+        data: Data,
+        mimeType: String,
+        contentRange: String?
+    ) -> Result<(HTTPURLResponse, Data), Error> {
+        var headers: [String: String] = [
+            "Content-Type": mimeType,
+            "Content-Length": "\(data.count)",
+            "Accept-Ranges": "bytes",
+            "Access-Control-Allow-Origin": "*",
+            "Cache-Control": "max-age=3600, immutable"
+        ]
+        if let contentRange {
+            headers["Content-Range"] = contentRange
+        }
+        guard let response = HTTPURLResponse(
+            url: url,
+            statusCode: statusCode,
+            httpVersion: "HTTP/1.1",
+            headerFields: headers
+        ) else {
+            return .failure(URLError(.cannotParseResponse))
+        }
+        return .success((response, data))
     }
 
     public func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {

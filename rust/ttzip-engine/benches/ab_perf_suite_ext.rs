@@ -83,6 +83,49 @@ where
     println!();
 }
 
+fn run_zstd_ldm_dedup_bench<F, T>(bench_min: &mut F, format_throughput: &T)
+where
+    F: FnMut(&mut dyn FnMut()) -> Duration,
+    T: Fn(usize, Duration) -> String,
+{
+    let zstd_std = ZstdBenchmarkDriver;
+    let zstd_ldm = ZstdLdmBenchmarkDriver;
+    let sample_128k = BenchmarkCorpusGenerator::generate(BenchmarkCorpusType::MachOBinary, 128 * 1024);
+    let mut ldm_corpus = Vec::with_capacity(10 * 1024 * 1024);
+    while ldm_corpus.len() + sample_128k.len() <= 10 * 1024 * 1024 {
+        ldm_corpus.extend_from_slice(&sample_128k);
+    }
+
+    let mut std_ldm_size = 0;
+    let mut std_ldm_fn = || {
+        let c = zstd_std.bench_compress(&ldm_corpus, 3).unwrap();
+        std_ldm_size = c.len();
+    };
+    let std_ldm_dur = bench_min(&mut std_ldm_fn);
+
+    let mut ldm_size = 0;
+    let mut ldm_fn = || {
+        let c = zstd_ldm.bench_compress(&ldm_corpus, 3).unwrap();
+        ldm_size = c.len();
+    };
+    let ldm_dur = bench_min(&mut ldm_fn);
+
+    println!(
+        "{:<32} | {:<16} | {:<18} | {:<12}",
+        "10MB Repeating Mach-O (No LDM)",
+        "Standard Zstd L3",
+        format_throughput(ldm_corpus.len(), std_ldm_dur),
+        format!("{} B", std_ldm_size)
+    );
+    println!(
+        "{:<32} | {:<16} | {:<18} | \x1b[32m{} B\x1b[0m",
+        "10MB Repeating Mach-O (LDM)",
+        "Zstd LDM (64MB)",
+        format_throughput(ldm_corpus.len(), ldm_dur),
+        ldm_size
+    );
+}
+
 pub fn run_ab_zstd_advanced_and_dict_benchmarks<F, T>(mut bench_min: F, format_throughput: T)
 where
     F: FnMut(&mut dyn FnMut()) -> Duration,
@@ -112,21 +155,19 @@ where
 
     let mut std_total_size = 0;
     let mut std_fn = || {
-        std_total_size = 0;
-        for f in &small_files {
-            let c = zstd_std.bench_compress(f, 3).unwrap();
-            std_total_size += c.len();
-        }
+        std_total_size = small_files
+            .iter()
+            .map(|f| zstd_std.bench_compress(f, 3).unwrap().len())
+            .sum();
     };
     let std_dur = bench_min(&mut std_fn);
 
     let mut dict_total_size = 0;
     let mut dict_fn = || {
-        dict_total_size = 0;
-        for f in &small_files {
-            let c = zstd_dict.bench_compress(f, 3).unwrap();
-            dict_total_size += c.len();
-        }
+        dict_total_size = small_files
+            .iter()
+            .map(|f| zstd_dict.bench_compress(f, 3).unwrap().len())
+            .sum();
     };
     let dict_dur = bench_min(&mut dict_fn);
 
@@ -134,43 +175,22 @@ where
 
     println!(
         "{:<32} | {:<16} | {:<18} | {:<12}",
-        "1,000x 1KB JSON (No Dict)", "Standard Zstd L3", format_throughput(total_small_bytes, std_dur), format!("{} B", std_total_size)
+        "1,000x 1KB JSON (No Dict)",
+        "Standard Zstd L3",
+        format_throughput(total_small_bytes, std_dur),
+        format!("{} B", std_total_size)
     );
     println!(
         "{:<32} | {:<16} | {:<18} | \x1b[32m{} B\x1b[0m (\x1b[32m{:.2}x speed\x1b[0m)",
-        "1,000x 1KB JSON (112KB Dict)", "Dict Zstd L3", format_throughput(total_small_bytes, dict_dur), dict_total_size, dict_speedup
+        "1,000x 1KB JSON (112KB Dict)",
+        "Dict Zstd L3",
+        format_throughput(total_small_bytes, dict_dur),
+        dict_total_size,
+        dict_speedup
     );
     println!("---------------------------------+------------------+--------------------+-------------");
 
-    let zstd_ldm = ZstdLdmBenchmarkDriver;
-    let sample_128k = BenchmarkCorpusGenerator::generate(BenchmarkCorpusType::MachOBinary, 128 * 1024);
-    let mut ldm_corpus = Vec::with_capacity(10 * 1024 * 1024);
-    while ldm_corpus.len() + sample_128k.len() <= 10 * 1024 * 1024 {
-        ldm_corpus.extend_from_slice(&sample_128k);
-    }
-
-    let mut std_ldm_size = 0;
-    let mut std_ldm_fn = || {
-        let c = zstd_std.bench_compress(&ldm_corpus, 3).unwrap();
-        std_ldm_size = c.len();
-    };
-    let std_ldm_dur = bench_min(&mut std_ldm_fn);
-
-    let mut ldm_size = 0;
-    let mut ldm_fn = || {
-        let c = zstd_ldm.bench_compress(&ldm_corpus, 3).unwrap();
-        ldm_size = c.len();
-    };
-    let ldm_dur = bench_min(&mut ldm_fn);
-
-    println!(
-        "{:<32} | {:<16} | {:<18} | {:<12}",
-        "10MB Repeating Mach-O (No LDM)", "Standard Zstd L3", format_throughput(ldm_corpus.len(), std_ldm_dur), format!("{} B", std_ldm_size)
-    );
-    println!(
-        "{:<32} | {:<16} | {:<18} | \x1b[32m{} B\x1b[0m",
-        "10MB Repeating Mach-O (LDM)", "Zstd LDM (64MB)", format_throughput(ldm_corpus.len(), ldm_dur), ldm_size
-    );
+    run_zstd_ldm_dedup_bench(&mut bench_min, &format_throughput);
     println!();
 }
 

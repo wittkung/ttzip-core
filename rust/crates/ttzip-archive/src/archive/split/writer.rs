@@ -241,12 +241,12 @@ impl SplitVolumeWriter {
     }
 
     fn finalize_pkzip_spanned_last_volume(&mut self) -> io::Result<()> {
-        if self.naming_scheme != VolumeNamingScheme::PkzipSpanned
-            || self.generated_volume_paths.is_empty()
-        {
+        if self.naming_scheme != VolumeNamingScheme::PkzipSpanned {
             return Ok(());
         }
-        let last_path = self.generated_volume_paths.pop().unwrap();
+        let Some(last_path) = self.generated_volume_paths.pop() else {
+            return Ok(());
+        };
         let final_zip_path = self.base_path.clone();
         if last_path != final_zip_path {
             if let Err(e) = fs::rename(&last_path, &final_zip_path) {

@@ -472,47 +472,27 @@ public final class ArchiveWriter: ArchiveWriting, Sendable {
 
     // MARK: - Format Mappings
 
+    private static let uniffiFormatMap: [ArchiveCompressionFormat: TtZipArchiveFormat] = [
+        .sevenZip: .sevenZip, .zip: .zip, .tar: .tar,
+        .tarGz: .tarGz, .gz: .gzip, .tarBz2: .tarBz2, .bz2: .bzip2,
+        .tarXz: .tarXz, .xz: .xz, .tarZst: .tarZstd, .zst: .zstd,
+        .tarLz4: .tarLz4, .lz4: .lz4, .tarBrotli: .tarBrotli, .brotli: .brotli,
+        .tarLzip: .tarLzip, .lzip: .lzip, .tarLrzip: .tarLrzip, .lrzip: .lrzip,
+        .dmg: .dmg, .iso: .iso, .cab: .cab, .wim: .wim, .aar: .aar,
+        .cpio: .cpio, .ar: .ar, .deb: .deb, .rpm: .rpm, .xar: .xar,
+        .snappy: .snappy, .lzfse: .lzfse, .squashfs: .squashfs,
+        .lzh: .lzh, .rar: .rar
+    ]
+
     internal static func mapUniFFIFormat(_ format: ArchiveCompressionFormat) -> TtZipArchiveFormat {
-        switch format {
-        case .sevenZip: return .sevenZip
-        case .zip: return .zip
-        case .tar: return .tar
-        case .tarGz: return .tarGz
-        case .gz: return .gzip
-        case .tarBz2: return .tarBz2
-        case .bz2: return .bzip2
-        case .tarXz: return .tarXz
-        case .xz: return .xz
-        case .tarZst: return .tarZstd
-        case .zst: return .zstd
-        case .tarLz4: return .tarLz4
-        case .lz4: return .lz4
-        case .tarBrotli: return .tarBrotli
-        case .brotli: return .brotli
-        case .tarLzip: return .tarLzip
-        case .lzip: return .lzip
-        case .tarLrzip: return .tarLrzip
-        case .lrzip: return .lrzip
-        case .dmg: return .dmg
-        case .iso: return .iso
-        case .cab: return .cab
-        case .wim: return .wim
-        case .aar: return .aar
-        case .cpio: return .cpio
-        case .ar: return .ar
-        case .deb: return .deb
-        case .rpm: return .rpm
-        case .xar: return .xar
-        case .snappy: return .snappy
-        case .lzfse: return .lzfse
-        case .squashfs: return .squashfs
-        case .lzh: return .lzh
-        case .rar: return .rar
-        }
+        uniffiFormatMap[format] ?? .zip
     }
 
     internal static func mapUniFFILevel(_ level: ArchiveCompressionLevel) -> Int32 {
-        Int32(max(0, min(22, level.rawValue)))
+        if level.rawValue < 0 {
+            return 1
+        }
+        return Int32(max(0, min(22, level.rawValue)))
     }
 }
 
@@ -542,10 +522,61 @@ private final class ProgressRelay: ProgressHandler, @unchecked Sendable {
 }
 
 extension ArchiveWriter {
+    internal static let inlineTuningTag: Int32 = 1 << 30
+
+    internal static func encodeInlineCreateConfig(
+        _ config: UniFfiCreateArchiveConfig,
+        advancedOptions: ArchiveAdvancedOptions
+    ) -> UniFfiCreateArchiveConfig {
+        let baseLevel = max(0, min(22, config.level)) & 0x3F
+        let zstdLevel = Int32(max(0, min(22, advancedOptions.zstdLevel))) & 0x3F
+        let recoveryPct = Int32(max(0, min(255, advancedOptions.recoveryRecordRedundancyPercent))) & 0xFF
+        let solidBit: Int32 = advancedOptions.enableSolidArchive ? 1 : 0
+        let useZipCrypto =
+            advancedOptions.zipEncryptionMethod.caseInsensitiveCompare("ZipCrypto") == .orderedSame
+        let zipCryptoBit: Int32 = useZipCrypto ? 1 : 0
+        let ldmBit: Int32 = advancedOptions.zstdEnableLDM ? 1 : 0
+
+        let packedLevel =
+            inlineTuningTag
+            | baseLevel
+            | (zstdLevel << 6)
+            | (recoveryPct << 12)
+            | (solidBit << 20)
+            | (zipCryptoBit << 21)
+            | (ldmBit << 22)
+
+        let cpuThreads = min(config.threadBudget, 0xFFFF)
+        let dictMB = min(UInt32(max(0, advancedOptions.dictionarySizeMB)), 0xFFFF)
+        let packedThreadBudget = cpuThreads | (dictMB << 16)
+
+        var encoded = config
+        encoded.level = packedLevel
+        encoded.threadBudget = packedThreadBudget
+        return encoded
+    }
+
+    private static func validateRecoveryRecordRedundancy(
+        targetFmt: ArchiveCompressionFormat,
+        splitVolumeSizeBytes: Int64?,
+        advancedOptions: ArchiveAdvancedOptions
+    ) throws {
+        let recPct = advancedOptions.recoveryRecordRedundancyPercent
+        if recPct < 0 || recPct > 50 {
+            throw ArchiveError.invalidArgument(reason: "Recovery record redundancy must be between 0% and 50%.")
+        }
+        if recPct > 0 && (!targetFmt.supportsRecoveryRecord || (splitVolumeSizeBytes ?? 0) > 0) {
+            throw ArchiveError.unsupportedOperation(
+                reason: "Recovery records are only supported for single-volume ZIP, 7Z, and TAR archives."
+            )
+        }
+    }
+
     private static func validateAndBuildExtraOptions(
         outputPath: String,
         targetFmt: ArchiveCompressionFormat,
         password: String?,
+        splitVolumeSizeBytes: Int64?,
         advancedOptions: ArchiveAdvancedOptions
     ) throws -> UniFfiCreateArchiveExtraOptions {
         if let pwd = password, pwd.isEmpty {
@@ -561,6 +592,11 @@ extension ArchiveWriter {
                 method: "7z-HeaderEncryption"
             )
         }
+        try validateRecoveryRecordRedundancy(
+            targetFmt: targetFmt,
+            splitVolumeSizeBytes: splitVolumeSizeBytes,
+            advancedOptions: advancedOptions
+        )
         let encryptFileNames: Bool? = advancedOptions.encryptFileNames
             ? true
             : ((targetFmt == .sevenZip && hasNonEmptyPassword) ? false : nil)
@@ -586,31 +622,24 @@ extension ArchiveWriter {
             outputPath: outputPath,
             targetFmt: targetFmt,
             password: password,
+            splitVolumeSizeBytes: splitVolumeSizeBytes,
             advancedOptions: advancedOptions
         )
-
-        let uniffiFmt = ArchiveWriter.mapUniFFIFormat(targetFmt)
-        let uniffiLvl = ArchiveWriter.mapUniFFILevel(level)
         let splitBytes: UInt64? = splitVolumeSizeBytes.flatMap { $0 > 0 ? UInt64($0) : nil }
-        let threadBudget = UInt32(max(0, advancedOptions.cpuThreads))
-
         let config = UniFfiCreateArchiveConfig(
             sourcePaths: inputPaths,
             outputPath: outputPath,
-            format: uniffiFmt,
-            level: uniffiLvl,
+            format: ArchiveWriter.mapUniFFIFormat(targetFmt),
+            level: ArchiveWriter.mapUniFFILevel(level),
             password: password,
             splitVolumeSizeBytes: splitBytes,
             excludePatterns: options.excludePatterns,
             includePatterns: options.includePatterns,
             excludeVcs: options.excludeVCS,
             noMacMetadata: options.noMacMetadata,
-            threadBudget: threadBudget
+            threadBudget: UInt32(max(0, advancedOptions.cpuThreads))
         )
-
-        let relay = progressHandler.map {
-            ProgressRelay(startTime: startTime, handler: $0)
-        }
+        let relay = progressHandler.map { ProgressRelay(startTime: startTime, handler: $0) }
 
         do {
             lastCompressionReportStorage.withLock { $0 = nil }
@@ -618,23 +647,23 @@ extension ArchiveWriter {
             if let override = self._createArchiveExecutorOverride {
                 report = try override(config, extraOptions, relay, token)
             } else {
+                let encodedConfig = Self.encodeInlineCreateConfig(
+                    config,
+                    advancedOptions: advancedOptions
+                )
                 report = try createArchiveAdvancedWithOptions(
-                    config: config,
+                    config: encodedConfig,
                     extraOptions: extraOptions,
                     progress: relay,
                     token: token
                 )
             }
             lastCompressionReportStorage.withLock { $0 = report }
-            if let postCommitHook = self._postFfiCommitBeforeDeliveryHook {
-                postCommitHook()
-            }
-
+            self._postFfiCommitBeforeDeliveryHook?()
             let duration = max(0.001, Date().timeIntervalSince(startTime))
             let throughput = report.throughputMbs > 0
                 ? report.throughputMbs
                 : ((Double(report.uncompressedBytes) / (1024 * 1024)) / duration)
-
             progressHandler?(ArchiveProgress(
                 state: .completed,
                 bytesProcessed: Int64(report.uncompressedBytes),
@@ -642,7 +671,6 @@ extension ArchiveWriter {
                 currentFileName: "Archive created",
                 throughputMBs: throughput
             ))
-
             return report
         } catch {
             throw ArchiveError.from(error: error)

@@ -186,54 +186,10 @@ pub fn parse_pax_records_from_bytes(data: &[u8]) -> Vec<PaxRecord> {
     let mut records = Vec::new();
     let mut cursor = 0;
 
-    while cursor < data.len() {
-        let remaining = &data[cursor..];
-        // If remaining bytes are purely NUL padding, terminate parsing
-        if remaining.iter().all(|&b| b == 0) {
-            break;
+    while let Some(maybe_kv) = step_raw_pax_record(data, &mut cursor) {
+        if let Some((key, val_bytes)) = maybe_kv {
+            records.push(PaxRecord::new(key.to_string(), val_bytes.to_vec()));
         }
-
-        let space_pos = match remaining.iter().position(|&b| b == b' ') {
-            Some(p) => p,
-            None => break,
-        };
-
-        let len_str = match std::str::from_utf8(&remaining[..space_pos]) {
-            Ok(s) => s,
-            Err(_) => break,
-        };
-
-        let record_len: usize = match len_str.parse() {
-            Ok(n) if n > space_pos => n,
-            _ => break,
-        };
-
-        if cursor + record_len > data.len() {
-            break;
-        }
-
-        let record_bytes = &data[cursor..cursor + record_len];
-        cursor += record_len;
-
-        let kv_bytes = if record_bytes.ends_with(b"\n") {
-            &record_bytes[space_pos + 1..record_bytes.len() - 1]
-        } else {
-            &record_bytes[space_pos + 1..]
-        };
-
-        let eq_pos = match kv_bytes.iter().position(|&b| b == b'=') {
-            Some(p) => p,
-            None => continue,
-        };
-
-        let key = match std::str::from_utf8(&kv_bytes[..eq_pos]) {
-            Ok(k) => k.to_string(),
-            Err(_) => continue,
-        };
-
-        let value_bytes = kv_bytes[eq_pos + 1..].to_vec();
-
-        records.push(PaxRecord::new(key, value_bytes));
     }
 
     records
@@ -244,64 +200,58 @@ pub fn extract_xattrs_from_pax_bytes(data: &[u8]) -> Vec<TarXattr> {
     let mut xattrs = Vec::new();
     let mut cursor = 0;
 
-    while cursor < data.len() {
-        let remaining = &data[cursor..];
-        if remaining.iter().all(|&b| b == 0) {
-            break;
-        }
-
-        let space_pos = match remaining.iter().position(|&b| b == b' ') {
-            Some(p) => p,
-            None => break,
-        };
-
-        let len_str = match std::str::from_utf8(&remaining[..space_pos]) {
-            Ok(s) => s,
-            Err(_) => break,
-        };
-
-        let record_len: usize = match len_str.parse() {
-            Ok(n) if n > space_pos => n,
-            _ => break,
-        };
-
-        if cursor + record_len > data.len() {
-            break;
-        }
-
-        let record_bytes = &data[cursor..cursor + record_len];
-        cursor += record_len;
-
-        let kv_bytes = if record_bytes.ends_with(b"\n") {
-            &record_bytes[space_pos + 1..record_bytes.len() - 1]
-        } else {
-            &record_bytes[space_pos + 1..]
-        };
-
-        let eq_pos = match kv_bytes.iter().position(|&b| b == b'=') {
-            Some(p) => p,
-            None => continue,
-        };
-
-        let key = match std::str::from_utf8(&kv_bytes[..eq_pos]) {
-            Ok(k) => k,
-            Err(_) => continue,
-        };
-
-        let val_bytes = &kv_bytes[eq_pos + 1..];
-
-        if let Some(attr_name) = key.strip_prefix(SCHILY_XATTR_PREFIX) {
-            if !attr_name.is_empty() {
-                xattrs.push(TarXattr::new(attr_name, val_bytes.to_vec()));
-            }
-        } else if let Some(attr_name) = key.strip_prefix(LIBARCHIVE_XATTR_PREFIX) {
-            if !attr_name.is_empty() {
+    while let Some(maybe_kv) = step_raw_pax_record(data, &mut cursor) {
+        if let Some((key, val_bytes)) = maybe_kv {
+            if let Some(attr_name) = strip_pax_xattr_prefix(key) {
                 xattrs.push(TarXattr::new(attr_name, val_bytes.to_vec()));
             }
         }
     }
 
     xattrs
+}
+
+fn step_raw_pax_record<'a>(
+    data: &'a [u8],
+    cursor: &mut usize,
+) -> Option<Option<(&'a str, &'a [u8])>> {
+    if *cursor >= data.len() {
+        return None;
+    }
+    let remaining = &data[*cursor..];
+    if remaining.iter().all(|&b| b == 0) {
+        return None;
+    }
+
+    let space_pos = remaining.iter().position(|&b| b == b' ')?;
+    let len_str = std::str::from_utf8(&remaining[..space_pos]).ok()?;
+    let record_len: usize = len_str.parse().ok()?;
+    if record_len <= space_pos || *cursor + record_len > data.len() {
+        return None;
+    }
+
+    let record_bytes = &data[*cursor..*cursor + record_len];
+    *cursor += record_len;
+
+    let kv_bytes = if record_bytes.ends_with(b"\n") {
+        &record_bytes[space_pos + 1..record_bytes.len() - 1]
+    } else {
+        &record_bytes[space_pos + 1..]
+    };
+
+    let Some(eq_pos) = kv_bytes.iter().position(|&b| b == b'=') else {
+        return Some(None);
+    };
+    let Ok(key) = std::str::from_utf8(&kv_bytes[..eq_pos]) else {
+        return Some(None);
+    };
+    Some(Some((key, &kv_bytes[eq_pos + 1..])))
+}
+
+fn strip_pax_xattr_prefix(key: &str) -> Option<&str> {
+    key.strip_prefix(SCHILY_XATTR_PREFIX)
+        .or_else(|| key.strip_prefix(LIBARCHIVE_XATTR_PREFIX))
+        .filter(|name| !name.is_empty())
 }
 
 // --- Platform Native Extended Attributes Restoration and Inspection ---
@@ -316,80 +266,18 @@ pub fn apply_xattrs_to_file(path: &Path, xattrs: &[TarXattr]) -> io::Result<usiz
         return Ok(0);
     }
 
-    #[cfg(target_os = "macos")]
+    #[cfg(unix)]
     {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        let c_path = CString::new(path.as_os_str().as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
+        let c_path = path_to_cstring(path)?;
         let mut applied_count = 0;
         for xattr in xattrs {
             if xattr.name.is_empty() {
                 continue;
             }
-            let c_name = CString::new(xattr.name.as_bytes())
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-            let ret = unsafe {
-                libc::setxattr(
-                    c_path.as_ptr(),
-                    c_name.as_ptr(),
-                    xattr.value.as_ptr() as *const libc::c_void,
-                    xattr.value.len(),
-                    0,
-                    libc::XATTR_NOFOLLOW,
-                )
-            };
-
-            if ret != 0 {
-                return Err(io::Error::last_os_error());
+            if apply_single_xattr(&c_path, xattr)? {
+                applied_count += 1;
             }
-            applied_count += 1;
         }
-
-        Ok(applied_count)
-    }
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        let c_path = CString::new(path.as_os_str().as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-        let mut applied_count = 0;
-        for xattr in xattrs {
-            if xattr.name.is_empty() {
-                continue;
-            }
-            let c_name = CString::new(xattr.name.as_bytes())
-                .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-            let ret = unsafe {
-                libc::lsetxattr(
-                    c_path.as_ptr(),
-                    c_name.as_ptr(),
-                    xattr.value.as_ptr() as *const libc::c_void,
-                    xattr.value.len(),
-                    0,
-                )
-            };
-
-            if ret != 0 {
-                let err = io::Error::last_os_error();
-                if err.raw_os_error() == Some(libc::ENOTSUP)
-                    || err.raw_os_error() == Some(libc::EOPNOTSUPP)
-                {
-                    continue;
-                }
-                return Err(err);
-            }
-            applied_count += 1;
-        }
-
         Ok(applied_count)
     }
 
@@ -400,97 +288,79 @@ pub fn apply_xattrs_to_file(path: &Path, xattrs: &[TarXattr]) -> io::Result<usiz
     }
 }
 
+#[cfg(unix)]
+fn path_to_cstring(path: &Path) -> io::Result<std::ffi::CString> {
+    use std::os::unix::ffi::OsStrExt;
+    std::ffi::CString::new(path.as_os_str().as_bytes())
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+}
+
+#[cfg(unix)]
+fn str_to_cstring(name: &str) -> io::Result<std::ffi::CString> {
+    std::ffi::CString::new(name.as_bytes())
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))
+}
+
+#[cfg(unix)]
+fn apply_single_xattr(c_path: &std::ffi::CString, xattr: &TarXattr) -> io::Result<bool> {
+    let c_name = str_to_cstring(&xattr.name)?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let ret = unsafe {
+            libc::setxattr(
+                c_path.as_ptr(),
+                c_name.as_ptr(),
+                xattr.value.as_ptr() as *const libc::c_void,
+                xattr.value.len(),
+                0,
+                libc::XATTR_NOFOLLOW,
+            )
+        };
+        if ret != 0 {
+            return Err(io::Error::last_os_error());
+        }
+        Ok(true)
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        let ret = unsafe {
+            libc::lsetxattr(
+                c_path.as_ptr(),
+                c_name.as_ptr(),
+                xattr.value.as_ptr() as *const libc::c_void,
+                xattr.value.len(),
+                0,
+            )
+        };
+        if ret != 0 {
+            let err = io::Error::last_os_error();
+            if err.raw_os_error() == Some(libc::ENOTSUP)
+                || err.raw_os_error() == Some(libc::EOPNOTSUPP)
+            {
+                return Ok(false);
+            }
+            return Err(err);
+        }
+        Ok(true)
+    }
+}
+
 /// Reads a specific extended attribute by name from a file path using OS-native system calls.
 ///
 /// Returns `Ok(Some(bytes))` if the attribute exists, `Ok(None)` if not found, or `Err` on I/O failure.
 pub fn read_xattr_from_file(path: &Path, name: &str) -> io::Result<Option<Vec<u8>>> {
-    #[cfg(target_os = "macos")]
+    #[cfg(unix)]
     {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        let c_path = CString::new(path.as_os_str().as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-        let c_name = CString::new(name.as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-        let val_len = unsafe {
-            libc::getxattr(
-                c_path.as_ptr(),
-                c_name.as_ptr(),
-                std::ptr::null_mut(),
-                0,
-                0,
-                libc::XATTR_NOFOLLOW,
-            )
+        let c_path = path_to_cstring(path)?;
+        let c_name = str_to_cstring(name)?;
+        let Some(val_len) = query_xattr_len(&c_path, &c_name)? else {
+            return Ok(None);
         };
-        if val_len < 0 {
-            let err = io::Error::last_os_error();
-            // ENOATTR (macOS 93) indicates attribute does not exist
-            if err.raw_os_error() == Some(libc::ENOATTR) {
-                return Ok(None);
-            }
-            return Err(err);
-        }
-
-        let mut val_buf = vec![0u8; val_len as usize];
-        let got_len = unsafe {
-            libc::getxattr(
-                c_path.as_ptr(),
-                c_name.as_ptr(),
-                val_buf.as_mut_ptr() as *mut libc::c_void,
-                val_buf.len(),
-                0,
-                libc::XATTR_NOFOLLOW,
-            )
-        };
-        if got_len < 0 {
-            return Err(io::Error::last_os_error());
-        }
-        val_buf.truncate(got_len as usize);
-        Ok(Some(val_buf))
-    }
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        let c_path = CString::new(path.as_os_str().as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-        let c_name = CString::new(name.as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-        let val_len = unsafe {
-            libc::lgetxattr(
-                c_path.as_ptr(),
-                c_name.as_ptr(),
-                std::ptr::null_mut(),
-                0,
-            )
-        };
-        if val_len < 0 {
-            let err = io::Error::last_os_error();
-            // ENODATA on Linux indicates attribute does not exist
-            if err.raw_os_error() == Some(libc::ENODATA) {
-                return Ok(None);
-            }
-            return Err(err);
-        }
-
-        let mut val_buf = vec![0u8; val_len as usize];
-        let got_len = unsafe {
-            libc::lgetxattr(
-                c_path.as_ptr(),
-                c_name.as_ptr(),
-                val_buf.as_mut_ptr() as *mut libc::c_void,
-                val_buf.len(),
-            )
-        };
-        if got_len < 0 {
-            return Err(io::Error::last_os_error());
-        }
-        val_buf.truncate(got_len as usize);
+        let mut val_buf = vec![0u8; val_len];
+        let got_len = fetch_xattr_bytes(&c_path, &c_name, &mut val_buf)?;
+        val_buf.truncate(got_len);
         Ok(Some(val_buf))
     }
 
@@ -501,97 +371,86 @@ pub fn read_xattr_from_file(path: &Path, name: &str) -> io::Result<Option<Vec<u8
     }
 }
 
-/// Reads all extended attributes from a file path using OS-native system calls.
-pub fn read_all_xattrs_from_file(path: &Path) -> io::Result<Vec<TarXattr>> {
+#[cfg(unix)]
+fn query_xattr_len(
+    c_path: &std::ffi::CString,
+    c_name: &std::ffi::CString,
+) -> io::Result<Option<usize>> {
     #[cfg(target_os = "macos")]
-    {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        let c_path = CString::new(path.as_os_str().as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-        let list_len = unsafe {
-            libc::listxattr(c_path.as_ptr(), std::ptr::null_mut(), 0, libc::XATTR_NOFOLLOW)
-        };
-        if list_len <= 0 {
-            return Ok(Vec::new());
-        }
-
-        let mut name_buf = vec![0u8; list_len as usize];
-        let actual_len = unsafe {
-            libc::listxattr(
+    let (val_len, missing_errno) = (
+        unsafe {
+            libc::getxattr(
                 c_path.as_ptr(),
-                name_buf.as_mut_ptr() as *mut libc::c_char,
-                name_buf.len(),
+                c_name.as_ptr(),
+                std::ptr::null_mut(),
+                0,
+                0,
                 libc::XATTR_NOFOLLOW,
             )
-        };
-        if actual_len <= 0 {
-            return Ok(Vec::new());
-        }
+        },
+        libc::ENOATTR,
+    );
 
-        let mut xattrs = Vec::new();
-        let mut cursor = 0;
-        while cursor < actual_len as usize {
-            let end = match name_buf[cursor..actual_len as usize].iter().position(|&b| b == 0) {
-                Some(pos) => cursor + pos,
-                None => break,
-            };
-            if let Ok(name) = std::str::from_utf8(&name_buf[cursor..end]) {
-                if let Ok(Some(val)) = read_xattr_from_file(path, name) {
-                    xattrs.push(TarXattr::new(name, val));
-                }
-            }
-            cursor = end + 1;
-        }
+    #[cfg(not(target_os = "macos"))]
+    let (val_len, missing_errno) = (
+        unsafe { libc::lgetxattr(c_path.as_ptr(), c_name.as_ptr(), std::ptr::null_mut(), 0) },
+        libc::ENODATA,
+    );
 
-        Ok(xattrs)
+    if val_len < 0 {
+        let err = io::Error::last_os_error();
+        if err.raw_os_error() == Some(missing_errno) {
+            return Ok(None);
+        }
+        return Err(err);
     }
+    Ok(Some(val_len as usize))
+}
 
-    #[cfg(all(unix, not(target_os = "macos")))]
+#[cfg(unix)]
+fn fetch_xattr_bytes(
+    c_path: &std::ffi::CString,
+    c_name: &std::ffi::CString,
+    val_buf: &mut [u8],
+) -> io::Result<usize> {
+    #[cfg(target_os = "macos")]
+    let got_len = unsafe {
+        libc::getxattr(
+            c_path.as_ptr(),
+            c_name.as_ptr(),
+            val_buf.as_mut_ptr() as *mut libc::c_void,
+            val_buf.len(),
+            0,
+            libc::XATTR_NOFOLLOW,
+        )
+    };
+
+    #[cfg(not(target_os = "macos"))]
+    let got_len = unsafe {
+        libc::lgetxattr(
+            c_path.as_ptr(),
+            c_name.as_ptr(),
+            val_buf.as_mut_ptr() as *mut libc::c_void,
+            val_buf.len(),
+        )
+    };
+
+    if got_len < 0 {
+        return Err(io::Error::last_os_error());
+    }
+    Ok(got_len as usize)
+}
+
+/// Reads all extended attributes from a file path using OS-native system calls.
+pub fn read_all_xattrs_from_file(path: &Path) -> io::Result<Vec<TarXattr>> {
+    #[cfg(unix)]
     {
-        use std::ffi::CString;
-        use std::os::unix::ffi::OsStrExt;
-
-        let c_path = CString::new(path.as_os_str().as_bytes())
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e))?;
-
-        let list_len = unsafe {
-            libc::llistxattr(c_path.as_ptr(), std::ptr::null_mut(), 0)
-        };
-        if list_len <= 0 {
+        let c_path = path_to_cstring(path)?;
+        let name_buf = list_raw_xattr_names(&c_path);
+        if name_buf.is_empty() {
             return Ok(Vec::new());
         }
-
-        let mut name_buf = vec![0u8; list_len as usize];
-        let actual_len = unsafe {
-            libc::llistxattr(
-                c_path.as_ptr(),
-                name_buf.as_mut_ptr() as *mut libc::c_char,
-                name_buf.len(),
-            )
-        };
-        if actual_len <= 0 {
-            return Ok(Vec::new());
-        }
-
-        let mut xattrs = Vec::new();
-        let mut cursor = 0;
-        while cursor < actual_len as usize {
-            let end = match name_buf[cursor..actual_len as usize].iter().position(|&b| b == 0) {
-                Some(pos) => cursor + pos,
-                None => break,
-            };
-            if let Ok(name) = std::str::from_utf8(&name_buf[cursor..end]) {
-                if let Ok(Some(val)) = read_xattr_from_file(path, name) {
-                    xattrs.push(TarXattr::new(name, val));
-                }
-            }
-            cursor = end + 1;
-        }
-
-        Ok(xattrs)
+        Ok(collect_xattrs_from_name_buf(path, &name_buf))
     }
 
     #[cfg(not(unix))]
@@ -599,4 +458,59 @@ pub fn read_all_xattrs_from_file(path: &Path) -> io::Result<Vec<TarXattr>> {
         let _ = path;
         Ok(Vec::new())
     }
+}
+
+#[cfg(unix)]
+fn list_raw_xattr_names(c_path: &std::ffi::CString) -> Vec<u8> {
+    #[cfg(target_os = "macos")]
+    let list_len = unsafe {
+        libc::listxattr(c_path.as_ptr(), std::ptr::null_mut(), 0, libc::XATTR_NOFOLLOW)
+    };
+    #[cfg(not(target_os = "macos"))]
+    let list_len = unsafe { libc::llistxattr(c_path.as_ptr(), std::ptr::null_mut(), 0) };
+
+    if list_len <= 0 {
+        return Vec::new();
+    }
+
+    let mut name_buf = vec![0u8; list_len as usize];
+    #[cfg(target_os = "macos")]
+    let actual_len = unsafe {
+        libc::listxattr(
+            c_path.as_ptr(),
+            name_buf.as_mut_ptr() as *mut libc::c_char,
+            name_buf.len(),
+            libc::XATTR_NOFOLLOW,
+        )
+    };
+    #[cfg(not(target_os = "macos"))]
+    let actual_len = unsafe {
+        libc::llistxattr(
+            c_path.as_ptr(),
+            name_buf.as_mut_ptr() as *mut libc::c_char,
+            name_buf.len(),
+        )
+    };
+
+    if actual_len <= 0 {
+        return Vec::new();
+    }
+    name_buf.truncate(actual_len as usize);
+    name_buf
+}
+
+#[cfg(unix)]
+fn collect_xattrs_from_name_buf(path: &Path, name_buf: &[u8]) -> Vec<TarXattr> {
+    let mut xattrs = Vec::new();
+    for raw_name in name_buf.split(|&b| b == 0) {
+        if raw_name.is_empty() {
+            continue;
+        }
+        if let Ok(name) = std::str::from_utf8(raw_name) {
+            if let Ok(Some(val)) = read_xattr_from_file(path, name) {
+                xattrs.push(TarXattr::new(name, val));
+            }
+        }
+    }
+    xattrs
 }

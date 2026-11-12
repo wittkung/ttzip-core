@@ -298,7 +298,7 @@ fn test_adv_charset_extreme_length_and_special_delimiters() {
     assert_eq!(decoded_long, long_chinese);
 
     // 2. Filename containing internal null bytes and forward slashes in non-UTF8
-    let raw_with_slashes = b"subfolder/\xD6\xD0\xCE\xC4/data.bin"; // "subfolder/中文/data.bin" in GBK
+    let raw_with_slashes = b"subfolder/\xD6\xD0\xCE\xC4/data.bin"; // GBK-encoded subfolder path with CJK segment
     let decoded_path = sanitize_filename(raw_with_slashes);
     assert_eq!(decoded_path, "subfolder/中文/data.bin");
 }

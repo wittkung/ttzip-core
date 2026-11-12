@@ -37,6 +37,93 @@ fn extract_ext(name: &str) -> &str {
     }
 }
 
+fn compare_vfs_child_nodes(
+    arena: &VfsCompactArena,
+    cid_a: usize,
+    cid_b: usize,
+    sort_by: VfsSortKey,
+    direction: VfsSortDirection,
+) -> core::cmp::Ordering {
+    let is_dir_a = (arena.node_attributes[cid_a] & VFS_FLAG_IS_DIR) != 0;
+    let is_dir_b = (arena.node_attributes[cid_b] & VFS_FLAG_IS_DIR) != 0;
+    if is_dir_a != is_dir_b {
+        return if is_dir_a {
+            core::cmp::Ordering::Less
+        } else {
+            core::cmp::Ordering::Greater
+        };
+    }
+
+    let ord = match sort_by {
+        VfsSortKey::Name => arena.node_name(cid_a as u32).cmp(arena.node_name(cid_b as u32)),
+        VfsSortKey::Size => arena.uncompressed_sizes[cid_a].cmp(&arena.uncompressed_sizes[cid_b]),
+        VfsSortKey::ModifiedTime => {
+            arena.modified_timestamps[cid_a].cmp(&arena.modified_timestamps[cid_b])
+        }
+        VfsSortKey::Extension => {
+            let ext_a = extract_ext(arena.node_name(cid_a as u32));
+            let ext_b = extract_ext(arena.node_name(cid_b as u32));
+            ext_a.cmp(ext_b)
+        }
+    };
+
+    let ord = match direction {
+        VfsSortDirection::Ascending => ord,
+        VfsSortDirection::Descending => ord.reverse(),
+    };
+
+    if ord == core::cmp::Ordering::Equal {
+        arena.node_name(cid_a as u32).cmp(arena.node_name(cid_b as u32))
+    } else {
+        ord
+    }
+}
+
+fn resolve_sorted_child_permutation(
+    arena: &VfsCompactArena,
+    sort_cache: &VfsSortCache,
+    parent_id: u32,
+    raw_children: &[u32],
+    sort_by: VfsSortKey,
+    direction: VfsSortDirection,
+) -> Arc<Vec<u32>> {
+    let key = (parent_id, sort_by, direction);
+    if let Some(arc) = sort_cache.read().get(&key).cloned() {
+        return arc;
+    }
+
+    let mut perm: Vec<u32> = (0..raw_children.len() as u32).collect();
+    perm.sort_unstable_by(|&a_idx, &b_idx| {
+        let cid_a = raw_children[a_idx as usize] as usize;
+        let cid_b = raw_children[b_idx as usize] as usize;
+        compare_vfs_child_nodes(arena, cid_a, cid_b, sort_by, direction)
+    });
+
+    let arc = Arc::new(perm);
+    let mut cache_write = sort_cache.write();
+    if cache_write.len() >= 64 {
+        cache_write.clear();
+    }
+    cache_write.insert(key, Arc::clone(&arc));
+    arc
+}
+
+fn materialize_paged_node(arena: &VfsCompactArena, cid: u32) -> VfsPagedNode {
+    let cidx = cid as usize;
+    let attr = arena.node_attributes[cidx];
+    VfsPagedNode {
+        node_id: cid,
+        name: arena.node_name(cid).to_string(),
+        path: arena.node_full_path(cid),
+        is_dir: (attr & VFS_FLAG_IS_DIR) != 0,
+        is_symlink: (arena.modes[cidx] & 0o170000) == 0o120000,
+        is_encrypted: (attr & crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED) != 0,
+        size: arena.uncompressed_sizes[cidx],
+        compressed_size: arena.compressed_sizes[cidx],
+        mtime_secs: arena.modified_timestamps[cidx],
+    }
+}
+
 pub fn vfs_get_children_paged_sorted_core(
     arena: &VfsCompactArena,
     sort_cache: &VfsSortCache,
@@ -64,107 +151,31 @@ pub fn vfs_get_children_paged_sorted_core(
     }
 
     let take = limit_usize.min((total_children as usize) - offset_usize);
-    let raw_children = &arena.sorted_child_pool[child_start as usize..(child_start + total_children) as usize];
+    let raw_children =
+        &arena.sorted_child_pool[child_start as usize..(child_start + total_children) as usize];
 
-    let paged_ids: Vec<u32> = if sort_by == VfsSortKey::Name && direction == VfsSortDirection::Ascending {
-        // Direct O(1) slice (zero-copy order)
-        raw_children[offset_usize..offset_usize + take].to_vec()
-    } else {
-        // Permutation vector via pdqsort with caching
-        let key = (parent_id, sort_by, direction);
-        let perm_arc = {
-            let cache_read = sort_cache.read();
-            cache_read.get(&key).cloned()
+    let paged_ids: Vec<u32> =
+        if sort_by == VfsSortKey::Name && direction == VfsSortDirection::Ascending {
+            raw_children[offset_usize..offset_usize + take].to_vec()
+        } else {
+            let perm = resolve_sorted_child_permutation(
+                arena,
+                sort_cache,
+                parent_id,
+                raw_children,
+                sort_by,
+                direction,
+            );
+            perm[offset_usize..offset_usize + take]
+                .iter()
+                .map(|&idx| raw_children[idx as usize])
+                .collect()
         };
 
-        let perm = match perm_arc {
-            Some(arc) => arc,
-            None => {
-                let mut p: Vec<u32> = (0..total_children).collect();
-                p.sort_unstable_by(|&a_idx, &b_idx| {
-                    let cid_a = raw_children[a_idx as usize] as usize;
-                    let cid_b = raw_children[b_idx as usize] as usize;
-
-                    // Folders always precede files (Finder UX invariant)
-                    let is_dir_a = (arena.node_attributes[cid_a] & VFS_FLAG_IS_DIR) != 0;
-                    let is_dir_b = (arena.node_attributes[cid_b] & VFS_FLAG_IS_DIR) != 0;
-                    if is_dir_a != is_dir_b {
-                        return if is_dir_a {
-                            core::cmp::Ordering::Less
-                        } else {
-                            core::cmp::Ordering::Greater
-                        };
-                    }
-
-                    let ord = match sort_by {
-                        VfsSortKey::Name => {
-                            arena.node_name(cid_a as u32).cmp(arena.node_name(cid_b as u32))
-                        }
-                        VfsSortKey::Size => {
-                            arena.uncompressed_sizes[cid_a].cmp(&arena.uncompressed_sizes[cid_b])
-                        }
-                        VfsSortKey::ModifiedTime => {
-                            arena.modified_timestamps[cid_a].cmp(&arena.modified_timestamps[cid_b])
-                        }
-                        VfsSortKey::Extension => {
-                            let ext_a = extract_ext(arena.node_name(cid_a as u32));
-                            let ext_b = extract_ext(arena.node_name(cid_b as u32));
-                            ext_a.cmp(ext_b)
-                        }
-                    };
-
-                    let ord = match direction {
-                        VfsSortDirection::Ascending => ord,
-                        VfsSortDirection::Descending => ord.reverse(),
-                    };
-
-                    if ord == core::cmp::Ordering::Equal {
-                        arena.node_name(cid_a as u32).cmp(arena.node_name(cid_b as u32))
-                    } else {
-                        ord
-                    }
-                });
-
-                let arc = Arc::new(p);
-                let mut cache_write = sort_cache.write();
-                if cache_write.len() >= 64 {
-                    cache_write.clear();
-                }
-                cache_write.insert(key, Arc::clone(&arc));
-                arc
-            }
-        };
-
-        perm[offset_usize..offset_usize + take]
-            .iter()
-            .map(|&idx| raw_children[idx as usize])
-            .collect()
-    };
-
-    let mut nodes = Vec::with_capacity(paged_ids.len());
-    for cid in paged_ids {
-        let cidx = cid as usize;
-        let name = arena.node_name(cid).to_string();
-        let attr = arena.node_attributes[cidx];
-        let is_dir = (attr & VFS_FLAG_IS_DIR) != 0;
-        let is_symlink = (arena.modes[cidx] & 0o170000) == 0o120000;
-        let is_encrypted = (attr & crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED) != 0;
-        let size = arena.uncompressed_sizes[cidx];
-        let compressed_size = arena.compressed_sizes[cidx];
-        let mtime_secs = arena.modified_timestamps[cidx];
-
-        nodes.push(VfsPagedNode {
-            node_id: cid,
-            name,
-            path: arena.node_full_path(cid),
-            is_dir,
-            is_symlink,
-            is_encrypted,
-            size,
-            compressed_size,
-            mtime_secs,
-        });
-    }
+    let nodes = paged_ids
+        .into_iter()
+        .map(|cid| materialize_paged_node(arena, cid))
+        .collect();
 
     Ok(VfsPageResult {
         total_count: total_children,

@@ -28,244 +28,226 @@ pub fn assemble_zip_archive_aligned(
     let mut out = Vec::new();
     let mut lfh_offsets = Vec::with_capacity(items.len());
 
-    // 1. Write Local File Headers + Payloads
     for item in items {
         let lfh_offset = out.len() as u64;
         lfh_offsets.push(lfh_offset);
-
-        let (dos_time, dos_date) = unix_to_dos_time(item.mtime_epoch_secs);
-        let name_bytes = item.rel_path.as_bytes();
-
-        let use_zip64 = item.uncompressed_size >= 0xFFFFFFFF
-            || item.compressed_size >= 0xFFFFFFFF
-            || lfh_offset >= 0xFFFFFFFF;
-
-        let mut extra_bytes = Vec::new();
-        if use_zip64 {
-            let z64 = ZipExtraFields::build_zip64_extra(
-                Some(item.uncompressed_size),
-                Some(item.compressed_size),
-                None,
-            );
-            extra_bytes.extend_from_slice(&z64);
-        }
-        if item.is_encrypted && item.compression_method == 99 {
-            let aes_extra = ZipExtraFields::build_winzip_aes_extra(item.actual_method);
-            extra_bytes.extend_from_slice(&aes_extra);
-        }
-        let ts_extra = ZipExtraFields::build_extended_timestamp(item.mtime_epoch_secs);
-        extra_bytes.extend_from_slice(&ts_extra);
-
-        if target_alignment > 1 {
-            let pad_len = AlignmentPaddingCalculator::calculate(
-                lfh_offset,
-                name_bytes.len(),
-                extra_bytes.len(),
-                target_alignment,
-            );
-            if pad_len > 0 {
-                let align_extra = build_alignment_extra_field(pad_len, target_alignment);
-                extra_bytes.extend_from_slice(&align_extra);
-            }
-        }
-
-        let version_needed = if use_zip64 {
-            45u16
-        } else if item.is_encrypted {
-            51u16
-        } else if item.compression_method == 8 {
-            20u16
-        } else {
-            10u16
-        };
-
-        let flag = if item.is_encrypted {
-            0x0801u16 // bit 0 = encrypted, bit 11 = UTF-8
-        } else {
-            0x0800u16 // bit 11 = UTF-8
-        };
-
-        let uncomp_size_field = if item.uncompressed_size >= 0xFFFFFFFF {
-            0xFFFFFFFFu32
-        } else {
-            item.uncompressed_size as u32
-        };
-        let comp_size_field = if item.compressed_size >= 0xFFFFFFFF {
-            0xFFFFFFFFu32
-        } else {
-            item.compressed_size as u32
-        };
-
-        // LFH Record
-        out.extend_from_slice(&MAGIC_LFH.to_le_bytes());
-        out.extend_from_slice(&version_needed.to_le_bytes());
-        out.extend_from_slice(&flag.to_le_bytes());
-        out.extend_from_slice(&item.compression_method.to_le_bytes());
-        out.extend_from_slice(&dos_time.to_le_bytes());
-        out.extend_from_slice(&dos_date.to_le_bytes());
-        out.extend_from_slice(&item.crc32.to_le_bytes());
-        out.extend_from_slice(&comp_size_field.to_le_bytes());
-        out.extend_from_slice(&uncomp_size_field.to_le_bytes());
-        out.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-        out.extend_from_slice(&(extra_bytes.len() as u16).to_le_bytes());
-        out.extend_from_slice(name_bytes);
-        out.extend_from_slice(&extra_bytes);
-
-        // Payload
-        out.extend_from_slice(&item.payload);
+        write_local_file_entry(&mut out, item, lfh_offset, target_alignment);
     }
 
-    // 2. Write Central Directory
     let cd_offset = out.len() as u64;
-
     for (i, item) in items.iter().enumerate() {
-        let lfh_offset = lfh_offsets[i];
-        let (dos_time, dos_date) = unix_to_dos_time(item.mtime_epoch_secs);
-        let name_bytes = item.rel_path.as_bytes();
-
-        let use_zip64 = item.uncompressed_size >= 0xFFFFFFFF
-            || item.compressed_size >= 0xFFFFFFFF
-            || lfh_offset >= 0xFFFFFFFF;
-
-        let mut extra_bytes = Vec::new();
-        if use_zip64 {
-            let u_sz = if item.uncompressed_size >= 0xFFFFFFFF {
-                Some(item.uncompressed_size)
-            } else {
-                None
-            };
-            let c_sz = if item.compressed_size >= 0xFFFFFFFF {
-                Some(item.compressed_size)
-            } else {
-                None
-            };
-            let off = if lfh_offset >= 0xFFFFFFFF {
-                Some(lfh_offset)
-            } else {
-                None
-            };
-            let z64 = ZipExtraFields::build_zip64_extra(u_sz, c_sz, off);
-            extra_bytes.extend_from_slice(&z64);
-        }
-        if item.is_encrypted && item.compression_method == 99 {
-            let aes_extra = ZipExtraFields::build_winzip_aes_extra(item.actual_method);
-            extra_bytes.extend_from_slice(&aes_extra);
-        }
-        let ts_extra = ZipExtraFields::build_extended_timestamp(item.mtime_epoch_secs);
-        extra_bytes.extend_from_slice(&ts_extra);
-
-        let version_made_by = 0x031Eu16; // Unix / macOS
-        let version_needed = if use_zip64 {
-            45u16
-        } else if item.is_encrypted {
-            51u16
-        } else if item.compression_method == 8 {
-            20u16
-        } else {
-            10u16
-        };
-
-        let flag = if item.is_encrypted {
-            0x0801u16
-        } else {
-            0x0800u16
-        };
-
-        let uncomp_size_field = if item.uncompressed_size >= 0xFFFFFFFF {
-            0xFFFFFFFFu32
-        } else {
-            item.uncompressed_size as u32
-        };
-        let comp_size_field = if item.compressed_size >= 0xFFFFFFFF {
-            0xFFFFFFFFu32
-        } else {
-            item.compressed_size as u32
-        };
-        let lfh_offset_field = if lfh_offset >= 0xFFFFFFFF {
-            0xFFFFFFFFu32
-        } else {
-            lfh_offset as u32
-        };
-
-        let ext_attr = (item.mode << 16) | if item.is_directory { 0x10 } else { 0 };
-
-        // CDFH Record
-        out.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
-        out.extend_from_slice(&version_made_by.to_le_bytes());
-        out.extend_from_slice(&version_needed.to_le_bytes());
-        out.extend_from_slice(&flag.to_le_bytes());
-        out.extend_from_slice(&item.compression_method.to_le_bytes());
-        out.extend_from_slice(&dos_time.to_le_bytes());
-        out.extend_from_slice(&dos_date.to_le_bytes());
-        out.extend_from_slice(&item.crc32.to_le_bytes());
-        out.extend_from_slice(&comp_size_field.to_le_bytes());
-        out.extend_from_slice(&uncomp_size_field.to_le_bytes());
-        out.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-        out.extend_from_slice(&(extra_bytes.len() as u16).to_le_bytes());
-        out.extend_from_slice(&0u16.to_le_bytes()); // comment length = 0
-        out.extend_from_slice(&0u16.to_le_bytes()); // disk number = 0
-        out.extend_from_slice(&0u16.to_le_bytes()); // internal attr = 0
-        out.extend_from_slice(&ext_attr.to_le_bytes());
-        out.extend_from_slice(&lfh_offset_field.to_le_bytes());
-        out.extend_from_slice(name_bytes);
-        out.extend_from_slice(&extra_bytes);
+        write_central_directory_entry(&mut out, item, lfh_offsets[i]);
     }
 
     let cd_size = (out.len() as u64) - cd_offset;
-    let num_entries = items.len() as u64;
+    write_end_of_central_directory(&mut out, items.len() as u64, cd_size, cd_offset);
 
-    let is_zip64_required = num_entries >= 0xFFFF
-        || cd_size >= 0xFFFFFFFF
-        || cd_offset >= 0xFFFFFFFF;
+    Ok(out)
+}
+
+fn requires_zip64(item: &ZipCompressedItem, lfh_offset: u64) -> bool {
+    item.uncompressed_size >= 0xFFFFFFFF
+        || item.compressed_size >= 0xFFFFFFFF
+        || lfh_offset >= 0xFFFFFFFF
+}
+
+fn resolve_version_needed(item: &ZipCompressedItem, use_zip64: bool) -> u16 {
+    if use_zip64 {
+        45u16
+    } else if item.is_encrypted {
+        51u16
+    } else if item.compression_method == 8 {
+        20u16
+    } else {
+        10u16
+    }
+}
+
+fn clamp_u32_field(val: u64) -> u32 {
+    if val >= 0xFFFFFFFF {
+        0xFFFFFFFFu32
+    } else {
+        val as u32
+    }
+}
+
+fn build_local_extra_bytes(
+    item: &ZipCompressedItem,
+    lfh_offset: u64,
+    name_len: usize,
+    use_zip64: bool,
+    target_alignment: u16,
+) -> Vec<u8> {
+    let mut extra_bytes = Vec::new();
+    if use_zip64 {
+        let z64 = ZipExtraFields::build_zip64_extra(
+            Some(item.uncompressed_size),
+            Some(item.compressed_size),
+            None,
+        );
+        extra_bytes.extend_from_slice(&z64);
+    }
+    if item.is_encrypted && item.compression_method == 99 {
+        let aes_extra = ZipExtraFields::build_winzip_aes_extra(item.actual_method);
+        extra_bytes.extend_from_slice(&aes_extra);
+    }
+    let ts_extra = ZipExtraFields::build_extended_timestamp(item.mtime_epoch_secs);
+    extra_bytes.extend_from_slice(&ts_extra);
+
+    if target_alignment > 1 {
+        let pad_len = AlignmentPaddingCalculator::calculate(
+            lfh_offset,
+            name_len,
+            extra_bytes.len(),
+            target_alignment,
+        );
+        if pad_len > 0 {
+            let align_extra = build_alignment_extra_field(pad_len, target_alignment);
+            extra_bytes.extend_from_slice(&align_extra);
+        }
+    }
+    extra_bytes
+}
+
+fn write_local_file_entry(
+    out: &mut Vec<u8>,
+    item: &ZipCompressedItem,
+    lfh_offset: u64,
+    target_alignment: u16,
+) {
+    let (dos_time, dos_date) = unix_to_dos_time(item.mtime_epoch_secs);
+    let name_bytes = item.rel_path.as_bytes();
+    let use_zip64 = requires_zip64(item, lfh_offset);
+    let extra_bytes = build_local_extra_bytes(
+        item,
+        lfh_offset,
+        name_bytes.len(),
+        use_zip64,
+        target_alignment,
+    );
+
+    let version_needed = resolve_version_needed(item, use_zip64);
+    let flag = if item.is_encrypted { 0x0801u16 } else { 0x0800u16 };
+    let uncomp_size_field = clamp_u32_field(item.uncompressed_size);
+    let comp_size_field = clamp_u32_field(item.compressed_size);
+
+    out.extend_from_slice(&MAGIC_LFH.to_le_bytes());
+    out.extend_from_slice(&version_needed.to_le_bytes());
+    out.extend_from_slice(&flag.to_le_bytes());
+    out.extend_from_slice(&item.compression_method.to_le_bytes());
+    out.extend_from_slice(&dos_time.to_le_bytes());
+    out.extend_from_slice(&dos_date.to_le_bytes());
+    out.extend_from_slice(&item.crc32.to_le_bytes());
+    out.extend_from_slice(&comp_size_field.to_le_bytes());
+    out.extend_from_slice(&uncomp_size_field.to_le_bytes());
+    out.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
+    out.extend_from_slice(&(extra_bytes.len() as u16).to_le_bytes());
+    out.extend_from_slice(name_bytes);
+    out.extend_from_slice(&extra_bytes);
+    out.extend_from_slice(&item.payload);
+}
+
+fn build_central_extra_bytes(
+    item: &ZipCompressedItem,
+    lfh_offset: u64,
+    use_zip64: bool,
+) -> Vec<u8> {
+    let mut extra_bytes = Vec::new();
+    if use_zip64 {
+        let u_sz = (item.uncompressed_size >= 0xFFFFFFFF).then_some(item.uncompressed_size);
+        let c_sz = (item.compressed_size >= 0xFFFFFFFF).then_some(item.compressed_size);
+        let off = (lfh_offset >= 0xFFFFFFFF).then_some(lfh_offset);
+        let z64 = ZipExtraFields::build_zip64_extra(u_sz, c_sz, off);
+        extra_bytes.extend_from_slice(&z64);
+    }
+    if item.is_encrypted && item.compression_method == 99 {
+        let aes_extra = ZipExtraFields::build_winzip_aes_extra(item.actual_method);
+        extra_bytes.extend_from_slice(&aes_extra);
+    }
+    let ts_extra = ZipExtraFields::build_extended_timestamp(item.mtime_epoch_secs);
+    extra_bytes.extend_from_slice(&ts_extra);
+    extra_bytes
+}
+
+fn write_central_directory_entry(
+    out: &mut Vec<u8>,
+    item: &ZipCompressedItem,
+    lfh_offset: u64,
+) {
+    let (dos_time, dos_date) = unix_to_dos_time(item.mtime_epoch_secs);
+    let name_bytes = item.rel_path.as_bytes();
+    let use_zip64 = requires_zip64(item, lfh_offset);
+    let extra_bytes = build_central_extra_bytes(item, lfh_offset, use_zip64);
+
+    let version_made_by = 0x031Eu16;
+    let version_needed = resolve_version_needed(item, use_zip64);
+    let flag = if item.is_encrypted { 0x0801u16 } else { 0x0800u16 };
+    let uncomp_size_field = clamp_u32_field(item.uncompressed_size);
+    let comp_size_field = clamp_u32_field(item.compressed_size);
+    let lfh_offset_field = clamp_u32_field(lfh_offset);
+    let ext_attr = (item.mode << 16) | if item.is_directory { 0x10 } else { 0 };
+
+    out.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
+    out.extend_from_slice(&version_made_by.to_le_bytes());
+    out.extend_from_slice(&version_needed.to_le_bytes());
+    out.extend_from_slice(&flag.to_le_bytes());
+    out.extend_from_slice(&item.compression_method.to_le_bytes());
+    out.extend_from_slice(&dos_time.to_le_bytes());
+    out.extend_from_slice(&dos_date.to_le_bytes());
+    out.extend_from_slice(&item.crc32.to_le_bytes());
+    out.extend_from_slice(&comp_size_field.to_le_bytes());
+    out.extend_from_slice(&uncomp_size_field.to_le_bytes());
+    out.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
+    out.extend_from_slice(&(extra_bytes.len() as u16).to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&ext_attr.to_le_bytes());
+    out.extend_from_slice(&lfh_offset_field.to_le_bytes());
+    out.extend_from_slice(name_bytes);
+    out.extend_from_slice(&extra_bytes);
+}
+
+fn write_end_of_central_directory(
+    out: &mut Vec<u8>,
+    num_entries: u64,
+    cd_size: u64,
+    cd_offset: u64,
+) {
+    let is_zip64_required =
+        num_entries >= 0xFFFF || cd_size >= 0xFFFFFFFF || cd_offset >= 0xFFFFFFFF;
 
     if is_zip64_required {
-        // Zip64 EOCD Record
         let z64_eocd_pos = out.len() as u64;
-        let z64_record_size = 44u64; // Size after this field
+        let z64_record_size = 44u64;
 
         out.extend_from_slice(&MAGIC_ZIP64_EOCD.to_le_bytes());
         out.extend_from_slice(&z64_record_size.to_le_bytes());
-        out.extend_from_slice(&45u16.to_le_bytes()); // version made by
-        out.extend_from_slice(&45u16.to_le_bytes()); // version needed
-        out.extend_from_slice(&0u32.to_le_bytes()); // disk number
-        out.extend_from_slice(&0u32.to_le_bytes()); // disk with CD
-        out.extend_from_slice(&num_entries.to_le_bytes()); // total entries on disk
-        out.extend_from_slice(&num_entries.to_le_bytes()); // total entries in CD
+        out.extend_from_slice(&45u16.to_le_bytes());
+        out.extend_from_slice(&45u16.to_le_bytes());
+        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&num_entries.to_le_bytes());
+        out.extend_from_slice(&num_entries.to_le_bytes());
         out.extend_from_slice(&cd_size.to_le_bytes());
         out.extend_from_slice(&cd_offset.to_le_bytes());
 
-        // Zip64 EOCD Locator
         out.extend_from_slice(&MAGIC_ZIP64_LOCATOR.to_le_bytes());
-        out.extend_from_slice(&0u32.to_le_bytes()); // disk with zip64 EOCD
-        out.extend_from_slice(&z64_eocd_pos.to_le_bytes()); // offset of zip64 EOCD
-        out.extend_from_slice(&1u32.to_le_bytes()); // total disks
+        out.extend_from_slice(&0u32.to_le_bytes());
+        out.extend_from_slice(&z64_eocd_pos.to_le_bytes());
+        out.extend_from_slice(&1u32.to_le_bytes());
     }
 
-    // Standard EOCD Record
-    let entries_field = if num_entries >= 0xFFFF {
-        0xFFFFu16
-    } else {
-        num_entries as u16
-    };
-    let cd_size_field = if cd_size >= 0xFFFFFFFF {
-        0xFFFFFFFFu32
-    } else {
-        cd_size as u32
-    };
-    let cd_offset_field = if cd_offset >= 0xFFFFFFFF {
-        0xFFFFFFFFu32
-    } else {
-        cd_offset as u32
-    };
+    let entries_field = if num_entries >= 0xFFFF { 0xFFFFu16 } else { num_entries as u16 };
+    let cd_size_field = clamp_u32_field(cd_size);
+    let cd_offset_field = clamp_u32_field(cd_offset);
 
     out.extend_from_slice(&MAGIC_EOCD.to_le_bytes());
-    out.extend_from_slice(&0u16.to_le_bytes()); // disk number
-    out.extend_from_slice(&0u16.to_le_bytes()); // disk with CD
-    out.extend_from_slice(&entries_field.to_le_bytes()); // entries on this disk
-    out.extend_from_slice(&entries_field.to_le_bytes()); // total entries in CD
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&0u16.to_le_bytes());
+    out.extend_from_slice(&entries_field.to_le_bytes());
+    out.extend_from_slice(&entries_field.to_le_bytes());
     out.extend_from_slice(&cd_size_field.to_le_bytes());
     out.extend_from_slice(&cd_offset_field.to_le_bytes());
-    out.extend_from_slice(&0u16.to_le_bytes()); // comment length = 0
-
-    Ok(out)
+    out.extend_from_slice(&0u16.to_le_bytes());
 }

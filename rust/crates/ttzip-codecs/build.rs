@@ -20,6 +20,115 @@ fn find_third_party_or_vendor(start_dir: &Path) -> PathBuf {
     start_dir.join("vendor")
 }
 
+const FL2_SOURCES: &[&str] = &[
+    "dict_buffer.c",
+    "fl2_common.c",
+    "fl2_compress.c",
+    "fl2_decompress.c",
+    "fl2_pool.c",
+    "fl2_threading.c",
+    "lzma2_dec.c",
+    "lzma2_enc.c",
+    "radix_bitpack.c",
+    "radix_mf.c",
+    "radix_struct.c",
+    "range_enc.c",
+    "util.c",
+    "xxhash.c",
+];
+
+const LZFSE_SOURCES: &[&str] = &[
+    "lzfse_decode.c",
+    "lzfse_decode_base.c",
+    "lzfse_encode.c",
+    "lzfse_encode_base.c",
+    "lzfse_fse.c",
+    "lzvn_decode_base.c",
+    "lzvn_encode_base.c",
+];
+
+const DEFLATE_SOURCES: &[&str] = &[
+    "lib/adler32.c",
+    "lib/crc32.c",
+    "lib/deflate_compress.c",
+    "lib/deflate_decompress.c",
+    "lib/gzip_compress.c",
+    "lib/gzip_decompress.c",
+    "lib/utils.c",
+    "lib/zlib_compress.c",
+    "lib/zlib_decompress.c",
+];
+
+const LZ4_SOURCES: &[&str] = &["lz4.c", "lz4frame.c", "lz4hc.c"];
+
+const ZSTD_SOURCES: &[&str] = &[
+    "common/debug.c",
+    "common/entropy_common.c",
+    "common/error_private.c",
+    "common/fse_decompress.c",
+    "common/pool.c",
+    "common/threading.c",
+    "common/xxhash.c",
+    "common/zstd_common.c",
+    "compress/fse_compress.c",
+    "compress/hist.c",
+    "compress/huf_compress.c",
+    "compress/zstd_compress.c",
+    "compress/zstd_compress_literals.c",
+    "compress/zstd_compress_sequences.c",
+    "compress/zstd_compress_superblock.c",
+    "compress/zstd_double_fast.c",
+    "compress/zstd_fast.c",
+    "compress/zstd_lazy.c",
+    "compress/zstd_ldm.c",
+    "compress/zstd_opt.c",
+    "compress/zstd_preSplit.c",
+    "compress/zstdmt_compress.c",
+    "decompress/huf_decompress.c",
+    "decompress/huf_decompress_amd64.S",
+    "decompress/zstd_ddict.c",
+    "decompress/zstd_decompress.c",
+    "decompress/zstd_decompress_block.c",
+    "dictBuilder/cover.c",
+    "dictBuilder/divsufsort.c",
+    "dictBuilder/fastcover.c",
+    "dictBuilder/zdict.c",
+];
+
+fn add_existing_sources(build: &mut cc::Build, dir: &Path, sources: &[&str]) {
+    for src in sources {
+        let path = dir.join(src);
+        if path.exists() {
+            build.file(path);
+        }
+    }
+}
+
+fn configure_libdeflate(build: &mut cc::Build, libdeflate_dir: &Path, target: &str) {
+    if !libdeflate_dir.exists() {
+        return;
+    }
+    add_existing_sources(build, libdeflate_dir, DEFLATE_SOURCES);
+    if target.contains("aarch64") || target.contains("arm64") {
+        add_existing_sources(build, libdeflate_dir, &["lib/arm/cpu_features.c"]);
+    } else if target.contains("x86_64") {
+        add_existing_sources(build, libdeflate_dir, &["lib/x86/cpu_features.c"]);
+    }
+    build.include(libdeflate_dir.join("lib"));
+    build.include(libdeflate_dir);
+}
+
+fn configure_zstd(build: &mut cc::Build, zstd_dir: &Path) {
+    if !zstd_dir.exists() {
+        return;
+    }
+    add_existing_sources(build, zstd_dir, ZSTD_SOURCES);
+    build.include(zstd_dir);
+    build.include(zstd_dir.join("common"));
+    build.include(zstd_dir.join("dictBuilder"));
+    build.define("ZSTD_MULTITHREAD", None);
+}
+
 /// Compiles in-tree native C codecs (fast-lzma2, lzfse) for standalone Cargo builds.
 /// In Bazel, build.rs is short-circuited by BAZEL_BUILD and Bzlmod handles all codecs hermetically.
 fn compile_native_codecs(repo_root: &Path) {
@@ -43,156 +152,85 @@ fn compile_native_codecs(repo_root: &Path) {
         build.flag("-mmacosx-version-min=14.0");
     }
 
-    // 1. fast-lzma2
     if fast_lzma2_dir.exists() {
-        let fl2_sources = [
-            "dict_buffer.c",
-            "fl2_common.c",
-            "fl2_compress.c",
-            "fl2_decompress.c",
-            "fl2_pool.c",
-            "fl2_threading.c",
-            "lzma2_dec.c",
-            "lzma2_enc.c",
-            "radix_bitpack.c",
-            "radix_mf.c",
-            "radix_struct.c",
-            "range_enc.c",
-            "util.c",
-            "xxhash.c",
-        ];
-        for src in fl2_sources {
-            let path = fast_lzma2_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
+        add_existing_sources(&mut build, &fast_lzma2_dir, FL2_SOURCES);
         build.include(&fast_lzma2_dir);
     }
 
-    // 2. lzfse
     if lzfse_dir.exists() {
-        let lzfse_sources = [
-            "lzfse_decode.c",
-            "lzfse_decode_base.c",
-            "lzfse_encode.c",
-            "lzfse_encode_base.c",
-            "lzfse_fse.c",
-            "lzvn_decode_base.c",
-            "lzvn_encode_base.c",
-        ];
-        for src in lzfse_sources {
-            let path = lzfse_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
+        add_existing_sources(&mut build, &lzfse_dir, LZFSE_SOURCES);
         build.include(&lzfse_dir);
     }
 
-    // 3. libdeflate
-    if libdeflate_dir.exists() {
-        let deflate_sources = [
-            "lib/adler32.c",
-            "lib/crc32.c",
-            "lib/deflate_compress.c",
-            "lib/deflate_decompress.c",
-            "lib/gzip_compress.c",
-            "lib/gzip_decompress.c",
-            "lib/utils.c",
-            "lib/zlib_compress.c",
-            "lib/zlib_decompress.c",
-        ];
-        for src in deflate_sources {
-            let path = libdeflate_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
-        if target.contains("aarch64") || target.contains("arm64") {
-            let arm_cpu = libdeflate_dir.join("lib/arm/cpu_features.c");
-            if arm_cpu.exists() {
-                build.file(arm_cpu);
-            }
-        } else if target.contains("x86_64") {
-            let x86_cpu = libdeflate_dir.join("lib/x86/cpu_features.c");
-            if x86_cpu.exists() {
-                build.file(x86_cpu);
-            }
-        }
-        build.include(libdeflate_dir.join("lib"));
-        build.include(&libdeflate_dir);
-    }
+    configure_libdeflate(&mut build, &libdeflate_dir, &target);
 
-    // 4. lz4
     if lz4_dir.exists() {
-        let lz4_sources = ["lz4.c", "lz4frame.c", "lz4hc.c"];
-        for src in lz4_sources {
-            let path = lz4_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
+        add_existing_sources(&mut build, &lz4_dir, LZ4_SOURCES);
         build.include(&lz4_dir);
     }
 
-    // 5. zstd
-    if zstd_dir.exists() {
-        let zstd_sources = [
-            "common/debug.c",
-            "common/entropy_common.c",
-            "common/error_private.c",
-            "common/fse_decompress.c",
-            "common/pool.c",
-            "common/threading.c",
-            "common/xxhash.c",
-            "common/zstd_common.c",
-            "compress/fse_compress.c",
-            "compress/hist.c",
-            "compress/huf_compress.c",
-            "compress/zstd_compress.c",
-            "compress/zstd_compress_literals.c",
-            "compress/zstd_compress_sequences.c",
-            "compress/zstd_compress_superblock.c",
-            "compress/zstd_double_fast.c",
-            "compress/zstd_fast.c",
-            "compress/zstd_lazy.c",
-            "compress/zstd_ldm.c",
-            "compress/zstd_opt.c",
-            "compress/zstd_preSplit.c",
-            "compress/zstdmt_compress.c",
-            "decompress/huf_decompress.c",
-            "decompress/huf_decompress_amd64.S",
-            "decompress/zstd_ddict.c",
-            "decompress/zstd_decompress.c",
-            "decompress/zstd_decompress_block.c",
-            "dictBuilder/cover.c",
-            "dictBuilder/divsufsort.c",
-            "dictBuilder/fastcover.c",
-            "dictBuilder/zdict.c",
-        ];
-        for src in zstd_sources {
-            let path = zstd_dir.join(src);
-            if path.exists() {
-                build.file(path);
-            }
-        }
-        build.include(&zstd_dir);
-        build.include(zstd_dir.join("common"));
-        build.include(zstd_dir.join("dictBuilder"));
-        build.define("ZSTD_MULTITHREAD", None);
-    }
+    configure_zstd(&mut build, &zstd_dir);
 
     build.compile("ttzip_native_codecs");
 }
 
-fn main() {
-    // In Bazel 8 (Bzlmod) hermetic builds, C codecs and native archives are managed
-    // strictly via Bzlmod cc_library targets (@libdeflate, @lz4, @zstd, //third_party/*).
-    if env::var("BAZEL_BUILD").is_ok()
+fn is_bazel_build() -> bool {
+    env::var("BAZEL_BUILD").is_ok()
         || env::var("CARGO_BAZEL").is_ok()
         || env::var("BUILD_WORKSPACE_DIRECTORY").is_ok()
+}
+
+fn configure_macos_link_search() {
+    if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
+        println!("cargo:rustc-link-search=native={lib_dir}");
+    }
+    for prefix in ["/opt/homebrew", "/usr/local"] {
+        for sub in ["lib", "opt/libdeflate/lib"] {
+            let path = Path::new(prefix).join(sub);
+            if path.exists() {
+                println!("cargo:rustc-link-search=native={}", path.display());
+            }
+        }
+    }
+    if let Ok(brew_prefix) = env::var("HOMEBREW_PREFIX") {
+        let p = Path::new(&brew_prefix).join("lib");
+        if p.exists() {
+            println!("cargo:rustc-link-search=native={}", p.display());
+        }
+    } else if let Ok(output) = std::process::Command::new("pkg-config")
+        .args(["--variable=libdir", "libarchive"])
+        .output()
     {
+        if output.status.success() {
+            let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !dir.is_empty() && Path::new(&dir).exists() {
+                println!("cargo:rustc-link-search=native={dir}");
+            }
+        }
+    }
+}
+
+fn emit_macos_system_libs() {
+    for lib in [
+        "deflate",
+        "zstd",
+        "lz4",
+        "archive",
+        "bz2",
+        "lzma",
+        "iconv",
+        "xml2",
+        "expat",
+        "c++",
+        "compression",
+    ] {
+        println!("cargo:rustc-link-lib={lib}");
+    }
+    println!("cargo:rustc-link-lib=framework=Security");
+}
+
+fn main() {
+    if is_bazel_build() {
         println!("cargo:rerun-if-changed=build.rs");
         return;
     }
@@ -204,68 +242,19 @@ fn main() {
         .and_then(|p| p.parent())
         .map(PathBuf::from)
         .unwrap_or_else(|| manifest_dir.clone());
-    let vendor_dir = repo_root.join("Vendor");
-    let vendor_lib_dir = vendor_dir.join("lib");
+    let vendor_lib_dir = repo_root.join("Vendor").join("lib");
     if vendor_lib_dir.exists() {
         println!("cargo:rustc-link-search=native={}", vendor_lib_dir.display());
-        println!("cargo:rustc-link-lib=static=archive");
-        println!("cargo:rustc-link-lib=static=deflate");
-        println!("cargo:rustc-link-lib=static=zstd");
-        println!("cargo:rustc-link-lib=static=lzma");
-        println!("cargo:rustc-link-lib=static=lz4");
-        println!("cargo:rustc-link-lib=static=uchardet");
-        println!("cargo:rustc-link-lib=static=z");
-        println!("cargo:rustc-link-lib=static=b2");
+        for lib in ["archive", "deflate", "zstd", "lzma", "lz4", "uchardet", "z", "b2"] {
+            println!("cargo:rustc-link-lib=static={lib}");
+        }
     }
 
-    // Compile and link in-tree native codecs (fast-lzma2, lzfse, snappy, etc.)
     compile_native_codecs(&repo_root);
 
-    // System libraries & frameworks required on macOS
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
-    if target_os == "macos" {
-        // Resolve native library search path hermetically without hardcoded host paths
-        if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
-            println!("cargo:rustc-link-search=native={lib_dir}");
-        }
-        for prefix in ["/opt/homebrew", "/usr/local"] {
-            let lib = Path::new(prefix).join("lib");
-            if lib.exists() {
-                println!("cargo:rustc-link-search=native={}", lib.display());
-            }
-            let opt_deflate = Path::new(prefix).join("opt/libdeflate/lib");
-            if opt_deflate.exists() {
-                println!("cargo:rustc-link-search=native={}", opt_deflate.display());
-            }
-        }
-        if let Ok(brew_prefix) = env::var("HOMEBREW_PREFIX") {
-            let p = Path::new(&brew_prefix).join("lib");
-            if p.exists() {
-                println!("cargo:rustc-link-search=native={}", p.display());
-            }
-        } else if let Ok(output) = std::process::Command::new("pkg-config")
-            .args(["--variable=libdir", "libarchive"])
-            .output()
-        {
-            if output.status.success() {
-                let dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !dir.is_empty() && Path::new(&dir).exists() {
-                    println!("cargo:rustc-link-search=native={dir}");
-                }
-            }
-        }
-        println!("cargo:rustc-link-lib=deflate");
-        println!("cargo:rustc-link-lib=zstd");
-        println!("cargo:rustc-link-lib=lz4");
-        println!("cargo:rustc-link-lib=archive");
-        println!("cargo:rustc-link-lib=bz2");
-        println!("cargo:rustc-link-lib=lzma");
-        println!("cargo:rustc-link-lib=iconv");
-        println!("cargo:rustc-link-lib=xml2");
-        println!("cargo:rustc-link-lib=expat");
-        println!("cargo:rustc-link-lib=c++");
-        println!("cargo:rustc-link-lib=compression");
-        println!("cargo:rustc-link-lib=framework=Security");
+    if env::var("CARGO_CFG_TARGET_OS").unwrap_or_default() == "macos" {
+        configure_macos_link_search();
+        emit_macos_system_libs();
     }
 
     println!("cargo:rerun-if-changed=build.rs");

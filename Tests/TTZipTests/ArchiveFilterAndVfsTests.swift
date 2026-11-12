@@ -254,4 +254,17 @@ final class ArchiveFilterAndVfsTests: XCTestCase {
             XCTFail("Unexpected error type: \(error)")
         }
     }
+
+    func testLegacyCoreImportReexportsArchiveContractAndFormattedSize() {
+        let entry = ArchiveEntry(
+            path: "docs/guide.md",
+            uncompressedSize: 1024,
+            isDirectory: false
+        )
+        XCTAssertEqual(entry.name, "guide.md")
+        XCTAssertEqual(entry.extensionName, "md")
+        XCTAssertEqual(entry.mimeType, "text/markdown")
+        XCTAssertFalse(entry.formattedSize.isEmpty)
+        XCTAssertEqual(ArchiveMimeMapper.mimeType(forExtension: "swift"), "text/x-swift")
+    }
 }

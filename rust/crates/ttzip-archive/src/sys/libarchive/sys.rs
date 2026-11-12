@@ -13,7 +13,7 @@ pub type ArchiveSeekCallback = unsafe extern "C" fn(a: *mut c_void, client_data:
 pub type ArchiveWriteCallback = unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void, buffer: *const c_void, length: size_t) -> ssize_t;
 pub type ArchiveFreeCallback = unsafe extern "C" fn(a: *mut c_void, client_data: *mut c_void) -> c_int;
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "complete C-ABI libarchive binding surface")]
 unsafe extern "C" {
     pub fn archive_read_new() -> *mut c_void;
     pub fn archive_read_support_format_all(a: *mut c_void) -> c_int;
@@ -159,7 +159,7 @@ unsafe extern "C" {
 ///
 /// # Safety
 /// `a` must be a valid pointer to a libarchive struct or null.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "diagnostic helper for C-ABI libarchive error strings")]
 pub unsafe fn get_archive_error_string(a: *mut c_void) -> Option<String> {
     unsafe {
         if a.is_null() {
@@ -180,7 +180,7 @@ pub unsafe fn get_archive_error_string(a: *mut c_void) -> Option<String> {
 ///
 /// # Safety
 /// `a` must be a valid pointer to a libarchive struct or null.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "diagnostic helper for formatted C-ABI libarchive errors")]
 pub unsafe fn format_archive_error(a: *mut c_void) -> String {
     unsafe {
         if a.is_null() {

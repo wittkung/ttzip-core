@@ -259,6 +259,12 @@ fn inspect_and_transcode_reader<R: Read + Seek>(
 // 1. Apple Archive (`pbze` Parallel LZFSE + `AA01` / `YAA1`) Transcoder
 // ---------------------------------------------------------------------------
 
+fn read_u64_be(buf: &[u8], offset: usize) -> u64 {
+    let mut b = [0u8; 8];
+    b.copy_from_slice(&buf[offset..offset + 8]);
+    u64::from_be_bytes(b)
+}
+
 fn decompress_pbze_stream(data: &[u8]) -> Result<Vec<u8>, TTZipStatus> {
     if data.len() < 28 || &data[..4] != b"pbze" {
         return Err(TTZipStatus::ErrCorruptHeader);
@@ -269,8 +275,8 @@ fn decompress_pbze_stream(data: &[u8]) -> Result<Vec<u8>, TTZipStatus> {
         if pos + 16 > data.len() {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
-        let uncomp_len = u64::from_be_bytes(data[pos..pos + 8].try_into().unwrap()) as usize;
-        let comp_len = u64::from_be_bytes(data[pos + 8..pos + 16].try_into().unwrap()) as usize;
+        let uncomp_len = read_u64_be(data, pos) as usize;
+        let comp_len = read_u64_be(data, pos + 8) as usize;
         pos += 16;
         if comp_len == 0 && uncomp_len == 0 {
             break;
@@ -350,7 +356,11 @@ fn apply_yaa_scalar_field(
     } else if tag == b"MOD2" {
         out.mode = u16::from_le_bytes([hdr[p], hdr[p + 1]]) as u32;
     } else if tag == b"MTMS" || tag == b"MTMT" {
-        out.mtime = u64::from_le_bytes(hdr[p..p + 8].try_into().unwrap());
+        out.mtime = u64::from_le_bytes(
+            hdr[p..p + 8]
+                .try_into()
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+        );
     }
     Ok(p + width)
 }
@@ -386,8 +396,22 @@ fn apply_yaa_blob_field(
 ) -> Result<usize, TTZipStatus> {
     let (width, len) = match tag[3] {
         b'A' if p + 2 <= hdr.len() => (2, u16::from_le_bytes([hdr[p], hdr[p + 1]]) as usize),
-        b'B' if p + 4 <= hdr.len() => (4, u32::from_le_bytes(hdr[p..p + 4].try_into().unwrap()) as usize),
-        b'C' if p + 8 <= hdr.len() => (8, u64::from_le_bytes(hdr[p..p + 8].try_into().unwrap()) as usize),
+        b'B' if p + 4 <= hdr.len() => (
+            4,
+            u32::from_le_bytes(
+                hdr[p..p + 4]
+                    .try_into()
+                    .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+            ) as usize,
+        ),
+        b'C' if p + 8 <= hdr.len() => (
+            8,
+            u64::from_le_bytes(
+                hdr[p..p + 8]
+                    .try_into()
+                    .map_err(|_| TTZipStatus::ErrCorruptHeader)?,
+            ) as usize,
+        ),
         _ => return Err(TTZipStatus::ErrCorruptHeader),
     };
     if &tag[..3] == b"DAT" {
@@ -503,7 +527,7 @@ pub fn extract_7z_single_entry_from_seekable<R: Read + Seek>(
     } else {
         return Err(TTZipStatus::ErrInvalidParam);
     };
-    crate::sevenz::decoder::archive::extract_7z_single_entry_from_reader(
+    super::sevenz_selected::extract_7z_single_entry_from_reader_fast(
         reader,
         &info,
         &seek_index,
@@ -560,3 +584,8 @@ pub fn extract_sevenz_selected_from_reader_with_quota<R: Read + Seek>(
         reader, selection, staging, options, password, quota_guard,
     )
 }
+
+pub use super::sevenz_selected::{
+    extract_7z_single_entry_from_reader_fast, is_unencrypted_copy_folder,
+};
+

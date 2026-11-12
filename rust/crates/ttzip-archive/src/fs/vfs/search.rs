@@ -51,17 +51,68 @@ fn starts_with_ignore_case(s: &str, prefix: &str) -> bool {
     }
 }
 
+#[inline]
+fn is_word_boundary_char(c: char) -> bool {
+    matches!(c, '/' | '\\' | '_' | '-' | '.' | ' ')
+}
+
+#[inline]
+fn compute_fuzzy_char_score(
+    t_idx: usize,
+    tc: char,
+    pat_char: char,
+    prev_c: char,
+    prev_matched_idx: Option<usize>,
+) -> i64 {
+    let mut char_score = 10i64;
+    if tc == pat_char {
+        char_score += 5;
+    }
+
+    if t_idx == 0 || is_word_boundary_char(prev_c) {
+        char_score += 30;
+    } else if prev_c.is_lowercase() && tc.is_uppercase() {
+        char_score += 25;
+    }
+
+    if let Some(prev) = prev_matched_idx {
+        if t_idx == prev + 1 {
+            char_score += 20;
+        } else {
+            char_score -= (t_idx.saturating_sub(prev + 1)) as i64;
+        }
+    }
+
+    char_score
+}
+
+#[inline]
+fn record_matched_index(
+    t_idx: usize,
+    pat_len: usize,
+    stack_indices: &mut [usize; 64],
+    matched_count: &mut usize,
+    heap_indices: &mut Option<Vec<usize>>,
+) {
+    if *matched_count < 64 && heap_indices.is_none() {
+        stack_indices[*matched_count] = t_idx;
+        *matched_count += 1;
+    } else {
+        let v = heap_indices.get_or_insert_with(|| {
+            let mut v = Vec::with_capacity(pat_len);
+            v.extend_from_slice(&stack_indices[..*matched_count]);
+            v
+        });
+        v.push(t_idx);
+    }
+}
+
 /// Evaluates fuzzy string matching score and byte match indices with zero heap allocations on mismatch.
 pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
     let pat = pattern.trim();
-    if pat.is_empty() {
-        return Some((0, Vec::new()));
-    }
-
     let mut pat_chars = pat.chars();
-    let mut current_pat_char = match pat_chars.next() {
-        Some(c) => c,
-        None => return Some((0, Vec::new())),
+    let Some(mut current_pat_char) = pat_chars.next() else {
+        return Some((0, Vec::new()));
     };
 
     let mut stack_indices = [0usize; 64];
@@ -74,38 +125,14 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
 
     for (t_idx, tc) in target.char_indices() {
         if tc.eq_ignore_ascii_case(&current_pat_char) {
-            if matched_count < 64 && heap_indices.is_none() {
-                stack_indices[matched_count] = t_idx;
-                matched_count += 1;
-            } else {
-                let v = heap_indices.get_or_insert_with(|| {
-                    let mut v = Vec::with_capacity(pat.len());
-                    v.extend_from_slice(&stack_indices[..matched_count]);
-                    v
-                });
-                v.push(t_idx);
-            }
-
-            let mut char_score = 10i64;
-            if tc == current_pat_char {
-                char_score += 5;
-            }
-
-            if t_idx == 0 || prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
-                char_score += 30;
-            } else if prev_c.is_lowercase() && tc.is_uppercase() {
-                char_score += 25;
-            }
-
-            if let Some(prev) = prev_matched_idx {
-                if t_idx == prev + 1 {
-                    char_score += 20;
-                } else {
-                    char_score -= (t_idx.saturating_sub(prev + 1)) as i64;
-                }
-            }
-
-            score += char_score;
+            record_matched_index(
+                t_idx,
+                pat.len(),
+                &mut stack_indices,
+                &mut matched_count,
+                &mut heap_indices,
+            );
+            score += compute_fuzzy_char_score(t_idx, tc, current_pat_char, prev_c, prev_matched_idx);
             prev_matched_idx = Some(t_idx);
 
             match pat_chars.next() {
@@ -116,10 +143,8 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
                     } else if starts_with_ignore_case(target, pat) {
                         score += 200;
                     }
-                    let indices = match heap_indices {
-                        Some(v) => v,
-                        None => stack_indices[..matched_count].to_vec(),
-                    };
+                    let indices =
+                        heap_indices.unwrap_or_else(|| stack_indices[..matched_count].to_vec());
                     return Some((score, indices));
                 }
             }
@@ -134,14 +159,9 @@ pub fn fuzzy_match(target: &str, pattern: &str) -> Option<(i64, Vec<usize>)> {
 #[inline]
 pub fn fuzzy_match_zero_alloc(target: &str, pattern: &str) -> Option<i64> {
     let pat = pattern.trim();
-    if pat.is_empty() {
-        return Some(0);
-    }
-
     let mut pat_chars = pat.chars();
-    let mut current_pat_char = match pat_chars.next() {
-        Some(c) => c,
-        None => return Some(0),
+    let Some(mut current_pat_char) = pat_chars.next() else {
+        return Some(0);
     };
 
     let mut score = 0i64;
@@ -150,26 +170,7 @@ pub fn fuzzy_match_zero_alloc(target: &str, pattern: &str) -> Option<i64> {
 
     for (t_idx, tc) in target.char_indices() {
         if tc.eq_ignore_ascii_case(&current_pat_char) {
-            let mut char_score = 10i64;
-            if tc == current_pat_char {
-                char_score += 5;
-            }
-
-            if t_idx == 0 || prev_c == '/' || prev_c == '\\' || prev_c == '_' || prev_c == '-' || prev_c == '.' || prev_c == ' ' {
-                char_score += 30;
-            } else if prev_c.is_lowercase() && tc.is_uppercase() {
-                char_score += 25;
-            }
-
-            if let Some(prev) = prev_matched_idx {
-                if t_idx == prev + 1 {
-                    char_score += 20;
-                } else {
-                    char_score -= (t_idx.saturating_sub(prev + 1)) as i64;
-                }
-            }
-
-            score += char_score;
+            score += compute_fuzzy_char_score(t_idx, tc, current_pat_char, prev_c, prev_matched_idx);
             prev_matched_idx = Some(t_idx);
 
             match pat_chars.next() {

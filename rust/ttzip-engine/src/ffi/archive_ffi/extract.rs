@@ -108,6 +108,46 @@ fn execute_staged_extraction(archive_p: &Path, dest_p: &Path, opt_ref: &TTZipExt
     super::staged_commit::commit_staged_with_policy(staged, opt_ref.collision_policy).status
 }
 
+unsafe fn mmap_7z_archive_path(archive_path: *const c_char) -> Result<memmap2::Mmap, TTZipStatus> {
+    if archive_path.is_null() {
+        return Err(TTZipStatus::ErrInvalidParam);
+    }
+    let arch_str = unsafe { CStr::from_ptr(archive_path) }
+        .to_str()
+        .map_err(|_| TTZipStatus::ErrInvalidParam)?;
+    let p = Path::new(arch_str);
+    if !p.exists() {
+        return Err(TTZipStatus::ErrFileNotFound);
+    }
+    let file = fs::File::open(p).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let file_meta = file.metadata().map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    if file_meta.len() == 0 {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    unsafe { memmap2::MmapOptions::new().map(&file) }.map_err(|_| TTZipStatus::ErrMmapFailed)
+}
+
+unsafe fn resolve_7z_entry_index(
+    archive: &crate::sevenz::SevenZArchive<'_>,
+    entry_index: i64,
+    entry_path: *const c_char,
+) -> Result<usize, TTZipStatus> {
+    if entry_index >= 0 {
+        Ok(entry_index as usize)
+    } else if !entry_path.is_null() {
+        let ep_str = unsafe { CStr::from_ptr(entry_path) }
+            .to_str()
+            .map_err(|_| TTZipStatus::ErrInvalidParam)?;
+        archive
+            .seek_index()
+            .get_by_path(ep_str)
+            .map(|loc| loc.file_index)
+            .ok_or(TTZipStatus::ErrFileNotFound)
+    } else {
+        Err(TTZipStatus::ErrInvalidParam)
+    }
+}
+
 /// C-ABI exported 7z single entry extraction into an in-memory buffer with Early Termination.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_7z_extract_entry_memory(
@@ -121,62 +161,19 @@ pub unsafe extern "C" fn ttzip_rust_7z_extract_entry_memory(
 ) -> TTZipStatus {
     unsafe {
         let result = catch_unwind(|| {
-            if archive_path.is_null() {
-                return TTZipStatus::ErrInvalidParam;
-            }
-
-            let arch_str = match CStr::from_ptr(archive_path).to_str() {
-                Ok(s) => s,
-                Err(_) => return TTZipStatus::ErrInvalidParam,
-            };
-
-            let p = Path::new(arch_str);
-            if !p.exists() {
-                return TTZipStatus::ErrFileNotFound;
-            }
-
-            let file = match fs::File::open(p) {
-                Ok(f) => f,
-                Err(_) => return TTZipStatus::ErrFileNotFound,
-            };
-            let file_meta = match file.metadata() {
+            let mmap = match mmap_7z_archive_path(archive_path) {
                 Ok(m) => m,
-                Err(_) => return TTZipStatus::ErrOpenFailed,
+                Err(st) => return st,
             };
-            if file_meta.len() == 0 {
-                return TTZipStatus::ErrCorruptHeader;
-            }
-            let mmap = match memmap2::MmapOptions::new().map(&file) {
-                Ok(m) => m,
-                Err(_) => return TTZipStatus::ErrMmapFailed,
-            };
-
             let archive = match crate::sevenz::SevenZArchive::open_slice(&mmap) {
                 Ok(a) => a,
                 Err(e) => return e,
             };
-
-            let target_idx = if entry_index >= 0 {
-                entry_index as usize
-            } else if !entry_path.is_null() {
-                let ep_str = match CStr::from_ptr(entry_path).to_str() {
-                    Ok(s) => s,
-                    Err(_) => return TTZipStatus::ErrInvalidParam,
-                };
-                match archive.seek_index().get_by_path(ep_str) {
-                    Some(loc) => loc.file_index,
-                    None => return TTZipStatus::ErrFileNotFound,
-                }
-            } else {
-                return TTZipStatus::ErrInvalidParam;
+            let target_idx = match resolve_7z_entry_index(&archive, entry_index, entry_path) {
+                Ok(idx) => idx,
+                Err(st) => return st,
             };
-
-            let pass_str = if !password.is_null() {
-                CStr::from_ptr(password).to_str().ok()
-            } else {
-                None
-            };
-
+            let pass_str = (!password.is_null()).then(|| CStr::from_ptr(password).to_str().ok()).flatten();
             let payload = match archive.extract_entry_bytes_stream(target_idx, pass_str) {
                 Ok(bytes) => bytes,
                 Err(e) => return e,
@@ -185,7 +182,6 @@ pub unsafe extern "C" fn ttzip_rust_7z_extract_entry_memory(
             if !out_extracted_len.is_null() {
                 *out_extracted_len = payload.len();
             }
-
             if !out_buffer.is_null() {
                 if buffer_capacity < payload.len() {
                     return TTZipStatus::ErrOutOfMemory;
@@ -194,7 +190,6 @@ pub unsafe extern "C" fn ttzip_rust_7z_extract_entry_memory(
                     std::ptr::copy_nonoverlapping(payload.as_ptr(), out_buffer, payload.len());
                 }
             }
-
             TTZipStatus::Ok
         });
 

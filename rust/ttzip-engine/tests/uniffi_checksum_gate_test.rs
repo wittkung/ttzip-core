@@ -9,47 +9,35 @@
 //! foreign bindings (macOS Swift 6, Windows WinUI 3 C#/C++, and Linux Qt 6/Slint C++).
 
 use sha2::{Digest, Sha256};
+use std::collections::{BTreeMap, BTreeSet};
 use ttzip_engine::uniffi_api::archive::{
     estimate_shannon_entropy, recommend_codec, sniff_format_buffer,
 };
 use ttzip_engine::uniffi_api::preset::validate_archive_params;
 use ttzip_engine::uniffi_api::types::TTZipArchiveFormat;
 
-// UniFFI Scaffolding C-ABI declarations exported by ttzip_engine.
+#[path = "common/uniffi_all_checksums.rs"]
+mod uniffi_all_checksums;
+use uniffi_all_checksums::*;
+
+const SWIFT_BINDINGS_SRC: &str =
+    include_str!("../../../Sources/TTZipCore/Generated/ttzip_engine.swift");
+const PYTHON_BINDINGS_SRC: &str =
+    include_str!("../../../sdk/python/ttzip/ttzip_engine.py");
+const GENERATED_FFI_HEADER_SRC: &str =
+    include_str!("../../../Sources/TTZipCore/Generated/ttzip_engineFFI.h");
+const ENGINE_FFI_HEADER_SRC: &str =
+    include_str!("../../../Sources/TTZipEngineFFI/include/ttzip_engineFFI.h");
+const BRIDGE_FFI_HEADER_SRC: &str =
+    include_str!("../../../Sources/CTTZipBridge/include/ttzip_engineFFI.h");
+
+// UniFFI Scaffolding C-ABI contract version exported by ttzip_engine.
 unsafe extern "C" {
     fn ffi_ttzip_engine_uniffi_contract_version() -> u32;
-
-    // Core facade functions
-    fn uniffi_ttzip_engine_checksum_func_create_archive_advanced() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_create_archive_stream() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_detect_archive_format() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_estimate_shannon_entropy() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_extract_archive_stream() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_sweep_stale_staging() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_extract_single_entry_stream() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_in_place_mutate_archive() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_inspect_archive_entries() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_load_archive_vfs_tree() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_open_vfs_session() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_open_virtual_file_stream() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_recommend_codec() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_recover_archive_password() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_repair_archive_file() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_sniff_format_buffer() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_sniff_format_file() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_validate_archive_params() -> u16;
-    fn uniffi_ttzip_engine_checksum_func_verify_archive_integrity() -> u16;
-
-    // VfsSession methods
-    fn uniffi_ttzip_engine_checksum_method_vfssession_get_children_paged() -> u16;
-    fn uniffi_ttzip_engine_checksum_method_vfssession_get_node_detail() -> u16;
-    fn uniffi_ttzip_engine_checksum_method_vfssession_resolve_path() -> u16;
-    fn uniffi_ttzip_engine_checksum_method_vfssession_search_top_k() -> u16;
-    fn uniffi_ttzip_engine_checksum_method_vfssession_total_nodes() -> u16;
 }
 
 const EXPECTED_CONTRACT_VERSION: u32 = 26;
+const EXPECTED_UNIFFI_SYMBOL_COUNT: usize = 359;
 
 /// Canonical exported symbol checksum expectations table.
 struct SymbolChecksumEntry {
@@ -184,10 +172,154 @@ static CANONICAL_SYMBOL_CHECKSUMS: &[SymbolChecksumEntry] = &[
         checksum_fn: uniffi_ttzip_engine_checksum_method_vfssession_total_nodes,
         expected_value: 46657,
     },
+    SymbolChecksumEntry {
+        name: "compute_file_stream_hash",
+        checksum_fn: uniffi_ttzip_engine_checksum_func_compute_file_stream_hash,
+        expected_value: 21618,
+    },
+    SymbolChecksumEntry {
+        name: "extractionsession_preflight",
+        checksum_fn: uniffi_ttzip_engine_checksum_method_extractionsession_preflight,
+        expected_value: 51770,
+    },
 ];
 
 const EXPECTED_AGGREGATE_SHA256: &str =
-    "858deb19bc7ed47c0f667367b5f955610b452750e3ad08f20d5c2c820931bf79";
+    "b848b930b3f3bf6f16e23bf3824e4ea0f6379e2eec739d9b493ba8bfb3e26be8";
+
+fn live_rust_checksum_map() -> BTreeMap<&'static str, u16> {
+    assert_eq!(
+        ALL_UNIFFI_ENGINE_CHECKSUMS.len(),
+        EXPECTED_UNIFFI_SYMBOL_COUNT,
+        "Expected {} entries in ALL_UNIFFI_ENGINE_CHECKSUMS, got {}",
+        EXPECTED_UNIFFI_SYMBOL_COUNT,
+        ALL_UNIFFI_ENGINE_CHECKSUMS.len()
+    );
+    let mut map = BTreeMap::new();
+    for &(sym, func) in ALL_UNIFFI_ENGINE_CHECKSUMS {
+        let prev = map.insert(sym, unsafe { func() });
+        assert!(prev.is_none(), "Duplicate UniFFI symbol entry: {}", sym);
+    }
+    map
+}
+
+fn parse_delimited_checksums<'a>(
+    src: &'a str,
+    prefix: &str,
+    suffix: &str,
+) -> BTreeMap<&'a str, u16> {
+    let mut map = BTreeMap::new();
+    for line in src.lines() {
+        let Some(rest) = line.trim().strip_prefix(prefix) else {
+            continue;
+        };
+        let Some((sym, rhs)) = rest.split_once("() != ") else {
+            continue;
+        };
+        if !sym.starts_with("uniffi_ttzip_engine_checksum_") {
+            continue;
+        }
+        let Some(num_str) = rhs.strip_suffix(suffix) else {
+            continue;
+        };
+        let value: u16 = num_str
+            .parse()
+            .expect("UniFFI checksum literal must be a valid u16");
+        map.insert(sym, value);
+    }
+    map
+}
+
+fn parse_c_header_checksum_symbols(src: &str) -> BTreeSet<&str> {
+    src.lines()
+        .filter_map(|line| {
+            let sym = line.trim().strip_prefix("uint16_t ")?.strip_suffix("(void")?;
+            sym.starts_with("uniffi_ttzip_engine_checksum_").then_some(sym)
+        })
+        .collect()
+}
+
+fn assert_checksum_map_parity(
+    label: &str,
+    rust_map: &BTreeMap<&str, u16>,
+    binding_map: &BTreeMap<&str, u16>,
+) {
+    let missing: Vec<&str> = rust_map
+        .keys()
+        .copied()
+        .filter(|k| !binding_map.contains_key(k))
+        .collect();
+    let stale: Vec<&str> = binding_map
+        .keys()
+        .copied()
+        .filter(|k| !rust_map.contains_key(k))
+        .collect();
+    let mismatches: Vec<String> = rust_map
+        .iter()
+        .filter_map(|(&sym, &rust_val)| {
+            let &binding_val = binding_map.get(sym)?;
+            (binding_val != rust_val)
+                .then(|| format!("{}: {}={} != rust={}", sym, label, binding_val, rust_val))
+        })
+        .collect();
+
+    assert!(
+        binding_map.len() == EXPECTED_UNIFFI_SYMBOL_COUNT
+            && missing.is_empty()
+            && stale.is_empty()
+            && mismatches.is_empty(),
+        "{} UniFFI checksum parity failure (total={}, expected={}): missing={} {:?}, stale={} {:?}, mismatches={} {:?}",
+        label,
+        binding_map.len(),
+        EXPECTED_UNIFFI_SYMBOL_COUNT,
+        missing.len(),
+        missing,
+        stale.len(),
+        stale,
+        mismatches.len(),
+        mismatches
+    );
+}
+
+#[test]
+fn test_swift_generated_bindings_checksum_parity() {
+    let rust_map = live_rust_checksum_map();
+    let swift_map = parse_delimited_checksums(SWIFT_BINDINGS_SRC, "if (", ") {");
+    assert_checksum_map_parity("ttzip_engine.swift", &rust_map, &swift_map);
+}
+
+#[test]
+fn test_python_sdk_bindings_checksum_parity() {
+    let rust_map = live_rust_checksum_map();
+    let python_map = parse_delimited_checksums(PYTHON_BINDINGS_SRC, "if lib.", ":");
+    assert_checksum_map_parity("ttzip_engine.py", &rust_map, &python_map);
+}
+
+#[test]
+fn test_c_ffi_headers_checksum_symbol_set_parity() {
+    let rust_map = live_rust_checksum_map();
+    let expected_set: BTreeSet<&str> = rust_map.keys().copied().collect();
+    for (label, src) in [
+        ("Sources/TTZipCore/Generated/ttzip_engineFFI.h", GENERATED_FFI_HEADER_SRC),
+        ("Sources/TTZipEngineFFI/include/ttzip_engineFFI.h", ENGINE_FFI_HEADER_SRC),
+        ("Sources/CTTZipBridge/include/ttzip_engineFFI.h", BRIDGE_FFI_HEADER_SRC),
+    ] {
+        let header_set = parse_c_header_checksum_symbols(src);
+        assert_eq!(
+            header_set.len(),
+            EXPECTED_UNIFFI_SYMBOL_COUNT,
+            "Expected {} checksum declarations in {}, got {}",
+            EXPECTED_UNIFFI_SYMBOL_COUNT,
+            label,
+            header_set.len()
+        );
+        assert_eq!(
+            header_set, expected_set,
+            "C FFI header checksum symbol set mismatch in {}",
+            label
+        );
+    }
+}
 
 #[test]
 fn test_uniffi_contract_version() {

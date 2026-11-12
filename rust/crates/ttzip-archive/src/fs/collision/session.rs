@@ -183,9 +183,8 @@ impl ExtractionSession<Staged> {
 
         // SAFETY: open destination directory
         let dirfd = unsafe { libc::open(dest_c.as_ptr(), libc::O_RDONLY | libc::O_DIRECTORY | libc::O_CLOEXEC) };
-        if dirfd < 0 {
-            let table = ConflictTable::builder().build()?;
-            self.state_data.table = Some(table);
+        let table = if dirfd < 0 {
+            ConflictTable::builder().build()?
         } else {
             struct FdGuard(libc::c_int);
             impl Drop for FdGuard {
@@ -196,11 +195,10 @@ impl ExtractionSession<Staged> {
             }
             let _guard = FdGuard(dirfd);
             let payload_path = self.state_data.staging.payload_dir().0;
-            let table = post_stage_detect(fs, dirfd, &payload_path)?;
-            self.state_data.table = Some(table);
-        }
+            post_stage_detect(fs, dirfd, &payload_path)?
+        };
 
-        Ok(self.state_data.table.as_ref().unwrap())
+        Ok(self.state_data.table.insert(table))
     }
 
     pub fn commit<F: FsOps>(
@@ -282,12 +280,12 @@ impl ExtractionSession<Staged> {
         policy: crate::fs::collision::CollisionPolicy,
         resolutions: &ResolutionSet,
     ) -> Result<ExtractionOutcome, std::io::Error> {
-        if self.state_data.table.is_none() {
-            self.post_stage_detect(fs).map_err(|e| {
+        let table = match &self.state_data.table {
+            Some(t) => t,
+            None => self.post_stage_detect(fs).map_err(|e| {
                 std::io::Error::other(e.to_string())
-            })?;
-        }
-        let table = self.state_data.table.as_ref().expect("table populated");
+            })?,
+        };
         resolutions.validate(table).map_err(|e| {
             std::io::Error::new(std::io::ErrorKind::InvalidInput, e.to_string())
         })?;

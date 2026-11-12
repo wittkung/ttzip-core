@@ -334,7 +334,10 @@ impl Entry_#ID# { pub fn new() -> Self { Self { id: #ID#, name: String::from("it
                     fallback_buf.extend_from_slice(xml_tmpl);
                 }
                 fallback_buf.truncate(ZSTD_STANDARD_DICTIONARY_SIZE_BYTES);
-                ZstdDictionary::from_bytes(STD_NAME, fallback_buf, 3).expect("fallback dictionary creation")
+                match ZstdDictionary::from_bytes(STD_NAME, fallback_buf, 3) {
+                    Ok(dict) => dict,
+                    Err(_) => std::process::abort(),
+                }
             });
 
         self.register(dict)

@@ -584,7 +584,7 @@ fn test_29_data_stream_alignment_4kb_16kb() {
 
 #[test]
 fn test_30_gbk_cp936_chinese_filename() {
-    // CP936/GBK encoded Chinese characters: "中文文档.txt" -> [0xD6, 0xD0, 0xCE, 0xC4, 0xCE, 0xC4, 0xB5, 0xB5, ...]
+    // CP936/GBK encoded Chinese filename bytes -> [0xD6, 0xD0, 0xCE, 0xC4, 0xCE, 0xC4, 0xB5, 0xB5, ...]
     let gbk_bytes = b"\xd6\xd0\xce\xc4\xce\xc4\xb5\xb5.txt";
     let decoded_non_utf8 = decode_zip_filename(gbk_bytes, false);
     assert!(!decoded_non_utf8.is_empty());

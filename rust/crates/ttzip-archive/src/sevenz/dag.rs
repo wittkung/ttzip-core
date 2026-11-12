@@ -104,12 +104,35 @@ impl CoderGraph {
             return Err(SevenZError::EmptyFolder);
         }
 
-        let total_in = in_to_coder.len();
-        let total_out = out_to_coder.len();
-
         let mut nodes: Vec<CoderNode> = (0..num_coders).map(CoderNode::new).collect();
+        Self::populate_coder_streams(&mut nodes, num_coders, in_to_coder, out_to_coder)?;
 
-        // Populate in_streams for each coder
+        let (packed_streams, unbound_out_streams) =
+            Self::bind_coder_edges(&mut nodes, bind_pairs, in_to_coder, out_to_coder)?;
+
+        let topological_order = Self::run_kahn_sort(&nodes, num_coders)?;
+        let main_coder =
+            Self::resolve_main_coder(num_coders, &unbound_out_streams, out_to_coder)?;
+
+        if main_coder < num_coders {
+            nodes[main_coder].is_main_coder = true;
+        }
+
+        Ok(Self {
+            nodes,
+            topological_order,
+            packed_streams,
+            main_coder,
+            unbound_out_streams,
+        })
+    }
+
+    fn populate_coder_streams(
+        nodes: &mut [CoderNode],
+        num_coders: usize,
+        in_to_coder: &[usize],
+        out_to_coder: &[usize],
+    ) -> Result<(), SevenZError> {
         for (in_idx, &coder_idx) in in_to_coder.iter().enumerate() {
             if coder_idx >= num_coders {
                 return Err(SevenZError::InvalidCoderIndex {
@@ -119,8 +142,6 @@ impl CoderGraph {
             }
             nodes[coder_idx].in_streams.push(in_idx);
         }
-
-        // Populate out_streams for each coder
         for (out_idx, &coder_idx) in out_to_coder.iter().enumerate() {
             if coder_idx >= num_coders {
                 return Err(SevenZError::InvalidCoderIndex {
@@ -130,13 +151,20 @@ impl CoderGraph {
             }
             nodes[coder_idx].out_streams.push(out_idx);
         }
+        Ok(())
+    }
 
+    fn bind_coder_edges(
+        nodes: &mut [CoderNode],
+        bind_pairs: &[(u64, u64)],
+        in_to_coder: &[usize],
+        out_to_coder: &[usize],
+    ) -> Result<(Vec<usize>, Vec<usize>), SevenZError> {
+        let total_in = in_to_coder.len();
+        let total_out = out_to_coder.len();
         let mut in_bound = vec![false; total_in];
         let mut out_bound = vec![false; total_out];
 
-        // Process bind pairs: each pair is (in_stream_idx, out_stream_idx)
-        // Producer: coder of out_stream_idx
-        // Consumer: coder of in_stream_idx
         for &(in_stream_idx, out_stream_idx) in bind_pairs {
             let in_idx = in_stream_idx as usize;
             let out_idx = out_stream_idx as usize;
@@ -153,7 +181,6 @@ impl CoderGraph {
                     max_streams: total_out,
                 });
             }
-
             if in_bound[in_idx] {
                 return Err(SevenZError::StreamAlreadyBound {
                     stream_index: in_stream_idx,
@@ -170,64 +197,43 @@ impl CoderGraph {
 
             let in_coder = in_to_coder[in_idx];
             let out_coder = out_to_coder[out_idx];
-
-            // Direct self-loop interception
             if in_coder == out_coder {
                 return Err(SevenZError::SelfLoop {
                     coder_index: in_coder,
                 });
             }
 
-            // Directed edge in data flow: out_coder (producer) -> in_coder (consumer)
             nodes[out_coder].dependents.push(in_coder);
             nodes[out_coder].out_degree += 1;
-
             nodes[in_coder].dependencies.push(out_coder);
             nodes[in_coder].in_degree += 1;
         }
 
-        // Identify unbound input streams (packed streams from archive payload)
-        let packed_streams: Vec<usize> = in_bound
+        let packed_streams = in_bound
             .iter()
             .enumerate()
-            .filter_map(|(idx, &bound)| if !bound { Some(idx) } else { None })
+            .filter_map(|(idx, &bound)| (!bound).then_some(idx))
             .collect();
-
-        // Identify unbound output streams
-        let unbound_out_streams: Vec<usize> = out_bound
+        let unbound_out_streams = out_bound
             .iter()
             .enumerate()
-            .filter_map(|(idx, &bound)| if !bound { Some(idx) } else { None })
+            .filter_map(|(idx, &bound)| (!bound).then_some(idx))
             .collect();
+        Ok((packed_streams, unbound_out_streams))
+    }
 
-        // Perform Kahn's topological sort
-        let topological_order = Self::run_kahn_sort(&nodes, num_coders)?;
-
-        // Determine main terminal coder
-        let main_coder = if unbound_out_streams.is_empty() {
-            // If all outputs are bound (or no outputs), default to last coder or error
-            if num_coders == 1 {
-                0
-            } else {
-                return Err(SevenZError::NoMainCoder);
-            }
+    fn resolve_main_coder(
+        num_coders: usize,
+        unbound_out_streams: &[usize],
+        out_to_coder: &[usize],
+    ) -> Result<usize, SevenZError> {
+        if let Some(&first_unbound_out) = unbound_out_streams.first() {
+            Ok(out_to_coder[first_unbound_out])
+        } else if num_coders == 1 {
+            Ok(0)
         } else {
-            // Main coder produces the unbound output stream
-            let first_unbound_out = unbound_out_streams[0];
-            out_to_coder[first_unbound_out]
-        };
-
-        if main_coder < num_coders {
-            nodes[main_coder].is_main_coder = true;
+            Err(SevenZError::NoMainCoder)
         }
-
-        Ok(Self {
-            nodes,
-            topological_order,
-            packed_streams,
-            main_coder,
-            unbound_out_streams,
-        })
     }
 
     /// Internal Kahn's Algorithm topological sort implementation.

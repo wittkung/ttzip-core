@@ -158,6 +158,31 @@ pub fn glob_matches(pattern: &str, path: &str, case_sensitive: bool) -> bool {
     false
 }
 
+#[inline]
+fn skip_slashes(bytes: &[u8], mut i: usize) -> usize {
+    while i < bytes.len() && bytes[i] == b'/' {
+        i += 1;
+    }
+    i
+}
+
+#[inline]
+fn skip_leading_curdir(bytes: &[u8], i: usize) -> usize {
+    if bytes.get(i..i + 2) == Some(b"./") {
+        skip_slashes(bytes, i + 2)
+    } else {
+        i
+    }
+}
+
+#[inline]
+fn skip_one_component(bytes: &[u8], mut i: usize) -> usize {
+    while i < bytes.len() && bytes[i] != b'/' {
+        i += 1;
+    }
+    skip_slashes(bytes, i)
+}
+
 /// Zero-allocation fast leading path component stripping.
 pub fn strip_leading_components(path: &str, count: usize) -> Option<&str> {
     if count == 0 {
@@ -168,43 +193,17 @@ pub fn strip_leading_components(path: &str, count: usize) -> Option<&str> {
     }
 
     let bytes = path.as_bytes();
-    let mut i = 0;
     let len = bytes.len();
-
-    // 1. Skip leading slashes
-    while i < len && bytes[i] == b'/' {
-        i += 1;
-    }
-
-    // 2. Skip leading "./"
-    if i < len && bytes[i] == b'.' {
-        let next = i + 1;
-        if next < len && bytes[next] == b'/' {
-            i = next + 1;
-            while i < len && bytes[i] == b'/' {
-                i += 1;
-            }
-        }
-    }
+    let mut i = skip_leading_curdir(bytes, skip_slashes(bytes, 0));
 
     let mut stripped_count = 0;
     while stripped_count < count && i < len {
-        while i < len && bytes[i] != b'/' {
-            i += 1;
-        }
+        i = skip_one_component(bytes, i);
         stripped_count += 1;
-        while i < len && bytes[i] == b'/' {
-            i += 1;
-        }
     }
 
     if stripped_count == count && i < len {
-        let rem = &path[i..];
-        if rem.is_empty() {
-            None
-        } else {
-            Some(rem)
-        }
+        Some(&path[i..])
     } else {
         None
     }

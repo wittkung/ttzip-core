@@ -141,6 +141,51 @@ impl Default for TTZipCreateOptions {
     }
 }
 
+/// Extended non-C-ABI archive creation tuning parameters scoped per thread to preserve
+/// `#[repr(C)] pub struct TTZipCreateOptions` binary and literal layout compatibility.
+#[derive(Debug, Copy, Clone, Default, PartialEq, Eq)]
+pub struct TTZipExtendedCreateOptions {
+    pub dictionary_size_mb: u32,
+    pub enable_ldm: bool,
+    pub raw_level: Option<u8>,
+}
+
+std::thread_local! {
+    static EXTENDED_CREATE_OPTIONS: std::cell::Cell<TTZipExtendedCreateOptions> =
+        const { std::cell::Cell::new(TTZipExtendedCreateOptions {
+            dictionary_size_mb: 0,
+            enable_ldm: false,
+            raw_level: None,
+        }) };
+}
+
+struct ExtendedCreateOptionsGuard(TTZipExtendedCreateOptions);
+
+impl Drop for ExtendedCreateOptionsGuard {
+    fn drop(&mut self) {
+        let prev = self.0;
+        EXTENDED_CREATE_OPTIONS.with(|slot| slot.set(prev));
+    }
+}
+
+/// Returns the active `TTZipExtendedCreateOptions` on the current thread.
+#[inline]
+#[must_use]
+pub fn current_extended_create_options() -> TTZipExtendedCreateOptions {
+    EXTENDED_CREATE_OPTIONS.with(std::cell::Cell::get)
+}
+
+/// Executes `f` with `ext` installed as the thread-local `TTZipExtendedCreateOptions`,
+/// restoring the prior value even on panic or early return.
+pub fn with_extended_create_options<R>(
+    ext: TTZipExtendedCreateOptions,
+    f: impl FnOnce() -> R,
+) -> R {
+    let prev = EXTENDED_CREATE_OPTIONS.with(|slot| slot.replace(ext));
+    let _guard = ExtendedCreateOptionsGuard(prev);
+    f()
+}
+
 #[repr(C)]
 #[derive(Debug, Clone, Zeroize)]
 #[zeroize(drop)]

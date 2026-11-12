@@ -66,6 +66,58 @@ pub unsafe extern "C" fn ttzip_rust_rs_encode(
     }
 }
 
+type RsDecodeBuffers<'a> = (Vec<&'a [u8]>, Vec<usize>, Vec<usize>, Vec<&'a mut [u8]>);
+
+unsafe fn collect_rs_decode_buffers<'a>(
+    available_ptrs: *const *const u8,
+    available_indices: *const i32,
+    num_available: usize,
+    missing_indices: *const i32,
+    num_missing: usize,
+    reconstructed_ptrs: *const *mut u8,
+    block_size: usize,
+) -> Result<RsDecodeBuffers<'a>, TTZipStatus> {
+    unsafe {
+        let avail_ptrs_slice = slice::from_raw_parts(available_ptrs, num_available);
+        let avail_idx_slice = slice::from_raw_parts(available_indices, num_available);
+        let miss_idx_slice = slice::from_raw_parts(missing_indices, num_missing);
+        let recon_ptrs_slice = slice::from_raw_parts(reconstructed_ptrs, num_missing);
+
+        let mut available_shards = Vec::with_capacity(num_available);
+        let mut available_idxs = Vec::with_capacity(num_available);
+        for (&ptr, &idx) in avail_ptrs_slice.iter().zip(avail_idx_slice.iter()) {
+            if ptr.is_null() || idx < 0 {
+                return Err(TTZipStatus::ErrInvalidParam);
+            }
+            available_shards.push(slice::from_raw_parts(ptr, block_size));
+            available_idxs.push(idx as usize);
+        }
+
+        let mut missing_idxs = Vec::with_capacity(num_missing);
+        for &idx in miss_idx_slice {
+            if idx < 0 {
+                return Err(TTZipStatus::ErrInvalidParam);
+            }
+            missing_idxs.push(idx as usize);
+        }
+
+        let mut reconstructed_shards = Vec::with_capacity(num_missing);
+        for &ptr in recon_ptrs_slice {
+            if ptr.is_null() {
+                return Err(TTZipStatus::ErrInvalidParam);
+            }
+            reconstructed_shards.push(slice::from_raw_parts_mut(ptr, block_size));
+        }
+
+        Ok((
+            available_shards,
+            available_idxs,
+            missing_idxs,
+            reconstructed_shards,
+        ))
+    }
+}
+
 /// C-ABI exported Cauchy Reed-Solomon decoder over GF(2^8).
 ///
 /// # Safety
@@ -103,44 +155,21 @@ pub unsafe extern "C" fn ttzip_rust_rs_decode(
                 Err(e) => return e.to_i32(),
             };
 
-            let avail_ptrs_slice = slice::from_raw_parts(available_ptrs, num_available);
-            let avail_idx_slice = slice::from_raw_parts(available_indices, num_available);
-            let miss_idx_slice = slice::from_raw_parts(missing_indices, num_missing);
-            let recon_ptrs_slice = slice::from_raw_parts(reconstructed_ptrs, num_missing);
+            let (avail_shards, avail_idxs, miss_idxs, mut recon_shards) =
+                match collect_rs_decode_buffers(
+                    available_ptrs,
+                    available_indices,
+                    num_available,
+                    missing_indices,
+                    num_missing,
+                    reconstructed_ptrs,
+                    block_size,
+                ) {
+                    Ok(v) => v,
+                    Err(e) => return e.to_i32(),
+                };
 
-            let mut available_shards = Vec::with_capacity(num_available);
-            let mut available_idxs = Vec::with_capacity(num_available);
-            for i in 0..num_available {
-                let ptr = avail_ptrs_slice[i];
-                if ptr.is_null() || avail_idx_slice[i] < 0 {
-                    return TTZipStatus::ErrInvalidParam.to_i32();
-                }
-                available_shards.push(slice::from_raw_parts(ptr, block_size));
-                available_idxs.push(avail_idx_slice[i] as usize);
-            }
-
-            let mut missing_idxs = Vec::with_capacity(num_missing);
-            for &idx in miss_idx_slice {
-                if idx < 0 {
-                    return TTZipStatus::ErrInvalidParam.to_i32();
-                }
-                missing_idxs.push(idx as usize);
-            }
-
-            let mut reconstructed_shards = Vec::with_capacity(num_missing);
-            for &ptr in recon_ptrs_slice {
-                if ptr.is_null() {
-                    return TTZipStatus::ErrInvalidParam.to_i32();
-                }
-                reconstructed_shards.push(slice::from_raw_parts_mut(ptr, block_size));
-            }
-
-            match rs.decode(
-                &available_shards,
-                &available_idxs,
-                &missing_idxs,
-                &mut reconstructed_shards,
-            ) {
+            match rs.decode(&avail_shards, &avail_idxs, &miss_idxs, &mut recon_shards) {
                 Ok(()) => TTZipStatus::Ok.to_i32(),
                 Err(e) => e.to_i32(),
             }

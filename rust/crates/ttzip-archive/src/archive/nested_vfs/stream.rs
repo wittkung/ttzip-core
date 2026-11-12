@@ -54,10 +54,11 @@ impl VirtualChunkedStream {
     pub fn get_chunk(&self, chunk_idx: u64) -> Result<Arc<Vec<u8>>, TTZipError> {
         let mut ring = self.ring_buffer.lock();
         if let Some(pos) = ring.iter().position(|s| s.index == chunk_idx) {
-            let slot = ring.remove(pos).unwrap();
-            let data = Arc::clone(&slot.data);
-            ring.push_back(slot);
-            return Ok(data);
+            if let Some(slot) = ring.remove(pos) {
+                let data = Arc::clone(&slot.data);
+                ring.push_back(slot);
+                return Ok(data);
+            }
         }
         drop(ring);
 
@@ -71,10 +72,11 @@ impl VirtualChunkedStream {
 
         let mut ring = self.ring_buffer.lock();
         if let Some(pos) = ring.iter().position(|s| s.index == chunk_idx) {
-            let slot = ring.remove(pos).unwrap();
-            let data = Arc::clone(&slot.data);
-            ring.push_back(slot);
-            return Ok(data);
+            if let Some(slot) = ring.remove(pos) {
+                let data = Arc::clone(&slot.data);
+                ring.push_back(slot);
+                return Ok(data);
+            }
         }
         if ring.len() >= self.max_chunks {
             ring.pop_front();

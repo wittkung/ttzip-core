@@ -61,11 +61,11 @@ mod sys {
 
 /// Thread-safe, zero-mutex Darwin `os_log` wrapper.
 pub struct OsLog {
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "Used on macOS target only via os_log FFI")]
     handle: *mut c_void,
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "Retained for Debug formatting and subsystem ownership")]
     subsystem: String,
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "Retained for Debug formatting and category ownership")]
     category: String,
 }
 

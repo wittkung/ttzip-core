@@ -91,6 +91,29 @@ impl<'a> BatchVerifier<'a> {
         result
     }
 
+    fn derive_item_scalars(item: &BatchItem<'_>, seed: &[u8; 32], idx: usize) -> (Scalar, Scalar) {
+        let mut hasher = Sha512::new();
+        hasher.update(item.signature.r_bytes());
+        hasher.update(item.verifying_key.as_bytes());
+        hasher.update(item.message);
+        let mut challenge_digest = [0u8; 64];
+        challenge_digest.copy_from_slice(&hasher.finalize());
+        let k = Scalar::from_bytes_mod_order_wide(&challenge_digest);
+        challenge_digest.zeroize();
+
+        let mut z_hasher = Sha512::new();
+        z_hasher.update(seed);
+        z_hasher.update((idx as u64).to_le_bytes());
+        let z_digest = z_hasher.finalize();
+        let mut z_bytes = [0u8; 32];
+        z_bytes[0..16].copy_from_slice(&z_digest[0..16]);
+        if z_bytes[0..16].iter().all(|&b| b == 0) {
+            z_bytes[0] = 1;
+        }
+        let z = Scalar::from_bytes_mod_order(z_bytes);
+        (k, z)
+    }
+
     /// Verifies all signatures in the batch deterministically using a supplied 32-byte seed.
     pub fn verify_with_seed(self, seed: &[u8; 32]) -> Result<(), Ed25519Error> {
         let n = self.items.len();
@@ -98,7 +121,6 @@ impl<'a> BatchVerifier<'a> {
             return Ok(());
         }
 
-        // Decompress all points and canonicalize scalars
         let mut r_points = Vec::with_capacity(n);
         let mut a_points = Vec::with_capacity(n);
         let mut s_scalars = Vec::with_capacity(n);
@@ -106,55 +128,28 @@ impl<'a> BatchVerifier<'a> {
         let mut z_scalars = Vec::with_capacity(n);
 
         for (i, item) in self.items.iter().enumerate() {
-            // 1. Verify scalar S is canonical
             let s_scalar_opt = Option::<Scalar>::from(Scalar::from_canonical_bytes(*item.signature.s_bytes()));
             let s = s_scalar_opt.ok_or(Ed25519Error::NonCanonicalScalar)?;
             s_scalars.push(s);
 
-            // 2. Decompress point R
             let r_compressed = CompressedEdwardsY(*item.signature.r_bytes());
             let r_point = r_compressed.decompress().ok_or(Ed25519Error::InvalidSignatureFormat {
                 actual_len: SIGNATURE_LENGTH,
             })?;
             r_points.push(r_point);
-
-            // 3. Collect public key point A
             a_points.push(*item.verifying_key.point());
 
-            // 4. Challenge scalar k_i = SHA-512(R_i || A_i || M_i) mod \ell
-            let mut hasher = Sha512::new();
-            hasher.update(item.signature.r_bytes());
-            hasher.update(item.verifying_key.as_bytes());
-            hasher.update(item.message);
-            let mut challenge_digest = [0u8; 64];
-            challenge_digest.copy_from_slice(&hasher.finalize());
-            let k = Scalar::from_bytes_mod_order_wide(&challenge_digest);
-            challenge_digest.zeroize();
+            let (k, z) = Self::derive_item_scalars(item, seed, i);
             k_scalars.push(k);
-
-            // 5. Derive 128-bit pseudo-random scalar weight z_i
-            let mut z_hasher = Sha512::new();
-            z_hasher.update(seed);
-            z_hasher.update((i as u64).to_le_bytes());
-            let z_digest = z_hasher.finalize();
-            let mut z_bytes = [0u8; 32];
-            z_bytes[0..16].copy_from_slice(&z_digest[0..16]);
-            if z_bytes[0..16].iter().all(|&b| b == 0) {
-                z_bytes[0] = 1;
-            }
-            let z = Scalar::from_bytes_mod_order(z_bytes);
             z_scalars.push(z);
         }
 
-        // Compute basepoint scalar S_total = -\sum (z_i * S_i) mod \ell
         let mut s_total = Scalar::ZERO;
         for i in 0..n {
             s_total += z_scalars[i] * s_scalars[i];
         }
         let neg_s_total = -s_total;
 
-        // Formulate scalars and points for Multi-Scalar Multiplication (MSM)
-        // Equation: (-S_total) * B + \sum (z_i * R_i) + \sum ((z_i * k_i) * A_i) == Identity
         let mut scalars = Vec::with_capacity(1 + 2 * n);
         let mut points = Vec::with_capacity(1 + 2 * n);
 
@@ -167,8 +162,7 @@ impl<'a> BatchVerifier<'a> {
         }
 
         for i in 0..n {
-            let zk = z_scalars[i] * k_scalars[i];
-            scalars.push(zk);
+            scalars.push(z_scalars[i] * k_scalars[i]);
             points.push(a_points[i]);
         }
 

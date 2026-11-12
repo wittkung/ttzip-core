@@ -243,8 +243,15 @@ fn test_audit_zstd_ldm_window_scaling() {
             size,
         );
         let ldm_comp = zstd_ldm.bench_compress(&data, 3).unwrap();
+        let ldm_decomp = zstd_ldm.bench_decompress(&ldm_comp, size).unwrap();
+        assert_eq!(&ldm_decomp[..], &data[..], "LDM decompressed payload must match source");
 
         let ratio_gain = (1.0 - (ldm_comp.len() as f64 / std_comp.len() as f64)) * 100.0;
+        assert!(
+            ratio_gain >= -1.0,
+            "LDM compression ratio should not severely regress vs standard Zstd (got {:.1}%)",
+            ratio_gain
+        );
 
         println!(
             "{:<12} | {:>14.2} MB/s | {:>14.2} MB/s | {:>12.1}% size drop",

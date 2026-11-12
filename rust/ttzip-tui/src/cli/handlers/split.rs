@@ -80,21 +80,50 @@ pub fn execute_split(
         _ => VolumeNamingScheme::NumberedExtension,
     };
 
-    let base_path = if let Some(out_dir) = output_dir {
+    let base_path = resolve_split_base_path(source_archive, output_dir)?;
+    let start_time = Instant::now();
+    let (volumes, total_bytes) =
+        write_split_volumes(&base_path, source_archive, chunk_size, naming_scheme)?;
+    let elapsed = start_time.elapsed();
+
+    println!(
+        "Split {} into {} volumes ({}) in {:.2?}",
+        source_archive.display(),
+        volumes.len(),
+        format_bytes(total_bytes),
+        elapsed
+    );
+    for vol in &volumes {
+        println!("  - {}", vol.display());
+    }
+
+    Ok(())
+}
+
+fn resolve_split_base_path(
+    source_archive: &Path,
+    output_dir: Option<&Path>,
+) -> Result<std::path::PathBuf, String> {
+    if let Some(out_dir) = output_dir {
         fs::create_dir_all(out_dir)
             .map_err(|e| format!("Failed to create output directory {}: {}", out_dir.display(), e))?;
         let filename = source_archive
             .file_name()
             .ok_or_else(|| "Invalid source archive file name".to_string())?;
-        out_dir.join(filename)
+        Ok(out_dir.join(filename))
     } else {
-        source_archive.to_path_buf()
-    };
+        Ok(source_archive.to_path_buf())
+    }
+}
 
-    let start_time = Instant::now();
-    let mut writer = SplitVolumeWriter::new(&base_path, chunk_size, naming_scheme)
+fn write_split_volumes(
+    base_path: &Path,
+    source_archive: &Path,
+    chunk_size: u64,
+    naming_scheme: VolumeNamingScheme,
+) -> Result<(Vec<std::path::PathBuf>, u64), String> {
+    let mut writer = SplitVolumeWriter::new(base_path, chunk_size, naming_scheme)
         .map_err(|e| format!("Failed to initialize SplitVolumeWriter: {}", e))?;
-
     let mut source_file = File::open(source_archive)
         .map_err(|e| format!("Failed to open source archive: {}", e))?;
     let mut buffer = vec![0u8; 256 * 1024];
@@ -111,23 +140,11 @@ pub fn execute_split(
             .map_err(|e| format!("Failed to write split volume: {}", e))?;
     }
 
+    let total_bytes = writer.total_bytes();
     let volumes = writer
         .close()
         .map_err(|e| format!("Failed to finalize split volumes: {}", e))?;
-    let elapsed = start_time.elapsed();
-
-    println!(
-        "Split {} into {} volumes ({}) in {:.2?}",
-        source_archive.display(),
-        volumes.len(),
-        format_bytes(writer.total_bytes()),
-        elapsed
-    );
-    for vol in &volumes {
-        println!("  - {}", vol.display());
-    }
-
-    Ok(())
+    Ok((volumes, total_bytes))
 }
 
 /// Executes headless `join` subcommand.

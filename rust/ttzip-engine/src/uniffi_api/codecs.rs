@@ -75,6 +75,30 @@ fn map_status(st: TTZipStatus) -> TTZipError {
 // Unified Buffer Compression & Decompression Entrypoints
 // ============================================================================
 
+fn compress_block_codec(
+    codec: UniFFICompressionCodec,
+    src: Vec<u8>,
+    opts: &UniFFICompressionOptions,
+) -> Result<Vec<u8>, TTZipError> {
+    match codec {
+        UniFFICompressionCodec::Lzfse => uniffi_lzfse_compress(src),
+        UniFFICompressionCodec::Lzvn => uniffi_lzvn_compress(src),
+        UniFFICompressionCodec::Brotli => {
+            uniffi_brotli_compress(src, opts.level.unwrap_or(6), 22)
+        }
+        UniFFICompressionCodec::SnappyRaw => uniffi_snappy_compress(src),
+        UniFFICompressionCodec::SnappyFramed => uniffi_snappy_frame_encode(src),
+        UniFFICompressionCodec::Bzip2 => uniffi_bzip2_compress(src, opts.level.unwrap_or(9)),
+        UniFFICompressionCodec::Ppmd => uniffi_ppmd_compress(
+            src,
+            opts.ppmd_order.unwrap_or(6),
+            opts.ppmd_mem_mb.unwrap_or(16),
+        ),
+        UniFFICompressionCodec::Fl2 => uniffi_fl2_compress(src, opts.level.unwrap_or(3), None),
+        _ => Err(TTZipError::EngineError { code: -1 }),
+    }
+}
+
 /// Compresses a memory buffer using the specified codec and options.
 #[uniffi::export]
 pub fn uniffi_compress_buffer(
@@ -84,56 +108,45 @@ pub fn uniffi_compress_buffer(
 ) -> Result<Vec<u8>, TTZipError> {
     let opts = options.unwrap_or_default();
     match codec {
-        UniFFICompressionCodec::DeflateRaw => {
-            let level = opts.level.unwrap_or(6);
-            uniffi_deflate_compress(src, level)
-        }
-        UniFFICompressionCodec::Zlib => {
-            let level = opts.level.unwrap_or(6);
-            uniffi_zlib_compress(src, level)
-        }
-        UniFFICompressionCodec::Gzip => {
-            let level = opts.level.unwrap_or(6);
-            uniffi_gzip_compress(src, level)
-        }
-        UniFFICompressionCodec::Zstd => {
-            let level = opts.level.unwrap_or(3);
-            uniffi_zstd_compress(src, level)
-        }
-        UniFFICompressionCodec::ZstdLdm => {
-            let level = opts.level.unwrap_or(3);
-            let window_mb = opts.window_mb.unwrap_or(64);
-            uniffi_zstd_compress_ldm(src, level, window_mb)
-        }
+        UniFFICompressionCodec::DeflateRaw => uniffi_deflate_compress(src, opts.level.unwrap_or(6)),
+        UniFFICompressionCodec::Zlib => uniffi_zlib_compress(src, opts.level.unwrap_or(6)),
+        UniFFICompressionCodec::Gzip => uniffi_gzip_compress(src, opts.level.unwrap_or(6)),
+        UniFFICompressionCodec::Zstd => uniffi_zstd_compress(src, opts.level.unwrap_or(3)),
+        UniFFICompressionCodec::ZstdLdm => uniffi_zstd_compress_ldm(
+            src,
+            opts.level.unwrap_or(3),
+            opts.window_mb.unwrap_or(64),
+        ),
         UniFFICompressionCodec::Lz4Fast => {
-            let accel = opts.acceleration.unwrap_or(1);
-            uniffi_lz4_compress_fast(src, accel)
+            uniffi_lz4_compress_fast(src, opts.acceleration.unwrap_or(1))
         }
-        UniFFICompressionCodec::Lz4Hc => {
-            let level = opts.level.unwrap_or(9);
-            uniffi_lz4_compress_hc(src, level)
+        UniFFICompressionCodec::Lz4Hc => uniffi_lz4_compress_hc(src, opts.level.unwrap_or(9)),
+        other => compress_block_codec(other, src, &opts),
+    }
+}
+
+fn decompress_sized_codec(
+    codec: UniFFICompressionCodec,
+    src: Vec<u8>,
+    exp: u64,
+    opts: &UniFFICompressionOptions,
+) -> Result<Vec<u8>, TTZipError> {
+    match codec {
+        UniFFICompressionCodec::DeflateRaw => uniffi_deflate_decompress(src, exp),
+        UniFFICompressionCodec::Zlib => uniffi_zlib_decompress(src, exp),
+        UniFFICompressionCodec::Gzip => uniffi_gzip_decompress(src, exp),
+        UniFFICompressionCodec::Lz4Fast | UniFFICompressionCodec::Lz4Hc => {
+            uniffi_lz4_decompress(src, exp)
         }
-        UniFFICompressionCodec::Lzfse => uniffi_lzfse_compress(src),
-        UniFFICompressionCodec::Lzvn => uniffi_lzvn_compress(src),
-        UniFFICompressionCodec::Brotli => {
-            let quality = opts.level.unwrap_or(6);
-            uniffi_brotli_compress(src, quality, 22)
-        }
-        UniFFICompressionCodec::SnappyRaw => uniffi_snappy_compress(src),
-        UniFFICompressionCodec::SnappyFramed => uniffi_snappy_frame_encode(src),
-        UniFFICompressionCodec::Bzip2 => {
-            let level = opts.level.unwrap_or(9);
-            uniffi_bzip2_compress(src, level)
-        }
-        UniFFICompressionCodec::Ppmd => {
-            let order = opts.ppmd_order.unwrap_or(6);
-            let mem_mb = opts.ppmd_mem_mb.unwrap_or(16);
-            uniffi_ppmd_compress(src, order, mem_mb)
-        }
-        UniFFICompressionCodec::Fl2 => {
-            let level = opts.level.unwrap_or(3);
-            uniffi_fl2_compress(src, level, None)
-        }
+        UniFFICompressionCodec::Lzfse => uniffi_lzfse_decompress(src, exp),
+        UniFFICompressionCodec::Lzvn => uniffi_lzvn_decompress(src, exp),
+        UniFFICompressionCodec::Ppmd => uniffi_ppmd_decompress(
+            src,
+            exp,
+            opts.ppmd_order.unwrap_or(6),
+            opts.ppmd_mem_mb.unwrap_or(16),
+        ),
+        _ => Err(TTZipError::EngineError { code: -1 }),
     }
 }
 
@@ -147,45 +160,19 @@ pub fn uniffi_decompress_buffer(
 ) -> Result<Vec<u8>, TTZipError> {
     let opts = options.unwrap_or_default();
     match codec {
-        UniFFICompressionCodec::DeflateRaw => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            uniffi_deflate_decompress(src, exp)
-        }
-        UniFFICompressionCodec::Zlib => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            uniffi_zlib_decompress(src, exp)
-        }
-        UniFFICompressionCodec::Gzip => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            uniffi_gzip_decompress(src, exp)
-        }
         UniFFICompressionCodec::Zstd | UniFFICompressionCodec::ZstdLdm => {
             uniffi_zstd_decompress(src, expected_uncompressed_size)
-        }
-        UniFFICompressionCodec::Lz4Fast | UniFFICompressionCodec::Lz4Hc => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            uniffi_lz4_decompress(src, exp)
-        }
-        UniFFICompressionCodec::Lzfse => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            uniffi_lzfse_decompress(src, exp)
-        }
-        UniFFICompressionCodec::Lzvn => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            uniffi_lzvn_decompress(src, exp)
         }
         UniFFICompressionCodec::Brotli => uniffi_brotli_decompress(src, expected_uncompressed_size),
         UniFFICompressionCodec::SnappyRaw => uniffi_snappy_decompress(src),
         UniFFICompressionCodec::SnappyFramed => uniffi_snappy_frame_decode(src),
         UniFFICompressionCodec::Bzip2 => uniffi_bzip2_decompress(src, expected_uncompressed_size),
-        UniFFICompressionCodec::Ppmd => {
-            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
-            let order = opts.ppmd_order.unwrap_or(6);
-            let mem_mb = opts.ppmd_mem_mb.unwrap_or(16);
-            uniffi_ppmd_decompress(src, exp, order, mem_mb)
-        }
         UniFFICompressionCodec::Fl2 => {
             uniffi_fl2_decompress(src, expected_uncompressed_size, None)
+        }
+        other => {
+            let exp = expected_uncompressed_size.ok_or(TTZipError::EngineError { code: -1 })?;
+            decompress_sized_codec(other, src, exp, &opts)
         }
     }
 }
@@ -525,11 +512,7 @@ pub fn uniffi_snappy_compress(src: Vec<u8>) -> Result<Vec<u8>, TTZipError> {
 /// Decompresses raw Snappy block format.
 #[uniffi::export]
 pub fn uniffi_snappy_decompress(src: Vec<u8>) -> Result<Vec<u8>, TTZipError> {
-    let uncompressed_len = crate::codecs::snappy::snappy_uncompressed_length(&src).map_err(map_status)?;
-    let mut dst = vec![0u8; uncompressed_len];
-    let written = crate::codecs::snappy::snappy_decompress(&src, &mut dst).map_err(map_status)?;
-    dst.truncate(written);
-    Ok(dst)
+    crate::codecs::snappy::snappy_decompress_to_vec(&src).map_err(map_status)
 }
 
 /// Compresses buffer into official Snappy Framed stream format.

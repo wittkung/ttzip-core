@@ -5,7 +5,8 @@
 
 use super::parallel_batch::{compress_single_item, CompressedEntryResult, CompressionPlanItem};
 use crate::types::{TTZipArchiveFormat, TTZipEncryptionMethod, TTZipStatus};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Mutex;
 use std::time::Instant;
 use ttzip_types::options::ProgressAtomicSheet;
 
@@ -104,18 +105,32 @@ fn execute_scoped(
     context: ExecutionContext<'_>,
 ) -> Vec<EntryResult> {
     let total_items = batch.len();
-    let mut buckets: Vec<Vec<(usize, CompressionPlanItem)>> =
-        (0..workers).map(|_| Vec::new()).collect();
-    for (index, item) in batch.into_iter().enumerate() {
-        buckets[index % workers].push((index, item));
-    }
+    let next_index = AtomicUsize::new(0);
+    let items: Vec<Mutex<Option<CompressionPlanItem>>> = batch
+        .into_iter()
+        .map(|item| Mutex::new(Some(item)))
+        .collect();
     let mut slots: Vec<Option<EntryResult>> = (0..total_items).map(|_| None).collect();
+    run_scoped_workers(workers, &next_index, &items, &context, &mut slots);
+    slots
+        .into_iter()
+        .map(|slot| slot.unwrap_or(Err(TTZipStatus::Cancelled)))
+        .collect()
+}
+
+#[cfg(test)]
+fn run_scoped_workers(
+    workers: usize,
+    next_index: &AtomicUsize,
+    items: &[Mutex<Option<CompressionPlanItem>>],
+    context: &ExecutionContext<'_>,
+    slots: &mut [Option<EntryResult>],
+) {
     std::thread::scope(|scope| {
-        let handles: Vec<_> = buckets
-            .into_iter()
-            .map(|bucket| {
+        let handles: Vec<_> = (0..workers)
+            .map(|_| {
                 let context = context.clone();
-                scope.spawn(move || compress_bucket(bucket, &context))
+                scope.spawn(move || compress_worker_stealing(next_index, items, &context))
             })
             .collect();
         for handle in handles {
@@ -126,20 +141,68 @@ fn execute_scoped(
             }
         }
     });
-    slots
-        .into_iter()
-        .map(|slot| slot.unwrap_or(Err(TTZipStatus::Cancelled)))
-        .collect()
 }
 
-fn compress_bucket(
-    bucket: Vec<(usize, CompressionPlanItem)>,
+#[cfg(not(test))]
+fn shared_batch_pool(workers: usize) -> ttzip_types::scheduler::LocalWorkStealingPool {
+    static DEFAULT_POOL: std::sync::OnceLock<ttzip_types::scheduler::LocalWorkStealingPool> =
+        std::sync::OnceLock::new();
+    let default_threads = ttzip_types::recommended_compute_threads();
+    if workers <= default_threads {
+        DEFAULT_POOL
+            .get_or_init(ttzip_types::scheduler::LocalWorkStealingPool::new)
+            .clone()
+    } else {
+        ttzip_types::scheduler::LocalWorkStealingPool::with_threads(workers)
+    }
+}
+
+#[cfg(not(test))]
+fn run_scoped_workers(
+    workers: usize,
+    next_index: &AtomicUsize,
+    items: &[Mutex<Option<CompressionPlanItem>>],
+    context: &ExecutionContext<'_>,
+    slots: &mut [Option<EntryResult>],
+) {
+    let slots_mutex = Mutex::new(slots);
+    let pool = shared_batch_pool(workers);
+    pool.scope(|scope| {
+        for _ in 0..workers {
+            let context = context.clone();
+            let slots_mutex = &slots_mutex;
+            scope.spawn(move || {
+                let results = compress_worker_stealing(next_index, items, &context);
+                if let Ok(mut guard) = slots_mutex.lock() {
+                    for (index, result) in results {
+                        guard[index] = Some(result);
+                    }
+                }
+            });
+        }
+    });
+}
+
+fn compress_worker_stealing(
+    next_index: &AtomicUsize,
+    items: &[Mutex<Option<CompressionPlanItem>>],
     context: &ExecutionContext<'_>,
 ) -> IndexedResults {
-    bucket
-        .into_iter()
-        .map(|(index, item)| (index, context.compress(item)))
-        .collect()
+    let mut results = Vec::new();
+    loop {
+        let index = next_index.fetch_add(1, Ordering::Relaxed);
+        if index >= items.len() {
+            break;
+        }
+        let item = items[index]
+            .lock()
+            .ok()
+            .and_then(|mut guard| guard.take());
+        if let Some(item) = item {
+            results.push((index, context.compress(item)));
+        }
+    }
+    results
 }
 
 /// Compatibility API retaining its historical automatic CPU budget.

@@ -263,60 +263,26 @@ impl MIPSHardwareBenchmarkEngine {
         let rusage_start = ProcessRusage::current();
         let bench_sw = MonotonicStopwatch::start();
 
-        // 1. Parallel Compression pass
         let comp_sw = MonotonicStopwatch::start();
         let thread_results: Result<Vec<(AlignedBuffer, usize)>, TTZipStatus> = (0..threads)
             .into_par_iter()
-            .map(|thread_idx| -> Result<(AlignedBuffer, usize), TTZipStatus> {
-                let _stack_pad = Self::bench_alloca_offset(thread_idx as usize);
-                std::hint::black_box(&_stack_pad);
-
-                let mut src_buf = AlignedBuffer::new(buffer_size)?;
-                let comp_bound = fl2_compress_bound(buffer_size) + (64 * 1024);
-                let mut comp_buf = AlignedBuffer::new(comp_bound)?;
-
-                let mut prng = SplitMix64::new(0xDEAD_BEEF_CAFE ^ (thread_idx as u64));
-                for (i, byte) in src_buf.as_mut_slice()[..buffer_size].iter_mut().enumerate() {
-                    *byte = ((prng.next_u64() ^ (i as u64 % 256)) & 0xFF) as u8;
-                }
-
-                let mut cctx = Fl2CCtx::new()?;
-                let mut compressed_len = 0;
-                for _ in 0..iters {
-                    compressed_len = cctx.compress(
-                        &src_buf.as_slice()[..buffer_size],
-                        comp_buf.as_mut_slice(),
-                        3,
-                    )?;
-                }
-                Ok((comp_buf, compressed_len))
-            })
+            .map(|thread_idx| Self::compress_worker_pass(thread_idx, buffer_size, iters))
             .collect();
-
         let compressed_items = thread_results?;
         let comp_elapsed = comp_sw.elapsed_secs().max(0.0001);
 
-        // 2. Parallel Decompression pass
         let decomp_sw = MonotonicStopwatch::start();
         let decomp_res: Result<(), TTZipStatus> = compressed_items
             .par_iter()
             .enumerate()
-            .map(|(thread_idx, (comp_buf, compressed_len))| -> Result<(), TTZipStatus> {
-                let _stack_pad = Self::bench_alloca_offset(thread_idx);
-                std::hint::black_box(&_stack_pad);
-
-                let mut decomp_buf = AlignedBuffer::new(buffer_size)?;
-                let mut dctx = Fl2DCtx::new()?;
-                for _ in 0..iters {
-                    let written = dctx.decompress(
-                        &comp_buf.as_slice()[..*compressed_len],
-                        &mut decomp_buf.as_mut_slice()[..buffer_size],
-                    )?;
-                    if written != buffer_size {
-                        return Err(TTZipStatus::ErrExtractionFailed);
-                    }
-                }
-                Ok(())
+            .map(|(thread_idx, (comp_buf, compressed_len))| {
+                Self::decompress_worker_pass(
+                    thread_idx,
+                    comp_buf,
+                    *compressed_len,
+                    buffer_size,
+                    iters,
+                )
             })
             .collect();
         decomp_res?;
@@ -324,7 +290,8 @@ impl MIPSHardwareBenchmarkEngine {
 
         let total_wall_elapsed = bench_sw.elapsed_secs().max(0.0001);
         let rusage_end = ProcessRusage::current();
-        let cpu_time_elapsed = (rusage_end.total_cpu_secs() - rusage_start.total_cpu_secs()).max(0.0);
+        let cpu_time_elapsed =
+            (rusage_end.total_cpu_secs() - rusage_start.total_cpu_secs()).max(0.0);
 
         let total_pack_size: usize = compressed_items.iter().map(|(_, sz)| *sz).sum();
         let avg_pack_size = total_pack_size / (threads.max(1) as usize);
@@ -340,6 +307,59 @@ impl MIPSHardwareBenchmarkEngine {
             wall_elapsed: total_wall_elapsed,
             cpu_time_elapsed,
         })
+    }
+
+    fn compress_worker_pass(
+        thread_idx: u32,
+        buffer_size: usize,
+        iters: u32,
+    ) -> Result<(AlignedBuffer, usize), TTZipStatus> {
+        let _stack_pad = Self::bench_alloca_offset(thread_idx as usize);
+        std::hint::black_box(&_stack_pad);
+
+        let mut src_buf = AlignedBuffer::new(buffer_size)?;
+        let comp_bound = fl2_compress_bound(buffer_size) + (64 * 1024);
+        let mut comp_buf = AlignedBuffer::new(comp_bound)?;
+
+        let mut prng = SplitMix64::new(0xDEAD_BEEF_CAFE ^ (thread_idx as u64));
+        for (i, byte) in src_buf.as_mut_slice()[..buffer_size].iter_mut().enumerate() {
+            *byte = ((prng.next_u64() ^ (i as u64 % 256)) & 0xFF) as u8;
+        }
+
+        let mut cctx = Fl2CCtx::new()?;
+        let mut compressed_len = 0;
+        for _ in 0..iters {
+            compressed_len = cctx.compress(
+                &src_buf.as_slice()[..buffer_size],
+                comp_buf.as_mut_slice(),
+                3,
+            )?;
+        }
+        Ok((comp_buf, compressed_len))
+    }
+
+    fn decompress_worker_pass(
+        thread_idx: usize,
+        comp_buf: &AlignedBuffer,
+        compressed_len: usize,
+        buffer_size: usize,
+        iters: u32,
+    ) -> Result<(), TTZipStatus> {
+        let _stack_pad = Self::bench_alloca_offset(thread_idx);
+        std::hint::black_box(&_stack_pad);
+
+        let mut decomp_buf = AlignedBuffer::new(buffer_size)?;
+        let mut dctx = Fl2DCtx::new()?;
+        for _ in 0..iters {
+            let written = dctx.decompress(
+                &comp_buf.as_slice()[..compressed_len],
+                &mut decomp_buf.as_mut_slice()[..buffer_size],
+            )?;
+            if written != buffer_size {
+                return Err(TTZipStatus::ErrExtractionFailed);
+            }
+        }
+        Ok(())
     }
 
     fn calculate_metric(input: &MipsMetricsInput) -> Result<MIPSResult, TTZipStatus> {

@@ -28,10 +28,10 @@ pub fn check_sevenz_compliance(buffer: &[u8]) -> ComplianceReport {
 
     let major_version = buffer[6];
     let minor_version = buffer[7];
-    let start_header_crc = u32::from_le_bytes(buffer[8..12].try_into().unwrap());
-    let next_header_offset = u64::from_le_bytes(buffer[12..20].try_into().unwrap());
-    let next_header_size = u64::from_le_bytes(buffer[20..28].try_into().unwrap());
-    let next_header_crc = u32::from_le_bytes(buffer[28..32].try_into().unwrap());
+    let start_header_crc = u32::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11]]);
+    let next_header_offset = u64::from_le_bytes(buffer[12..20].try_into().unwrap_or([0u8; 8]));
+    let next_header_size = u64::from_le_bytes(buffer[20..28].try_into().unwrap_or([0u8; 8]));
+    let next_header_crc = u32::from_le_bytes([buffer[28], buffer[29], buffer[30], buffer[31]]);
 
     report.add_metadata("version", format!("{}.{}", major_version, minor_version));
     report.add_metadata("next_header_offset", next_header_offset.to_string());

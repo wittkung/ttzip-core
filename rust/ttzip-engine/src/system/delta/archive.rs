@@ -180,11 +180,11 @@ impl TTZipDeltaArchive {
         let mut controls = Vec::with_capacity(count);
         let mut ptr = 4;
         for _ in 0..count {
-            let diff_len = u64::from_le_bytes(raw_controls[ptr..ptr + 8].try_into().unwrap()) as usize;
+            let diff_len = u64::from_le_bytes(raw_controls[ptr..ptr + 8].try_into().unwrap_or([0u8; 8])) as usize;
             ptr += 8;
-            let extra_len = u64::from_le_bytes(raw_controls[ptr..ptr + 8].try_into().unwrap()) as usize;
+            let extra_len = u64::from_le_bytes(raw_controls[ptr..ptr + 8].try_into().unwrap_or([0u8; 8])) as usize;
             ptr += 8;
-            let seek_offset = i64::from_le_bytes(raw_controls[ptr..ptr + 8].try_into().unwrap());
+            let seek_offset = i64::from_le_bytes(raw_controls[ptr..ptr + 8].try_into().unwrap_or([0u8; 8]));
             ptr += 8;
 
             controls.push(BsDiffControl::new(diff_len, extra_len, seek_offset));

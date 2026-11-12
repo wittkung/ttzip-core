@@ -10,7 +10,7 @@ use crate::types::TTZipStatus;
 
 // MARK: - Native C LZ4 Bindings
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "complete C-ABI liblz4 binding surface")]
 unsafe extern "C" {
 
     fn LZ4_compress_default(

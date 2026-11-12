@@ -5,7 +5,7 @@ import Foundation
 
 /// Canonical Single Source of Truth (SSOT) for path presentation, localized display names,
 /// breadcrumb segment generation, and standard directory icon resolution across TTZip.
-public final class TTZipPathPresentationService: @unchecked Sendable {
+public final class TTZipPathPresentationService: Sendable {
     public static let shared = TTZipPathPresentationService()
 
     /// Resolves the actual physical user home directory outside the App Sandbox container.
@@ -57,6 +57,37 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
         case root
     }
 
+    private static let homeRelativeDirectories: [(subpath: String, directory: StandardDirectory)] = [
+        ("Documents", .documents),
+        ("Downloads", .downloads),
+        ("Desktop", .desktop),
+        ("Pictures", .pictures),
+        ("Movies", .movies),
+        ("Music", .music),
+        ("Library", .library),
+        ("Public", .publicFolder),
+        (".Trash", .trash),
+        ("Library/Mobile Documents/com~apple~CloudDocs", .icloudDrive),
+        ("Applications", .applications)
+    ]
+
+    private static let systemDirectories: [String: StandardDirectory] = [
+        "/": .root,
+        "/Applications": .applications,
+        "/System/Applications": .applications,
+        "/Applications/Utilities": .utilities,
+        "/System/Applications/Utilities": .utilities
+    ]
+
+    private static let homeSuffixFallbacks: [(suffix: String, directory: StandardDirectory)] = [
+        ("/downloads", .downloads),
+        ("/documents", .documents),
+        ("/desktop", .desktop),
+        ("/pictures", .pictures),
+        ("/movies", .movies),
+        ("/music", .music)
+    ]
+
     /// Normalizes path by expanding tilde and standardizing components without trailing slashes.
     public func normalizePath(_ path: String) -> String {
         var p = (path as NSString).expandingTildeInPath
@@ -75,64 +106,73 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
         if p == home {
             return .home
         }
-        if p == "/" {
-            return .root
+        if let systemDir = Self.systemDirectories[p] {
+            return systemDir
         }
-
-        // Relative to Home
-        if p == (home as NSString).appendingPathComponent("Documents") {
-            return .documents
+        for entry in Self.homeRelativeDirectories {
+            if p == (home as NSString).appendingPathComponent(entry.subpath) {
+                return entry.directory
+            }
         }
-        if p == (home as NSString).appendingPathComponent("Downloads") {
-            return .downloads
-        }
-        if p == (home as NSString).appendingPathComponent("Desktop") {
-            return .desktop
-        }
-        if p == (home as NSString).appendingPathComponent("Pictures") {
-            return .pictures
-        }
-        if p == (home as NSString).appendingPathComponent("Movies") {
-            return .movies
-        }
-        if p == (home as NSString).appendingPathComponent("Music") {
-            return .music
-        }
-        if p == (home as NSString).appendingPathComponent("Library") {
-            return .library
-        }
-        if p == (home as NSString).appendingPathComponent("Public") {
-            return .publicFolder
-        }
-        if p == (home as NSString).appendingPathComponent(".Trash") {
-            return .trash
-        }
-        let icloudPath = (home as NSString).appendingPathComponent("Library/Mobile Documents/com~apple~CloudDocs")
-        if p == icloudPath || p.hasPrefix(icloudPath + "/") {
-            if p == icloudPath { return .icloudDrive }
-        }
-
-        // System Applications & Utilities
-        if p == "/Applications" || p == "/System/Applications" || p == (home as NSString).appendingPathComponent("Applications") {
-            return .applications
-        }
-        if p == "/Applications/Utilities" || p == "/System/Applications/Utilities" {
-            return .utilities
-        }
-
-        // Suffix fallbacks for localized directory paths or custom volumes rooted in user folders
-        let lower = p.lowercased()
         if p.hasPrefix(home) {
-            if lower.hasSuffix("/downloads") { return .downloads }
-            if lower.hasSuffix("/documents") { return .documents }
-            if lower.hasSuffix("/desktop") { return .desktop }
-            if lower.hasSuffix("/pictures") { return .pictures }
-            if lower.hasSuffix("/movies") { return .movies }
-            if lower.hasSuffix("/music") { return .music }
+            let lower = p.lowercased()
+            for fallback in Self.homeSuffixFallbacks where lower.hasSuffix(fallback.suffix) {
+                return fallback.directory
+            }
         }
-
         return nil
     }
+
+    private static let directoryTranslations: [StandardDirectory: [AppLanguage: String]] = [
+        .documents: [
+            .zhHans: "文稿", .zhHant: "文件", .ja: "書類",
+            .de: "Dokumente", .fr: "Documents", .es: "Documentos", .en: "Documents"
+        ],
+        .downloads: [
+            .zhHans: "下载", .zhHant: "下載", .ja: "ダウンロード",
+            .de: "Downloads", .fr: "Téléchargements", .es: "Descargas", .en: "Downloads"
+        ],
+        .desktop: [
+            .zhHans: "桌面", .zhHant: "桌面", .ja: "デスクトップ",
+            .de: "Schreibtisch", .fr: "Bureau", .es: "Escritorio", .en: "Desktop"
+        ],
+        .pictures: [
+            .zhHans: "图片", .zhHant: "圖片", .ja: "ピクチャ",
+            .de: "Bilder", .fr: "Images", .es: "Imágenes", .en: "Pictures"
+        ],
+        .movies: [
+            .zhHans: "影片", .zhHant: "影片", .ja: "ムービー",
+            .de: "Filme", .fr: "Vidéos", .es: "Películas", .en: "Movies"
+        ],
+        .music: [
+            .zhHans: "音乐", .zhHant: "音樂", .ja: "ミュージック",
+            .de: "Musik", .fr: "Musique", .es: "Música", .en: "Music"
+        ],
+        .applications: [
+            .zhHans: "应用程序", .zhHant: "應用程式", .ja: "アプリケーション",
+            .de: "Programme", .fr: "Applications", .es: "Aplicaciones", .en: "Applications"
+        ],
+        .utilities: [
+            .zhHans: "实用工具", .zhHant: "工具程式", .ja: "ユーティリティ",
+            .de: "Dienstprogramme", .fr: "Utilitaires", .es: "Utilidades", .en: "Utilities"
+        ],
+        .library: [
+            .zhHans: "资源库", .zhHant: "資源庫", .ja: "ライブラリ",
+            .de: "Library", .fr: "Bibliothèque", .es: "Biblioteca", .en: "Library"
+        ],
+        .publicFolder: [
+            .zhHans: "公共", .zhHant: "共享", .ja: "パブリック",
+            .de: "Öffentlich", .fr: "Public", .es: "Público", .en: "Public"
+        ],
+        .trash: [
+            .zhHans: "废纸篓", .zhHant: "垃圾桶", .ja: "ゴミ箱",
+            .de: "Papierkorb", .fr: "Corbeille", .es: "Papelera", .en: "Trash"
+        ],
+        .icloudDrive: [
+            .zhHans: "iCloud 云盘", .zhHant: "iCloud 雲碟", .ja: "iCloud Drive",
+            .de: "iCloud Drive", .fr: "iCloud Drive", .es: "iCloud Drive", .en: "iCloud Drive"
+        ]
+    ]
 
     /// Resolves canonical localized name for standard directory in target language.
     public func localizedName(for directory: StandardDirectory, language: AppLanguage) -> String {
@@ -141,120 +181,8 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
             return username
         case .root:
             return "Macintosh HD"
-        case .documents:
-            switch language {
-            case .zhHans: return "文稿"
-            case .zhHant: return "文件"
-            case .ja: return "書類"
-            case .de: return "Dokumente"
-            case .fr: return "Documents"
-            case .es: return "Documentos"
-            case .en: return "Documents"
-            }
-        case .downloads:
-            switch language {
-            case .zhHans: return "下载"
-            case .zhHant: return "下載"
-            case .ja: return "ダウンロード"
-            case .de: return "Downloads"
-            case .fr: return "Téléchargements"
-            case .es: return "Descargas"
-            case .en: return "Downloads"
-            }
-        case .desktop:
-            switch language {
-            case .zhHans, .zhHant: return "桌面"
-            case .ja: return "デスクトップ"
-            case .de: return "Schreibtisch"
-            case .fr: return "Bureau"
-            case .es: return "Escritorio"
-            case .en: return "Desktop"
-            }
-        case .pictures:
-            switch language {
-            case .zhHans: return "图片"
-            case .zhHant: return "圖片"
-            case .ja: return "ピクチャ"
-            case .de: return "Bilder"
-            case .fr: return "Images"
-            case .es: return "Imágenes"
-            case .en: return "Pictures"
-            }
-        case .movies:
-            switch language {
-            case .zhHans, .zhHant: return "影片"
-            case .ja: return "ムービー"
-            case .de: return "Filme"
-            case .fr: return "Vidéos"
-            case .es: return "Películas"
-            case .en: return "Movies"
-            }
-        case .music:
-            switch language {
-            case .zhHans: return "音乐"
-            case .zhHant: return "音樂"
-            case .ja: return "ミュージック"
-            case .de: return "Musik"
-            case .fr: return "Musique"
-            case .es: return "Música"
-            case .en: return "Music"
-            }
-        case .applications:
-            switch language {
-            case .zhHans: return "应用程序"
-            case .zhHant: return "應用程式"
-            case .ja: return "アプリケーション"
-            case .de: return "Programme"
-            case .fr: return "Applications"
-            case .es: return "Aplicaciones"
-            case .en: return "Applications"
-            }
-        case .utilities:
-            switch language {
-            case .zhHans: return "实用工具"
-            case .zhHant: return "工具程式"
-            case .ja: return "ユーティリティ"
-            case .de: return "Dienstprogramme"
-            case .fr: return "Utilitaires"
-            case .es: return "Utilidades"
-            case .en: return "Utilities"
-            }
-        case .library:
-            switch language {
-            case .zhHans: return "资源库"
-            case .zhHant: return "資源庫"
-            case .ja: return "ライブラリ"
-            case .de: return "Library"
-            case .fr: return "Bibliothèque"
-            case .es: return "Biblioteca"
-            case .en: return "Library"
-            }
-        case .publicFolder:
-            switch language {
-            case .zhHans: return "公共"
-            case .zhHant: return "共享"
-            case .ja: return "パブリック"
-            case .de: return "Öffentlich"
-            case .fr: return "Public"
-            case .es: return "Público"
-            case .en: return "Public"
-            }
-        case .trash:
-            switch language {
-            case .zhHans: return "废纸篓"
-            case .zhHant: return "垃圾桶"
-            case .ja: return "ゴミ箱"
-            case .de: return "Papierkorb"
-            case .fr: return "Corbeille"
-            case .es: return "Papelera"
-            case .en: return "Trash"
-            }
-        case .icloudDrive:
-            switch language {
-            case .zhHans: return "iCloud 云盘"
-            case .zhHant: return "iCloud 雲碟"
-            case .ja, .de, .fr, .es, .en: return "iCloud Drive"
-            }
+        default:
+            return Self.directoryTranslations[directory]?[language] ?? "Folder"
         }
     }
 
@@ -269,52 +197,69 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
 
     /// Resolves localized display name for any path or URL string with comprehensive fallback.
     public func displayName(for path: String, fallback: String? = nil, language: AppLanguage? = nil) -> String {
-        // 1. Virtual Archive URL Support
-        if path.hasPrefix("ttzip://") || path.contains("?subpath=") {
-            let (archivePath, subpath) = Self.parseVirtualURL(path)
-            if !subpath.isEmpty {
-                return (subpath as NSString).lastPathComponent
-            }
-            if !archivePath.isEmpty && archivePath != path {
-                return displayName(for: archivePath, fallback: fallback, language: language)
-            }
+        if let virtualName = resolveVirtualDisplayName(for: path, fallback: fallback, language: language) {
+            return virtualName
         }
 
         let normalized = normalizePath(path)
         let targetLanguage = language ?? TTZipLocalizationManager.shared.currentLanguage
 
-        // 2. Standard Directory Match
         if let dir = standardDirectory(for: normalized) {
-            if dir == .root {
-                let rootURL = URL(fileURLWithPath: "/")
-                if let volName = (try? rootURL.resourceValues(forKeys: [.volumeLocalizedNameKey]))?.volumeLocalizedName,
-                   !volName.isEmpty, volName != "/" {
-                    return volName
-                }
-                return "Macintosh HD"
-            }
-            return localizedName(for: dir, language: targetLanguage)
+            return resolveStandardDirectoryDisplayName(dir, language: targetLanguage)
         }
-
-        // 3. System Resource Values (.localized bundle attribute)
-        let fileURL = URL(fileURLWithPath: normalized)
-        if let resName = (try? fileURL.resourceValues(forKeys: [.localizedNameKey]))?.localizedName,
-           !resName.isEmpty, resName != normalized, resName != fileURL.lastPathComponent {
-            return resName
+        if let systemName = Self.resolveSystemDisplayName(for: normalized) {
+            return systemName
         }
-
-        // 4. FileManager displayName
-        let fmName = FileManager.default.displayName(atPath: normalized)
-        if !fmName.isEmpty && fmName != normalized && fmName != fileURL.lastPathComponent {
-            return fmName
-        }
-
-        // 5. Fallback or lastPathComponent
         if let fallback, !fallback.isEmpty {
             return fallback
         }
         let last = (normalized as NSString).lastPathComponent
         return last.isEmpty ? "/" : last
+    }
+
+    private func resolveVirtualDisplayName(
+        for path: String,
+        fallback: String?,
+        language: AppLanguage?
+    ) -> String? {
+        guard path.hasPrefix("ttzip://") || path.contains("?subpath=") else { return nil }
+        let (archivePath, subpath) = Self.parseVirtualURL(path)
+        if !subpath.isEmpty {
+            return (subpath as NSString).lastPathComponent
+        }
+        if !archivePath.isEmpty && archivePath != path {
+            return displayName(for: archivePath, fallback: fallback, language: language)
+        }
+        return nil
+    }
+
+    private func resolveStandardDirectoryDisplayName(
+        _ directory: StandardDirectory,
+        language: AppLanguage
+    ) -> String {
+        if directory == .root {
+            let rootURL = URL(fileURLWithPath: "/")
+            if let volName = (try? rootURL.resourceValues(forKeys: [.volumeLocalizedNameKey]))?.volumeLocalizedName,
+               !volName.isEmpty, volName != "/" {
+                return volName
+            }
+            return "Macintosh HD"
+        }
+        return localizedName(for: directory, language: language)
+    }
+
+    private static func resolveSystemDisplayName(for normalized: String) -> String? {
+        let fileURL = URL(fileURLWithPath: normalized)
+        let lastComp = fileURL.lastPathComponent
+        if let resName = (try? fileURL.resourceValues(forKeys: [.localizedNameKey]))?.localizedName,
+           !resName.isEmpty, resName != normalized, resName != lastComp {
+            return resName
+        }
+        let fmName = FileManager.default.displayName(atPath: normalized)
+        if !fmName.isEmpty && fmName != normalized && fmName != lastComp {
+            return fmName
+        }
+        return nil
     }
 
     /// Convenience overload resolving display name for a file URL.
@@ -357,32 +302,43 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
             let relative = String(normalized.dropFirst(homeStandardized.count + 1))
             let parts = relative.split(separator: "/").map(String.init)
             guard !parts.isEmpty else { return "~" }
-
-            var resultParts: [String] = []
-            var currentPath = homeStandardized
-            for part in parts {
-                currentPath += "/" + part
-                if localizeComponents {
-                    resultParts.append(displayName(for: currentPath, fallback: part, language: targetLanguage))
-                } else {
-                    resultParts.append(part)
-                }
-            }
-            return "~/" + resultParts.joined(separator: "/")
+            let rendered = formatPathComponents(
+                parts,
+                basePath: homeStandardized,
+                localizeComponents: localizeComponents,
+                language: targetLanguage
+            )
+            return "~/" + rendered.joined(separator: "/")
         }
 
         if localizeComponents {
             let parts = normalized.split(separator: "/").map(String.init)
-            var resultParts: [String] = []
-            var currentPath = ""
-            for part in parts {
-                currentPath += "/" + part
-                resultParts.append(displayName(for: currentPath, fallback: part, language: targetLanguage))
-            }
-            return "/" + resultParts.joined(separator: "/")
+            let rendered = formatPathComponents(
+                parts,
+                basePath: "",
+                localizeComponents: true,
+                language: targetLanguage
+            )
+            return "/" + rendered.joined(separator: "/")
         }
 
         return normalized
+    }
+
+    private func formatPathComponents(
+        _ parts: [String],
+        basePath: String,
+        localizeComponents: Bool,
+        language: AppLanguage
+    ) -> [String] {
+        guard localizeComponents else { return parts }
+        var resultParts: [String] = []
+        var currentPath = basePath
+        for part in parts {
+            currentPath += "/" + part
+            resultParts.append(displayName(for: currentPath, fallback: part, language: language))
+        }
+        return resultParts
     }
 
     // MARK: - Breadcrumb Segments Generator
@@ -394,28 +350,15 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
         language: AppLanguage? = nil
     ) -> [TTZipPathSegment] {
         let targetLanguage = language ?? TTZipLocalizationManager.shared.currentLanguage
-        let standardizedURL = url.standardizedFileURL
-        let path = normalizePath(standardizedURL.path)
+        let path = normalizePath(url.standardizedFileURL.path)
 
-        // 1. Root Directory
         if path == "/" {
-            return [
-                TTZipPathSegment(
-                    id: "/",
-                    displayName: displayName(for: "/", language: targetLanguage),
-                    url: URL(fileURLWithPath: "/"),
-                    iconName: "internaldrive.fill",
-                    isCurrent: true
-                )
-            ]
+            return [makeRootSegment(language: targetLanguage, isCurrent: true)]
         }
 
-        var segments: [TTZipPathSegment] = []
-
-        // 2. User Home Relative
         if abbreviateHome && (path == homeStandardized || path.hasPrefix(homeStandardized + "/")) {
             let isAtHome = (path == homeStandardized)
-            segments.append(
+            var segments = [
                 TTZipPathSegment(
                     id: homeStandardized,
                     displayName: "~",
@@ -423,103 +366,104 @@ public final class TTZipPathPresentationService: @unchecked Sendable {
                     iconName: "house.fill",
                     isCurrent: isAtHome
                 )
-            )
-
+            ]
             if !isAtHome {
                 let relative = String(path.dropFirst(homeStandardized.count + 1))
                 let parts = relative.split(separator: "/").map(String.init)
-                var cumulativeURL = homeURL
-
-                for (idx, part) in parts.enumerated() {
-                    cumulativeURL = cumulativeURL.appendingPathComponent(part)
-                    let isLast = (idx == parts.count - 1)
-                    let name = displayName(for: cumulativeURL.path, fallback: part, language: targetLanguage)
-                    let icon = icon(for: cumulativeURL.path, isDirectory: true)
-
-                    segments.append(
-                        TTZipPathSegment(
-                            id: cumulativeURL.path,
-                            displayName: name,
-                            url: cumulativeURL,
-                            iconName: icon,
-                            isCurrent: isLast
-                        )
-                    )
-                }
+                appendRelativeSegments(parts: parts, baseURL: homeURL, language: targetLanguage, into: &segments)
             }
             return segments
         }
 
-        // 3. Absolute Root Relative
-        segments.append(
-            TTZipPathSegment(
-                id: "/",
-                displayName: displayName(for: "/", language: targetLanguage),
-                url: URL(fileURLWithPath: "/"),
-                iconName: "internaldrive.fill",
-                isCurrent: false
-            )
-        )
-
+        var segments = [makeRootSegment(language: targetLanguage, isCurrent: false)]
         let parts = path.split(separator: "/").map(String.init)
-        var cumulativeURL = URL(fileURLWithPath: "/")
+        appendRelativeSegments(
+            parts: parts,
+            baseURL: URL(fileURLWithPath: "/"),
+            language: targetLanguage,
+            into: &segments
+        )
+        return segments
+    }
+
+    private func makeRootSegment(language: AppLanguage, isCurrent: Bool) -> TTZipPathSegment {
+        TTZipPathSegment(
+            id: "/",
+            displayName: displayName(for: "/", language: language),
+            url: URL(fileURLWithPath: "/"),
+            iconName: "internaldrive.fill",
+            isCurrent: isCurrent
+        )
+    }
+
+    private func appendRelativeSegments(
+        parts: [String],
+        baseURL: URL,
+        language: AppLanguage,
+        into segments: inout [TTZipPathSegment]
+    ) {
+        var cumulativeURL = baseURL
         for (idx, part) in parts.enumerated() {
             cumulativeURL = cumulativeURL.appendingPathComponent(part)
             let isLast = (idx == parts.count - 1)
-            let name = displayName(for: cumulativeURL.path, fallback: part, language: targetLanguage)
-            let icon = icon(for: cumulativeURL.path, isDirectory: true)
-
+            let name = displayName(for: cumulativeURL.path, fallback: part, language: language)
+            let iconName = icon(for: cumulativeURL.path, isDirectory: true)
             segments.append(
                 TTZipPathSegment(
                     id: cumulativeURL.path,
                     displayName: name,
                     url: cumulativeURL,
-                    iconName: icon,
+                    iconName: iconName,
                     isCurrent: isLast
                 )
             )
         }
-
-        return segments
     }
 
     // MARK: - Canonical SF Symbol Icon Resolution
 
+    private static let standardDirectoryIcons: [StandardDirectory: String] = [
+        .home: "house.fill",
+        .root: "internaldrive.fill",
+        .documents: "doc.text.fill",
+        .downloads: "arrow.down.circle",
+        .desktop: "desktopcomputer",
+        .pictures: "photo.fill",
+        .movies: "film.fill",
+        .music: "music.note",
+        .applications: "app.badge",
+        .utilities: "wrench.and.screwdriver.fill",
+        .library: "books.vertical.fill",
+        .publicFolder: "person.2.fill",
+        .trash: "trash.fill",
+        .icloudDrive: "cloud.fill"
+    ]
+
+    private static let cloudPathKeywords = ["cloud", "drive", "dropbox", "nextcloud"]
+    private static let codeComponentKeywords = ["dev", "code", "git", "project"]
+    private static let noteComponentKeywords = ["blog", "note", "writing"]
+
     /// Resolves canonical SF Symbol icon name for a path.
     public func icon(for path: String, isDirectory: Bool = true) -> String {
         let normalized = normalizePath(path)
-        if let std = standardDirectory(for: normalized) {
-            switch std {
-            case .home: return "house.fill"
-            case .root: return "internaldrive.fill"
-            case .documents: return "doc.text.fill"
-            case .downloads: return "arrow.down.circle"
-            case .desktop: return "desktopcomputer"
-            case .pictures: return "photo.fill"
-            case .movies: return "film.fill"
-            case .music: return "music.note"
-            case .applications: return "app.badge"
-            case .utilities: return "wrench.and.screwdriver.fill"
-            case .library: return "books.vertical.fill"
-            case .publicFolder: return "person.2.fill"
-            case .trash: return "trash.fill"
-            case .icloudDrive: return "cloud.fill"
-            }
+        if let std = standardDirectory(for: normalized),
+           let stdIcon = Self.standardDirectoryIcons[std] {
+            return stdIcon
         }
 
         let lower = normalized.lowercased()
-        let lastComp = (normalized as NSString).lastPathComponent.lowercased()
-
-        if lower.contains("cloud") || lower.contains("drive") || lower.contains("dropbox") || lower.contains("nextcloud") {
+        if Self.cloudPathKeywords.contains(where: { lower.contains($0) }) {
             return "cloud.fill"
         }
         if lower.contains("/volumes/") {
             return "internaldrive.fill"
         }
-        if lastComp.contains("dev") || lastComp.contains("code") || lastComp.contains("git") || lastComp.contains("project") {
+
+        let lastComp = (normalized as NSString).lastPathComponent.lowercased()
+        if Self.codeComponentKeywords.contains(where: { lastComp.contains($0) }) {
             return "chevron.left.forwardslash.chevron.right"
         }
-        if lastComp.contains("blog") || lastComp.contains("note") || lastComp.contains("writing") {
+        if Self.noteComponentKeywords.contains(where: { lastComp.contains($0) }) {
             return "text.book.closed.fill"
         }
         return isDirectory ? "folder.fill" : "doc"

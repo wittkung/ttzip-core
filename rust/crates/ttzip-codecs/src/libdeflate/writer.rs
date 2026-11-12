@@ -218,10 +218,33 @@ impl<W: Write> LibdeflateWriter<W> {
         Ok(())
     }
 
+    fn finish_buffered_single_shot(&mut self) -> io::Result<()> {
+        let compressed = match self.format {
+            ContainerFormat::Raw => super::libdeflate_deflate_compress(&self.chunk_buf, self.level),
+            ContainerFormat::Zlib => super::libdeflate_zlib_compress(&self.chunk_buf, self.level),
+            ContainerFormat::Gzip => super::libdeflate_gzip_compress(&self.chunk_buf, self.level),
+        }
+        .map_err(|e| Error::other(format!("libdeflate compression error: {e:?}")))?;
+        self.chunk_buf.clear();
+
+        let inner = self
+            .inner
+            .as_mut()
+            .ok_or_else(|| Error::other("writer already closed"))?;
+        inner.write_all(&compressed)?;
+        inner.flush()?;
+        self.header_written = true;
+        self.finished = true;
+        Ok(())
+    }
+
     /// Internal helper finalizing stream trailer and flushing inner writer.
     fn finish_internal(&mut self) -> io::Result<()> {
         if self.finished {
             return Ok(());
+        }
+        if !self.header_written {
+            return self.finish_buffered_single_shot();
         }
 
         self.write_header()?;
@@ -283,21 +306,26 @@ impl<W: Write> Write for LibdeflateWriter<W> {
             return Ok(0);
         }
 
-        // On-the-fly uncompressed checksum updates
-        self.adler = adler32_update(self.adler, buf);
-        self.crc = crc32_update(self.crc, buf);
+        match self.format {
+            ContainerFormat::Raw => {}
+            ContainerFormat::Zlib => {
+                self.adler = adler32_update(self.adler, buf);
+            }
+            ContainerFormat::Gzip => {
+                self.crc = crc32_update(self.crc, buf);
+            }
+        }
         self.total_in = self.total_in.wrapping_add(buf.len() as u64);
 
         let mut offset = 0;
         while offset < buf.len() {
+            if self.chunk_buf.len() >= self.chunk_size {
+                self.flush_chunk_internal(FlushCompress::None)?;
+            }
             let available = self.chunk_size.saturating_sub(self.chunk_buf.len());
             let to_copy = (buf.len() - offset).min(available);
             self.chunk_buf.extend_from_slice(&buf[offset..offset + to_copy]);
             offset += to_copy;
-
-            if self.chunk_buf.len() >= self.chunk_size {
-                self.flush_chunk_internal(FlushCompress::None)?;
-            }
         }
 
         Ok(buf.len())

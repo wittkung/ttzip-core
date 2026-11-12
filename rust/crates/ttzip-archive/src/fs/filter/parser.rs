@@ -165,44 +165,24 @@ impl<'p, 'a> DslParser<'p, 'a> {
         }
     }
 
-    fn parse_key_value(&self, field: &'a str, index: &mut usize) -> Result<FilterExpr<'a>, DslParseError> {
-        let mut op = ComparisonOp::GreaterThan;
-        let mut has_explicit_op = false;
+    fn parse_optional_comparison_op(&self, index: &mut usize) -> Option<ComparisonOp> {
+        let tok = self.tokens.get(*index)?;
+        let op = match tok {
+            DslToken::GreaterThan => ComparisonOp::GreaterThan,
+            DslToken::LessThan => ComparisonOp::LessThan,
+            DslToken::GreaterThanOrEqual => ComparisonOp::GreaterThanOrEqual,
+            DslToken::LessThanOrEqual => ComparisonOp::LessThanOrEqual,
+            DslToken::Equals => ComparisonOp::Equals,
+            _ => return None,
+        };
+        *index += 1;
+        Some(op)
+    }
 
-        if *index < self.tokens.len() {
-            match self.tokens[*index] {
-                DslToken::GreaterThan => {
-                    op = ComparisonOp::GreaterThan;
-                    has_explicit_op = true;
-                    *index += 1;
-                }
-                DslToken::LessThan => {
-                    op = ComparisonOp::LessThan;
-                    has_explicit_op = true;
-                    *index += 1;
-                }
-                DslToken::GreaterThanOrEqual => {
-                    op = ComparisonOp::GreaterThanOrEqual;
-                    has_explicit_op = true;
-                    *index += 1;
-                }
-                DslToken::LessThanOrEqual => {
-                    op = ComparisonOp::LessThanOrEqual;
-                    has_explicit_op = true;
-                    *index += 1;
-                }
-                DslToken::Equals => {
-                    op = ComparisonOp::Equals;
-                    has_explicit_op = true;
-                    *index += 1;
-                }
-                _ => {}
-            }
-        }
-
+    fn parse_value_list(&self, index: &mut usize) -> Result<Vec<&'a str>, DslParseError> {
         let mut raw_parts: Vec<&'a str> = Vec::new();
-        while *index < self.tokens.len() {
-            match self.tokens[*index] {
+        while let Some(tok) = self.tokens.get(*index) {
+            match *tok {
                 DslToken::Identifier(val) | DslToken::StringLiteral(val) => {
                     raw_parts.push(val);
                     *index += 1;
@@ -214,7 +194,7 @@ impl<'p, 'a> DslParser<'p, 'a> {
                 _ => break,
             }
 
-            if *index < self.tokens.len() && self.tokens[*index] == DslToken::Comma {
+            if self.tokens.get(*index) == Some(&DslToken::Comma) {
                 *index += 1;
             } else {
                 break;
@@ -222,17 +202,18 @@ impl<'p, 'a> DslParser<'p, 'a> {
         }
 
         if raw_parts.is_empty() {
-            let found = if *index < self.tokens.len() {
-                Some(self.tokens[*index].to_string())
-            } else {
-                None
-            };
+            let found = self.tokens.get(*index).map(ToString::to_string);
             return Err(DslParseError::UnexpectedToken {
                 expected: "field value",
                 found,
             });
         }
+        Ok(raw_parts)
+    }
 
+    fn parse_key_value(&self, field: &'a str, index: &mut usize) -> Result<FilterExpr<'a>, DslParseError> {
+        let explicit_op = self.parse_optional_comparison_op(index);
+        let raw_parts = self.parse_value_list(index)?;
         let raw_val = raw_parts[0];
         let lower_field = field.to_ascii_lowercase();
 
@@ -246,23 +227,23 @@ impl<'p, 'a> DslParser<'p, 'a> {
                 matcher: build_glob_matcher(raw_val),
             }),
             "size" => {
-                let effective_op = if has_explicit_op { op } else { ComparisonOp::GreaterThan };
-                let bytes = parse_size(raw_val).ok_or_else(|| {
-                    DslParseError::InvalidSizeFormat(raw_val.to_string())
-                })?;
+                let effective_op = explicit_op.unwrap_or(ComparisonOp::GreaterThan);
+                let bytes = parse_size(raw_val)
+                    .ok_or_else(|| DslParseError::InvalidSizeFormat(raw_val.to_string()))?;
                 Ok(FilterExpr::Size {
                     target_bytes: bytes,
                     op: effective_op,
                 })
             }
             "modified" | "date" | "mtime" => {
-                let effective_op = if has_explicit_op { op } else { ComparisonOp::LessThan };
+                let effective_op = explicit_op.unwrap_or(ComparisonOp::LessThan);
                 let now_epoch = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .map(|d| d.as_secs() as i64)
                     .unwrap_or(0);
-                let (target_time, calculated_op) = parse_date_spec(raw_val, effective_op, now_epoch)
-                    .ok_or_else(|| DslParseError::InvalidDateFormat(raw_val.to_string()))?;
+                let (target_time, calculated_op) =
+                    parse_date_spec(raw_val, effective_op, now_epoch)
+                        .ok_or_else(|| DslParseError::InvalidDateFormat(raw_val.to_string()))?;
                 Ok(FilterExpr::Modified {
                     target_epoch_secs: target_time,
                     op: calculated_op,

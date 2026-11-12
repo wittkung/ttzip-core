@@ -82,7 +82,7 @@ pub fn collect_zip_input_items(
     if !item_rel.is_empty() {
         if is_dir {
             out_items.push(ZipInputItem {
-                rel_path: item_rel.clone(),
+                rel_path: item_rel,
                 data: Vec::new(),
                 mtime_epoch_secs: mtime_secs,
                 mode,

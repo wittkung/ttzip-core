@@ -1,7 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
-#![allow(clippy::useless_conversion)]
+#![allow(
+    clippy::useless_conversion,
+    reason = "PyO3 macro expansion generates PyResult Into conversions"
+)]
 
 use pyo3::exceptions::{PyException, PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
@@ -16,7 +19,7 @@ use ttzip_engine::codecs::deflate::{
 };
 use ttzip_engine::codecs::fast_blocks::{
     lz4_compress, lz4_compress_bound, lz4_decompress, lzfse_compress, lzfse_decompress,
-    snappy_compress, snappy_decompress, snappy_max_compressed_length, snappy_uncompressed_length,
+    snappy_compress, snappy_decompress, snappy_decompress_to_vec, snappy_max_compressed_length,
 };
 use ttzip_engine::codecs::zstd::{
     zstd_compress, zstd_compress_bound, zstd_decompress, zstd_decompress_stream_pipe,
@@ -346,6 +349,58 @@ fn inspect(py: Python<'_>, archive: String, password: Option<String>) -> PyResul
     Ok(entries)
 }
 
+fn decompress_deflate_bytes(input_bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let mut dst = vec![0u8; (input_bytes.len() * 4 + 4096).max(65536)];
+    loop {
+        match deflate_decompress(input_bytes, &mut dst) {
+            Ok(written) => {
+                dst.truncate(written);
+                return Ok(dst);
+            }
+            Err(TTZipStatus::ErrExtractionFailed) if dst.len() < 2 * 1024 * 1024 * 1024 => {
+                dst.resize(dst.len() * 2, 0u8);
+            }
+            Err(st) => return Err(format!("Deflate decompression failed: code {}", st as i32)),
+        }
+    }
+}
+
+fn decompress_zstd_bytes(input_bytes: &[u8]) -> Result<Vec<u8>, String> {
+    let content_size = zstd_get_decompressed_size(input_bytes).unwrap_or(0);
+    if content_size > 0 && content_size <= 2 * 1024 * 1024 * 1024 {
+        let mut dst = vec![0u8; content_size as usize];
+        if let Ok(written) = zstd_decompress(input_bytes, &mut dst) {
+            dst.truncate(written);
+            return Ok(dst);
+        }
+    }
+    let mut cursor = Cursor::new(input_bytes);
+    let mut out_buf = Vec::with_capacity(input_bytes.len() * 4 + 4096);
+    zstd_decompress_stream_pipe(&mut cursor, &mut out_buf, None)
+        .map(|_| out_buf)
+        .map_err(|st| format!("Zstandard decompression failed: code {}", st as i32))
+}
+
+fn decompress_lz4_bytes(input_bytes: &[u8]) -> Result<Vec<u8>, String> {
+    if input_bytes.len() < 4 {
+        return Err("Invalid LZ4 buffer: buffer too short".to_string());
+    }
+    let uncompressed_len = u32::from_le_bytes([input_bytes[0], input_bytes[1], input_bytes[2], input_bytes[3]]) as usize;
+    if uncompressed_len > 0 && uncompressed_len <= 1024 * 1024 * 1024 {
+        let mut dst = vec![0u8; uncompressed_len];
+        let written = lz4_decompress(&input_bytes[4..], &mut dst)
+            .map_err(|st| format!("LZ4 decompression failed: code {}", st as i32))?;
+        dst.truncate(written);
+        Ok(dst)
+    } else {
+        let mut dst = vec![0u8; input_bytes.len() * 8 + 4096];
+        let written = lz4_decompress(input_bytes, &mut dst)
+            .map_err(|st| format!("LZ4 block decompression failed: code {}", st as i32))?;
+        dst.truncate(written);
+        Ok(dst)
+    }
+}
+
 /// Decompress raw in-memory buffer with GIL released and Zstandard streaming fallback.
 #[pyfunction]
 #[pyo3(signature = (data, format="deflate"))]
@@ -356,74 +411,11 @@ fn decompress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &st
 
     let decompressed: Vec<u8> = py.detach(|| -> Result<Vec<u8>, String> {
         match fmt.as_str() {
-            "deflate" | "zip" => {
-                let mut dst = vec![0u8; (input_bytes.len() * 4 + 4096).max(65536)];
-                loop {
-                    match deflate_decompress(input_bytes, &mut dst) {
-                        Ok(written) => {
-                            dst.truncate(written);
-                            break Ok(dst);
-                        }
-                        Err(TTZipStatus::ErrExtractionFailed) if dst.len() < 2 * 1024 * 1024 * 1024 => {
-                            dst.resize(dst.len() * 2, 0u8);
-                        }
-                        Err(st) => break Err(format!("Deflate decompression failed: code {}", st as i32)),
-                    }
-                }
-            }
-            "zstd" => {
-                let content_size = zstd_get_decompressed_size(input_bytes).unwrap_or(0);
-                if content_size > 0 && content_size <= 2 * 1024 * 1024 * 1024 {
-                    let mut dst = vec![0u8; content_size as usize];
-                    if let Ok(written) = zstd_decompress(input_bytes, &mut dst) {
-                        dst.truncate(written);
-                        return Ok(dst);
-                    }
-                }
-
-                // Streaming fallback decoding for frames without content size or dynamic expansion
-                let mut cursor = Cursor::new(input_bytes);
-                let mut out_buf = Vec::with_capacity(input_bytes.len() * 4 + 4096);
-                match zstd_decompress_stream_pipe(&mut cursor, &mut out_buf, None) {
-                    Ok(_) => Ok(out_buf),
-                    Err(st) => Err(format!("Zstandard decompression failed: code {}", st as i32)),
-                }
-            }
-            "lz4" => {
-                if input_bytes.len() < 4 {
-                    return Err("Invalid LZ4 buffer: buffer too short".to_string());
-                }
-                let uncompressed_len = u32::from_le_bytes([input_bytes[0], input_bytes[1], input_bytes[2], input_bytes[3]]) as usize;
-                if uncompressed_len > 0 && uncompressed_len <= 1024 * 1024 * 1024 {
-                    let mut dst = vec![0u8; uncompressed_len];
-                    match lz4_decompress(&input_bytes[4..], &mut dst) {
-                        Ok(written) => {
-                            dst.truncate(written);
-                            Ok(dst)
-                        }
-                        Err(st) => Err(format!("LZ4 decompression failed: code {}", st as i32)),
-                    }
-                } else {
-                    // Fallback to raw block
-                    let mut dst = vec![0u8; input_bytes.len() * 8 + 4096];
-                    match lz4_decompress(input_bytes, &mut dst) {
-                        Ok(written) => {
-                            dst.truncate(written);
-                            Ok(dst)
-                        }
-                        Err(st) => Err(format!("LZ4 block decompression failed: code {}", st as i32)),
-                    }
-                }
-            }
-            "snappy" | "sz" => {
-                let uncomp_len = snappy_uncompressed_length(input_bytes)
-                    .map_err(|st| format!("Snappy length parse error: code {}", st as i32))?;
-                let mut dst = vec![0u8; uncomp_len];
-                let written = snappy_decompress(input_bytes, &mut dst)
-                    .map_err(|st| format!("Snappy decompression error: code {}", st as i32))?;
-                dst.truncate(written);
-                Ok(dst)
-            }
+            "deflate" | "zip" => decompress_deflate_bytes(input_bytes),
+            "zstd" => decompress_zstd_bytes(input_bytes),
+            "lz4" => decompress_lz4_bytes(input_bytes),
+            "snappy" | "sz" => snappy_decompress_to_vec(input_bytes)
+                .map_err(|st| format!("Snappy decompression error: code {}", st as i32)),
             "lzfse" => {
                 let mut dst = vec![0u8; input_bytes.len() * 8 + 65536];
                 let written = lzfse_decompress(input_bytes, &mut dst)
@@ -438,6 +430,16 @@ fn decompress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &st
     Ok(PyBytes::new(py, &decompressed))
 }
 
+fn compress_bounded<F>(bound: usize, label: &str, f: F) -> Result<Vec<u8>, String>
+where
+    F: FnOnce(&mut [u8]) -> Result<usize, TTZipStatus>,
+{
+    let mut dst = vec![0u8; bound];
+    let written = f(&mut dst).map_err(|st| format!("{} compression failed: code {}", label, st as i32))?;
+    dst.truncate(written);
+    Ok(dst)
+}
+
 /// Compress raw in-memory buffer with GIL released.
 #[pyfunction]
 #[pyo3(signature = (data, format="deflate", level=6))]
@@ -450,61 +452,27 @@ fn compress_buffer<'py>(py: Python<'py>, data: &Bound<'py, PyAny>, format: &str,
         match fmt.as_str() {
             "deflate" | "zip" => {
                 let cl = level.clamp(0, 12);
-                let bound = deflate_compress_bound(input_bytes.len(), cl);
-                let mut dst = vec![0u8; bound];
-                match deflate_compress(input_bytes, &mut dst, cl) {
-                    Ok(written) => {
-                        dst.truncate(written);
-                        Ok(dst)
-                    }
-                    Err(st) => Err(format!("Deflate compression failed: code {}", st as i32)),
-                }
+                compress_bounded(deflate_compress_bound(input_bytes.len(), cl), "Deflate", |dst| {
+                    deflate_compress(input_bytes, dst, cl)
+                })
             }
-            "zstd" => {
-                let bound = zstd_compress_bound(input_bytes.len()) + 128;
-                let mut dst = vec![0u8; bound];
-                match zstd_compress(input_bytes, &mut dst, level) {
-                    Ok(written) => {
-                        dst.truncate(written);
-                        Ok(dst)
-                    }
-                    Err(st) => Err(format!("Zstandard compression failed: code {}", st as i32)),
-                }
-            }
+            "zstd" => compress_bounded(zstd_compress_bound(input_bytes.len()) + 128, "Zstandard", |dst| {
+                zstd_compress(input_bytes, dst, level)
+            }),
             "lz4" => {
-                let bound = lz4_compress_bound(input_bytes.len()) + 4;
-                let mut dst = vec![0u8; bound];
-                let uncompressed_len = (input_bytes.len() as u32).to_le_bytes();
-                dst[0..4].copy_from_slice(&uncompressed_len);
-                match lz4_compress(input_bytes, &mut dst[4..]) {
-                    Ok(written) => {
-                        dst.truncate(written + 4);
-                        Ok(dst)
-                    }
-                    Err(st) => Err(format!("LZ4 compression failed: code {}", st as i32)),
-                }
+                let mut dst = vec![0u8; lz4_compress_bound(input_bytes.len()) + 4];
+                dst[0..4].copy_from_slice(&(input_bytes.len() as u32).to_le_bytes());
+                let written = lz4_compress(input_bytes, &mut dst[4..])
+                    .map_err(|st| format!("LZ4 compression failed: code {}", st as i32))?;
+                dst.truncate(written + 4);
+                Ok(dst)
             }
-            "snappy" | "sz" => {
-                let bound = snappy_max_compressed_length(input_bytes.len());
-                let mut dst = vec![0u8; bound];
-                match snappy_compress(input_bytes, &mut dst) {
-                    Ok(written) => {
-                        dst.truncate(written);
-                        Ok(dst)
-                    }
-                    Err(st) => Err(format!("Snappy compression failed: code {}", st as i32)),
-                }
-            }
-            "lzfse" => {
-                let mut dst = vec![0u8; input_bytes.len() + 1024];
-                match lzfse_compress(input_bytes, &mut dst) {
-                    Ok(written) => {
-                        dst.truncate(written);
-                        Ok(dst)
-                    }
-                    Err(st) => Err(format!("LZFSE compression failed: code {}", st as i32)),
-                }
-            }
+            "snappy" | "sz" => compress_bounded(snappy_max_compressed_length(input_bytes.len()), "Snappy", |dst| {
+                snappy_compress(input_bytes, dst)
+            }),
+            "lzfse" => compress_bounded(input_bytes.len() + 1024, "LZFSE", |dst| {
+                lzfse_compress(input_bytes, dst)
+            }),
             _ => Err(format!("Unsupported compression format: {}", fmt)),
         }
     }).map_err(TTZipError::new_err)?;
@@ -573,7 +541,8 @@ fn decompress_into(py: Python<'_>, data: &Bound<'_, PyAny>, dst_buffer: &Bound<'
 #[pyo3(signature = (data, seed=0))]
 fn crc32(py: Python<'_>, data: &Bound<'_, PyAny>, seed: u32) -> PyResult<u32> {
     let bytes = extract_input_bytes(py, data)?;
-    Ok(unsafe { ttzip_rust_crc32(seed, bytes.as_ptr(), bytes.len()) })
+    let slice = bytes.as_ref();
+    Ok(py.detach(|| unsafe { ttzip_rust_crc32(seed, slice.as_ptr(), slice.len()) }))
 }
 
 /// Hardware SIMD accelerated CRC64.
@@ -581,7 +550,8 @@ fn crc32(py: Python<'_>, data: &Bound<'_, PyAny>, seed: u32) -> PyResult<u32> {
 #[pyo3(signature = (data, seed=0))]
 fn crc64(py: Python<'_>, data: &Bound<'_, PyAny>, seed: u64) -> PyResult<u64> {
     let bytes = extract_input_bytes(py, data)?;
-    Ok(unsafe { ttzip_rust_crc64(seed, bytes.as_ptr(), bytes.len()) })
+    let slice = bytes.as_ref();
+    Ok(py.detach(|| unsafe { ttzip_rust_crc64(seed, slice.as_ptr(), slice.len()) }))
 }
 
 /// Return engine version string.
@@ -653,9 +623,7 @@ fn benchmark_matrix(
     }
 }
 
-/// Native Python C-Extension module declaration for `ttzip._ttzip`.
-#[pymodule(gil_used = true)]
-fn _ttzip(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn register_module_types(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyEntryMetadata>()?;
     m.add_class::<PyBenchmarkPointResult>()?;
     m.add_class::<PyBenchmarkMatrixReport>()?;
@@ -663,18 +631,33 @@ fn _ttzip(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("AuthenticationError", m.py().get_type::<AuthenticationError>())?;
     m.add("CorruptArchiveError", m.py().get_type::<CorruptArchiveError>())?;
     m.add("SecurityError", m.py().get_type::<SecurityError>())?;
+    Ok(())
+}
 
+fn register_archive_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compress, m)?)?;
     m.add_function(wrap_pyfunction!(extract, m)?)?;
     m.add_function(wrap_pyfunction!(inspect, m)?)?;
     m.add_function(wrap_pyfunction!(compress_buffer, m)?)?;
     m.add_function(wrap_pyfunction!(decompress_buffer, m)?)?;
     m.add_function(wrap_pyfunction!(decompress_into, m)?)?;
+    Ok(())
+}
+
+fn register_utility_functions(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(crc32, m)?)?;
     m.add_function(wrap_pyfunction!(crc64, m)?)?;
     m.add_function(wrap_pyfunction!(version, m)?)?;
     m.add_function(wrap_pyfunction!(is_hardware_accelerated, m)?)?;
     m.add_function(wrap_pyfunction!(benchmark_matrix, m)?)?;
+    Ok(())
+}
 
+/// Native Python C-Extension module declaration for `ttzip._ttzip`.
+#[pymodule(gil_used = true)]
+fn _ttzip(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    register_module_types(m)?;
+    register_archive_functions(m)?;
+    register_utility_functions(m)?;
     Ok(())
 }

@@ -105,39 +105,95 @@ impl ParetoPointRaw {
     }
 }
 
-/// Calculates 2D Pareto frontier and Andrew's Monotone Chain Upper Convex Hull on `ParetoCodecPoint` slice.
-pub fn calculate_pareto_frontier(points: &mut [ParetoCodecPoint]) {
+trait ParetoPoint2D {
+    fn x_coord(&self) -> f64;
+    fn y_coord(&self) -> f64;
+    fn set_pareto_state(&mut self, rank: u32, is_optimal: bool, is_on_hull: bool);
+    fn is_optimal(&self) -> bool;
+}
+
+impl ParetoPoint2D for ParetoCodecPoint {
+    fn x_coord(&self) -> f64 {
+        self.speed_mb_s
+    }
+    fn y_coord(&self) -> f64 {
+        self.compression_ratio
+    }
+    fn set_pareto_state(&mut self, rank: u32, is_optimal: bool, is_on_hull: bool) {
+        self.pareto_rank = rank;
+        self.is_pareto_optimal = is_optimal;
+        self.is_on_convex_hull = is_on_hull;
+    }
+    fn is_optimal(&self) -> bool {
+        self.is_pareto_optimal
+    }
+}
+
+impl ParetoPoint2D for TTZipParetoCodecPointRaw {
+    fn x_coord(&self) -> f64 {
+        self.speed_mb_s
+    }
+    fn y_coord(&self) -> f64 {
+        self.compression_ratio
+    }
+    fn set_pareto_state(&mut self, rank: u32, is_optimal: bool, is_on_hull: bool) {
+        self.pareto_rank = rank;
+        self.is_pareto_optimal = is_optimal;
+        self.is_on_convex_hull = is_on_hull;
+    }
+    fn is_optimal(&self) -> bool {
+        self.is_pareto_optimal
+    }
+}
+
+impl ParetoPoint2D for ParetoPointRaw {
+    fn x_coord(&self) -> f64 {
+        self.throughput_mbs
+    }
+    fn y_coord(&self) -> f64 {
+        self.space_savings_pct
+    }
+    fn set_pareto_state(&mut self, rank: u32, is_optimal: bool, is_on_hull: bool) {
+        self.pareto_rank = rank;
+        self.is_pareto_optimal = is_optimal;
+        self.is_on_convex_envelope = is_on_hull;
+    }
+    fn is_optimal(&self) -> bool {
+        self.is_pareto_optimal
+    }
+}
+
+fn compute_pareto_2d<P: ParetoPoint2D>(points: &mut [P]) {
     if points.is_empty() {
         return;
     }
-
     if points.len() == 1 {
-        points[0].pareto_rank = 1;
-        points[0].is_pareto_optimal = true;
-        points[0].is_on_convex_hull = true;
+        points[0].set_pareto_state(1, true, true);
         return;
     }
 
-    // 1. Sort points by speed descending (x desc), compression ratio descending (y desc)
     points.sort_by(|a, b| {
-        let diff_x = a.speed_mb_s - b.speed_mb_s;
+        let diff_x = a.x_coord() - b.x_coord();
         if diff_x.abs() > EPSILON {
-            b.speed_mb_s
-                .partial_cmp(&a.speed_mb_s)
+            b.x_coord()
+                .partial_cmp(&a.x_coord())
                 .unwrap_or(std::cmp::Ordering::Equal)
         } else {
-            b.compression_ratio
-                .partial_cmp(&a.compression_ratio)
+            b.y_coord()
+                .partial_cmp(&a.y_coord())
                 .unwrap_or(std::cmp::Ordering::Equal)
         }
     });
 
-    // 2. Multi-tier Pareto Rank calculation via Dilworth's Theorem & Patience Sorting (O(N log K))
+    assign_patience_pareto_ranks(points);
+    let frontier_indices = extract_sorted_frontier_indices(points);
+    mark_upper_convex_hull(points, &frontier_indices);
+}
+
+fn assign_patience_pareto_ranks<P: ParetoPoint2D>(points: &mut [P]) {
     let mut target_tiers: Vec<f64> = Vec::new();
-
     for pt in points.iter_mut() {
-        let cur_y = pt.compression_ratio;
-
+        let cur_y = pt.y_coord();
         let mut left = 0;
         let mut right = target_tiers.len();
         while left < right {
@@ -149,62 +205,58 @@ pub fn calculate_pareto_frontier(points: &mut [ParetoCodecPoint]) {
             }
         }
 
-        if left < target_tiers.len() {
-            pt.pareto_rank = (left + 1) as u32;
+        let rank = if left < target_tiers.len() {
             target_tiers[left] = cur_y;
+            (left + 1) as u32
         } else {
             target_tiers.push(cur_y);
-            pt.pareto_rank = target_tiers.len() as u32;
-        }
-
-        pt.is_pareto_optimal = pt.pareto_rank == 1;
-        pt.is_on_convex_hull = false;
+            target_tiers.len() as u32
+        };
+        pt.set_pareto_state(rank, rank == 1, false);
     }
+}
 
-    // 3. Extract Rank 1 frontier indices and sort by speed ascending (x asc)
+fn extract_sorted_frontier_indices<P: ParetoPoint2D>(points: &[P]) -> Vec<usize> {
     let mut frontier_indices: Vec<usize> = points
         .iter()
         .enumerate()
-        .filter(|(_, p)| p.is_pareto_optimal)
+        .filter(|(_, p)| p.is_optimal())
         .map(|(idx, _)| idx)
         .collect();
 
     frontier_indices.sort_by(|&i, &j| {
-        let diff_x = points[i].speed_mb_s - points[j].speed_mb_s;
+        let diff_x = points[i].x_coord() - points[j].x_coord();
         if diff_x.abs() > EPSILON {
             points[i]
-                .speed_mb_s
-                .partial_cmp(&points[j].speed_mb_s)
+                .x_coord()
+                .partial_cmp(&points[j].x_coord())
                 .unwrap_or(std::cmp::Ordering::Equal)
         } else {
             points[i]
-                .compression_ratio
-                .partial_cmp(&points[j].compression_ratio)
+                .y_coord()
+                .partial_cmp(&points[j].y_coord())
                 .unwrap_or(std::cmp::Ordering::Equal)
         }
     });
+    frontier_indices
+}
 
+fn mark_upper_convex_hull<P: ParetoPoint2D>(points: &mut [P], frontier_indices: &[usize]) {
     if frontier_indices.len() <= 2 {
-        for &idx in &frontier_indices {
-            points[idx].is_on_convex_hull = true;
+        for &idx in frontier_indices {
+            points[idx].set_pareto_state(1, true, true);
         }
         return;
     }
 
-    // 4. Compute 2D Upper Convex Hull via Andrew's Monotone Chain (O(M log M))
     let mut upper_hull_indices: Vec<usize> = Vec::with_capacity(frontier_indices.len());
-
-    for &idx in &frontier_indices {
+    for &idx in frontier_indices {
         let p = &points[idx];
         while upper_hull_indices.len() >= 2 {
             let a = &points[upper_hull_indices[upper_hull_indices.len() - 2]];
             let b = &points[upper_hull_indices[upper_hull_indices.len() - 1]];
-
-            // 2D Cross Product: (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
-            let cross_product = (b.speed_mb_s - a.speed_mb_s) * (p.compression_ratio - a.compression_ratio)
-                - (b.compression_ratio - a.compression_ratio) * (p.speed_mb_s - a.speed_mb_s);
-
-            // If cross_product >= -EPSILON (concave corner or collinear), pop redundant interior vertex
+            let cross_product = (b.x_coord() - a.x_coord()) * (p.y_coord() - a.y_coord())
+                - (b.y_coord() - a.y_coord()) * (p.x_coord() - a.x_coord());
             if cross_product >= -EPSILON {
                 upper_hull_indices.pop();
             } else {
@@ -215,235 +267,24 @@ pub fn calculate_pareto_frontier(points: &mut [ParetoCodecPoint]) {
     }
 
     for &idx in &upper_hull_indices {
-        points[idx].is_on_convex_hull = true;
+        points[idx].set_pareto_state(1, true, true);
     }
+}
+
+/// Calculates 2D Pareto frontier and Andrew's Monotone Chain Upper Convex Hull on `ParetoCodecPoint` slice.
+pub fn calculate_pareto_frontier(points: &mut [ParetoCodecPoint]) {
+    compute_pareto_2d(points);
 }
 
 /// Calculates 2D Pareto frontier and Andrew's Monotone Chain Upper Convex Hull on raw C-ABI codec points in-place.
 pub fn compute_codec_pareto_frontier_raw(points: &mut [TTZipParetoCodecPointRaw]) {
-    if points.is_empty() {
-        return;
-    }
-
-    if points.len() == 1 {
-        points[0].pareto_rank = 1;
-        points[0].is_pareto_optimal = true;
-        points[0].is_on_convex_hull = true;
-        return;
-    }
-
-    // 1. Sort points by speed descending (x desc), compression ratio descending (y desc)
-    points.sort_by(|a, b| {
-        let diff_x = a.speed_mb_s - b.speed_mb_s;
-        if diff_x.abs() > EPSILON {
-            b.speed_mb_s
-                .partial_cmp(&a.speed_mb_s)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        } else {
-            b.compression_ratio
-                .partial_cmp(&a.compression_ratio)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        }
-    });
-
-    // 2. Multi-tier Pareto Rank calculation via Dilworth's Theorem & Patience Sorting (O(N log K))
-    let mut target_tiers: Vec<f64> = Vec::new();
-
-    for pt in points.iter_mut() {
-        let cur_y = pt.compression_ratio;
-
-        let mut left = 0;
-        let mut right = target_tiers.len();
-        while left < right {
-            let mid = (left + right) / 2;
-            if cur_y > target_tiers[mid] + EPSILON {
-                right = mid;
-            } else {
-                left = mid + 1;
-            }
-        }
-
-        if left < target_tiers.len() {
-            pt.pareto_rank = (left + 1) as u32;
-            target_tiers[left] = cur_y;
-        } else {
-            target_tiers.push(cur_y);
-            pt.pareto_rank = target_tiers.len() as u32;
-        }
-
-        pt.is_pareto_optimal = pt.pareto_rank == 1;
-        pt.is_on_convex_hull = false;
-    }
-
-    // 3. Extract Rank 1 frontier indices and sort by speed ascending (x asc)
-    let mut frontier_indices: Vec<usize> = points
-        .iter()
-        .enumerate()
-        .filter(|(_, p)| p.is_pareto_optimal)
-        .map(|(idx, _)| idx)
-        .collect();
-
-    frontier_indices.sort_by(|&i, &j| {
-        let diff_x = points[i].speed_mb_s - points[j].speed_mb_s;
-        if diff_x.abs() > EPSILON {
-            points[i]
-                .speed_mb_s
-                .partial_cmp(&points[j].speed_mb_s)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        } else {
-            points[i]
-                .compression_ratio
-                .partial_cmp(&points[j].compression_ratio)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        }
-    });
-
-    if frontier_indices.len() <= 2 {
-        for &idx in &frontier_indices {
-            points[idx].is_on_convex_hull = true;
-        }
-        return;
-    }
-
-    // 4. Compute 2D Upper Convex Hull via Andrew's Monotone Chain (O(M log M))
-    let mut upper_hull_indices: Vec<usize> = Vec::with_capacity(frontier_indices.len());
-
-    for &idx in &frontier_indices {
-        let p = &points[idx];
-        while upper_hull_indices.len() >= 2 {
-            let a = &points[upper_hull_indices[upper_hull_indices.len() - 2]];
-            let b = &points[upper_hull_indices[upper_hull_indices.len() - 1]];
-
-            let cross_product = (b.speed_mb_s - a.speed_mb_s) * (p.compression_ratio - a.compression_ratio)
-                - (b.compression_ratio - a.compression_ratio) * (p.speed_mb_s - a.speed_mb_s);
-
-            if cross_product >= -EPSILON {
-                upper_hull_indices.pop();
-            } else {
-                break;
-            }
-        }
-        upper_hull_indices.push(idx);
-    }
-
-    for &idx in &upper_hull_indices {
-        points[idx].is_on_convex_hull = true;
-    }
+    compute_pareto_2d(points);
 }
 
 /// Computes multi-tier Pareto ranks ($O(N \log K)$ via Dilworth/Patience sorting)
 /// and 2D Upper Convex Hull ($O(M \log M)$ via Andrew's Monotone Chain) on `ParetoPointRaw` in-place.
 pub fn compute_pareto_frontier_raw(points: &mut [ParetoPointRaw]) {
-    if points.is_empty() {
-        return;
-    }
-
-    if points.len() == 1 {
-        points[0].pareto_rank = 1;
-        points[0].is_pareto_optimal = true;
-        points[0].is_on_convex_envelope = true;
-        return;
-    }
-
-    // 1. Sort points by throughput descending (x desc), space savings descending (y desc)
-    points.sort_by(|a, b| {
-        let diff_x = a.throughput_mbs - b.throughput_mbs;
-        if diff_x.abs() > EPSILON {
-            b.throughput_mbs
-                .partial_cmp(&a.throughput_mbs)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        } else {
-            b.space_savings_pct
-                .partial_cmp(&a.space_savings_pct)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        }
-    });
-
-    // 2. Multi-tier Pareto Rank calculation via Dilworth's Theorem & Patience Sorting (O(N log K))
-    let mut target_tiers: Vec<f64> = Vec::new();
-
-    for pt in points.iter_mut() {
-        let cur_y = pt.space_savings_pct;
-
-        let mut left = 0;
-        let mut right = target_tiers.len();
-        while left < right {
-            let mid = (left + right) / 2;
-            if cur_y > target_tiers[mid] + EPSILON {
-                right = mid;
-            } else {
-                left = mid + 1;
-            }
-        }
-
-        if left < target_tiers.len() {
-            pt.pareto_rank = (left + 1) as u32;
-            target_tiers[left] = cur_y;
-        } else {
-            target_tiers.push(cur_y);
-            pt.pareto_rank = target_tiers.len() as u32;
-        }
-
-        pt.is_pareto_optimal = pt.pareto_rank == 1;
-        pt.is_on_convex_envelope = false;
-    }
-
-    // 3. Extract Rank 1 frontier indices and sort by throughput ascending (x asc)
-    let mut frontier_indices: Vec<usize> = points
-        .iter()
-        .enumerate()
-        .filter(|(_, p)| p.is_pareto_optimal)
-        .map(|(idx, _)| idx)
-        .collect();
-
-    frontier_indices.sort_by(|&i, &j| {
-        let diff_x = points[i].throughput_mbs - points[j].throughput_mbs;
-        if diff_x.abs() > EPSILON {
-            points[i]
-                .throughput_mbs
-                .partial_cmp(&points[j].throughput_mbs)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        } else {
-            points[i]
-                .space_savings_pct
-                .partial_cmp(&points[j].space_savings_pct)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        }
-    });
-
-    if frontier_indices.len() <= 2 {
-        for &idx in &frontier_indices {
-            points[idx].is_on_convex_envelope = true;
-        }
-        return;
-    }
-
-    // 4. Compute 2D Upper Convex Hull via Andrew's Monotone Chain (O(M log M))
-    let mut upper_hull_indices: Vec<usize> = Vec::with_capacity(frontier_indices.len());
-
-    for &idx in &frontier_indices {
-        let p = &points[idx];
-        while upper_hull_indices.len() >= 2 {
-            let a = &points[upper_hull_indices[upper_hull_indices.len() - 2]];
-            let b = &points[upper_hull_indices[upper_hull_indices.len() - 1]];
-
-            let cross_product = (b.throughput_mbs - a.throughput_mbs)
-                * (p.space_savings_pct - a.space_savings_pct)
-                - (b.space_savings_pct - a.space_savings_pct)
-                    * (p.throughput_mbs - a.throughput_mbs);
-
-            if cross_product >= -EPSILON {
-                upper_hull_indices.pop();
-            } else {
-                break;
-            }
-        }
-        upper_hull_indices.push(idx);
-    }
-
-    for &idx in &upper_hull_indices {
-        points[idx].is_on_convex_envelope = true;
-    }
+    compute_pareto_2d(points);
 }
 
 #[cfg(test)]

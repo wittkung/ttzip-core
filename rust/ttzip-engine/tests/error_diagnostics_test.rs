@@ -1,7 +1,10 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
-#![allow(deprecated)]
+#![allow(
+    deprecated,
+    reason = "Integration test verifies deprecated C-ABI error diagnostic functions"
+)]
 
 use std::ffi::CStr;
 

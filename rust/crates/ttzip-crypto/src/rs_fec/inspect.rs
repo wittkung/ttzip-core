@@ -61,10 +61,10 @@ pub fn inspect_recovery_record_reader<R: Read + Seek>(
         return Ok(None);
     }
 
-    let slice_size = u32::from_le_bytes(header[6..10].try_into().unwrap()) as usize;
-    let total_k = u16::from_le_bytes(header[10..12].try_into().unwrap()) as usize;
-    let total_m = u16::from_le_bytes(header[12..14].try_into().unwrap()) as usize;
-    let protected_len = u64::from_le_bytes(header[14..22].try_into().unwrap());
+    let slice_size = u32::from_le_bytes([header[6], header[7], header[8], header[9]]) as usize;
+    let total_k = u16::from_le_bytes([header[10], header[11]]) as usize;
+    let total_m = u16::from_le_bytes([header[12], header[13]]) as usize;
+    let protected_len = u64::from_le_bytes(header[14..22].try_into().unwrap_or([0u8; 8]));
     let mut root_hash = [0u8; 32];
     root_hash.copy_from_slice(&header[22..54]);
 

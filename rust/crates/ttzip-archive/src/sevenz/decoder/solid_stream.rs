@@ -8,56 +8,17 @@ use std::collections::HashMap;
 use std::io::Write;
 
 use super::payload::decode_7z_folder_streaming;
-use crate::crypto::crc32::crc32_fast;
+pub use super::solid_stream_state::{SolidExtractionStats, SolidFileRange, SolidFolderTable};
+use super::solid_stream_state::{build_initial_folder_tables, SolidStreamWindowState};
 use crate::sevenz::header::SevenZHeaderInfo;
 use crate::types::TTZipStatus;
 use ttzip_types::options::ProgressAtomicSheet;
-
 
 /// 4MB sliding-window micro-buffer chunk size for 7z solid stream decompression.
 pub const SOLID_MICRO_BUFFER_CHUNK_SIZE: usize = 4 * 1024 * 1024;
 
 /// Maximum allowable uncompressed payload size allocated in contiguous memory (64MB ceiling).
 pub const MAX_IN_MEMORY_DECOMPRESS_BYTES: usize = 64 * 1024 * 1024;
-
-/// Spatial offset range and metadata for a single file entry in a solid 7z stream.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SolidFileRange {
-    pub file_index: usize,
-    pub rel_path: String,
-    pub is_directory: bool,
-    pub is_empty_stream: bool,
-    pub folder_index: Option<usize>,
-    pub substream_index: Option<usize>,
-    pub global_stream_index: Option<usize>,
-    pub offset_start: u64,
-    pub offset_end: u64,
-    pub uncompressed_size: u64,
-    pub crc: Option<u32>,
-}
-
-/// Pre-computed prefix-sum jump table and stream boundaries for a single 7z Folder.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SolidFolderTable {
-    pub folder_index: usize,
-    /// Prefix sums of sub-stream uncompressed lengths:
-    /// `stream_prefix_sums[0] == 0`,
-    /// `stream_prefix_sums[i]` is the byte offset of sub-stream `i` in uncompressed folder stream,
-    /// `stream_prefix_sums[N]` is the total uncompressed size of all sub-streams in this folder.
-    pub stream_prefix_sums: Vec<u64>,
-    /// Global stream index corresponding to each local sub-stream in this folder.
-    pub global_stream_indices: Vec<usize>,
-    /// File index corresponding to each local sub-stream in this folder.
-    pub substream_to_file_index: Vec<usize>,
-    /// Total uncompressed size of this folder (from coders unpack_sizes or sum of sub-streams).
-    pub total_uncompressed_size: u64,
-    /// Byte offset in archive where this folder's packed payload begins.
-    pub packed_offset: usize,
-    /// Packed byte length of this folder in archive.
-    pub packed_len: usize,
-    /// CRC of the folder if present.
-    pub folder_crc: Option<u32>,
-}
 
 /// Pre-parsed O(1) jump table index for 7-Zip solid stream archives.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -70,45 +31,131 @@ pub struct SolidFolderIndex {
     path_map: HashMap<String, usize>,
 }
 
+fn advance_folder_stream_cursor(
+    info: &SevenZHeaderInfo,
+    cur_folder_idx: &mut usize,
+    streams_in_cur_folder: &mut usize,
+    current_folder_offset: &mut u64,
+) {
+    while *cur_folder_idx < info.folders.len() {
+        let folder_streams = info.folders[*cur_folder_idx].num_unpack_streams.max(1);
+        if *streams_in_cur_folder < folder_streams {
+            break;
+        }
+        if *cur_folder_idx + 1 < info.folders.len() {
+            *cur_folder_idx += 1;
+            *streams_in_cur_folder = 0;
+            *current_folder_offset = 0;
+        } else {
+            break;
+        }
+    }
+}
+
+fn insert_normalized_path_entry(
+    path_map: &mut HashMap<String, usize>,
+    rel_path: &str,
+    file_idx: usize,
+) {
+    let trimmed = rel_path.trim_start_matches('/');
+    let needs_slash_norm = trimmed.contains('\\');
+    let has_leading_slash = trimmed.len() != rel_path.len();
+
+    path_map.insert(rel_path.to_string(), file_idx);
+    if needs_slash_norm || has_leading_slash {
+        let normalized = if needs_slash_norm {
+            trimmed.replace('\\', "/")
+        } else {
+            trimmed.to_string()
+        };
+        if normalized != rel_path {
+            path_map.insert(normalized, file_idx);
+        }
+    }
+}
+
+fn build_solid_file_range(
+    info: &SevenZHeaderInfo,
+    folders: &mut [SolidFolderTable],
+    file_idx: usize,
+    f: &crate::sevenz::header::SevenZFileMeta,
+    global_stream_idx: &mut usize,
+    cur_folder_idx: &mut usize,
+    streams_in_cur_folder: &mut usize,
+    current_folder_offset: &mut u64,
+) -> SolidFileRange {
+    if f.is_directory || f.is_empty_stream {
+        return SolidFileRange {
+            file_index: file_idx,
+            rel_path: f.rel_path.clone(),
+            is_directory: f.is_directory,
+            is_empty_stream: f.is_empty_stream,
+            folder_index: None,
+            substream_index: None,
+            global_stream_index: None,
+            offset_start: 0,
+            offset_end: 0,
+            uncompressed_size: 0,
+            crc: None,
+        };
+    }
+
+    advance_folder_stream_cursor(
+        info,
+        cur_folder_idx,
+        streams_in_cur_folder,
+        current_folder_offset,
+    );
+    let folder_idx = if *cur_folder_idx < info.folders.len() {
+        *cur_folder_idx
+    } else {
+        0
+    };
+    let sz = super::payload::resolve_folder_stream_size(
+        info,
+        *cur_folder_idx,
+        *global_stream_idx,
+        *streams_in_cur_folder,
+        *current_folder_offset,
+    );
+    let crc = info.stream_crcs.get(*global_stream_idx).copied();
+    let offset_start = *current_folder_offset;
+    let offset_end = current_folder_offset.saturating_add(sz);
+
+    if let Some(ft) = folders.get_mut(folder_idx) {
+        ft.global_stream_indices.push(*global_stream_idx);
+        ft.substream_to_file_index.push(file_idx);
+        ft.stream_prefix_sums.push(offset_end);
+    }
+
+    let substream_idx = *streams_in_cur_folder;
+    let stream_idx = *global_stream_idx;
+    *current_folder_offset = offset_end;
+    *streams_in_cur_folder += 1;
+    *global_stream_idx += 1;
+
+    SolidFileRange {
+        file_index: file_idx,
+        rel_path: f.rel_path.clone(),
+        is_directory: false,
+        is_empty_stream: false,
+        folder_index: Some(folder_idx),
+        substream_index: Some(substream_idx),
+        global_stream_index: Some(stream_idx),
+        offset_start,
+        offset_end,
+        uncompressed_size: sz,
+        crc,
+    }
+}
+
 impl SolidFolderIndex {
     /// Builds an O(1) random-access seek and prefix sum jump table from parsed 7z metadata header.
     pub fn build(info: &SevenZHeaderInfo) -> Self {
         let num_files = info.files.len();
         let mut entries = Vec::with_capacity(num_files);
         let mut path_map = HashMap::with_capacity(num_files);
-
-        let mut folders: Vec<SolidFolderTable> = Vec::with_capacity(info.folders.len().max(1));
-        if !info.folders.is_empty() {
-            for (f_idx, f) in info.folders.iter().enumerate() {
-                let total_uncomp = super::payload::folder_final_unpack_size(f);
-                folders.push(SolidFolderTable {
-                    folder_index: f_idx,
-                    stream_prefix_sums: vec![0],
-                    global_stream_indices: Vec::new(),
-                    substream_to_file_index: Vec::new(),
-                    total_uncompressed_size: total_uncomp,
-                    packed_offset: f.packed_offset,
-                    packed_len: f.packed_len,
-                    folder_crc: f.crc,
-                });
-            }
-        } else {
-            let total_sz = if !info.stream_sizes.is_empty() {
-                info.stream_sizes.iter().sum()
-            } else {
-                info.payload_len as u64
-            };
-            folders.push(SolidFolderTable {
-                folder_index: 0,
-                stream_prefix_sums: vec![0],
-                global_stream_indices: Vec::new(),
-                substream_to_file_index: Vec::new(),
-                total_uncompressed_size: total_sz,
-                packed_offset: info.payload_offset,
-                packed_len: info.payload_len,
-                folder_crc: None,
-            });
-        }
+        let mut folders = build_initial_folder_tables(info);
 
         let mut global_stream_idx = 0usize;
         let mut cur_folder_idx = 0usize;
@@ -116,102 +163,19 @@ impl SolidFolderIndex {
         let mut current_folder_offset = 0u64;
 
         for (file_idx, f) in info.files.iter().enumerate() {
-            if f.is_directory || f.is_empty_stream {
-                let range = SolidFileRange {
-                    file_index: file_idx,
-                    rel_path: f.rel_path.clone(),
-                    is_directory: f.is_directory,
-                    is_empty_stream: f.is_empty_stream,
-                    folder_index: None,
-                    substream_index: None,
-                    global_stream_index: None,
-                    offset_start: 0,
-                    offset_end: 0,
-                    uncompressed_size: 0,
-                    crc: None,
-                };
-                entries.push(range);
-            } else {
-                // Advance to next folder when current folder's stream budget is exhausted
-                while cur_folder_idx < info.folders.len() {
-                    let folder_streams = info.folders[cur_folder_idx].num_unpack_streams.max(1);
-                    if streams_in_cur_folder < folder_streams {
-                        break;
-                    }
-                    if cur_folder_idx + 1 < info.folders.len() {
-                        cur_folder_idx += 1;
-                        streams_in_cur_folder = 0;
-                        current_folder_offset = 0;
-                    } else {
-                        break;
-                    }
-                }
-
-                let folder_idx = if !info.folders.is_empty() && cur_folder_idx < info.folders.len() {
-                    cur_folder_idx
-                } else {
-                    0
-                };
-
-                let sz = super::payload::resolve_folder_stream_size(
-                    info,
-                    cur_folder_idx,
-                    global_stream_idx,
-                    streams_in_cur_folder,
-                    current_folder_offset,
-                );
-
-                let crc = info.stream_crcs.get(global_stream_idx).copied();
-                let offset_start = current_folder_offset;
-                let offset_end = current_folder_offset.saturating_add(sz);
-
-                if folder_idx < folders.len() {
-                    let ft = &mut folders[folder_idx];
-                    ft.global_stream_indices.push(global_stream_idx);
-                    ft.substream_to_file_index.push(file_idx);
-                    ft.stream_prefix_sums.push(offset_end);
-                }
-
-                let range = SolidFileRange {
-                    file_index: file_idx,
-                    rel_path: f.rel_path.clone(),
-                    is_directory: false,
-                    is_empty_stream: false,
-                    folder_index: Some(folder_idx),
-                    substream_index: Some(streams_in_cur_folder),
-                    global_stream_index: Some(global_stream_idx),
-                    offset_start,
-                    offset_end,
-                    uncompressed_size: sz,
-                    crc,
-                };
-                entries.push(range);
-
-                current_folder_offset = offset_end;
-                streams_in_cur_folder += 1;
-                global_stream_idx += 1;
-            }
-
-            // Populate path map with zero redundant heap allocations for canonical paths
-            let raw_path = f.rel_path.as_str();
-            let trimmed = raw_path.trim_start_matches('/');
-            let needs_slash_norm = trimmed.contains('\\');
-            let has_leading_slash = trimmed.len() != raw_path.len();
-
-            path_map.insert(f.rel_path.clone(), file_idx);
-            if needs_slash_norm || has_leading_slash {
-                let normalized = if needs_slash_norm {
-                    trimmed.replace('\\', "/")
-                } else {
-                    trimmed.to_string()
-                };
-                if normalized != *raw_path {
-                    path_map.insert(normalized, file_idx);
-                }
-            }
+            entries.push(build_solid_file_range(
+                info,
+                &mut folders,
+                file_idx,
+                f,
+                &mut global_stream_idx,
+                &mut cur_folder_idx,
+                &mut streams_in_cur_folder,
+                &mut current_folder_offset,
+            ));
+            insert_normalized_path_entry(&mut path_map, &f.rel_path, file_idx);
         }
 
-        // Ensure each folder table has updated total uncompressed size from prefix sums if 0
         for ft in &mut folders {
             if ft.total_uncompressed_size == 0 {
                 ft.total_uncompressed_size = ft.stream_prefix_sums.last().copied().unwrap_or(0);
@@ -318,21 +282,6 @@ impl SolidFolderIndex {
     }
 }
 
-/// Statistics and execution report for solid stream selective extraction.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct SolidExtractionStats {
-    pub folder_index: usize,
-    pub target_offset_start: u64,
-    pub target_offset_end: u64,
-    pub decompressed_bytes_total: u64,
-    pub skipped_preceding_bytes: u64,
-    pub extracted_target_bytes: u64,
-    pub early_exit_triggered: bool,
-    pub computed_crc: u32,
-    pub expected_crc: Option<u32>,
-    pub crc_matched: bool,
-}
-
 /// High-performance 4MB micro-buffer sliding window solid extractor with Early Exit Termination.
 pub struct SolidEarlyExitExtractor<'a> {
     archive_data: &'a [u8],
@@ -377,7 +326,6 @@ impl<'a> SolidEarlyExitExtractor<'a> {
         self.max_preceding_budget_bytes = max_bytes;
         self
     }
-
 
     /// Extracts entry into an in-memory buffer (`Vec<u8>`) with early exit and CRC32 verification.
     pub fn extract_to_vec(
@@ -432,19 +380,12 @@ impl<'a> SolidEarlyExitExtractor<'a> {
     {
         let loc = self.folder_index.lookup(file_idx).ok_or(TTZipStatus::ErrInvalidOffset)?;
 
-        // Short-circuit directory, empty stream, or zero-byte file
         if loc.is_directory || loc.is_empty_stream || loc.uncompressed_size == 0 {
             return Ok(SolidExtractionStats {
                 folder_index: loc.folder_index.unwrap_or(0),
-                target_offset_start: 0,
-                target_offset_end: 0,
-                decompressed_bytes_total: 0,
-                skipped_preceding_bytes: 0,
-                extracted_target_bytes: 0,
-                early_exit_triggered: false,
-                computed_crc: 0,
                 expected_crc: loc.crc,
                 crc_matched: true,
+                ..Default::default()
             });
         }
 
@@ -458,21 +399,12 @@ impl<'a> SolidEarlyExitExtractor<'a> {
         if self.max_preceding_budget_bytes > 0 && target_start > self.max_preceding_budget_bytes {
             return Err(TTZipStatus::ErrSolidBudgetExceeded);
         }
-
-        if let Some(sheet) = self.sheet {
-            if sheet.is_cancelled() {
-                return Err(TTZipStatus::Cancelled);
-            }
+        if self.sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
+            return Err(TTZipStatus::Cancelled);
         }
 
         let folder_total = self.folder_index.folder_total_size(folder_idx).unwrap_or(target_end);
-
-        let mut current_offset: u64 = 0;
-        let mut decompressed_total: u64 = 0;
-        let mut skipped_preceding: u64 = 0;
-        let mut extracted_bytes: u64 = 0;
-        let mut running_crc: u32 = 0;
-        let mut early_exit_signal_sent = false;
+        let mut window = SolidStreamWindowState::new(target_start, target_end, self.sheet);
 
         let decode_res = decode_7z_folder_streaming(
             self.archive_data,
@@ -480,53 +412,7 @@ impl<'a> SolidEarlyExitExtractor<'a> {
             folder_idx,
             password,
             self.thread_budget,
-            |chunk| -> Result<(), TTZipStatus> {
-                if let Some(sheet) = self.sheet {
-                    if sheet.is_cancelled() {
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                }
-
-                let chunk_start = current_offset;
-                let chunk_len = chunk.len() as u64;
-                let chunk_end = chunk_start
-                    .checked_add(chunk_len)
-                    .ok_or(TTZipStatus::ErrCorruptHeader)?;
-                current_offset = chunk_end;
-                decompressed_total = decompressed_total.saturating_add(chunk_len);
-
-                // 1. Preceding range [0, target_start): micro-buffer sliding discard
-                if chunk_end <= target_start {
-                    skipped_preceding += chunk_len;
-                    return Ok(());
-                }
-
-                // 2. Overlapping / Target range [target_start, target_end)
-                if chunk_start < target_end && chunk_end > target_start {
-                    if chunk_start < target_start {
-                        skipped_preceding += target_start - chunk_start;
-                    }
-                    let slice_start = (target_start.saturating_sub(chunk_start)) as usize;
-                    let slice_end = (target_end.min(chunk_end) - chunk_start) as usize;
-                    let target_slice = &chunk[slice_start..slice_end];
-                    if !target_slice.is_empty() {
-                        sink(target_slice)?;
-                        running_crc = crc32_fast(running_crc, target_slice);
-                        extracted_bytes += target_slice.len() as u64;
-                        if let Some(sheet) = self.sheet {
-                            sheet.add_processed(target_slice.len() as u64);
-                        }
-                    }
-                }
-
-                // 3. Trailing range >= target_end: Early-Exit Termination
-                if current_offset >= target_end {
-                    early_exit_signal_sent = true;
-                    return Err(TTZipStatus::Eof);
-                }
-
-                Ok(())
-            },
+            |chunk| window.consume_chunk(chunk, &mut sink),
         );
 
         match decode_res {
@@ -534,38 +420,13 @@ impl<'a> SolidEarlyExitExtractor<'a> {
             Err(e) => return Err(e),
         }
 
-        let crc_matched = match loc.crc {
-            Some(exp) => running_crc == exp,
-            None => true,
-        };
-
-        if extracted_bytes != target_len || !crc_matched {
-            return Err(if self.header_info.is_encrypted {
-                TTZipStatus::ErrInvalidPassword
-            } else {
-                TTZipStatus::ErrCorruptHeader
-            });
-        }
-
-        let early_exit_triggered =
-            early_exit_signal_sent || (target_end < folder_total && decompressed_total < folder_total);
-
-        if let Some(sheet) = self.sheet {
-            sheet.mark_finished();
-        }
-
-        Ok(SolidExtractionStats {
-            folder_index: folder_idx,
-            target_offset_start: target_start,
-            target_offset_end: target_end,
-            decompressed_bytes_total: decompressed_total,
-            skipped_preceding_bytes: skipped_preceding,
-            extracted_target_bytes: extracted_bytes,
-            early_exit_triggered,
-            computed_crc: running_crc,
-            expected_crc: loc.crc,
-            crc_matched,
-        })
+        window.finalize(
+            folder_idx,
+            target_len,
+            folder_total,
+            loc.crc,
+            self.header_info.is_encrypted,
+        )
     }
 }
 

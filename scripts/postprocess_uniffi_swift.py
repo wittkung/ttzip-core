@@ -161,6 +161,14 @@ import ttzip_engineFFI
         ),
     ),
     PatchDescriptor(
+        name="archive_format_sendable",
+        description="Make ArchiveFormat a checked Sendable value across Swift modules",
+        pattern=re.compile(r"^public enum ArchiveFormat \{", re.MULTILINE),
+        replacement="public enum ArchiveFormat: Sendable {",
+        verify_pattern=re.compile(r"^public enum ArchiveFormat: Sendable \{", re.MULTILINE),
+        forbidden_pattern=re.compile(r"^public enum ArchiveFormat \{", re.MULTILINE),
+    ),
+    PatchDescriptor(
         name="strict_concurrency_vtable",
         description="Annotate mutable static callback vtables with nonisolated(unsafe) for Swift 6 strict concurrency",
         pattern=re.compile(r"(?<!nonisolated\(unsafe\) )static var vtable:"),
@@ -346,143 +354,155 @@ def apply_sendable_extensions(content: str) -> Tuple[str, bool]:
 
 
 
+SWIFT_OPEN_DELIMITERS = {"{": "}", "(": ")", "[": "]"}
+SWIFT_CLOSE_DELIMITERS = {v: k for k, v in SWIFT_OPEN_DELIMITERS.items()}
+
+
+def _advance_cursor(
+    content: str, idx: int, count: int, line_num: int, col_num: int
+) -> Tuple[int, int, int]:
+    end = min(len(content), idx + count)
+    while idx < end:
+        if content[idx] == "\n":
+            line_num += 1
+            col_num = 1
+        else:
+            col_num += 1
+        idx += 1
+    return idx, line_num, col_num
+
+
+def _skip_single_line_comment(
+    content: str, idx: int, line_num: int, col_num: int
+) -> Tuple[int, int, int]:
+    idx, line_num, col_num = _advance_cursor(content, idx, 2, line_num, col_num)
+    while idx < len(content) and content[idx] != "\n":
+        idx += 1
+        col_num += 1
+    return idx, line_num, col_num
+
+
+def _skip_block_comment(
+    content: str, idx: int, line_num: int, col_num: int
+) -> Tuple[int, int, int]:
+    n = len(content)
+    idx, line_num, col_num = _advance_cursor(content, idx, 2, line_num, col_num)
+    depth = 1
+    while idx < n and depth > 0:
+        if content.startswith("/*", idx):
+            depth += 1
+            idx, line_num, col_num = _advance_cursor(content, idx, 2, line_num, col_num)
+        elif content.startswith("*/", idx):
+            depth -= 1
+            idx, line_num, col_num = _advance_cursor(content, idx, 2, line_num, col_num)
+        else:
+            idx, line_num, col_num = _advance_cursor(content, idx, 1, line_num, col_num)
+    if depth > 0:
+        raise SyntaxError("Unterminated multi-line comment at end of file")
+    return idx, line_num, col_num
+
+
+def _match_string_opener(content: str, idx: int) -> Optional[Tuple[int, bool]]:
+    n = len(content)
+    hash_count = 0
+    while idx + hash_count < n and content[idx + hash_count] == "#":
+        hash_count += 1
+    quote_pos = idx + hash_count
+    if quote_pos >= n or content[quote_pos] != '"':
+        return None
+    is_multiline = content.startswith('"""', quote_pos)
+    return hash_count, is_multiline
+
+
+def _skip_string_literal(
+    content: str,
+    idx: int,
+    line_num: int,
+    col_num: int,
+    hash_count: int,
+    is_multiline: bool,
+) -> Tuple[int, int, int]:
+    n = len(content)
+    quote_token = '"""' if is_multiline else '"'
+    hashes = "#" * hash_count
+    opener_len = hash_count + len(quote_token)
+    closer = quote_token + hashes
+    escape_prefix = "\\" + hashes
+    idx, line_num, col_num = _advance_cursor(content, idx, opener_len, line_num, col_num)
+
+    while idx < n:
+        if content.startswith(closer, idx):
+            return _advance_cursor(content, idx, len(closer), line_num, col_num)
+        if content.startswith(escape_prefix, idx) and idx + len(escape_prefix) < n:
+            idx, line_num, col_num = _advance_cursor(
+                content, idx, len(escape_prefix) + 1, line_num, col_num
+            )
+            continue
+        if content[idx] == "\n" and not is_multiline:
+            raise SyntaxError(
+                f"Unterminated single-line string literal at line {line_num}, col {col_num}"
+            )
+        idx, line_num, col_num = _advance_cursor(content, idx, 1, line_num, col_num)
+
+    if is_multiline:
+        raise SyntaxError("Unterminated multi-line string at end of file")
+    raise SyntaxError("Unterminated string literal at end of file")
+
+
+def _update_delimiter_stack(
+    stack: List[Tuple[str, int, int]], ch: str, line_num: int, col_num: int
+) -> None:
+    if ch in SWIFT_OPEN_DELIMITERS:
+        stack.append((ch, line_num, col_num))
+        return
+    if ch not in SWIFT_CLOSE_DELIMITERS:
+        return
+    if not stack:
+        raise SyntaxError(
+            f"Unexpected closing delimiter '{ch}' at line {line_num}, col {col_num}"
+        )
+    open_ch, open_line, open_col = stack.pop()
+    expected_close = SWIFT_OPEN_DELIMITERS[open_ch]
+    if expected_close != ch:
+        raise SyntaxError(
+            f"Mismatched delimiter: expected '{expected_close}', found '{ch}' "
+            f"at line {line_num}, col {col_num} (opening '{open_ch}' at line {open_line}, col {open_col})"
+        )
+
+
 def validate_swift_syntax(content: str) -> None:
     """
     Validates Swift syntax invariants on the postprocessed code:
     - Balanced braces {}, parentheses (), and brackets [].
-    - Proper lexical closure of string literals ("" and multi-line "\"\"\"").
+    - Proper lexical closure of string literals ("", "\"\"\"", and raw #"..."#).
     - Proper termination and nesting of comments (single-line // and block /* */).
-    
+
     Raises:
         SyntaxError: If any delimiter imbalance or unclosed token is discovered.
     """
     stack: List[Tuple[str, int, int]] = []
-    
-    in_single_line_comment = False
-    in_multiline_comment_depth = 0
-    in_multiline_string = False
-    in_single_line_string = False
-    
-    i = 0
+    idx = 0
     n = len(content)
     line_num = 1
     col_num = 1
-    
-    delimiters = {"{": "}", "(": ")", "[": "]"}
-    closing_delims = {v: k for k, v in delimiters.items()}
-    
-    while i < n:
-        ch = content[i]
-        cur_line = line_num
-        cur_col = col_num
-        
-        if ch == "\n":
-            line_num += 1
-            col_num = 1
-            in_single_line_comment = False
-            if in_single_line_string:
-                raise SyntaxError(
-                    f"Unterminated single-line string literal at line {cur_line}, col {cur_col}"
-                )
-            i += 1
-            continue
-        else:
-            col_num += 1
-            
-        # Ignore contents inside single-line comments
-        if in_single_line_comment:
-            i += 1
-            continue
-            
-        # Handle nested block comments in Swift (Swift allows /* /* nested */ */)
-        if in_multiline_comment_depth > 0:
-            if ch == "/" and i + 1 < n and content[i + 1] == "*":
-                in_multiline_comment_depth += 1
-                i += 2
-                col_num += 1
-                continue
-            elif ch == "*" and i + 1 < n and content[i + 1] == "/":
-                in_multiline_comment_depth -= 1
-                i += 2
-                col_num += 1
-                continue
-            i += 1
-            continue
-            
-        # Handle multi-line string literals
-        if in_multiline_string:
-            if ch == '"' and i + 2 < n and content[i : i + 3] == '"""':
-                in_multiline_string = False
-                i += 3
-                col_num += 2
-                continue
-            elif ch == "\\" and i + 1 < n:
-                i += 2
-                col_num += 1
-                continue
-            i += 1
-            continue
-            
-        # Handle standard single-line string literals
-        if in_single_line_string:
-            if ch == '"':
-                in_single_line_string = False
-                i += 1
-                continue
-            elif ch == "\\" and i + 1 < n:
-                i += 2
-                col_num += 1
-                continue
-            i += 1
-            continue
-            
-        # Detect entry into comments
-        if ch == "/" and i + 1 < n:
-            if content[i + 1] == "/":
-                in_single_line_comment = True
-                i += 2
-                col_num += 1
-                continue
-            elif content[i + 1] == "*":
-                in_multiline_comment_depth = 1
-                i += 2
-                col_num += 1
-                continue
-                
-        # Detect entry into strings
-        if ch == '"':
-            if i + 2 < n and content[i : i + 3] == '"""':
-                in_multiline_string = True
-                i += 3
-                col_num += 2
-                continue
-            else:
-                in_single_line_string = True
-                i += 1
-                continue
-                
-        # Outside comments and strings: verify delimiter balance
-        if ch in delimiters:
-            stack.append((ch, cur_line, cur_col))
-        elif ch in closing_delims:
-            if not stack:
-                raise SyntaxError(
-                    f"Unexpected closing delimiter '{ch}' at line {cur_line}, col {cur_col}"
-                )
-            open_ch, open_line, open_col = stack.pop()
-            if delimiters[open_ch] != ch:
-                raise SyntaxError(
-                    f"Mismatched delimiter: expected '{delimiters[open_ch]}', found '{ch}' "
-                    f"at line {cur_line}, col {cur_col} (opening '{open_ch}' at line {open_line}, col {open_col})"
-                )
-        i += 1
 
-    if in_multiline_comment_depth > 0:
-        raise SyntaxError("Unterminated multi-line comment at end of file")
-    if in_multiline_string:
-        raise SyntaxError("Unterminated multi-line string at end of file")
-    if in_single_line_string:
-        raise SyntaxError("Unterminated string literal at end of file")
+    while idx < n:
+        if content.startswith("//", idx):
+            idx, line_num, col_num = _skip_single_line_comment(content, idx, line_num, col_num)
+            continue
+        if content.startswith("/*", idx):
+            idx, line_num, col_num = _skip_block_comment(content, idx, line_num, col_num)
+            continue
+        opener = _match_string_opener(content, idx)
+        if opener is not None:
+            hash_count, is_multiline = opener
+            idx, line_num, col_num = _skip_string_literal(
+                content, idx, line_num, col_num, hash_count, is_multiline
+            )
+            continue
+        _update_delimiter_stack(stack, content[idx], line_num, col_num)
+        idx, line_num, col_num = _advance_cursor(content, idx, 1, line_num, col_num)
+
     if stack:
         open_ch, open_line, open_col = stack[-1]
         raise SyntaxError(
@@ -523,6 +543,26 @@ def verify_invariants(content: str, verbose: bool = False) -> Tuple[bool, List[s
     return (len(violations) == 0, violations)
 
 
+def _apply_patch_descriptors(patched: str, verbose: bool) -> str:
+    for desc in PATCH_DESCRIPTORS:
+        patched, count = desc.pattern.subn(desc.replacement, patched)
+        if verbose:
+            print(f"  [PATCH] {desc.name:36s} -> {count} match(es) (min: {desc.min_matches})")
+        if count >= desc.min_matches:
+            continue
+        if desc.verify_pattern and desc.verify_pattern.search(patched):
+            if verbose:
+                print(f"  [INFO] Invariant '{desc.name}' was already present.")
+            continue
+        raise RuntimeError(
+            f"Patch '{desc.name}' failed assertion!\n"
+            f"Expected minimum matches: {desc.min_matches}, actual matches: {count}.\n"
+            f"Invariant description: {desc.description}\n"
+            f"Target regex: {desc.pattern.pattern}"
+        )
+    return patched
+
+
 def postprocess_content(
     content: str,
     verify_only: bool = False,
@@ -547,36 +587,17 @@ def postprocess_content(
         return content, False
 
     if verify_only:
-        # In verify-only mode on a non-compliant file, report the violations
         error_msg = "\n".join(f"  - {v}" for v in violations)
         raise RuntimeError(
             f"Verification gate failed! File does not satisfy required postprocess invariants:\n{error_msg}"
         )
 
     # 2. Execute patch pipeline
-    patched = content
-    header_applied = False
-    patched, header_applied = apply_proprietary_header(patched)
+    patched, header_applied = apply_proprietary_header(content)
     if verbose and header_applied:
         print("  [APPLIED] Proprietary copyright header prepended.")
 
-    for desc in PATCH_DESCRIPTORS:
-        patched, count = desc.pattern.subn(desc.replacement, patched)
-        if verbose:
-            print(f"  [PATCH] {desc.name:36s} -> {count} match(es) (min: {desc.min_matches})")
-        if count < desc.min_matches:
-            # Check if invariant was already partially satisfied
-            if desc.verify_pattern and desc.verify_pattern.search(patched):
-                if verbose:
-                    print(f"  [INFO] Invariant '{desc.name}' was already present.")
-                continue
-            # Patch failed! Raise detailed diagnostic error
-            raise RuntimeError(
-                f"Patch '{desc.name}' failed assertion!\n"
-                f"Expected minimum matches: {desc.min_matches}, actual matches: {count}.\n"
-                f"Invariant description: {desc.description}\n"
-                f"Target regex: {desc.pattern.pattern}"
-            )
+    patched = _apply_patch_descriptors(patched, verbose)
 
     patched, sendable_applied = apply_sendable_extensions(patched)
     if verbose and sendable_applied:

@@ -6,6 +6,195 @@
 use std::sync::Arc;
 use super::types::{CancellationToken, ProgressHandler, TTZipError, UniFFICorruptedEntry, UniFFIIntegrityReport};
 
+#[derive(Default)]
+struct Crc32StreamSink {
+    crc: u32,
+}
+
+impl std::io::Write for Crc32StreamSink {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.crc = crate::crypto::crc32::crc32_fast(self.crc, buf);
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn verify_zip_entry_streaming(
+    zip_archive: &crate::zip::reader::ZipArchive<'_>,
+    idx: usize,
+    password: Option<&str>,
+) -> Result<u32, (crate::types::TTZipStatus, u32)> {
+    let mut sink = Crc32StreamSink::default();
+    match zip_archive.extract_entry_to_sink(idx, password, &mut sink) {
+        Ok(_) => Ok(sink.crc),
+        Err(status) => Err((status, sink.crc)),
+    }
+}
+
+fn corrupted_header_report(
+    archive_path: String,
+    reason: &str,
+    error_message: String,
+    start: std::time::Instant,
+) -> UniFFIIntegrityReport {
+    UniFFIIntegrityReport {
+        is_valid: false,
+        total_entries: 1,
+        verified_entries: 0,
+        corrupted_entries: vec![UniFFICorruptedEntry {
+            path: archive_path,
+            expected_crc32: 0,
+            actual_crc32: 0,
+            reason: reason.to_string(),
+        }],
+        elapsed_nanos: start.elapsed().as_nanos() as u64,
+        error_message: Some(error_message),
+    }
+}
+
+fn verify_7z_archive_integrity(
+    mapped: &[u8],
+    archive_path: &str,
+    password: Option<&str>,
+    progress: Option<&dyn ProgressHandler>,
+    token: Option<&Arc<CancellationToken>>,
+    start: std::time::Instant,
+) -> Result<UniFFIIntegrityReport, TTZipError> {
+    let Ok(arch) = crate::sevenz::decoder::SevenZArchive::open_slice(mapped) else {
+        return Ok(corrupted_header_report(
+            archive_path.to_string(),
+            "Corrupted 7z header",
+            "Corrupted 7z archive header".to_string(),
+            start,
+        ));
+    };
+
+    let files = arch.files();
+    let total_entries = files.len() as u64;
+    let mut verified_entries: u64 = 0;
+    let mut corrupted = Vec::new();
+    let budget_bytes = 64 * 1024 * 1024;
+
+    for (idx, f) in files.iter().enumerate() {
+        if token.is_some_and(|t| t.is_cancelled()) {
+            return Err(TTZipError::Cancelled);
+        }
+        if f.is_directory {
+            verified_entries += 1;
+            continue;
+        }
+        if let Some(prg) = progress {
+            if !prg.on_progress(idx as u64, total_entries, Some(f.rel_path.clone())) {
+                return Err(TTZipError::Cancelled);
+            }
+        }
+
+        match crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
+            mapped,
+            arch.info(),
+            arch.seek_index(),
+            idx,
+            password,
+            budget_bytes,
+        ) {
+            Ok(_) => verified_entries += 1,
+            Err(err) => {
+                let reason = match err {
+                    crate::types::TTZipStatus::ErrInvalidPassword => "Invalid password".to_string(),
+                    crate::types::TTZipStatus::ErrSolidBudgetExceeded => {
+                        "Solid stream budget exceeded".to_string()
+                    }
+                    _ => format!("Extraction error code: {err:?}"),
+                };
+                corrupted.push(UniFFICorruptedEntry {
+                    path: f.rel_path.clone(),
+                    expected_crc32: arch
+                        .seek_index()
+                        .entries
+                        .get(idx)
+                        .and_then(|e| e.crc)
+                        .unwrap_or(0),
+                    actual_crc32: 0,
+                    reason,
+                });
+            }
+        }
+    }
+
+    Ok(UniFFIIntegrityReport {
+        is_valid: corrupted.is_empty(),
+        total_entries,
+        verified_entries,
+        corrupted_entries: corrupted,
+        elapsed_nanos: start.elapsed().as_nanos() as u64,
+        error_message: None,
+    })
+}
+
+fn verify_zip_archive_integrity(
+    mapped: &[u8],
+    archive_path: &str,
+    password: Option<&str>,
+    progress: Option<&dyn ProgressHandler>,
+    token: Option<&Arc<CancellationToken>>,
+    start: std::time::Instant,
+) -> Result<UniFFIIntegrityReport, TTZipError> {
+    let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) else {
+        return Ok(corrupted_header_report(
+            archive_path.to_string(),
+            "Corrupted ZIP header or central directory",
+            "Corrupted ZIP archive header or central directory".to_string(),
+            start,
+        ));
+    };
+
+    let entries = zip_archive.entries();
+    let total_entries = entries.len() as u64;
+    let mut verified_entries: u64 = 0;
+    let mut corrupted = Vec::new();
+
+    for (idx, e) in entries.iter().enumerate() {
+        if token.is_some_and(|t| t.is_cancelled()) {
+            return Err(TTZipError::Cancelled);
+        }
+        if e.is_directory {
+            verified_entries += 1;
+            continue;
+        }
+        if let Some(prg) = progress {
+            if !prg.on_progress(idx as u64, total_entries, Some(e.rel_path.clone())) {
+                return Err(TTZipError::Cancelled);
+            }
+        }
+
+        match verify_zip_entry_streaming(&zip_archive, idx, password) {
+            Ok(_) => verified_entries += 1,
+            Err((err, actual_crc32)) => {
+                corrupted.push(UniFFICorruptedEntry {
+                    path: e.rel_path.clone(),
+                    expected_crc32: e.crc32,
+                    actual_crc32,
+                    reason: format!("CRC or payload verification failed: {err:?}"),
+                });
+            }
+        }
+    }
+
+    Ok(UniFFIIntegrityReport {
+        is_valid: corrupted.is_empty(),
+        total_entries,
+        verified_entries,
+        corrupted_entries: corrupted,
+        elapsed_nanos: start.elapsed().as_nanos() as u64,
+        error_message: None,
+    })
+}
+
 /// Verifies full archive integrity in single-pass streaming fashion without N-roundtrip FFI overhead.
 #[uniffi::export]
 pub fn verify_archive_integrity(
@@ -26,305 +215,169 @@ pub fn verify_archive_integrity(
         message: "Failed to map archive bytes".to_string(),
     })?;
 
-    let mut corrupted = Vec::new();
-    let total_entries;
-    let mut verified_entries: u64 = 0;
-
     if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") || archive_path.to_lowercase().ends_with(".7z") {
-        let arch = match crate::sevenz::decoder::SevenZArchive::open_slice(mapped) {
-            Ok(a) => a,
-            Err(_) => {
-                return Ok(UniFFIIntegrityReport {
-                    is_valid: false,
-                    total_entries: 1,
-                    verified_entries: 0,
-                    corrupted_entries: vec![UniFFICorruptedEntry {
-                        path: archive_path.clone(),
-                        expected_crc32: 0,
-                        actual_crc32: 0,
-                        reason: "Corrupted 7z header".to_string(),
-                    }],
-                    elapsed_nanos: start.elapsed().as_nanos() as u64,
-                    error_message: Some("Corrupted 7z archive header".to_string()),
-                });
-            }
-        };
-
-        let files = arch.files();
-        total_entries = files.len() as u64;
-        let budget_bytes = 64 * 1024 * 1024;
-
-        for (idx, f) in files.iter().enumerate() {
-            if let Some(ref t) = token {
-                if t.is_cancelled() {
-                    return Err(TTZipError::Cancelled);
-                }
-            }
-
-            if f.is_directory {
-                verified_entries += 1;
-                continue;
-            }
-
-            if let Some(ref prg) = progress {
-                if !prg.on_progress(idx as u64, total_entries, Some(f.rel_path.clone())) {
-                    return Err(TTZipError::Cancelled);
-                }
-            }
-
-            let res = crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
-                mapped,
-                arch.info(),
-                arch.seek_index(),
-                idx,
-                password.as_deref(),
-                budget_bytes,
-            );
-
-            match res {
-                Ok(_) => {
-                    verified_entries += 1;
-                }
-                Err(err) => {
-                    let reason = match err {
-                        crate::types::TTZipStatus::ErrInvalidPassword => "Invalid password".to_string(),
-                        crate::types::TTZipStatus::ErrSolidBudgetExceeded => "Solid stream budget exceeded".to_string(),
-                        _ => format!("Extraction error code: {:?}", err),
-                    };
-                    corrupted.push(UniFFICorruptedEntry {
-                        path: f.rel_path.clone(),
-                        expected_crc32: arch.seek_index().entries.get(idx).and_then(|e| e.crc).unwrap_or(0),
-                        actual_crc32: 0,
-                        reason,
-                    });
-                }
-            }
-        }
-    } else if mapped.starts_with(b"PK\x03\x04") || mapped.starts_with(b"PK\x05\x06") || archive_path.to_lowercase().ends_with(".zip") {
-        let zip_archive = match crate::zip::reader::ZipArchive::open_slice(mapped) {
-            Ok(z) => z,
-            Err(_) => {
-                return Ok(UniFFIIntegrityReport {
-                    is_valid: false,
-                    total_entries: 1,
-                    verified_entries: 0,
-                    corrupted_entries: vec![UniFFICorruptedEntry {
-                        path: archive_path.clone(),
-                        expected_crc32: 0,
-                        actual_crc32: 0,
-                        reason: "Corrupted ZIP header or central directory".to_string(),
-                    }],
-                    elapsed_nanos: start.elapsed().as_nanos() as u64,
-                    error_message: Some("Corrupted ZIP archive header or central directory".to_string()),
-                });
-            }
-        };
-        let entries = zip_archive.entries();
-        total_entries = entries.len() as u64;
-
-        for (idx, e) in entries.iter().enumerate() {
-            if let Some(ref t) = token {
-                if t.is_cancelled() {
-                    return Err(TTZipError::Cancelled);
-                }
-            }
-
-            if e.is_directory {
-                verified_entries += 1;
-                continue;
-            }
-
-            if let Some(ref prg) = progress {
-                if !prg.on_progress(idx as u64, total_entries, Some(e.rel_path.clone())) {
-                    return Err(TTZipError::Cancelled);
-                }
-            }
-
-            let extract_res = if e.uncompressed_size > 64 * 1024 * 1024 {
-                let mut sink = std::io::sink();
-                zip_archive.extract_entry_to_sink(idx, password.as_deref(), &mut sink).map(|_| ())
-            } else {
-                zip_archive.extract_entry_bytes(idx, password.as_deref()).map(|_| ())
-            };
-
-            match extract_res {
-                Ok(_) => {
-                    verified_entries += 1;
-                }
-                Err(err) => {
-                    corrupted.push(UniFFICorruptedEntry {
-                        path: e.rel_path.clone(),
-                        expected_crc32: e.crc32,
-                        actual_crc32: 0,
-                        reason: format!("CRC or payload verification failed: {:?}", err),
-                    });
-                }
-            }
-        }
-    } else {
-        let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
-        let options = crate::types::TTZipExtractOptions {
-            struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
-            abi_version: crate::types::TTZIP_ABI_VERSION_3,
-            destination_path: std::ptr::null(),
-            password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
-            thread_budget: 0,
-            collision_policy: crate::types::TTZIP_COLLISION_POLICY_REPLACE,
-            preserve_permissions: false,
-            dry_run: true,
-            progress_callback: None,
-            user_data: std::ptr::null_mut(),
-        };
-
-        let temp_dir = std::env::temp_dir();
-        let staging_root = ttzip_archive::fs::collision::StagingRoot(temp_dir.clone());
-        match crate::archive::unified::extract::extract_archive_with_metrics(p, &staging_root, &options) {
-            Ok(_) => {
-                total_entries = 1;
-                verified_entries = 1;
-            }
-            Err(status) => {
-                return Ok(UniFFIIntegrityReport {
-                    is_valid: false,
-                    total_entries: 1,
-                    verified_entries: 0,
-                    corrupted_entries: vec![UniFFICorruptedEntry {
-                        path: archive_path.clone(),
-                        expected_crc32: 0,
-                        actual_crc32: 0,
-                        reason: format!("Extraction verification failed with status: {:?}", status),
-                    }],
-                    elapsed_nanos: start.elapsed().as_nanos() as u64,
-                    error_message: Some(format!("Error code: {:?}", status)),
-                });
-            }
-        }
+        return verify_7z_archive_integrity(
+            mapped,
+            &archive_path,
+            password.as_deref(),
+            progress.as_deref(),
+            token.as_ref(),
+            start,
+        );
+    }
+    if mapped.starts_with(b"PK\x03\x04")
+        || mapped.starts_with(b"PK\x05\x06")
+        || archive_path.to_lowercase().ends_with(".zip")
+    {
+        return verify_zip_archive_integrity(
+            mapped,
+            &archive_path,
+            password.as_deref(),
+            progress.as_deref(),
+            token.as_ref(),
+            start,
+        );
     }
 
-    let elapsed = start.elapsed().as_nanos() as u64;
-    let is_valid = corrupted.is_empty();
+    let pwd_cstr = password.as_deref().and_then(|p| std::ffi::CString::new(p).ok());
+    let options = crate::types::TTZipExtractOptions {
+        struct_size: std::mem::size_of::<crate::types::TTZipExtractOptions>() as u32,
+        abi_version: crate::types::TTZIP_ABI_VERSION_3,
+        destination_path: std::ptr::null(),
+        password: pwd_cstr.as_ref().map(|c| c.as_ptr()).unwrap_or(std::ptr::null()),
+        thread_budget: 0,
+        collision_policy: crate::types::TTZIP_COLLISION_POLICY_REPLACE,
+        preserve_permissions: false,
+        dry_run: true,
+        progress_callback: None,
+        user_data: std::ptr::null_mut(),
+    };
 
-    Ok(UniFFIIntegrityReport {
-        is_valid,
-        total_entries,
-        verified_entries,
-        corrupted_entries: corrupted,
-        elapsed_nanos: elapsed,
-        error_message: None,
-    })
+    let staging_root = ttzip_archive::fs::collision::StagingRoot(std::env::temp_dir());
+    match crate::archive::unified::extract::extract_archive_with_metrics(p, &staging_root, &options)
+    {
+        Ok(_) => Ok(UniFFIIntegrityReport {
+            is_valid: true,
+            total_entries: 1,
+            verified_entries: 1,
+            corrupted_entries: Vec::new(),
+            elapsed_nanos: start.elapsed().as_nanos() as u64,
+            error_message: None,
+        }),
+        Err(status) => Ok(corrupted_header_report(
+            archive_path,
+            &format!("Extraction verification failed with status: {status:?}"),
+            format!("Error code: {status:?}"),
+            start,
+        )),
+    }
+}
+
+fn stream_file_chunks<F: FnMut(&[u8])>(
+    file: &mut std::fs::File,
+    mut on_chunk: F,
+) -> Result<(), TTZipError> {
+    use std::io::Read;
+    let mut buf = [0u8; 65536];
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+        if n == 0 {
+            break;
+        }
+        on_chunk(&buf[..n]);
+    }
+    Ok(())
+}
+
+fn format_lowercase_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
+}
+
+fn stream_xxh3_64_hex(file: &mut std::fs::File) -> Result<String, TTZipError> {
+    let mut hasher = crate::crypto::xxh3::Xxh3_64::new();
+    stream_file_chunks(file, |c| hasher.update(c))?;
+    Ok(format!("{:016x}", hasher.finalize()))
+}
+
+fn stream_xxh3_128_hex(file: &mut std::fs::File) -> Result<String, TTZipError> {
+    let mut hasher = crate::crypto::xxh3::Xxh3_128::new();
+    stream_file_chunks(file, |c| hasher.update(c))?;
+    let (low, high) = hasher.finalize();
+    Ok(format!("{high:016x}{low:016x}"))
+}
+
+fn stream_crc64_hex(file: &mut std::fs::File) -> Result<String, TTZipError> {
+    let mut crc = 0u64;
+    stream_file_chunks(file, |c| crc = crate::crypto::crc64::crc64(c, crc))?;
+    Ok(format!("{crc:016x}"))
+}
+
+fn stream_crc32_hex(file: &mut std::fs::File) -> Result<String, TTZipError> {
+    let mut crc = 0u32;
+    stream_file_chunks(file, |c| crc = crate::crypto::crc32::crc32_fast(crc, c))?;
+    Ok(format!("{crc:08X}"))
+}
+
+fn stream_adler32_hex(file: &mut std::fs::File) -> Result<String, TTZipError> {
+    let mut adler = 1u32;
+    stream_file_chunks(file, |c| adler = crate::crypto::adler32::adler32_fast(adler, c))?;
+    Ok(format!("{adler:08X}"))
+}
+
+fn compute_checksum_stream_hash(
+    file: &mut std::fs::File,
+    algo_norm: &str,
+) -> Option<Result<String, TTZipError>> {
+    match algo_norm {
+        "xxh364" => Some(stream_xxh3_64_hex(file)),
+        "xxh3128" => Some(stream_xxh3_128_hex(file)),
+        "crc64" => Some(stream_crc64_hex(file)),
+        "crc32" => Some(stream_crc32_hex(file)),
+        "adler32" => Some(stream_adler32_hex(file)),
+        _ => None,
+    }
 }
 
 /// Computes hash or checksum of a file in zero-copy chunked streaming fashion across all supported algorithms.
-///
-/// Supported algorithms (case-insensitive):
-/// - "blake3": 256-bit BLAKE3 tree hash (lowercase 64-character hex)
-/// - "xxh3_64" / "xxh3-64": 64-bit XXH3 hash (lowercase 16-character hex)
-/// - "xxh3_128" / "xxh3-128": 128-bit XXH3 hash (lowercase 32-character hex)
-/// - "crc64": 64-bit CRC (ECMA-182) checksum (lowercase 16-character hex)
-/// - "crc32": 32-bit CRC (IEEE 802.3) checksum (uppercase 8-character hex)
-/// - "adler32": 32-bit Adler-32 checksum (uppercase 8-character hex)
-/// - "sha256" / "sha-256": 256-bit SHA-256 digest (lowercase 64-character hex)
-/// - "sha1" / "sha-1": 160-bit SHA-1 digest (lowercase 40-character hex)
-/// - "md5": 128-bit MD5 digest (lowercase 32-character hex)
 #[uniffi::export]
 pub fn compute_file_stream_hash(file_path: String, algorithm: String) -> Result<String, TTZipError> {
-    use std::io::Read;
     let p = std::path::Path::new(&file_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: file_path });
     }
 
-    let mut file = std::fs::File::open(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mut buf = [0u8; 65536];
-
+    let mut file = std::fs::File::open(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
     let algo_norm = algorithm.trim().to_ascii_lowercase().replace(['-', '_'], "");
+
+    if let Some(res) = compute_checksum_stream_hash(&mut file, &algo_norm) {
+        return res;
+    }
+
     match algo_norm.as_str() {
         "blake3" => {
             let mut hasher = crate::crypto::blake3::Hasher::new();
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                hasher.update(&buf[..n]);
-            }
-            let hash = hasher.finalize();
-            Ok(crate::uniffi_api::hasher_stream::bytes_to_hex(&hash))
-        }
-        "xxh364" => {
-            let mut hasher = crate::crypto::xxh3::Xxh3_64::new();
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                hasher.update(&buf[..n]);
-            }
-            let digest = hasher.finalize();
-            Ok(format!("{:016x}", digest))
-        }
-        "xxh3128" => {
-            let mut hasher = crate::crypto::xxh3::Xxh3_128::new();
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                hasher.update(&buf[..n]);
-            }
-            let (low, high) = hasher.finalize();
-            Ok(format!("{:016x}{:016x}", high, low))
-        }
-        "crc64" => {
-            let mut crc = 0u64;
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                crc = crate::crypto::crc64::crc64(&buf[..n], crc);
-            }
-            Ok(format!("{:016x}", crc))
-        }
-        "crc32" => {
-            let mut crc = 0u32;
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                crc = crate::crypto::crc32::crc32_fast(crc, &buf[..n]);
-            }
-            Ok(format!("{:08X}", crc))
-        }
-        "adler32" => {
-            let mut adler = 1u32;
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                adler = crate::crypto::adler32::adler32_fast(adler, &buf[..n]);
-            }
-            Ok(format!("{:08X}", adler))
+            stream_file_chunks(&mut file, |c| {
+                hasher.update(c);
+            })?;
+            Ok(crate::uniffi_api::hasher_stream::bytes_to_hex(&hasher.finalize()))
         }
         "sha256" => {
             let mut hasher = crate::crypto::sha256::FastSha256::new();
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                hasher.update(&buf[..n]);
-            }
-            let hash = hasher.finalize();
-            Ok(hash.iter().map(|b| format!("{:02x}", b)).collect())
+            stream_file_chunks(&mut file, |c| hasher.update(c))?;
+            Ok(format_lowercase_hex(&hasher.finalize()))
         }
         "sha1" => {
             let mut hasher = crate::crypto::sha1::FastSha1::new();
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                hasher.update(&buf[..n]);
-            }
-            let hash = hasher.finalize();
-            Ok(hash.iter().map(|b| format!("{:02x}", b)).collect())
+            stream_file_chunks(&mut file, |c| hasher.update(c))?;
+            Ok(format_lowercase_hex(&hasher.finalize()))
         }
         "md5" => {
             let mut hasher = crate::crypto::md5::FastMd5::new();
-            loop {
-                let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                if n == 0 { break; }
-                hasher.update(&buf[..n]);
-            }
-            let hash = hasher.finalize();
-            Ok(hash.iter().map(|b| format!("{:02x}", b)).collect())
+            stream_file_chunks(&mut file, |c| hasher.update(c))?;
+            Ok(format_lowercase_hex(&hasher.finalize()))
         }
         _ => Err(TTZipError::EngineError { code: -1 }),
     }
@@ -339,39 +392,20 @@ pub fn compute_file_hash(path: String, algorithm: String) -> Result<String, TTZi
 /// Computes SHA-256 hex digest of a file in zero-copy streaming fashion.
 #[uniffi::export]
 pub fn compute_file_sha256(file_path: String) -> Result<String, TTZipError> {
-    use std::io::Read;
-    let p = std::path::Path::new(&file_path);
-    if !p.exists() {
-        return Err(TTZipError::FileNotFound { path: file_path });
-    }
-    let mut file = std::fs::File::open(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mut buf = [0u8; 64 * 1024];
-    let mut hasher = crate::crypto::sha256::FastSha256::new();
-    loop {
-        let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-        if n == 0 { break; }
-        hasher.update(&buf[..n]);
-    }
-    let hash = hasher.finalize();
-    Ok(hash.iter().map(|b| format!("{:02x}", b)).collect())
+    compute_file_stream_hash(file_path, "sha256".to_string())
 }
 
 /// Computes CRC32 checksum of a file in zero-copy streaming fashion.
 #[uniffi::export]
 pub fn compute_file_crc32(file_path: String) -> Result<u32, TTZipError> {
-    use std::io::Read;
     let p = std::path::Path::new(&file_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: file_path });
     }
-    let mut file = std::fs::File::open(p).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mut buf = [0u8; 64 * 1024];
+    let mut file = std::fs::File::open(p)
+        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
     let mut crc = 0u32;
-    loop {
-        let n = file.read(&mut buf).map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-        if n == 0 { break; }
-        crc = crate::crypto::crc32::crc32_fast(crc, &buf[..n]);
-    }
+    stream_file_chunks(&mut file, |c| crc = crate::crypto::crc32::crc32_fast(crc, c))?;
     Ok(crc)
 }
 
@@ -464,7 +498,7 @@ pub fn slice_archive_file(
     let mut writer = crate::archive::split::SplitVolumeWriter::new(src, split_size_bytes, scheme)
         .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
 
-    let mut buffer = [0u8; 64 * 1024]; // 64 KB micro-buffer stream
+    let mut buffer = [0u8; 64 * 1024];
     use std::io::{Read, Write};
     loop {
         match in_file.read(&mut buffer) {
@@ -489,6 +523,7 @@ pub fn slice_archive_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::zip::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
     use std::io::Write;
 
     #[test]
@@ -501,50 +536,84 @@ mod tests {
         }
         let file_path = test_file.to_str().unwrap().to_string();
 
-        // 1. CRC32 (Standard vector 0xCBF43926)
         let crc32 = compute_file_stream_hash(file_path.clone(), "crc32".to_string()).unwrap();
         assert_eq!(crc32, "CBF43926");
+        assert_eq!(compute_file_crc32(file_path.clone()).unwrap(), 0xCBF43926);
 
-        // 2. Adler32 (Standard vector 0x091E01DE)
         let adler32 = compute_file_stream_hash(file_path.clone(), "Adler32".to_string()).unwrap();
         assert_eq!(adler32, "091E01DE");
 
-        // 3. CRC64 (Standard vector 0xb86883e6fa710a9f)
         let crc64 = compute_file_stream_hash(file_path.clone(), "CRC64".to_string()).unwrap();
         assert_eq!(crc64, "b86883e6fa710a9f");
 
-        // 4. SHA-256
         let sha256 = compute_file_stream_hash(file_path.clone(), "sha-256".to_string()).unwrap();
         assert_eq!(sha256, "15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225");
+        assert_eq!(compute_file_sha256(file_path.clone()).unwrap(), sha256);
 
-        // 5. SHA-1
         let sha1 = compute_file_stream_hash(file_path.clone(), "sha1".to_string()).unwrap();
         assert_eq!(sha1, "f7c3bc1d808e04732adf679965ccc34ca7ae3441");
 
-        // 6. MD5
         let md5 = compute_file_stream_hash(file_path.clone(), "MD5".to_string()).unwrap();
         assert_eq!(md5, "25f9e794323b453885f5181f1b624d0b");
 
-        // 7. BLAKE3
         let blake3 = compute_file_stream_hash(file_path.clone(), "BLAKE3".to_string()).unwrap();
         let expected_blake3 = crate::crypto::blake3::blake3(b"123456789");
         assert_eq!(blake3, crate::uniffi_api::hasher_stream::bytes_to_hex(&expected_blake3));
 
-        // 8. XXH3-64
         let xxh3_64 = compute_file_stream_hash(file_path.clone(), "xxh3_64".to_string()).unwrap();
         let expected_xxh3_64 = format!("{:016x}", crate::crypto::xxh3::xxh3_64(b"123456789"));
         assert_eq!(xxh3_64, expected_xxh3_64);
 
-        // 9. XXH3-128
         let xxh3_128 = compute_file_stream_hash(file_path.clone(), "xxh3-128".to_string()).unwrap();
         let (low, high) = crate::crypto::xxh3::xxh3_128(b"123456789");
         let expected_xxh3_128 = format!("{:016x}{:016x}", high, low);
         assert_eq!(xxh3_128, expected_xxh3_128);
 
-        // Unsupported algorithm
         assert!(compute_file_stream_hash(file_path, "nonexistent".to_string()).is_err());
-
-        // Missing file
         assert!(compute_file_stream_hash("/path/that/does/not/exist".to_string(), "sha256".to_string()).is_err());
+    }
+
+    #[test]
+    fn test_streaming_zip_integrity_verification_reports_actual_crc() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let zip_path = dir.path().join("verify.zip");
+        let items = vec![
+            ZipInputItem {
+                rel_path: "a.txt".to_string(),
+                data: b"streaming integrity payload".to_vec(),
+                mtime_epoch_secs: 1700000000,
+                mode: 0o644,
+                is_directory: false,
+            },
+            ZipInputItem {
+                rel_path: "b.txt".to_string(),
+                data: vec![b'x'; 128 * 1024],
+                mtime_epoch_secs: 1700000000,
+                mode: 0o644,
+                is_directory: false,
+            },
+        ];
+        let comp = compress_items_parallel(
+            items,
+            6,
+            crate::types::TTZipEncryptionMethod::None,
+            None,
+            1,
+        )
+        .expect("comp");
+        let archive_bytes = assemble_zip_archive(&comp).expect("asm");
+        std::fs::write(&zip_path, &archive_bytes).expect("write");
+
+        let report = verify_archive_integrity(
+            zip_path.to_string_lossy().into_owned(),
+            None,
+            None,
+            None,
+        )
+        .expect("verify");
+        assert!(report.is_valid);
+        assert_eq!(report.total_entries, 2);
+        assert_eq!(report.verified_entries, 2);
+        assert!(report.corrupted_entries.is_empty());
     }
 }

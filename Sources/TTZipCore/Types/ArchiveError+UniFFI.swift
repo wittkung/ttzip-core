@@ -16,33 +16,7 @@ extension ArchiveError {
         case let .SecurityViolation(reason):
             return .engineFailure(code: -403, message: reason)
         case let .EngineError(code):
-            switch code {
-            case RustTTZipStatusCode.errFileNotFound.rawValue:
-                return .fileNotFound
-            case RustTTZipStatusCode.errCorruptHeader.rawValue:
-                return .corruptHeader
-            case RustTTZipStatusCode.errOpenFailed.rawValue:
-                return .openFailed
-            case RustTTZipStatusCode.errInvalidPassword.rawValue:
-                return .passwordRequired
-            case RustTTZipStatusCode.errOutOfMemory.rawValue:
-                return .engineFailure(code: -501, message: "Out of memory: memory allocation failed in microkernel")
-            case RustTTZipStatusCode.errExtractionFailed.rawValue:
-                return .engineFailure(code: -11, message: "Archive extraction failed in microkernel")
-            case RustTTZipStatusCode.errCompressionFailed.rawValue:
-                return .engineFailure(code: -12, message: "Archive compression failed in microkernel")
-            case RustTTZipStatusCode.errUnsupportedFeature.rawValue:
-                return .engineFailure(code: -13, message: "Unsupported feature or format configuration")
-            case -21:
-                return .invalidFormat
-            case -23:
-                return .cancelled
-            case RustTTZipStatusCode.errSolidBudgetExceeded.rawValue,
-                 RustTTZipStatusCode.errSecurityViolation.rawValue:
-                return .engineFailure(code: -403, message: "Security violation")
-            default:
-                return .readFailed(code: code)
-            }
+            return mapEngineStatusCode(code)
         case let .IoError(message):
             return .engineFailure(code: -500, message: message)
         case .Cancelled:
@@ -51,6 +25,13 @@ extension ArchiveError {
             return .engineFailure(code: -501, message: "Out of memory: \(details)")
         case let .DecompressionBombDetected(reason):
             return .engineFailure(code: -403, message: "Decompression bomb detected: \(reason)")
+        default:
+            return mapStateOrTransactionError(uniffiError)
+        }
+    }
+
+    private static func mapStateOrTransactionError(_ uniffiError: TtZipError) -> ArchiveError {
+        switch uniffiError {
         case let .InvalidSessionState(expected, actual):
             return .engineFailure(code: -400, message: "Invalid session state: expected \(expected), actual \(actual)")
         case let .InvalidResolution(detail):
@@ -68,6 +49,38 @@ extension ArchiveError {
             return .createTransactionIncomplete(
                 Self.mapTransactionFailureReport(report, fallbackSummary: summaryMessage)
             )
+        default:
+            return .engineFailure(code: -500, message: String(describing: uniffiError))
+        }
+    }
+
+    private static func mapEngineStatusCode(_ code: Int32) -> ArchiveError {
+        switch code {
+        case RustTTZipStatusCode.errFileNotFound.rawValue:
+            return .fileNotFound
+        case RustTTZipStatusCode.errCorruptHeader.rawValue:
+            return .corruptHeader
+        case RustTTZipStatusCode.errOpenFailed.rawValue:
+            return .openFailed
+        case RustTTZipStatusCode.errInvalidPassword.rawValue:
+            return .passwordRequired
+        case RustTTZipStatusCode.errOutOfMemory.rawValue:
+            return .engineFailure(code: -501, message: "Out of memory: memory allocation failed in microkernel")
+        case RustTTZipStatusCode.errExtractionFailed.rawValue:
+            return .engineFailure(code: -11, message: "Archive extraction failed in microkernel")
+        case RustTTZipStatusCode.errCompressionFailed.rawValue:
+            return .engineFailure(code: -12, message: "Archive compression failed in microkernel")
+        case RustTTZipStatusCode.errUnsupportedFeature.rawValue:
+            return .engineFailure(code: -13, message: "Unsupported feature or format configuration")
+        case -21:
+            return .invalidFormat
+        case -23:
+            return .cancelled
+        case RustTTZipStatusCode.errSolidBudgetExceeded.rawValue,
+             RustTTZipStatusCode.errSecurityViolation.rawValue:
+            return .engineFailure(code: -403, message: "Security violation")
+        default:
+            return .readFailed(code: code)
         }
     }
 

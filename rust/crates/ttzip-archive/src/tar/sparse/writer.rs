@@ -218,17 +218,7 @@ pub fn write_sparse_file_to_tar<W: Write>(
     let sparse_map = SparseMap::new(real_size, extents);
     let total_data_bytes = sparse_map.total_data_bytes();
 
-    let file_mode = {
-        #[cfg(unix)]
-        {
-            metadata.permissions().mode() & 0o777
-        }
-        #[cfg(not(unix))]
-        {
-            0o644
-        }
-    };
-
+    let file_mode = extract_unix_mode(&metadata);
     let mtime = metadata
         .modified()
         .ok()
@@ -236,163 +226,158 @@ pub fn write_sparse_file_to_tar<W: Write>(
         .map(|d| d.as_secs())
         .unwrap_or(0);
 
-    let mut total_written: u64 = 0;
+    let mut total_written = match mode {
+        TarSparseFormat::Gnu0_1 => write_gnu_0_1_headers(
+            writer,
+            &normalized_path,
+            real_size,
+            file_mode,
+            mtime,
+            &sparse_map,
+            total_data_bytes,
+        )?,
+        TarSparseFormat::Gnu1_0 => write_gnu_1_0_headers(
+            writer,
+            &normalized_path,
+            real_size,
+            file_mode,
+            mtime,
+            &sparse_map,
+            total_data_bytes,
+        )?,
+    };
 
-    match mode {
-        TarSparseFormat::Gnu0_1 => {
-            let map_str = sparse_map.to_gnu_0_1_map_string();
-            let real_size_str = real_size.to_string();
-            let num_blocks_str = sparse_map.extents.len().to_string();
+    total_written += stream_extents_to_writer(writer, file, &sparse_map.extents)?;
+    total_written += write_sector_padding(writer, total_data_bytes as usize)?;
+    Ok(total_written)
+}
 
-            let mut pax_records: Vec<(&str, &str)> = vec![
-                ("GNU.sparse.major", "0"),
-                ("GNU.sparse.minor", "1"),
-                ("GNU.sparse.name", &normalized_path),
-                ("GNU.sparse.realsize", &real_size_str),
-                ("GNU.sparse.size", &real_size_str),
-                ("GNU.sparse.numblocks", &num_blocks_str),
-                ("GNU.sparse.map", &map_str),
-            ];
+fn extract_unix_mode(metadata: &std::fs::Metadata) -> u32 {
+    #[cfg(unix)]
+    {
+        metadata.permissions().mode() & 0o777
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = metadata;
+        0o644
+    }
+}
 
-            if normalized_path.len() > 100 {
-                pax_records.push(("path", &normalized_path));
-            }
+fn write_gnu_0_1_headers<W: Write>(
+    writer: &mut W,
+    normalized_path: &str,
+    real_size: u64,
+    file_mode: u32,
+    mtime: u64,
+    sparse_map: &SparseMap,
+    total_data_bytes: u64,
+) -> io::Result<u64> {
+    let map_str = sparse_map.to_gnu_0_1_map_string();
+    let real_size_str = real_size.to_string();
+    let num_blocks_str = sparse_map.extents.len().to_string();
 
-            let pax_payload = build_pax_payload(&pax_records);
-            let pax_filename = format!(
-                "PaxHeaders.0/{}",
-                normalized_path.rsplit('/').next().unwrap_or("sparse_entry")
-            );
-
-            // Write PAX header block
-            let mut pax_hdr = TarHeader::new();
-            pax_hdr.set_name(&pax_filename);
-            pax_hdr.set_mode(0o644);
-            pax_hdr.set_size(pax_payload.len() as u64);
-            pax_hdr.set_mtime(mtime);
-            pax_hdr.set_entry_type(TarEntryType::XHeader);
-            pax_hdr.set_ustar_magic();
-            pax_hdr.update_checksum();
-
-            writer.write_all(pax_hdr.as_bytes())?;
-            total_written += BLOCK_SIZE as u64;
-
-            // Write PAX payload with 512-byte padding
-            writer.write_all(&pax_payload)?;
-            total_written += pax_payload.len() as u64;
-
-            let pax_pad = (BLOCK_SIZE - (pax_payload.len() % BLOCK_SIZE)) % BLOCK_SIZE;
-            if pax_pad > 0 {
-                let pad_zeros = [0u8; BLOCK_SIZE];
-                writer.write_all(&pad_zeros[..pax_pad])?;
-                total_written += pax_pad as u64;
-            }
-
-            // Write main sparse header block
-            let mut main_hdr = TarHeader::new();
-            main_hdr.set_name(&normalized_path);
-            main_hdr.set_mode(file_mode);
-            main_hdr.set_size(total_data_bytes);
-            main_hdr.set_mtime(mtime);
-            main_hdr.set_entry_type(TarEntryType::GNUSparse);
-            main_hdr.set_ustar_magic();
-            main_hdr.update_checksum();
-
-            writer.write_all(main_hdr.as_bytes())?;
-            total_written += BLOCK_SIZE as u64;
-
-            // Stream non-zero data extents
-            let streamed_bytes = stream_extents_to_writer(writer, file, &sparse_map.extents)?;
-            total_written += streamed_bytes;
-
-            // Trailing block padding for total data
-            let data_pad = (BLOCK_SIZE - ((total_data_bytes as usize) % BLOCK_SIZE)) % BLOCK_SIZE;
-            if data_pad > 0 {
-                let pad_zeros = [0u8; BLOCK_SIZE];
-                writer.write_all(&pad_zeros[..data_pad])?;
-                total_written += data_pad as u64;
-            }
-        }
-        TarSparseFormat::Gnu1_0 => {
-            let real_size_str = real_size.to_string();
-
-            let mut pax_records: Vec<(&str, &str)> = vec![
-                ("GNU.sparse.major", "1"),
-                ("GNU.sparse.minor", "0"),
-                ("GNU.sparse.name", &normalized_path),
-                ("GNU.sparse.realsize", &real_size_str),
-            ];
-
-            if normalized_path.len() > 100 {
-                pax_records.push(("path", &normalized_path));
-            }
-
-            let pax_payload = build_pax_payload(&pax_records);
-            let pax_filename = format!(
-                "PaxHeaders.0/{}",
-                normalized_path.rsplit('/').next().unwrap_or("sparse_entry")
-            );
-
-            // Write PAX header block
-            let mut pax_hdr = TarHeader::new();
-            pax_hdr.set_name(&pax_filename);
-            pax_hdr.set_mode(0o644);
-            pax_hdr.set_size(pax_payload.len() as u64);
-            pax_hdr.set_mtime(mtime);
-            pax_hdr.set_entry_type(TarEntryType::XHeader);
-            pax_hdr.set_ustar_magic();
-            pax_hdr.update_checksum();
-
-            writer.write_all(pax_hdr.as_bytes())?;
-            total_written += BLOCK_SIZE as u64;
-
-            // Write PAX payload with padding
-            writer.write_all(&pax_payload)?;
-            total_written += pax_payload.len() as u64;
-
-            let pax_pad = (BLOCK_SIZE - (pax_payload.len() % BLOCK_SIZE)) % BLOCK_SIZE;
-            if pax_pad > 0 {
-                let pad_zeros = [0u8; BLOCK_SIZE];
-                writer.write_all(&pad_zeros[..pax_pad])?;
-                total_written += pax_pad as u64;
-            }
-
-            // Generate GNU 1.0 map block
-            let map_block = sparse_map.to_gnu_1_0_map_block();
-            let total_entry_size = map_block.len() as u64 + total_data_bytes;
-
-            // Write main sparse header block
-            let mut main_hdr = TarHeader::new();
-            main_hdr.set_name(&normalized_path);
-            main_hdr.set_mode(file_mode);
-            main_hdr.set_size(total_entry_size);
-            main_hdr.set_mtime(mtime);
-            main_hdr.set_entry_type(TarEntryType::GNUSparse);
-            main_hdr.set_ustar_magic();
-            main_hdr.update_checksum();
-
-            writer.write_all(main_hdr.as_bytes())?;
-            total_written += BLOCK_SIZE as u64;
-
-            // Write map block
-            writer.write_all(&map_block)?;
-            total_written += map_block.len() as u64;
-
-            // Stream non-zero data extents
-            let streamed_bytes = stream_extents_to_writer(writer, file, &sparse_map.extents)?;
-            total_written += streamed_bytes;
-
-            // Trailing block padding for total data
-            let data_pad = (BLOCK_SIZE - ((total_data_bytes as usize) % BLOCK_SIZE)) % BLOCK_SIZE;
-            if data_pad > 0 {
-                let pad_zeros = [0u8; BLOCK_SIZE];
-                writer.write_all(&pad_zeros[..data_pad])?;
-                total_written += data_pad as u64;
-            }
-        }
+    let mut pax_records: Vec<(&str, &str)> = vec![
+        ("GNU.sparse.major", "0"),
+        ("GNU.sparse.minor", "1"),
+        ("GNU.sparse.name", normalized_path),
+        ("GNU.sparse.realsize", &real_size_str),
+        ("GNU.sparse.size", &real_size_str),
+        ("GNU.sparse.numblocks", &num_blocks_str),
+        ("GNU.sparse.map", &map_str),
+    ];
+    if normalized_path.len() > 100 {
+        pax_records.push(("path", normalized_path));
     }
 
-    Ok(total_written)
+    let mut written = write_pax_extension_section(writer, normalized_path, mtime, &pax_records)?;
+    written += write_sparse_main_header(writer, normalized_path, file_mode, mtime, total_data_bytes)?;
+    Ok(written)
+}
+
+fn write_gnu_1_0_headers<W: Write>(
+    writer: &mut W,
+    normalized_path: &str,
+    real_size: u64,
+    file_mode: u32,
+    mtime: u64,
+    sparse_map: &SparseMap,
+    total_data_bytes: u64,
+) -> io::Result<u64> {
+    let real_size_str = real_size.to_string();
+    let mut pax_records: Vec<(&str, &str)> = vec![
+        ("GNU.sparse.major", "1"),
+        ("GNU.sparse.minor", "0"),
+        ("GNU.sparse.name", normalized_path),
+        ("GNU.sparse.realsize", &real_size_str),
+    ];
+    if normalized_path.len() > 100 {
+        pax_records.push(("path", normalized_path));
+    }
+
+    let mut written = write_pax_extension_section(writer, normalized_path, mtime, &pax_records)?;
+    let map_block = sparse_map.to_gnu_1_0_map_block();
+    let total_entry_size = map_block.len() as u64 + total_data_bytes;
+    written += write_sparse_main_header(writer, normalized_path, file_mode, mtime, total_entry_size)?;
+    writer.write_all(&map_block)?;
+    written += map_block.len() as u64;
+    Ok(written)
+}
+
+fn write_pax_extension_section<W: Write>(
+    writer: &mut W,
+    normalized_path: &str,
+    mtime: u64,
+    pax_records: &[(&str, &str)],
+) -> io::Result<u64> {
+    let pax_payload = build_pax_payload(pax_records);
+    let pax_filename = format!(
+        "PaxHeaders.0/{}",
+        normalized_path.rsplit('/').next().unwrap_or("sparse_entry")
+    );
+
+    let mut pax_hdr = TarHeader::new();
+    pax_hdr.set_name(&pax_filename);
+    pax_hdr.set_mode(0o644);
+    pax_hdr.set_size(pax_payload.len() as u64);
+    pax_hdr.set_mtime(mtime);
+    pax_hdr.set_entry_type(TarEntryType::XHeader);
+    pax_hdr.set_ustar_magic();
+    pax_hdr.update_checksum();
+
+    writer.write_all(pax_hdr.as_bytes())?;
+    writer.write_all(&pax_payload)?;
+    let pad_written = write_sector_padding(writer, pax_payload.len())?;
+    Ok(BLOCK_SIZE as u64 + pax_payload.len() as u64 + pad_written)
+}
+
+fn write_sparse_main_header<W: Write>(
+    writer: &mut W,
+    normalized_path: &str,
+    file_mode: u32,
+    mtime: u64,
+    entry_size: u64,
+) -> io::Result<u64> {
+    let mut main_hdr = TarHeader::new();
+    main_hdr.set_name(normalized_path);
+    main_hdr.set_mode(file_mode);
+    main_hdr.set_size(entry_size);
+    main_hdr.set_mtime(mtime);
+    main_hdr.set_entry_type(TarEntryType::GNUSparse);
+    main_hdr.set_ustar_magic();
+    main_hdr.update_checksum();
+
+    writer.write_all(main_hdr.as_bytes())?;
+    Ok(BLOCK_SIZE as u64)
+}
+
+fn write_sector_padding<W: Write>(writer: &mut W, unaligned_len: usize) -> io::Result<u64> {
+    let pad = (BLOCK_SIZE - (unaligned_len % BLOCK_SIZE)) % BLOCK_SIZE;
+    if pad > 0 {
+        let pad_zeros = [0u8; BLOCK_SIZE];
+        writer.write_all(&pad_zeros[..pad])?;
+    }
+    Ok(pad as u64)
 }
 
 /// Helper to copy non-zero extents from `file` to `writer`.

@@ -4,6 +4,7 @@
 #include "ttzip_llama_bridge.h"
 
 #include <dlfcn.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -171,9 +172,15 @@ static void probe_backend_device(
     size_t device_name_cap,
     int32_t * out_n_gpu_layers
 ) {
-    *out_backend_kind = 0;
-    *out_n_gpu_layers = 0;
-    snprintf(out_device_name, device_name_cap, "CPU");
+    if (out_backend_kind != NULL) {
+        *out_backend_kind = 0;
+    }
+    if (out_n_gpu_layers != NULL) {
+        *out_n_gpu_layers = 0;
+    }
+    if (out_device_name != NULL && device_name_cap > 0) {
+        snprintf(out_device_name, device_name_cap, "CPU");
+    }
     if (!prefer_metal) {
         return;
     }
@@ -190,9 +197,15 @@ static void probe_backend_device(
                 int32_t dt = typ(dev);
                 if (dt == 1 || dt == 2) {
                     const char * nm = nam(dev);
-                    *out_backend_kind = 1;
-                    *out_n_gpu_layers = 99;
-                    snprintf(out_device_name, device_name_cap, "%s", nm != NULL ? nm : "Metal");
+                    if (out_backend_kind != NULL) {
+                        *out_backend_kind = 1;
+                    }
+                    if (out_n_gpu_layers != NULL) {
+                        *out_n_gpu_layers = 99;
+                    }
+                    if (out_device_name != NULL && device_name_cap > 0) {
+                        snprintf(out_device_name, device_name_cap, "%s", nm != NULL ? nm : "Metal");
+                    }
                     return;
                 }
             }
@@ -250,6 +263,10 @@ TtzipLlamaBridgeSession * ttzip_llama_session_create(
     char * out_err,
     size_t err_cap
 ) {
+    if (dylib_path == NULL || model_path == NULL) {
+        write_err(out_err, err_cap, "dylib_path and model_path must not be NULL");
+        return NULL;
+    }
     void * h = dlopen(dylib_path, RTLD_NOW | RTLD_LOCAL);
     if (h == NULL) {
         write_err(out_err, err_cap, "bundled libllamacpp.dylib not found or failed to dlopen");
@@ -316,7 +333,9 @@ TtzipLlamaBridgeSession * ttzip_llama_session_create(
         ttzip_llama_session_destroy(s);
         return NULL;
     }
-    *out_n_embd = s->n_embd_out;
+    if (out_n_embd != NULL) {
+        *out_n_embd = s->n_embd_out;
+    }
     return s;
 }
 
@@ -332,19 +351,26 @@ int32_t ttzip_llama_session_encode(
     char * out_err,
     size_t err_cap
 ) {
-    if (s == NULL || prompt == NULL || out_embd == NULL || embd_cap < (size_t)s->n_embd_out) {
+    if (s == NULL || prompt == NULL || out_embd == NULL || out_tokens == NULL ||
+        out_token_count == NULL || tokens_cap == 0 || max_tokens <= 0 ||
+        embd_cap < (size_t)s->n_embd_out) {
         write_err(out_err, err_cap, "invalid session or output buffer arguments");
         return -1;
     }
-    int32_t text_len = (int32_t)strlen(prompt);
-    int32_t count = s->tokenize(s->vocab, prompt, text_len, out_tokens, (int32_t)tokens_cap, true, false);
+    size_t utf8_len = strlen(prompt);
+    int32_t text_len = utf8_len > (size_t)INT32_MAX ? INT32_MAX : (int32_t)utf8_len;
+    int32_t tok_cap_i32 = tokens_cap > (size_t)INT32_MAX ? INT32_MAX : (int32_t)tokens_cap;
+    int32_t clamped_max = max_tokens > tok_cap_i32 ? tok_cap_i32 : max_tokens;
+    int32_t count = s->tokenize(s->vocab, prompt, text_len, out_tokens, tok_cap_i32, true, false);
     if (count <= 0) {
         write_err(out_err, err_cap, "llama_tokenize returned <= 0 or exceeded token buffer");
         return -2;
     }
-    if (count > max_tokens && max_tokens >= 2) {
-        out_tokens[max_tokens - 1] = s->vocab_eos(s->vocab);
-        count = max_tokens;
+    if (count > clamped_max) {
+        if (clamped_max >= 2) {
+            out_tokens[clamped_max - 1] = s->vocab_eos(s->vocab);
+        }
+        count = clamped_max;
     }
     *out_token_count = count;
     if (s->get_memory != NULL && s->memory_clear != NULL) {

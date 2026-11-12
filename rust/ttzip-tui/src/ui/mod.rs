@@ -222,93 +222,71 @@ fn render_preview_pane(frame: &mut Frame, area: Rect, state: &AppState) {
     }
 }
 
+const HELP_SECTIONS: &[(&str, &[(&str, &str)])] = &[
+    (
+        " Navigation:",
+        &[
+            ("   j / ↓             ", "Move cursor down"),
+            ("   k / ↑             ", "Move cursor up"),
+            ("   g / Home          ", "Jump to top of archive"),
+            ("   G / End           ", "Jump to bottom of archive"),
+        ],
+    ),
+    (
+        " Selection & Extraction:",
+        &[
+            ("   Space             ", "Toggle selection mark [x] on file/directory"),
+            ("   a                 ", "Select all / Deselect all entries"),
+            ("   Enter             ", "Expand/Collapse folder or Extract selected items"),
+        ],
+    ),
+    (
+        " Preview & Search:",
+        &[
+            ("   p / Tab           ", "Toggle in-terminal QuickLook stream preview"),
+            ("   /                 ", "Open instant fuzzy search bar"),
+        ],
+    ),
+    (
+        " Modals & Recovery Tools:",
+        &[
+            ("   r                 ", "Password recovery dictionary wizard"),
+            ("   R                 ", "Self-healing corrupt archive repair wizard"),
+            ("   B                 ", "Pareto frontier & hardware benchmark engine"),
+            ("   S                 ", "Multi-volume archive split & join manager"),
+        ],
+    ),
+    (
+        " Control & Cancellation:",
+        &[
+            ("   Esc / q           ", "Atomic cancel background task or Quit application"),
+            ("   ? / h             ", "Show / hide this help dialog"),
+        ],
+    ),
+];
+
 /// Renders Help Keyboard Shortcuts Modal.
 fn render_help_modal(frame: &mut Frame, area: Rect) {
     let popup_area = centered_rect(60, 65, area);
     frame.render_widget(Clear, popup_area);
 
     let block = Theme::modal_block(" 📖 TTZip Keyboard Shortcuts & Navigation Reference ");
-    let help_text = vec![
-        Line::from(vec![
-            Span::styled(" Navigation:", Theme::style_title()),
-        ]),
-        Line::from(vec![
-            Span::styled("   j / ↓             ", Theme::style_key_shortcut()),
-            Span::styled("Move cursor down", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   k / ↑             ", Theme::style_key_shortcut()),
-            Span::styled("Move cursor up", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   g / Home          ", Theme::style_key_shortcut()),
-            Span::styled("Jump to top of archive", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   G / End           ", Theme::style_key_shortcut()),
-            Span::styled("Jump to bottom of archive", Theme::style_primary_text()),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(" Selection & Extraction:", Theme::style_title()),
-        ]),
-        Line::from(vec![
-            Span::styled("   Space             ", Theme::style_key_shortcut()),
-            Span::styled("Toggle selection mark [x] on file/directory", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   a                 ", Theme::style_key_shortcut()),
-            Span::styled("Select all / Deselect all entries", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   Enter             ", Theme::style_key_shortcut()),
-            Span::styled("Expand/Collapse folder or Extract selected items", Theme::style_primary_text()),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(" Preview & Search:", Theme::style_title()),
-        ]),
-        Line::from(vec![
-            Span::styled("   p / Tab           ", Theme::style_key_shortcut()),
-            Span::styled("Toggle in-terminal QuickLook stream preview", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   /                 ", Theme::style_key_shortcut()),
-            Span::styled("Open instant fuzzy search bar", Theme::style_primary_text()),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(" Modals & Recovery Tools:", Theme::style_title()),
-        ]),
-        Line::from(vec![
-            Span::styled("   r                 ", Theme::style_key_shortcut()),
-            Span::styled("Password recovery dictionary wizard", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   R                 ", Theme::style_key_shortcut()),
-            Span::styled("Self-healing corrupt archive repair wizard", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   B                 ", Theme::style_key_shortcut()),
-            Span::styled("Pareto frontier & hardware benchmark engine", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   S                 ", Theme::style_key_shortcut()),
-            Span::styled("Multi-volume archive split & join manager", Theme::style_primary_text()),
-        ]),
-        Line::from(""),
-        Line::from(vec![
-            Span::styled(" Control & Cancellation:", Theme::style_title()),
-        ]),
-        Line::from(vec![
-            Span::styled("   Esc / q           ", Theme::style_key_shortcut()),
-            Span::styled("Atomic cancel background task or Quit application", Theme::style_primary_text()),
-        ]),
-        Line::from(vec![
-            Span::styled("   ? / h             ", Theme::style_key_shortcut()),
-            Span::styled("Show / hide this help dialog", Theme::style_primary_text()),
-        ]),
-    ];
+    let mut help_text = Vec::new();
+    for (idx, (section_title, entries)) in HELP_SECTIONS.iter().enumerate() {
+        if idx > 0 {
+            help_text.push(Line::from(""));
+        }
+        help_text.push(Line::from(vec![Span::styled(
+            *section_title,
+            Theme::style_title(),
+        )]));
+        for (key, desc) in *entries {
+            help_text.push(Line::from(vec![
+                Span::styled(*key, Theme::style_key_shortcut()),
+                Span::styled(*desc, Theme::style_primary_text()),
+            ]));
+        }
+    }
 
     let p = Paragraph::new(help_text).block(block);
     frame.render_widget(p, popup_area);

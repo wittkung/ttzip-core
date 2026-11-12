@@ -151,8 +151,8 @@ fn test_adversarial_broken_utf8_and_mojibake_fuzzing() {
         b"\xE4\xBD",                                         // Truncated 3-byte sequence
         b"\xF0\x9F\x98",                                     // Truncated 4-byte emoji sequence
         b"ValidPrefix\x80\x81\x82ValidSuffix",               // Invalid bytes embedded in ASCII
-        b"\xD6\xD0\xCE\xC4\xB2\xE2\xCA\xD4",                 // GBK "中文测试"
-        b"\x93\xFA\x96\x7B\x8C\xEA",                         // Shift-JIS "日本語"
+        b"\xD6\xD0\xCE\xC4\xB2\xE2\xCA\xD4",                 // GBK-encoded CJK sample
+        b"\x93\xFA\x96\x7B\x8C\xEA",                         // Shift-JIS-encoded Japanese sample
         b"\xC7\xD1\xB1\xDB\xC5\xD7\xBD\xBA\xC6\xAE",         // EUC-KR "한글테스트"
         b"M\xFCnchen_Stra\xDFe.tar.gz",                       // Windows-1252 Umlauts
     ];

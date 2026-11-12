@@ -264,15 +264,45 @@ final class TTZipEbookReaderServiceTests: XCTestCase {
         let stylesDir = oebpsDir.appendingPathComponent("styles")
         let textDir = oebpsDir.appendingPathComponent("text")
 
-        try FileManager.default.createDirectory(at: metaInfDir, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: imgDir, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: stylesDir, withIntermediateDirectories: true)
-        try FileManager.default.createDirectory(at: textDir, withIntermediateDirectories: true)
+        for dir in [metaInfDir, imgDir, stylesDir, textDir] {
+            try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
 
-        // 1. mimetype
         try "application/epub+zip".write(to: epubDir.appendingPathComponent("mimetype"), atomically: true, encoding: .utf8)
+        try writeSyntheticEpubDescriptors(
+            metaInfDir: metaInfDir,
+            oebpsDir: oebpsDir,
+            title: title,
+            authors: authors,
+            publisher: publisher,
+            language: language
+        )
+        try writeSyntheticEpubAssets(imgDir: imgDir, stylesDir: stylesDir, textDir: textDir)
 
-        // 2. container.xml
+        let outEpubURL = sandbox.fileURL(named: name)
+        let writer = ArchiveWriter()
+        try await writer.createArchive(
+            outputPath: outEpubURL.path,
+            format: .zip,
+            level: .fast,
+            inputPaths: [
+                epubDir.appendingPathComponent("mimetype").path,
+                metaInfDir.path,
+                oebpsDir.path,
+            ]
+        )
+
+        return outEpubURL
+    }
+
+    private func writeSyntheticEpubDescriptors(
+        metaInfDir: URL,
+        oebpsDir: URL,
+        title: String,
+        authors: [String],
+        publisher: String,
+        language: String
+    ) throws {
         let containerXml = """
         <?xml version="1.0"?>
         <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
@@ -283,7 +313,6 @@ final class TTZipEbookReaderServiceTests: XCTestCase {
         """
         try containerXml.write(to: metaInfDir.appendingPathComponent("container.xml"), atomically: true, encoding: .utf8)
 
-        // 3. package.opf
         let creatorsXml = authors.map { "<dc:creator>\($0)</dc:creator>" }.joined(separator: "\n    ")
         let opfXml = """
         <?xml version="1.0" encoding="utf-8"?>
@@ -317,8 +346,10 @@ final class TTZipEbookReaderServiceTests: XCTestCase {
         </package>
         """
         try opfXml.write(to: oebpsDir.appendingPathComponent("package.opf"), atomically: true, encoding: .utf8)
+        try writeSyntheticEpubNavigation(oebpsDir: oebpsDir)
+    }
 
-        // 4. toc.ncx
+    private func writeSyntheticEpubNavigation(oebpsDir: URL) throws {
         let ncxXml = """
         <?xml version="1.0" encoding="UTF-8"?>
         <ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
@@ -340,7 +371,6 @@ final class TTZipEbookReaderServiceTests: XCTestCase {
         """
         try ncxXml.write(to: oebpsDir.appendingPathComponent("toc.ncx"), atomically: true, encoding: .utf8)
 
-        // 5. nav.xhtml
         let navXml = """
         <?xml version="1.0" encoding="utf-8"?>
         <!DOCTYPE html>
@@ -357,41 +387,24 @@ final class TTZipEbookReaderServiceTests: XCTestCase {
         </html>
         """
         try navXml.write(to: oebpsDir.appendingPathComponent("nav.xhtml"), atomically: true, encoding: .utf8)
+    }
 
-        // 6. Cover image
+    private func writeSyntheticEpubAssets(imgDir: URL, stylesDir: URL, textDir: URL) throws {
         let dummyJpg = Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00, 0x60, 0x00, 0x60, 0x00, 0x00, 0xFF, 0xDB])
         try dummyJpg.write(to: imgDir.appendingPathComponent("cover.jpg"))
 
-        // 7. Style CSS
         try "body { font-family: -apple-system, sans-serif; margin: 2rem; }".write(
             to: stylesDir.appendingPathComponent("main.css"),
             atomically: true,
             encoding: .utf8
         )
 
-        // 8. Chapters
         try "<!DOCTYPE html><html><head><title>Ch1</title></head><body><h1>1. Microkernel Architecture</h1><p id=\"bounds\">Memory bounds are strictly enforced to 64MB.</p></body></html>"
             .write(to: textDir.appendingPathComponent("ch1.xhtml"), atomically: true, encoding: .utf8)
         try "<!DOCTYPE html><html><head><title>Ch2</title></head><body><h1>2. Streaming Pipelines</h1><p>Throughput exceeds 600 MB/s.</p></body></html>"
             .write(to: textDir.appendingPathComponent("ch2.xhtml"), atomically: true, encoding: .utf8)
         try "<!DOCTYPE html><html><head><title>Ch3</title></head><body><h1>3. Appendix</h1><p>Extra technical notes.</p></body></html>"
             .write(to: textDir.appendingPathComponent("ch3.xhtml"), atomically: true, encoding: .utf8)
-
-        // Archive into .epub
-        let outEpubURL = sandbox.fileURL(named: name)
-        let writer = ArchiveWriter()
-        try await writer.createArchive(
-            outputPath: outEpubURL.path,
-            format: .zip,
-            level: .fast,
-            inputPaths: [
-                epubDir.appendingPathComponent("mimetype").path,
-                metaInfDir.path,
-                oebpsDir.path,
-            ]
-        )
-
-        return outEpubURL
     }
 
     private func createSyntheticCbz(named name: String) async throws -> URL {

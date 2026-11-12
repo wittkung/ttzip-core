@@ -5,5 +5,5 @@
 
 pub mod datagen;
 
-#[allow(unused_imports)]
+#[allow(unused_imports, reason = "Re-export datagen symbols for integration tests that include fixtures module")]
 pub use datagen::*;

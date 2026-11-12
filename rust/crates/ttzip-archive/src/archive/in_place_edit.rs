@@ -30,9 +30,10 @@ pub use wal::{WalJournalRecord, WalState, WalTransactionJournal, INPLACE_COUNTER
 pub use zip::in_place_edit_zip;
 
 use crate::standards::signatures::{CompoundFormat, DetectedFormat};
-use crate::standards::sniffer::detect_format_file;
+use crate::standards::sniffer::{detect_format_file, SniffResult};
 use crate::types::{TTZipArchiveFormat, TTZipStatus};
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
@@ -43,6 +44,36 @@ pub enum InPlaceAction {
     Append { entry_path: String, source_path: PathBuf },
     Replace { entry_path: String, source_path: PathBuf },
     Delete { entry_path: String },
+}
+
+/// Normalized mutation plan partitioned into deletions, replacements, and appends.
+#[derive(Debug, Default)]
+pub(crate) struct PartitionedActions {
+    pub deleted: HashSet<String>,
+    pub replaced: HashMap<String, PathBuf>,
+    pub appended: Vec<(String, PathBuf)>,
+}
+
+impl PartitionedActions {
+    pub(crate) fn from_slice(actions: &[InPlaceAction]) -> Self {
+        let mut plan = Self::default();
+        for action in actions {
+            match action {
+                InPlaceAction::Delete { entry_path } => {
+                    plan.deleted.insert(entry_path.trim_start_matches('/').to_string());
+                }
+                InPlaceAction::Replace { entry_path, source_path } => {
+                    plan.replaced
+                        .insert(entry_path.trim_start_matches('/').to_string(), source_path.clone());
+                }
+                InPlaceAction::Append { entry_path, source_path } => {
+                    plan.appended
+                        .push((entry_path.trim_start_matches('/').to_string(), source_path.clone()));
+                }
+            }
+        }
+        plan
+    }
 }
 
 /// Category classification for format-specific mutation pipelines.
@@ -138,33 +169,34 @@ impl InPlaceArchiveSession {
             return Ok(());
         }
 
-        match self.category {
-            InPlaceCategory::Zip => {
-                in_place_edit_zip(&self.archive_path, &self.shadow_path, &self.actions)?;
-            }
-            InPlaceCategory::SevenZip => {
-                in_place_edit_sevenz(&self.archive_path, &self.shadow_path, &self.actions)?;
-            }
-            InPlaceCategory::Tar => {
-                in_place_edit_tar(&self.archive_path, &self.shadow_path, &self.actions)?;
-            }
-            InPlaceCategory::CompoundTar(comp_fmt) => {
-                in_place_edit_compound_stream(&self.archive_path, &self.shadow_path, comp_fmt, &self.actions)?;
-            }
-            InPlaceCategory::SingleStream(det_fmt) => {
-                in_place_edit_single_stream(&self.archive_path, &self.shadow_path, det_fmt, &self.actions)?;
-            }
-            InPlaceCategory::GenericContainer(det_fmt) => {
-                in_place_edit_generic_container_wal(&self.archive_path, &self.shadow_path, &self.wal_path, det_fmt, &self.actions)?;
-            }
-        }
-
+        self.dispatch_category_mutation()?;
         fs::rename(&self.shadow_path, &self.archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
         if self.wal_path.exists() {
             let _ = fs::remove_file(&self.wal_path);
         }
         self.committed = true;
         Ok(())
+    }
+
+    fn dispatch_category_mutation(&self) -> Result<(), TTZipStatus> {
+        match self.category {
+            InPlaceCategory::Zip => in_place_edit_zip(&self.archive_path, &self.shadow_path, &self.actions),
+            InPlaceCategory::SevenZip => in_place_edit_sevenz(&self.archive_path, &self.shadow_path, &self.actions),
+            InPlaceCategory::Tar => in_place_edit_tar(&self.archive_path, &self.shadow_path, &self.actions),
+            InPlaceCategory::CompoundTar(comp_fmt) => {
+                in_place_edit_compound_stream(&self.archive_path, &self.shadow_path, comp_fmt, &self.actions)
+            }
+            InPlaceCategory::SingleStream(det_fmt) => {
+                in_place_edit_single_stream(&self.archive_path, &self.shadow_path, det_fmt, &self.actions)
+            }
+            InPlaceCategory::GenericContainer(det_fmt) => in_place_edit_generic_container_wal(
+                &self.archive_path,
+                &self.shadow_path,
+                &self.wal_path,
+                det_fmt,
+                &self.actions,
+            ),
+        }
     }
 
     /// Cancels and rolls back the transaction, cleaning up any shadow or WAL files.
@@ -212,105 +244,109 @@ fn generate_wal_path(archive_path: &Path, pid: u32, tx_id: u64) -> PathBuf {
     parent.join(format!("{}.ttzip_wal_{}_{}.log", stem, pid, tx_id))
 }
 
+const EXTENSION_CATEGORY_TABLE: &[(&str, InPlaceCategory)] = &[
+    (".zip", InPlaceCategory::Zip),
+    (".7z", InPlaceCategory::SevenZip),
+    (".cb7", InPlaceCategory::SevenZip),
+    (".tar.gz", InPlaceCategory::CompoundTar(CompoundFormat::TarGz)),
+    (".tgz", InPlaceCategory::CompoundTar(CompoundFormat::TarGz)),
+    (".tar.bz2", InPlaceCategory::CompoundTar(CompoundFormat::TarBz2)),
+    (".tbz2", InPlaceCategory::CompoundTar(CompoundFormat::TarBz2)),
+    (".tar.xz", InPlaceCategory::CompoundTar(CompoundFormat::TarXz)),
+    (".txz", InPlaceCategory::CompoundTar(CompoundFormat::TarXz)),
+    (".tar.zst", InPlaceCategory::CompoundTar(CompoundFormat::TarZstd)),
+    (".tzst", InPlaceCategory::CompoundTar(CompoundFormat::TarZstd)),
+    (".tar", InPlaceCategory::Tar),
+    (".gz", InPlaceCategory::SingleStream(DetectedFormat::Gzip)),
+    (".bz2", InPlaceCategory::SingleStream(DetectedFormat::Bzip2)),
+    (".xz", InPlaceCategory::SingleStream(DetectedFormat::Xz)),
+    (".zst", InPlaceCategory::SingleStream(DetectedFormat::Zstd)),
+    (".sz", InPlaceCategory::SingleStream(DetectedFormat::Snappy)),
+    (".snappy", InPlaceCategory::SingleStream(DetectedFormat::Snappy)),
+    (".br", InPlaceCategory::SingleStream(DetectedFormat::Brotli)),
+    (".lzfse", InPlaceCategory::SingleStream(DetectedFormat::Lzfse)),
+    (".ar", InPlaceCategory::GenericContainer(DetectedFormat::Ar)),
+    (".deb", InPlaceCategory::GenericContainer(DetectedFormat::Ar)),
+    (".iso", InPlaceCategory::GenericContainer(DetectedFormat::Iso)),
+    (".cab", InPlaceCategory::GenericContainer(DetectedFormat::Cab)),
+    (".wim", InPlaceCategory::GenericContainer(DetectedFormat::Wim)),
+];
+
 /// Classifies archive path and format hint into execution dispatch category.
 pub fn detect_in_place_category(path: &Path, explicit_fmt: Option<TTZipArchiveFormat>) -> InPlaceCategory {
-    if let Some(fmt) = explicit_fmt {
-        match fmt {
-            TTZipArchiveFormat::Zip => return InPlaceCategory::Zip,
-            TTZipArchiveFormat::SevenZip => return InPlaceCategory::SevenZip,
-            TTZipArchiveFormat::Tar => return InPlaceCategory::Tar,
-            TTZipArchiveFormat::TarGz => return InPlaceCategory::CompoundTar(CompoundFormat::TarGz),
-            TTZipArchiveFormat::TarBz2 => return InPlaceCategory::CompoundTar(CompoundFormat::TarBz2),
-            TTZipArchiveFormat::TarXz => return InPlaceCategory::CompoundTar(CompoundFormat::TarXz),
-            TTZipArchiveFormat::TarZstd => return InPlaceCategory::CompoundTar(CompoundFormat::TarZstd),
-            TTZipArchiveFormat::Lzfse => return InPlaceCategory::SingleStream(DetectedFormat::Lzfse),
-            TTZipArchiveFormat::Snappy => return InPlaceCategory::SingleStream(DetectedFormat::Snappy),
-            _ => {}
-        }
+    if let Some(cat) = explicit_fmt.and_then(category_from_explicit_format) {
+        return cat;
     }
 
     let name = path.to_string_lossy().to_lowercase();
     if let Ok(sniff) = detect_format_file(path) {
-        if let Some(compound) = sniff.compound_format {
-            return InPlaceCategory::CompoundTar(compound);
-        }
-        match sniff.format {
-            DetectedFormat::Zip => return InPlaceCategory::Zip,
-            DetectedFormat::SevenZip => return InPlaceCategory::SevenZip,
-            DetectedFormat::Tar => return InPlaceCategory::Tar,
-            DetectedFormat::Gzip => {
-                if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
-                    return InPlaceCategory::CompoundTar(CompoundFormat::TarGz);
-                }
-                return InPlaceCategory::SingleStream(DetectedFormat::Gzip);
-            }
-            DetectedFormat::Bzip2 => {
-                if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
-                    return InPlaceCategory::CompoundTar(CompoundFormat::TarBz2);
-                }
-                return InPlaceCategory::SingleStream(DetectedFormat::Bzip2);
-            }
-            DetectedFormat::Xz => {
-                if name.ends_with(".tar.xz") || name.ends_with(".txz") {
-                    return InPlaceCategory::CompoundTar(CompoundFormat::TarXz);
-                }
-                return InPlaceCategory::SingleStream(DetectedFormat::Xz);
-            }
-            DetectedFormat::Zstd => {
-                if name.ends_with(".tar.zst") || name.ends_with(".tzst") {
-                    return InPlaceCategory::CompoundTar(CompoundFormat::TarZstd);
-                }
-                return InPlaceCategory::SingleStream(DetectedFormat::Zstd);
-            }
-            DetectedFormat::Snappy => return InPlaceCategory::SingleStream(DetectedFormat::Snappy),
-            DetectedFormat::Brotli => return InPlaceCategory::SingleStream(DetectedFormat::Brotli),
-            DetectedFormat::Lzfse => return InPlaceCategory::SingleStream(DetectedFormat::Lzfse),
-            DetectedFormat::Ar | DetectedFormat::Cab | DetectedFormat::Iso | DetectedFormat::Wim | DetectedFormat::Xar | DetectedFormat::Lzh => {
-                return InPlaceCategory::GenericContainer(sniff.format);
-            }
-            _ => {}
+        if let Some(cat) = category_from_sniff(&sniff, &name) {
+            return cat;
         }
     }
 
-    if name.ends_with(".zip") {
-        InPlaceCategory::Zip
-    } else if name.ends_with(".7z") || name.ends_with(".cb7") {
-        InPlaceCategory::SevenZip
-    } else if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
-        InPlaceCategory::CompoundTar(CompoundFormat::TarGz)
-    } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") {
-        InPlaceCategory::CompoundTar(CompoundFormat::TarBz2)
-    } else if name.ends_with(".tar.xz") || name.ends_with(".txz") {
-        InPlaceCategory::CompoundTar(CompoundFormat::TarXz)
-    } else if name.ends_with(".tar.zst") || name.ends_with(".tzst") {
-        InPlaceCategory::CompoundTar(CompoundFormat::TarZstd)
-    } else if name.ends_with(".tar") {
-        InPlaceCategory::Tar
-    } else if name.ends_with(".gz") {
-        InPlaceCategory::SingleStream(DetectedFormat::Gzip)
-    } else if name.ends_with(".bz2") {
-        InPlaceCategory::SingleStream(DetectedFormat::Bzip2)
-    } else if name.ends_with(".xz") {
-        InPlaceCategory::SingleStream(DetectedFormat::Xz)
-    } else if name.ends_with(".zst") {
-        InPlaceCategory::SingleStream(DetectedFormat::Zstd)
-    } else if name.ends_with(".sz") || name.ends_with(".snappy") {
-        InPlaceCategory::SingleStream(DetectedFormat::Snappy)
-    } else if name.ends_with(".br") {
-        InPlaceCategory::SingleStream(DetectedFormat::Brotli)
-    } else if name.ends_with(".lzfse") {
-        InPlaceCategory::SingleStream(DetectedFormat::Lzfse)
-    } else if name.ends_with(".ar") || name.ends_with(".deb") {
-        InPlaceCategory::GenericContainer(DetectedFormat::Ar)
-    } else if name.ends_with(".iso") {
-        InPlaceCategory::GenericContainer(DetectedFormat::Iso)
-    } else if name.ends_with(".cab") {
-        InPlaceCategory::GenericContainer(DetectedFormat::Cab)
-    } else if name.ends_with(".wim") {
-        InPlaceCategory::GenericContainer(DetectedFormat::Wim)
-    } else {
-        InPlaceCategory::Zip
+    category_from_extension(&name)
+}
+
+fn category_from_explicit_format(fmt: TTZipArchiveFormat) -> Option<InPlaceCategory> {
+    match fmt {
+        TTZipArchiveFormat::Zip => Some(InPlaceCategory::Zip),
+        TTZipArchiveFormat::SevenZip => Some(InPlaceCategory::SevenZip),
+        TTZipArchiveFormat::Tar => Some(InPlaceCategory::Tar),
+        TTZipArchiveFormat::TarGz => Some(InPlaceCategory::CompoundTar(CompoundFormat::TarGz)),
+        TTZipArchiveFormat::TarBz2 => Some(InPlaceCategory::CompoundTar(CompoundFormat::TarBz2)),
+        TTZipArchiveFormat::TarXz => Some(InPlaceCategory::CompoundTar(CompoundFormat::TarXz)),
+        TTZipArchiveFormat::TarZstd => Some(InPlaceCategory::CompoundTar(CompoundFormat::TarZstd)),
+        TTZipArchiveFormat::Lzfse => Some(InPlaceCategory::SingleStream(DetectedFormat::Lzfse)),
+        TTZipArchiveFormat::Snappy => Some(InPlaceCategory::SingleStream(DetectedFormat::Snappy)),
+        _ => None,
     }
+}
+
+fn category_from_sniff(sniff: &SniffResult, name: &str) -> Option<InPlaceCategory> {
+    if let Some(compound) = sniff.compound_format {
+        return Some(InPlaceCategory::CompoundTar(compound));
+    }
+    match sniff.format {
+        DetectedFormat::Zip => Some(InPlaceCategory::Zip),
+        DetectedFormat::SevenZip => Some(InPlaceCategory::SevenZip),
+        DetectedFormat::Tar => Some(InPlaceCategory::Tar),
+        DetectedFormat::Gzip | DetectedFormat::Bzip2 | DetectedFormat::Xz | DetectedFormat::Zstd => {
+            Some(classify_compressed_stream(sniff.format, name))
+        }
+        DetectedFormat::Snappy | DetectedFormat::Brotli | DetectedFormat::Lzfse => {
+            Some(InPlaceCategory::SingleStream(sniff.format))
+        }
+        DetectedFormat::Ar
+        | DetectedFormat::Cab
+        | DetectedFormat::Iso
+        | DetectedFormat::Wim
+        | DetectedFormat::Xar
+        | DetectedFormat::Lzh => Some(InPlaceCategory::GenericContainer(sniff.format)),
+        _ => None,
+    }
+}
+
+fn classify_compressed_stream(format: DetectedFormat, name: &str) -> InPlaceCategory {
+    const COMPOUND_STREAM_SUFFIXES: &[(DetectedFormat, &[&str], CompoundFormat)] = &[
+        (DetectedFormat::Gzip, &[".tar.gz", ".tgz"], CompoundFormat::TarGz),
+        (DetectedFormat::Bzip2, &[".tar.bz2", ".tbz2"], CompoundFormat::TarBz2),
+        (DetectedFormat::Xz, &[".tar.xz", ".txz"], CompoundFormat::TarXz),
+        (DetectedFormat::Zstd, &[".tar.zst", ".tzst"], CompoundFormat::TarZstd),
+    ];
+    for &(fmt, suffixes, compound) in COMPOUND_STREAM_SUFFIXES {
+        if fmt == format && suffixes.iter().any(|s| name.ends_with(s)) {
+            return InPlaceCategory::CompoundTar(compound);
+        }
+    }
+    InPlaceCategory::SingleStream(format)
+}
+
+fn category_from_extension(name: &str) -> InPlaceCategory {
+    EXTENSION_CATEGORY_TABLE
+        .iter()
+        .find_map(|&(ext, cat)| name.ends_with(ext).then_some(cat))
+        .unwrap_or(InPlaceCategory::Zip)
 }
 
 fn category_to_legacy_format(category: InPlaceCategory) -> TTZipArchiveFormat {

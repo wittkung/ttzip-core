@@ -82,6 +82,79 @@ fn ensure_dir_in_arena(
     p_id
 }
 
+fn compute_vfs_node_flags(
+    entry_ref: &crate::archive::unified::inspect::ArchiveEntryRef<'_>,
+    is_dir: bool,
+) -> u8 {
+    let mut flags = 0u8;
+    if is_dir {
+        flags |= crate::fs::vfs::arena::VFS_FLAG_IS_DIR;
+    }
+    if entry_ref.is_encrypted {
+        flags |= crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED;
+    }
+    if (entry_ref.mode & 0o170000) == 0o120000 {
+        flags |= crate::fs::vfs::arena::VFS_FLAG_IS_SYMLINK;
+    }
+    flags
+}
+
+fn ingest_inspected_entry(
+    arena: &mut crate::fs::vfs::VfsCompactArena,
+    dir_map: &mut std::collections::HashMap<String, u32>,
+    root_id: u32,
+    current_idx: usize,
+    entry_ref: &crate::archive::unified::inspect::ArchiveEntryRef<'_>,
+) {
+    let Some(clean_path) = sanitize_archive_entry_path(entry_ref.path) else {
+        return;
+    };
+    let is_dir = entry_ref.is_directory || raw_path_implies_directory(entry_ref.path);
+    let (parent_path, leaf_name) = match clean_path.rfind('/') {
+        Some(idx) => (&clean_path[..idx], &clean_path[idx + 1..]),
+        None => ("", clean_path.as_str()),
+    };
+
+    let curr_parent_id = ensure_dir_in_arena(
+        arena,
+        dir_map,
+        parent_path,
+        entry_ref.mtime_epoch_secs,
+        root_id,
+    );
+    let flags = compute_vfs_node_flags(entry_ref, is_dir);
+
+    if is_dir {
+        if let Some(&existing_id) = dir_map.get(&clean_path) {
+            let eid = existing_id as usize;
+            arena.uncompressed_sizes[eid] = entry_ref.uncompressed_size;
+            arena.compressed_sizes[eid] = entry_ref.compressed_size;
+            arena.crc32s[eid] = entry_ref.crc32;
+            arena.modified_timestamps[eid] = entry_ref.mtime_epoch_secs;
+            arena.modes[eid] = entry_ref.mode;
+            arena.node_attributes[eid] |= flags;
+            arena.entry_indices[eid] = current_idx as u32;
+            return;
+        }
+    }
+
+    let node_id = arena.alloc_node(crate::fs::vfs::arena::VfsNodeAllocParams {
+        name: leaf_name,
+        full_path: &clean_path,
+        uncompressed_size: entry_ref.uncompressed_size,
+        compressed_size: entry_ref.compressed_size,
+        crc32: entry_ref.crc32,
+        mtime: entry_ref.mtime_epoch_secs,
+        mode: entry_ref.mode,
+        flags,
+        parent_id: curr_parent_id,
+        entry_idx: Some(current_idx),
+    });
+    if is_dir {
+        dir_map.insert(clean_path, node_id);
+    }
+}
+
 pub(crate) fn build_arena_from_archive_path(
     path: &Path,
     password: Option<&str>,
@@ -124,65 +197,7 @@ pub(crate) fn build_arena_from_archive_path(
         |entry_ref| {
             let current_idx = raw_entry_idx;
             raw_entry_idx += 1;
-
-            let Some(clean_path) = sanitize_archive_entry_path(entry_ref.path) else {
-                return true;
-            };
-            let is_dir = entry_ref.is_directory || raw_path_implies_directory(entry_ref.path);
-
-            let (parent_path, leaf_name) = match clean_path.rfind('/') {
-                Some(idx) => (&clean_path[..idx], &clean_path[idx + 1..]),
-                None => ("", clean_path.as_str()),
-            };
-
-            let curr_parent_id = ensure_dir_in_arena(
-                &mut arena,
-                &mut dir_map,
-                parent_path,
-                entry_ref.mtime_epoch_secs,
-                root_id,
-            );
-
-            let mut flags = 0u8;
-            if is_dir {
-                flags |= crate::fs::vfs::arena::VFS_FLAG_IS_DIR;
-            }
-            if entry_ref.is_encrypted {
-                flags |= crate::fs::vfs::arena::VFS_FLAG_IS_ENCRYPTED;
-            }
-            if (entry_ref.mode & 0o170000) == 0o120000 {
-                flags |= crate::fs::vfs::arena::VFS_FLAG_IS_SYMLINK;
-            }
-
-            if is_dir {
-                if let Some(&existing_id) = dir_map.get(&clean_path) {
-                    let eid = existing_id as usize;
-                    arena.uncompressed_sizes[eid] = entry_ref.uncompressed_size;
-                    arena.compressed_sizes[eid] = entry_ref.compressed_size;
-                    arena.crc32s[eid] = entry_ref.crc32;
-                    arena.modified_timestamps[eid] = entry_ref.mtime_epoch_secs;
-                    arena.modes[eid] = entry_ref.mode;
-                    arena.node_attributes[eid] |= flags;
-                    arena.entry_indices[eid] = current_idx as u32;
-                    return true;
-                }
-            }
-
-            let node_id = arena.alloc_node(crate::fs::vfs::arena::VfsNodeAllocParams {
-                name: leaf_name,
-                full_path: &clean_path,
-                uncompressed_size: entry_ref.uncompressed_size,
-                compressed_size: entry_ref.compressed_size,
-                crc32: entry_ref.crc32,
-                mtime: entry_ref.mtime_epoch_secs,
-                mode: entry_ref.mode,
-                flags,
-                parent_id: curr_parent_id,
-                entry_idx: Some(current_idx),
-            });
-            if is_dir {
-                dir_map.insert(clean_path, node_id);
-            }
+            ingest_inspected_entry(&mut arena, &mut dir_map, root_id, current_idx, entry_ref);
             true
         },
     );

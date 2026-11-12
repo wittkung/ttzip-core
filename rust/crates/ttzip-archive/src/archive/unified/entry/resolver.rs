@@ -82,80 +82,82 @@ impl LinkResolver {
         }
 
         let key = (entry.dev, entry.ino);
-
         match self.strategy {
-            LinkResolverStrategy::Tar => {
-                if let Some(state) = self.inodes.get_mut(&key) {
-                    state.seen_count = state.seen_count.saturating_add(1);
-                    state.remaining_links = state.remaining_links.saturating_sub(1);
-                    let target = state.canonical_path.clone();
+            LinkResolverStrategy::Tar => self.resolve_tar_link(key, entry),
+            LinkResolverStrategy::NewCpio => self.resolve_new_cpio_link(key, entry),
+        }
+    }
 
-                    entry.set_hardlink(&target);
-                    entry.set_size(0);
+    fn resolve_tar_link(&mut self, key: (u64, u64), entry: &mut TTZipEntry) -> LinkAction {
+        if let Some(state) = self.inodes.get_mut(&key) {
+            state.seen_count = state.seen_count.saturating_add(1);
+            state.remaining_links = state.remaining_links.saturating_sub(1);
+            let target = state.canonical_path.clone();
 
-                    if state.remaining_links == 0 {
-                        self.inodes.remove(&key);
-                    }
+            entry.set_hardlink(&target);
+            entry.set_size(0);
 
-                    LinkAction::TarHardlink {
-                        target,
-                        write_data: false,
-                    }
-                } else {
-                    let total_links = entry.nlink;
-                    let remaining_links = total_links.saturating_sub(1);
-                    if remaining_links > 0 {
-                        self.inodes.insert(
-                            key,
-                            InodeLinkState {
-                                canonical_path: entry.pathname.clone(),
-                                total_links,
-                                remaining_links,
-                                original_size: entry.size,
-                                seen_count: 1,
-                            },
-                        );
-                    }
-                    LinkAction::TarFirstEntry { write_data: true }
-                }
+            if state.remaining_links == 0 {
+                self.inodes.remove(&key);
             }
-            LinkResolverStrategy::NewCpio => {
-                if let Some(state) = self.inodes.get_mut(&key) {
-                    state.seen_count = state.seen_count.saturating_add(1);
-                    let is_final =
-                        state.remaining_links <= 1 || state.seen_count >= state.total_links;
-                    state.remaining_links = state.remaining_links.saturating_sub(1);
 
-                    if is_final {
-                        entry.set_size(state.original_size);
-                        self.inodes.remove(&key);
-                        LinkAction::CpioFinalData { write_data: true }
-                    } else {
-                        entry.set_size(0);
-                        LinkAction::CpioMetadataOnly { write_data: false }
-                    }
-                } else {
-                    let total_links = entry.nlink;
-                    let remaining_links = total_links.saturating_sub(1);
-                    let original_size = entry.size;
+            LinkAction::TarHardlink {
+                target,
+                write_data: false,
+            }
+        } else {
+            let total_links = entry.nlink;
+            let remaining_links = total_links.saturating_sub(1);
+            if remaining_links > 0 {
+                self.inodes.insert(
+                    key,
+                    InodeLinkState {
+                        canonical_path: entry.pathname.clone(),
+                        total_links,
+                        remaining_links,
+                        original_size: entry.size,
+                        seen_count: 1,
+                    },
+                );
+            }
+            LinkAction::TarFirstEntry { write_data: true }
+        }
+    }
 
-                    if remaining_links > 0 {
-                        self.inodes.insert(
-                            key,
-                            InodeLinkState {
-                                canonical_path: entry.pathname.clone(),
-                                total_links,
-                                remaining_links,
-                                original_size,
-                                seen_count: 1,
-                            },
-                        );
-                        entry.set_size(0);
-                        LinkAction::CpioMetadataOnly { write_data: false }
-                    } else {
-                        LinkAction::Normal
-                    }
-                }
+    fn resolve_new_cpio_link(&mut self, key: (u64, u64), entry: &mut TTZipEntry) -> LinkAction {
+        if let Some(state) = self.inodes.get_mut(&key) {
+            state.seen_count = state.seen_count.saturating_add(1);
+            let is_final = state.remaining_links <= 1 || state.seen_count >= state.total_links;
+            state.remaining_links = state.remaining_links.saturating_sub(1);
+
+            if is_final {
+                entry.set_size(state.original_size);
+                self.inodes.remove(&key);
+                LinkAction::CpioFinalData { write_data: true }
+            } else {
+                entry.set_size(0);
+                LinkAction::CpioMetadataOnly { write_data: false }
+            }
+        } else {
+            let total_links = entry.nlink;
+            let remaining_links = total_links.saturating_sub(1);
+            let original_size = entry.size;
+
+            if remaining_links > 0 {
+                self.inodes.insert(
+                    key,
+                    InodeLinkState {
+                        canonical_path: entry.pathname.clone(),
+                        total_links,
+                        remaining_links,
+                        original_size,
+                        seen_count: 1,
+                    },
+                );
+                entry.set_size(0);
+                LinkAction::CpioMetadataOnly { write_data: false }
+            } else {
+                LinkAction::Normal
             }
         }
     }

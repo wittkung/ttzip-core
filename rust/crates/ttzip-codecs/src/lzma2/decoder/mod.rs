@@ -181,14 +181,11 @@ impl Lzma2StreamDecoder {
         }
     }
 
-    fn handle_compressed_chunk(
+    fn reset_chunk_state(
         &mut self,
         mode: u8,
-        unpack_size: usize,
-        compressed_payload: &[u8],
         props_byte: Option<u8>,
-        out: &mut Vec<u8>,
-    ) -> Result<usize, Lzma2DecodeError> {
+    ) -> Result<(), Lzma2DecodeError> {
         if mode == 3 {
             self.dict.reset();
             self.need_dict_reset = false;
@@ -216,6 +213,160 @@ impl Lzma2StreamDecoder {
             self.reps = [0; 4];
             self.probs = LzmaProbTable::new(self.props);
         }
+        Ok(())
+    }
+
+    fn decode_literal_step(
+        &mut self,
+        rd: &mut RangeDecoder<'_>,
+        out: &mut Vec<u8>,
+    ) -> Result<usize, Lzma2DecodeError> {
+        let prev_byte = self.dict.last_byte();
+        let byte = if self.state.is_literal() {
+            let sub = self
+                .probs
+                .literal_sub_table_mut(self.uncompressed_pos, prev_byte);
+            rd.decode_literal_byte(sub)?
+        } else {
+            let match_byte = self.dict.get_byte_at_distance(self.reps[0])?;
+            let sub = self
+                .probs
+                .literal_sub_table_mut(self.uncompressed_pos, prev_byte);
+            rd.decode_matched_byte(sub, match_byte)?
+        };
+
+        self.dict.put_byte(byte);
+        out.push(byte);
+        self.uncompressed_pos += 1;
+        self.state = self.state.update_literal();
+        Ok(1)
+    }
+
+    fn decode_simple_match(
+        &mut self,
+        rd: &mut RangeDecoder<'_>,
+        pos_state: usize,
+    ) -> Result<usize, Lzma2DecodeError> {
+        self.reps[3] = self.reps[2];
+        self.reps[2] = self.reps[1];
+        self.reps[1] = self.reps[0];
+
+        let len = decode_length(rd, &mut self.probs.len_coder, pos_state)?;
+        let len_to_pos_state = (len.min(NUM_LEN_TO_POS_STATES + 1) - 2).min(3);
+        let pos_slot =
+            rd.decode_bit_tree(&mut self.probs.pos_slot[len_to_pos_state], 6)? as usize;
+
+        if pos_slot < 4 {
+            self.reps[0] = pos_slot;
+        } else {
+            let num_direct_bits = ((pos_slot >> 1) - 1) as u32;
+            let base_dist = (2 | (pos_slot & 1)) << num_direct_bits;
+
+            if pos_slot < 14 {
+                let dist_tree = decode_pos_slot_reverse_tree(
+                    rd,
+                    &mut self.probs.pos_decoders,
+                    pos_slot,
+                    num_direct_bits,
+                )?;
+                self.reps[0] = base_dist + (dist_tree as usize);
+            } else {
+                let direct_bits =
+                    rd.decode_direct_bits(num_direct_bits - (NUM_ALIGN_BITS as u32))?;
+                let align_bits = rd.decode_reverse_bit_tree(
+                    &mut self.probs.pos_align,
+                    NUM_ALIGN_BITS as u32,
+                )?;
+                self.reps[0] = base_dist
+                    + ((direct_bits as usize) << NUM_ALIGN_BITS)
+                    + (align_bits as usize);
+            }
+        }
+
+        if self.reps[0] == 0xFFFF_FFFF || self.reps[0] == u32::MAX as usize {
+            return Err(Lzma2DecodeError::CorruptData(
+                "LZMA-level EOPM marker is forbidden in LZMA2".to_string(),
+            ));
+        }
+
+        self.state = self.state.update_match();
+        Ok(len)
+    }
+
+    fn decode_rep_match(
+        &mut self,
+        rd: &mut RangeDecoder<'_>,
+        pos_state: usize,
+    ) -> Result<usize, Lzma2DecodeError> {
+        let state_idx = self.state.as_usize();
+        let is_rep_g0 = rd.decode_bit(&mut self.probs.is_rep_g0[state_idx])?;
+        if is_rep_g0 == 0 {
+            let is_short_rep =
+                rd.decode_bit(&mut self.probs.is_rep0_long[state_idx][pos_state])?;
+            if is_short_rep == 0 {
+                self.state = self.state.update_short_rep();
+                return Ok(1);
+            }
+            let len = decode_length(rd, &mut self.probs.rep_len_coder, pos_state)?;
+            self.state = self.state.update_rep();
+            return Ok(len);
+        }
+
+        let is_rep_g1 = rd.decode_bit(&mut self.probs.is_rep_g1[state_idx])?;
+        let dist = if is_rep_g1 == 0 {
+            let d = self.reps[1];
+            self.reps[1] = self.reps[0];
+            d
+        } else {
+            let is_rep_g2 = rd.decode_bit(&mut self.probs.is_rep_g2[state_idx])?;
+            if is_rep_g2 == 0 {
+                let d = self.reps[2];
+                self.reps[2] = self.reps[1];
+                self.reps[1] = self.reps[0];
+                d
+            } else {
+                let d = self.reps[3];
+                self.reps[3] = self.reps[2];
+                self.reps[2] = self.reps[1];
+                self.reps[1] = self.reps[0];
+                d
+            }
+        };
+        self.reps[0] = dist;
+        let len = decode_length(rd, &mut self.probs.rep_len_coder, pos_state)?;
+        self.state = self.state.update_rep();
+        Ok(len)
+    }
+
+    fn copy_match_bytes(
+        &mut self,
+        len: usize,
+        decoded_in_chunk: usize,
+        unpack_size: usize,
+        out: &mut Vec<u8>,
+        err_msg: &'static str,
+    ) -> Result<usize, Lzma2DecodeError> {
+        if decoded_in_chunk + len > unpack_size {
+            return Err(Lzma2DecodeError::CorruptData(err_msg.to_string()));
+        }
+        for _ in 0..len {
+            let b = self.dict.get_byte_at_distance(self.reps[0])?;
+            self.dict.put_byte(b);
+            out.push(b);
+        }
+        self.uncompressed_pos += len;
+        Ok(len)
+    }
+
+    fn handle_compressed_chunk(
+        &mut self,
+        mode: u8,
+        unpack_size: usize,
+        compressed_payload: &[u8],
+        props_byte: Option<u8>,
+        out: &mut Vec<u8>,
+    ) -> Result<usize, Lzma2DecodeError> {
+        self.reset_chunk_state(mode, props_byte)?;
 
         let mut rd = RangeDecoder::new(compressed_payload)?;
         let mut decoded_in_chunk = 0usize;
@@ -226,155 +377,35 @@ impl Lzma2StreamDecoder {
                 rd.decode_bit(&mut self.probs.is_match[self.state.as_usize()][pos_state])?;
 
             if is_match == 0 {
-                // Literal symbol decoding
-                let prev_byte = self.dict.last_byte();
-                let byte = if self.state.is_literal() {
-                    let sub = self
-                        .probs
-                        .literal_sub_table_mut(self.uncompressed_pos, prev_byte);
-                    rd.decode_literal_byte(sub)?
-                } else {
-                    let match_byte = self.dict.get_byte_at_distance(self.reps[0])?;
-                    let sub = self
-                        .probs
-                        .literal_sub_table_mut(self.uncompressed_pos, prev_byte);
-                    rd.decode_matched_byte(sub, match_byte)?
-                };
-
-                self.dict.put_byte(byte);
-                out.push(byte);
-                self.uncompressed_pos += 1;
-                decoded_in_chunk += 1;
-                self.state = self.state.update_literal();
+                decoded_in_chunk += self.decode_literal_step(&mut rd, out)?;
             } else {
-                // Match or Repetition match
                 let is_rep = rd.decode_bit(&mut self.probs.is_rep[self.state.as_usize()])?;
                 if is_rep == 0 {
-                    // Simple Match with new distance
-                    self.reps[3] = self.reps[2];
-                    self.reps[2] = self.reps[1];
-                    self.reps[1] = self.reps[0];
-
-                    let len = decode_length(&mut rd, &mut self.probs.len_coder, pos_state)?;
-                    let len_to_pos_state = (len.min(NUM_LEN_TO_POS_STATES + 1) - 2).min(3);
-                    let pos_slot = rd.decode_bit_tree(
-                        &mut self.probs.pos_slot[len_to_pos_state],
-                        6,
-                    )? as usize;
-
-                    if pos_slot < 4 {
-                        self.reps[0] = pos_slot;
-                    } else {
-                        let num_direct_bits = ((pos_slot >> 1) - 1) as u32;
-                        let base_dist = (2 | (pos_slot & 1)) << num_direct_bits;
-
-                        if pos_slot < 14 {
-                            let dist_tree = decode_pos_slot_reverse_tree(
-                                &mut rd,
-                                &mut self.probs.pos_decoders,
-                                pos_slot,
-                                num_direct_bits,
-                            )?;
-                            self.reps[0] = base_dist + (dist_tree as usize);
-                        } else {
-                            let direct_bits = rd.decode_direct_bits(
-                                num_direct_bits - (NUM_ALIGN_BITS as u32),
-                            )?;
-                            let align_bits = rd.decode_reverse_bit_tree(
-                                &mut self.probs.pos_align,
-                                NUM_ALIGN_BITS as u32,
-                            )?;
-                            self.reps[0] = base_dist
-                                + ((direct_bits as usize) << NUM_ALIGN_BITS)
-                                + (align_bits as usize);
-                        }
-                    }
-
-                    if self.reps[0] == 0xFFFF_FFFF || self.reps[0] == u32::MAX as usize {
-                        return Err(Lzma2DecodeError::CorruptData(
-                            "LZMA-level EOPM marker is forbidden in LZMA2".to_string(),
-                        ));
-                    }
-
-                    self.state = self.state.update_match();
-                    if decoded_in_chunk + len > unpack_size {
-                        return Err(Lzma2DecodeError::CorruptData(
-                            "Decoded match length exceeds chunk unpack size".to_string(),
-                        ));
-                    }
-                    for _ in 0..len {
-                        let b = self.dict.get_byte_at_distance(self.reps[0])?;
-                        self.dict.put_byte(b);
-                        out.push(b);
-                    }
-                    self.uncompressed_pos += len;
-                    decoded_in_chunk += len;
+                    let len = self.decode_simple_match(&mut rd, pos_state)?;
+                    decoded_in_chunk += self.copy_match_bytes(
+                        len,
+                        decoded_in_chunk,
+                        unpack_size,
+                        out,
+                        "Decoded match length exceeds chunk unpack size",
+                    )?;
                 } else {
-                    // Repetition match (Rep0, Rep1, Rep2, Rep3)
-                    let is_rep_g0 =
-                        rd.decode_bit(&mut self.probs.is_rep_g0[self.state.as_usize()])?;
-                    let len = if is_rep_g0 == 0 {
-                        let is_short_rep = rd.decode_bit(
-                            &mut self.probs.is_rep0_long[self.state.as_usize()][pos_state],
-                        )?;
-                        if is_short_rep == 0 {
-                            self.state = self.state.update_short_rep();
-                            1
-                        } else {
-                            let len =
-                                decode_length(&mut rd, &mut self.probs.rep_len_coder, pos_state)?;
-                            self.state = self.state.update_rep();
-                            len
-                        }
-                    } else {
-                        let is_rep_g1 =
-                            rd.decode_bit(&mut self.probs.is_rep_g1[self.state.as_usize()])?;
-                        let dist = if is_rep_g1 == 0 {
-                            let d = self.reps[1];
-                            self.reps[1] = self.reps[0];
-                            d
-                        } else {
-                            let is_rep_g2 =
-                                rd.decode_bit(&mut self.probs.is_rep_g2[self.state.as_usize()])?;
-                            if is_rep_g2 == 0 {
-                                let d = self.reps[2];
-                                self.reps[2] = self.reps[1];
-                                self.reps[1] = self.reps[0];
-                                d
-                            } else {
-                                let d = self.reps[3];
-                                self.reps[3] = self.reps[2];
-                                self.reps[2] = self.reps[1];
-                                self.reps[1] = self.reps[0];
-                                d
-                            }
-                        };
-                        self.reps[0] = dist;
-                        let len =
-                            decode_length(&mut rd, &mut self.probs.rep_len_coder, pos_state)?;
-                        self.state = self.state.update_rep();
-                        len
-                    };
-
-                    if decoded_in_chunk + len > unpack_size {
-                        return Err(Lzma2DecodeError::CorruptData(
-                            "Decoded rep match length exceeds chunk unpack size".to_string(),
-                        ));
-                    }
-                    for _ in 0..len {
-                        let b = self.dict.get_byte_at_distance(self.reps[0])?;
-                        self.dict.put_byte(b);
-                        out.push(b);
-                    }
-                    self.uncompressed_pos += len;
-                    decoded_in_chunk += len;
+                    let len = self.decode_rep_match(&mut rd, pos_state)?;
+                    decoded_in_chunk += self.copy_match_bytes(
+                        len,
+                        decoded_in_chunk,
+                        unpack_size,
+                        out,
+                        "Decoded rep match length exceeds chunk unpack size",
+                    )?;
                 }
             }
         }
 
         if rd.pos() < compressed_payload.len() || rd.code() != 0 {
             return Err(Lzma2DecodeError::CorruptData(
-                "LZMA2 compressed chunk has unconsumed data or non-zero range coder residue".to_string(),
+                "LZMA2 compressed chunk has unconsumed data or non-zero range coder residue"
+                    .to_string(),
             ));
         }
 

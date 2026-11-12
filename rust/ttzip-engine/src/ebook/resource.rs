@@ -227,6 +227,32 @@ fn from_hex_digit(b: u8) -> Option<u8> {
     }
 }
 
+const MEDIA_TYPE_TABLE: &[(&str, &str)] = &[
+    ("xhtml", "application/xhtml+xml"),
+    ("html", "application/xhtml+xml"),
+    ("htm", "application/xhtml+xml"),
+    ("css", "text/css"),
+    ("jpg", "image/jpeg"),
+    ("jpeg", "image/jpeg"),
+    ("png", "image/png"),
+    ("gif", "image/gif"),
+    ("svg", "image/svg+xml"),
+    ("webp", "image/webp"),
+    ("ncx", "application/x-dtbncx+xml"),
+    ("opf", "application/oebps-package+xml"),
+    ("otf", "font/otf"),
+    ("ttf", "font/ttf"),
+    ("woff", "font/woff"),
+    ("woff2", "font/woff2"),
+    ("js", "application/javascript"),
+    ("json", "application/json"),
+    ("smil", "application/smil+xml"),
+    ("pls", "application/pls+xml"),
+    ("mp3", "audio/mpeg"),
+    ("mp4", "audio/mp4"),
+    ("m4a", "audio/mp4"),
+];
+
 /// Guesses MIME media type based on filename extension.
 pub fn guess_media_type(path: &str) -> &'static str {
     let clean = strip_fragment(path);
@@ -236,26 +262,8 @@ pub fn guess_media_type(path: &str) -> &'static str {
         .unwrap_or("")
         .to_ascii_lowercase();
 
-    match ext.as_str() {
-        "xhtml" | "html" | "htm" => "application/xhtml+xml",
-        "css" => "text/css",
-        "jpg" | "jpeg" => "image/jpeg",
-        "png" => "image/png",
-        "gif" => "image/gif",
-        "svg" => "image/svg+xml",
-        "webp" => "image/webp",
-        "ncx" => "application/x-dtbncx+xml",
-        "opf" => "application/oebps-package+xml",
-        "otf" => "font/otf",
-        "ttf" => "font/ttf",
-        "woff" => "font/woff",
-        "woff2" => "font/woff2",
-        "js" => "application/javascript",
-        "json" => "application/json",
-        "smil" => "application/smil+xml",
-        "pls" => "application/pls+xml",
-        "mp3" => "audio/mpeg",
-        "mp4" | "m4a" => "audio/mp4",
-        _ => "application/octet-stream",
-    }
+    MEDIA_TYPE_TABLE
+        .iter()
+        .find_map(|&(k, mime)| (k == ext).then_some(mime))
+        .unwrap_or("application/octet-stream")
 }

@@ -148,44 +148,20 @@ impl XzBlockEncoder {
         uncompressed: &[u8],
         options: &XzEncoderOptions,
     ) -> Result<(Vec<u8>, XzBlockRecord), XzError> {
-        // 1. Compute integrity checksum over uncompressed payload
-        let check_type_enum = match options.check_type {
-            XzCheckType::None => XzChecksumType::None,
-            XzCheckType::Crc32 => XzChecksumType::Crc32,
-            XzCheckType::Crc64 => XzChecksumType::Crc64,
-            XzCheckType::Sha256 => XzChecksumType::Sha256,
-        };
+        let check_bytes = Self::compute_block_checksum(uncompressed, options.check_type);
 
-        let mut check_engine = XzChecksumEngine::new(check_type_enum);
-        check_engine.update(uncompressed);
-        let check_bytes = check_engine.digest();
-
-        // 2. Apply BCJ filter if configured
         let mut filtered = uncompressed.to_vec();
         if let Some(bcj) = options.bcj_filter {
             bcj.encode(&mut filtered, 0);
         }
 
-        // 3. Compress filtered data with LZMA2
         let compressed_data = if filtered.is_empty() {
-            vec![0x00] // LZMA2 End of stream chunk marker
+            vec![0x00]
         } else {
             Self::compress_lzma2(&filtered, options)?
         };
 
-        // 4. Build Block Filter chain
-        let mut filters = Vec::new();
-        if let Some(bcj) = options.bcj_filter {
-            match bcj {
-                XzBcjType::X86 => filters.push(XzFilterConfig::bcj_x86(None)),
-                XzBcjType::Arm => filters.push(XzFilterConfig::bcj_arm(None)),
-                XzBcjType::Arm64 => filters.push(XzFilterConfig::bcj_arm64(None)),
-                XzBcjType::Riscv => filters.push(XzFilterConfig::bcj_riscv(None)),
-            }
-        }
-        filters.push(XzFilterConfig::lzma2(options.dict_size));
-
-        // 5. Construct and encode Block Header
+        let filters = Self::build_block_filters(options);
         let block_header = XzBlockHeader::new(filters, options.check_type)?
             .with_sizes(
                 Some(compressed_data.len() as u64),
@@ -193,10 +169,7 @@ impl XzBlockEncoder {
             )?;
         let header_bytes = block_header.encode()?;
 
-        // 6. Compute block padding to 4-byte boundary
         let block_pad = pad_to_4(compressed_data.len() as u64);
-
-        // 7. Assemble final block buffer
         let total_block_len =
             header_bytes.len() + compressed_data.len() + block_pad + check_bytes.len();
         let mut block_buf = Vec::with_capacity(total_block_len);
@@ -210,6 +183,33 @@ impl XzBlockEncoder {
         let record = XzBlockRecord::new(unpadded_size, uncompressed.len() as u64);
 
         Ok((block_buf, record))
+    }
+
+    fn compute_block_checksum(uncompressed: &[u8], check_type: XzCheckType) -> Vec<u8> {
+        let check_type_enum = match check_type {
+            XzCheckType::None => XzChecksumType::None,
+            XzCheckType::Crc32 => XzChecksumType::Crc32,
+            XzCheckType::Crc64 => XzChecksumType::Crc64,
+            XzCheckType::Sha256 => XzChecksumType::Sha256,
+        };
+        let mut check_engine = XzChecksumEngine::new(check_type_enum);
+        check_engine.update(uncompressed);
+        check_engine.digest()
+    }
+
+    fn build_block_filters(options: &XzEncoderOptions) -> Vec<XzFilterConfig> {
+        let mut filters = Vec::new();
+        if let Some(bcj) = options.bcj_filter {
+            let filter_cfg = match bcj {
+                XzBcjType::X86 => XzFilterConfig::bcj_x86(None),
+                XzBcjType::Arm => XzFilterConfig::bcj_arm(None),
+                XzBcjType::Arm64 => XzFilterConfig::bcj_arm64(None),
+                XzBcjType::Riscv => XzFilterConfig::bcj_riscv(None),
+            };
+            filters.push(filter_cfg);
+        }
+        filters.push(XzFilterConfig::lzma2(options.dict_size));
+        filters
     }
 
     /// Compresses a slice into raw LZMA2 chunks using fast-lzma2 context.
@@ -431,7 +431,7 @@ impl<W: Write> XzParallelStreamWriter<W> {
                 result_slots
                     .into_inner()
                     .into_iter()
-                    .map(|opt| opt.expect("All chunks must be processed"))
+                    .flatten()
                     .collect()
             }
         };

@@ -61,13 +61,13 @@ impl Probe {
     }
 
     pub fn release_all(&self) {
-        *self.released.lock().unwrap() = true;
+        *self.released.lock().unwrap_or_else(|e| e.into_inner()) = true;
         self.release.notify_all();
     }
 
     pub fn enter(self: &Arc<Self>, name: &str) -> Span {
         {
-            let mut stats = self.stats.lock().unwrap();
+            let mut stats = self.stats.lock().unwrap_or_else(|e| e.into_inner());
             stats.active += 1;
             stats.peak = stats.peak.max(stats.active);
             stats.threads.insert(std::thread::current().id());
@@ -79,16 +79,20 @@ impl Probe {
 
     fn wait_for_release(&self) {
         let deadline = Instant::now() + Duration::from_secs(3);
-        let mut released = self.released.lock().unwrap();
+        let mut released = self.released.lock().unwrap_or_else(|e| e.into_inner());
         while !*released {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
-                self.stats.lock().unwrap().timed_out = true;
+                self.stats.lock().unwrap_or_else(|e| e.into_inner()).timed_out = true;
                 *released = true;
                 self.release.notify_all();
                 break;
             }
-            released = self.release.wait_timeout(released, remaining).unwrap().0;
+            released = self
+                .release
+                .wait_timeout(released, remaining)
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
         }
     }
 }
@@ -97,7 +101,7 @@ pub(super) struct Span(Arc<Probe>);
 
 impl Drop for Span {
     fn drop(&mut self) {
-        self.0.stats.lock().unwrap().active -= 1;
+        self.0.stats.lock().unwrap_or_else(|e| e.into_inner()).active -= 1;
     }
 }
 

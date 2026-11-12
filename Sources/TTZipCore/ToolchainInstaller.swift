@@ -209,66 +209,18 @@ public final class ToolchainInstaller: @unchecked Sendable {
         var results: [String: Bool] = [:]
         let isAll = tools.contains("all") || tools.contains("ALL")
         let brewPath = homebrewExecutablePath
-
         let targetTools = isAll ? ["keka", "betterzip", "maczip", "pigz", "7zip", "zstd"] : tools
 
         for tool in targetTools {
             let lower = tool.lowercased().trimmingCharacters(in: .whitespaces)
             if lower.isEmpty { continue }
             statusHandler("Uninstalling: \(lower)...")
-
-            var success = false
-
-            switch lower {
-            case "keka":
-                if let brew = brewPath {
-                    runProcess(brew, ["uninstall", "--cask", "--force", "keka"])
-                }
-                try? FileManager.default.removeItem(atPath: "/Applications/Keka.app")
-                success = !FileManager.default.fileExists(atPath: "/Applications/Keka.app")
-
-            case "betterzip":
-                if let brew = brewPath {
-                    runProcess(brew, ["uninstall", "--cask", "--force", "betterzip"])
-                }
-                try? FileManager.default.removeItem(atPath: "/Applications/BetterZip.app")
-                success = !FileManager.default.fileExists(atPath: "/Applications/BetterZip.app")
-
-            case "maczip", "ezip":
-                if let brew = brewPath {
-                    runProcess(brew, ["uninstall", "--cask", "--force", "maczip"])
-                }
-                try? FileManager.default.removeItem(atPath: "/Applications/MacZip.app")
-                success = !FileManager.default.fileExists(atPath: "/Applications/MacZip.app")
-
-            case "pigz":
-                if let brew = brewPath {
-                    let code = runProcess(brew, ["uninstall", "pigz"])
-                    success = code == 0
-                }
-
-            case "7zip", "7z", "7zz":
-                if let brew = brewPath {
-                    let code = runProcess(brew, ["uninstall", "7-zip"])
-                    success = code == 0
-                }
-
-            case "zstd":
-                if let brew = brewPath {
-                    let code = runProcess(brew, ["uninstall", "zstd"])
-                    success = code == 0
-                }
-
-            default:
-                statusHandler("Unknown component: \(lower)")
-            }
-
+            let success = uninstallSingleTool(lower, brewPath: brewPath, statusHandler: statusHandler)
             results[lower] = success
-            if success {
-                statusHandler("Completed removal of \(lower)")
-            } else {
-                statusHandler("\(lower) removal may require manual confirmation")
-            }
+            let completionMsg = success
+                ? "Completed removal of \(lower)"
+                : "\(lower) removal may require manual confirmation"
+            statusHandler(completionMsg)
         }
 
         return results
@@ -276,6 +228,41 @@ public final class ToolchainInstaller: @unchecked Sendable {
     }
 
     #if !MAS_BUILD
+    private static let caskUninstallTargets: [String: (cask: String, appPath: String)] = [
+        "keka": ("keka", "/Applications/Keka.app"),
+        "betterzip": ("betterzip", "/Applications/BetterZip.app"),
+        "maczip": ("maczip", "/Applications/MacZip.app"),
+        "ezip": ("maczip", "/Applications/MacZip.app")
+    ]
+
+    private static let formulaUninstallTargets: [String: String] = [
+        "pigz": "pigz",
+        "7zip": "7-zip",
+        "7z": "7-zip",
+        "7zz": "7-zip",
+        "zstd": "zstd"
+    ]
+
+    private func uninstallSingleTool(
+        _ lower: String,
+        brewPath: String?,
+        statusHandler: @escaping @Sendable (String) -> Void
+    ) -> Bool {
+        if let caskTarget = Self.caskUninstallTargets[lower] {
+            if let brew = brewPath {
+                runProcess(brew, ["uninstall", "--cask", "--force", caskTarget.cask])
+            }
+            try? FileManager.default.removeItem(atPath: caskTarget.appPath)
+            return !FileManager.default.fileExists(atPath: caskTarget.appPath)
+        }
+        if let formula = Self.formulaUninstallTargets[lower] {
+            guard let brew = brewPath else { return false }
+            return runProcess(brew, ["uninstall", formula]) == 0
+        }
+        statusHandler("Unknown component: \(lower)")
+        return false
+    }
+
     @discardableResult
     private func runProcess(_ binary: String, _ args: [String]) -> Int32 {
         let process = Process()

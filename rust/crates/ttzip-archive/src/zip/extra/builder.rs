@@ -69,62 +69,76 @@ impl ZipExtraFields {
     /// Serializes extra fields for a Central Directory File Header (CDFH).
     pub fn build_central_extra(&self) -> Vec<u8> {
         let mut out = Vec::new();
+        self.append_central_zip64(&mut out);
+        self.append_winzip_aes(&mut out);
+        self.append_central_timestamp(&mut out);
 
+        if let Some(ux) = &self.infozip_unix_new {
+            out.extend_from_slice(&ux.build_central());
+        }
+
+        self.append_shared_optional_extras(&mut out);
+        // Note: self.alignment is deliberately omitted in Central Directory
+        self.append_unknown_fields(&mut out);
+        out
+    }
+
+    fn append_central_zip64(&self, out: &mut Vec<u8>) {
         if let Some(z64) = &self.zip64 {
             out.extend_from_slice(&z64.build_central());
-        } else if self.uncompressed_size.is_some()
-            || self.compressed_size.is_some()
-            || self.local_header_offset.is_some()
-            || self.disk_number.is_some()
-        {
+        } else if self.has_central_zip64_fields() {
             out.extend_from_slice(&Self::build_zip64_extra(
                 self.uncompressed_size,
                 self.compressed_size,
                 self.local_header_offset,
             ));
         }
+    }
 
+    fn has_central_zip64_fields(&self) -> bool {
+        self.uncompressed_size.is_some()
+            || self.compressed_size.is_some()
+            || self.local_header_offset.is_some()
+            || self.disk_number.is_some()
+    }
+
+    fn append_winzip_aes(&self, out: &mut Vec<u8>) {
         if let Some(aes) = &self.winzip_aes {
             out.extend_from_slice(&aes.build());
         } else if self.has_winzip_aes {
             out.extend_from_slice(&Self::build_winzip_aes_extra(self.aes_actual_method));
         }
+    }
 
+    fn append_central_timestamp(&self, out: &mut Vec<u8>) {
         if let Some(ts) = &self.extended_timestamp {
             out.extend_from_slice(&ts.build_central());
         } else if let Some(mtime) = self.mod_time {
             out.extend_from_slice(&Self::build_extended_timestamp(mtime));
         }
+    }
 
-        if let Some(ux) = &self.infozip_unix_new {
-            out.extend_from_slice(&ux.build_central());
-        }
-
+    fn append_shared_optional_extras(&self, out: &mut Vec<u8>) {
         if let Some(ntfs) = &self.ntfs {
             out.extend_from_slice(&ntfs.build());
         }
-
         if let Some(upath) = &self.unicode_path {
             out.extend_from_slice(&upath.build());
         }
-
         if let Some(ucomm) = &self.unicode_comment {
             out.extend_from_slice(&ucomm.build());
         }
-
         if let Some(asi) = &self.asi_unix {
             out.extend_from_slice(&asi.build());
         }
+    }
 
-        // Note: self.alignment is deliberately omitted in Central Directory
-
+    fn append_unknown_fields(&self, out: &mut Vec<u8>) {
         for (tag, data) in &self.unknown_fields {
             out.extend_from_slice(&tag.to_le_bytes());
             out.extend_from_slice(&(data.len() as u16).to_le_bytes());
             out.extend_from_slice(data);
         }
-
-        out
     }
 
     /// Serializes Zip64 extra field for Central Directory or Local File Header.

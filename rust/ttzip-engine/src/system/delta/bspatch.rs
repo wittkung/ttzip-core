@@ -61,95 +61,22 @@ impl TTZipBsPatch {
         let mut extra_pos: usize = 0;
 
         for (idx, ctrl) in controls.iter().enumerate() {
-            let diff_len = ctrl.diff_len;
-            let extra_len = ctrl.extra_len;
-            let seek_offset = ctrl.seek_offset;
-
-            // 1. Additive Diff Block: (old + diff) mod 256
-            if diff_len > 0 {
-                if new_pos + diff_len > new_len {
-                    return Err(DeltaError::TargetBufferOverflow {
-                        requested: new_pos + diff_len,
-                        capacity: new_len,
-                    });
-                }
-                if diff_pos + diff_len > diff_data.len() {
-                    return Err(DeltaError::TruncatedData {
-                        needed: diff_pos + diff_len,
-                        available: diff_data.len(),
-                    });
-                }
-                if old_pos + diff_len > old_data.len() {
-                    return Err(DeltaError::OutOfBoundsSeek {
-                        offset: (old_pos + diff_len) as i64,
-                        boundary: old_data.len(),
-                    });
-                }
-
-                for i in 0..diff_len {
-                    let old_byte = old_data[old_pos + i];
-                    let diff_byte = diff_data[diff_pos + i];
-                    dest[new_pos + i] = old_byte.wrapping_add(diff_byte);
-                }
-
-                new_pos += diff_len;
-                old_pos += diff_len;
-                diff_pos += diff_len;
+            if ctrl.diff_len > 0 {
+                apply_diff_segment(old_data, dest, diff_data, old_pos, new_pos, diff_pos, ctrl.diff_len)?;
+                new_pos += ctrl.diff_len;
+                old_pos += ctrl.diff_len;
+                diff_pos += ctrl.diff_len;
             }
 
-            // 2. Literal Extra Block: direct insertion
-            if extra_len > 0 {
-                if new_pos + extra_len > new_len {
-                    return Err(DeltaError::TargetBufferOverflow {
-                        requested: new_pos + extra_len,
-                        capacity: new_len,
-                    });
-                }
-                if extra_pos + extra_len > extra_data.len() {
-                    return Err(DeltaError::TruncatedData {
-                        needed: extra_pos + extra_len,
-                        available: extra_data.len(),
-                    });
-                }
-
-                dest[new_pos..new_pos + extra_len]
-                    .copy_from_slice(&extra_data[extra_pos..extra_pos + extra_len]);
-
-                new_pos += extra_len;
-                extra_pos += extra_len;
+            if ctrl.extra_len > 0 {
+                apply_extra_segment(dest, extra_data, new_pos, extra_pos, ctrl.extra_len)?;
+                new_pos += ctrl.extra_len;
+                extra_pos += ctrl.extra_len;
             }
 
-            // 3. Relative Seek Displacement in old data
-            let next_old_pos = (old_pos as i64).checked_add(seek_offset).ok_or_else(|| {
-                DeltaError::CorruptedPatch(format!(
-                    "Control #{} seek offset arithmetic overflow: pos={}, offset={}",
-                    idx, old_pos, seek_offset
-                ))
-            })?;
-
-            if next_old_pos < 0 {
-                return Err(DeltaError::OutOfBoundsSeek {
-                    offset: next_old_pos,
-                    boundary: old_data.len(),
-                });
-            }
-
-            let next_old_usize = next_old_pos as usize;
-            if next_old_usize > old_data.len() {
-                // If there are subsequent controls with diff_len > 0, bounds check will trip on diff_len
-                // But allow pointing to EOF if this was the last instruction or followed by extra-only
-                if idx + 1 < controls.len() && controls[idx + 1].diff_len > 0 {
-                    return Err(DeltaError::OutOfBoundsSeek {
-                        offset: next_old_pos,
-                        boundary: old_data.len(),
-                    });
-                }
-            }
-
-            old_pos = next_old_usize;
+            old_pos = compute_next_old_pos(old_pos, ctrl.seek_offset, old_data.len(), idx, controls)?;
         }
 
-        // Integrity verification: target buffer must be completely filled
         if new_pos != new_len {
             return Err(DeltaError::CorruptedPatch(format!(
                 "Reconstructed length mismatch: generated {} bytes, expected {} bytes",
@@ -159,4 +86,97 @@ impl TTZipBsPatch {
 
         Ok(())
     }
+}
+
+fn apply_diff_segment(
+    old_data: &[u8],
+    dest: &mut [u8],
+    diff_data: &[u8],
+    old_pos: usize,
+    new_pos: usize,
+    diff_pos: usize,
+    diff_len: usize,
+) -> DeltaResult<()> {
+    let new_len = dest.len();
+    if new_pos + diff_len > new_len {
+        return Err(DeltaError::TargetBufferOverflow {
+            requested: new_pos + diff_len,
+            capacity: new_len,
+        });
+    }
+    if diff_pos + diff_len > diff_data.len() {
+        return Err(DeltaError::TruncatedData {
+            needed: diff_pos + diff_len,
+            available: diff_data.len(),
+        });
+    }
+    if old_pos + diff_len > old_data.len() {
+        return Err(DeltaError::OutOfBoundsSeek {
+            offset: (old_pos + diff_len) as i64,
+            boundary: old_data.len(),
+        });
+    }
+
+    for i in 0..diff_len {
+        dest[new_pos + i] = old_data[old_pos + i].wrapping_add(diff_data[diff_pos + i]);
+    }
+    Ok(())
+}
+
+fn apply_extra_segment(
+    dest: &mut [u8],
+    extra_data: &[u8],
+    new_pos: usize,
+    extra_pos: usize,
+    extra_len: usize,
+) -> DeltaResult<()> {
+    let new_len = dest.len();
+    if new_pos + extra_len > new_len {
+        return Err(DeltaError::TargetBufferOverflow {
+            requested: new_pos + extra_len,
+            capacity: new_len,
+        });
+    }
+    if extra_pos + extra_len > extra_data.len() {
+        return Err(DeltaError::TruncatedData {
+            needed: extra_pos + extra_len,
+            available: extra_data.len(),
+        });
+    }
+
+    dest[new_pos..new_pos + extra_len]
+        .copy_from_slice(&extra_data[extra_pos..extra_pos + extra_len]);
+    Ok(())
+}
+
+fn compute_next_old_pos(
+    old_pos: usize,
+    seek_offset: i64,
+    old_len: usize,
+    idx: usize,
+    controls: &[BsDiffControl],
+) -> DeltaResult<usize> {
+    let next_old_pos = (old_pos as i64).checked_add(seek_offset).ok_or_else(|| {
+        DeltaError::CorruptedPatch(format!(
+            "Control #{} seek offset arithmetic overflow: pos={}, offset={}",
+            idx, old_pos, seek_offset
+        ))
+    })?;
+
+    if next_old_pos < 0 {
+        return Err(DeltaError::OutOfBoundsSeek {
+            offset: next_old_pos,
+            boundary: old_len,
+        });
+    }
+
+    let next_old_usize = next_old_pos as usize;
+    if next_old_usize > old_len && idx + 1 < controls.len() && controls[idx + 1].diff_len > 0 {
+        return Err(DeltaError::OutOfBoundsSeek {
+            offset: next_old_pos,
+            boundary: old_len,
+        });
+    }
+
+    Ok(next_old_usize)
 }

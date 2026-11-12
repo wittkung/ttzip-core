@@ -30,6 +30,7 @@ impl ExtraFieldsParser {
             return fields;
         }
 
+        let placeholders = (uncomp_placeholder, comp_placeholder, offset_placeholder);
         let mut offset = 0;
         while offset + 4 <= extra_data.len() {
             let header_id = u16::from_le_bytes([extra_data[offset], extra_data[offset + 1]]);
@@ -43,100 +44,123 @@ impl ExtraFieldsParser {
 
             let payload = &extra_data[payload_start..payload_start + data_size];
             let total_field_len = 4 + data_size;
-
-            match header_id {
-                TAG_ZIP64 => {
-                    let z64 = Zip64Extra::parse(
-                        payload,
-                        is_cdfh,
-                        uncomp_placeholder,
-                        comp_placeholder,
-                        offset_placeholder,
-                    );
-                    fields.has_zip64 = true;
-                    fields.uncompressed_size = z64.uncompressed_size;
-                    fields.compressed_size = z64.compressed_size;
-                    fields.local_header_offset = z64.local_header_offset;
-                    fields.disk_number = z64.disk_start_number;
-                    fields.zip64 = Some(z64);
-                }
-
-                TAG_WINZIP_AES => {
-                    if let Some(aes) = WinZipAesExtra::parse(payload) {
-                        fields.has_winzip_aes = true;
-                        fields.aes_version = aes.version;
-                        fields.aes_vendor_id = aes.vendor_id;
-                        fields.aes_strength = aes.strength;
-                        fields.aes_actual_method = aes.actual_compression_method;
-                        fields.winzip_aes = Some(aes);
-                    }
-                }
-
-                TAG_EXT_TIMESTAMP => {
-                    if let Some(ts) = ExtendedTimestampExtra::parse(payload) {
-                        fields.has_extended_timestamp = true;
-                        fields.mod_time = ts.mod_time;
-                        fields.acc_time = ts.acc_time;
-                        fields.create_time = ts.create_time;
-                        fields.extended_timestamp = Some(ts);
-                    }
-                }
-
-                TAG_INFOZIP_UNIX_NEW => {
-                    if let Some(ux) = InfoZipUnixNewExtra::parse(payload) {
-                        fields.has_posix_permissions = true;
-                        fields.uid = Some(ux.uid);
-                        fields.gid = Some(ux.gid);
-                        fields.infozip_unix_new = Some(ux);
-                    }
-                }
-
-                TAG_NTFS => {
-                    if let Some(ntfs) = NtfsExtra::parse(payload) {
-                        fields.ntfs = Some(ntfs);
-                    }
-                }
-
-                TAG_UNICODE_PATH => {
-                    if let Some(upath) = UnicodeFieldExtra::parse(TAG_UNICODE_PATH, payload) {
-                        if !is_cdfh {
-                            fields.unicode_path_str = Some(upath.text.clone());
-                        }
-                        fields.unicode_path = Some(upath);
-                    }
-                }
-
-                TAG_UNICODE_COMMENT => {
-                    if let Some(ucomm) = UnicodeFieldExtra::parse(TAG_UNICODE_COMMENT, payload) {
-                        fields.unicode_comment = Some(ucomm);
-                    }
-                }
-
-                TAG_ASI_UNIX => {
-                    if let Some(asi) = AsiUnixExtra::parse(payload) {
-                        fields.asi_unix = Some(asi);
-                    }
-                }
-
-                TAG_DATA_STREAM_ALIGNMENT => {
-                    if let Some(align) =
-                        DataStreamAlignmentExtra::parse(payload, total_field_len)
-                    {
-                        fields.data_stream_alignment = Some(align.alignment);
-                        fields.alignment = Some(align);
-                    }
-                }
-
-                other => {
-                    if !is_cdfh {
-                        fields.unknown_fields.push((other, payload.to_vec()));
-                    }
-                }
-            }
+            Self::apply_extra_record(
+                &mut fields,
+                header_id,
+                payload,
+                total_field_len,
+                is_cdfh,
+                placeholders,
+            );
 
             offset = payload_start + data_size;
         }
 
         fields
+    }
+
+    fn apply_extra_record(
+        fields: &mut ZipExtraFields,
+        header_id: u16,
+        payload: &[u8],
+        total_field_len: usize,
+        is_cdfh: bool,
+        placeholders: (bool, bool, bool),
+    ) {
+        match header_id {
+            TAG_ZIP64 => {
+                let z64 = Zip64Extra::parse(
+                    payload,
+                    is_cdfh,
+                    placeholders.0,
+                    placeholders.1,
+                    placeholders.2,
+                );
+                fields.has_zip64 = true;
+                fields.uncompressed_size = z64.uncompressed_size;
+                fields.compressed_size = z64.compressed_size;
+                fields.local_header_offset = z64.local_header_offset;
+                fields.disk_number = z64.disk_start_number;
+                fields.zip64 = Some(z64);
+            }
+            TAG_WINZIP_AES => {
+                if let Some(aes) = WinZipAesExtra::parse(payload) {
+                    fields.has_winzip_aes = true;
+                    fields.aes_version = aes.version;
+                    fields.aes_vendor_id = aes.vendor_id;
+                    fields.aes_strength = aes.strength;
+                    fields.aes_actual_method = aes.actual_compression_method;
+                    fields.winzip_aes = Some(aes);
+                }
+            }
+            TAG_EXT_TIMESTAMP => {
+                if let Some(ts) = ExtendedTimestampExtra::parse(payload) {
+                    fields.has_extended_timestamp = true;
+                    fields.mod_time = ts.mod_time;
+                    fields.acc_time = ts.acc_time;
+                    fields.create_time = ts.create_time;
+                    fields.extended_timestamp = Some(ts);
+                }
+            }
+            TAG_INFOZIP_UNIX_NEW => {
+                if let Some(ux) = InfoZipUnixNewExtra::parse(payload) {
+                    fields.has_posix_permissions = true;
+                    fields.uid = Some(ux.uid);
+                    fields.gid = Some(ux.gid);
+                    fields.infozip_unix_new = Some(ux);
+                }
+            }
+            _ => Self::apply_secondary_extra_record(
+                fields,
+                header_id,
+                payload,
+                total_field_len,
+                is_cdfh,
+            ),
+        }
+    }
+
+    fn apply_secondary_extra_record(
+        fields: &mut ZipExtraFields,
+        header_id: u16,
+        payload: &[u8],
+        total_field_len: usize,
+        is_cdfh: bool,
+    ) {
+        match header_id {
+            TAG_NTFS => {
+                if let Some(ntfs) = NtfsExtra::parse(payload) {
+                    fields.ntfs = Some(ntfs);
+                }
+            }
+            TAG_UNICODE_PATH => {
+                if let Some(upath) = UnicodeFieldExtra::parse(TAG_UNICODE_PATH, payload) {
+                    if !is_cdfh {
+                        fields.unicode_path_str = Some(upath.text.clone());
+                    }
+                    fields.unicode_path = Some(upath);
+                }
+            }
+            TAG_UNICODE_COMMENT => {
+                if let Some(ucomm) = UnicodeFieldExtra::parse(TAG_UNICODE_COMMENT, payload) {
+                    fields.unicode_comment = Some(ucomm);
+                }
+            }
+            TAG_ASI_UNIX => {
+                if let Some(asi) = AsiUnixExtra::parse(payload) {
+                    fields.asi_unix = Some(asi);
+                }
+            }
+            TAG_DATA_STREAM_ALIGNMENT => {
+                if let Some(align) = DataStreamAlignmentExtra::parse(payload, total_field_len) {
+                    fields.data_stream_alignment = Some(align.alignment);
+                    fields.alignment = Some(align);
+                }
+            }
+            other if !is_cdfh => {
+                fields.unknown_fields.push((other, payload.to_vec()));
+            }
+            _ => {}
+        }
     }
 }

@@ -65,8 +65,8 @@ pub fn find_first_difference(expected: &[u8], actual: &[u8]) -> Option<usize> {
 
     // 8-byte chunk loop
     while offset + 8 <= min_len {
-        let a = u64::from_ne_bytes(expected[offset..offset + 8].try_into().unwrap());
-        let b = u64::from_ne_bytes(actual[offset..offset + 8].try_into().unwrap());
+        let a = u64::from_ne_bytes(expected[offset..offset + 8].try_into().unwrap_or_default());
+        let b = u64::from_ne_bytes(actual[offset..offset + 8].try_into().unwrap_or_default());
         if a != b {
             for i in 0..8 {
                 if expected[offset + i] != actual[offset + i] {

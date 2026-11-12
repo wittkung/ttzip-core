@@ -30,18 +30,23 @@ fn quarter_round(state: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize) 
     state[b] = rotl(state[b] ^ state[c], 7);
 }
 
+#[inline(always)]
+fn read_u32_le(bytes: &[u8]) -> u32 {
+    u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]])
+}
+
 /// ChaCha20 core block function producing 64 bytes of keystream.
 pub fn chacha20_block(key: &[u8; 32], nonce: &[u8; 12], counter: u32, out: &mut [u8; 64]) {
     let mut state = [0u32; 16];
     state[0..4].copy_from_slice(&CHACHA_CONSTANTS);
 
     for i in 0..8 {
-        state[4 + i] = u32::from_le_bytes(key[i * 4..i * 4 + 4].try_into().unwrap());
+        state[4 + i] = read_u32_le(&key[i * 4..i * 4 + 4]);
     }
 
     state[12] = counter;
     for i in 0..3 {
-        state[13 + i] = u32::from_le_bytes(nonce[i * 4..i * 4 + 4].try_into().unwrap());
+        state[13 + i] = read_u32_le(&nonce[i * 4..i * 4 + 4]);
     }
 
     let mut working = state;
@@ -94,10 +99,10 @@ impl Poly1305 {
         r_bytes[8] &= 252;
         r_bytes[12] &= 252;
 
-        let k0 = u32::from_le_bytes(r_bytes[0..4].try_into().unwrap());
-        let k1 = u32::from_le_bytes(r_bytes[4..8].try_into().unwrap());
-        let k2 = u32::from_le_bytes(r_bytes[8..12].try_into().unwrap());
-        let k3 = u32::from_le_bytes(r_bytes[12..16].try_into().unwrap());
+        let k0 = read_u32_le(&r_bytes[0..4]);
+        let k1 = read_u32_le(&r_bytes[4..8]);
+        let k2 = read_u32_le(&r_bytes[8..12]);
+        let k3 = read_u32_le(&r_bytes[12..16]);
 
         let r0 = k0 & 0x03FF_FFFF;
         let r1 = ((k0 >> 26) | (k1 << 6)) & 0x03FF_FFFF;
@@ -112,7 +117,7 @@ impl Poly1305 {
 
         let mut pad = [0u32; 4];
         for i in 0..4 {
-            pad[i] = u32::from_le_bytes(key[16 + i * 4..20 + i * 4].try_into().unwrap());
+            pad[i] = read_u32_le(&key[16 + i * 4..20 + i * 4]);
         }
 
         Self {
@@ -130,10 +135,10 @@ impl Poly1305 {
         b[..block.len()].copy_from_slice(block);
         b[block.len()] = 1;
 
-        let t0 = u32::from_le_bytes(b[0..4].try_into().unwrap());
-        let t1 = u32::from_le_bytes(b[4..8].try_into().unwrap());
-        let t2 = u32::from_le_bytes(b[8..12].try_into().unwrap());
-        let t3 = u32::from_le_bytes(b[12..16].try_into().unwrap());
+        let t0 = read_u32_le(&b[0..4]);
+        let t1 = read_u32_le(&b[4..8]);
+        let t2 = read_u32_le(&b[8..12]);
+        let t3 = read_u32_le(&b[12..16]);
         let t4 = b[16] as u32;
 
         let c0 = t0 & 0x03FF_FFFF;

@@ -86,31 +86,7 @@ impl PreFlightVolumeProber {
 
         let prefix = &file_name[..dot_pos];
         let width = ext.len();
-
-        let mut present: Vec<(u32, PathBuf, u64)> = Vec::new();
-        if let Ok(entries) = fs::read_dir(parent_dir) {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let name_str = match name.to_str() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                if let Some(p) = name_str.rfind('.') {
-                    let p_prefix = &name_str[..p];
-                    let p_ext = &name_str[p + 1..];
-                    if p_prefix == prefix
-                        && p_ext.len() == width
-                        && p_ext.chars().all(|c| c.is_ascii_digit())
-                    {
-                        if let Ok(idx) = p_ext.parse::<u32>() {
-                            let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                            present.push((idx, entry.path(), size));
-                        }
-                    }
-                }
-            }
-        }
-
+        let mut present = scan_numbered_siblings(parent_dir, prefix, width);
         if present.is_empty() {
             return None;
         }
@@ -135,21 +111,12 @@ impl PreFlightVolumeProber {
             return None;
         }
 
-        let present_volumes = present
-            .into_iter()
-            .map(|(index, path, file_size)| VolumePartInfo {
-                index,
-                path: path.to_string_lossy().to_string(),
-                file_size,
-            })
-            .collect();
-
         Some(MissingVolumeDescriptor {
             format: "NumberedExtension".to_string(),
             base_stem: prefix.to_string(),
             seed_path: seed_path.to_string_lossy().to_string(),
             expected_total_volumes: Some(max_idx - start_idx + 1),
-            present_volumes,
+            present_volumes: to_volume_part_infos(present),
             missing_indices,
             missing_filenames,
             severity: MissingVolumeSeverity::CatalogBlocked,
@@ -164,122 +131,23 @@ impl PreFlightVolumeProber {
     ) -> Option<MissingVolumeDescriptor> {
         let dot_pos = file_name.rfind('.')?;
         let ext = &file_name[dot_pos + 1..];
-        let is_z_part = ext.starts_with('z') || ext.starts_with('Z');
-        let is_z_numbered =
-            is_z_part && ext.len() >= 3 && ext[1..].chars().all(|c| c.is_ascii_digit());
+        let is_z_numbered = is_pkzip_part_ext(ext);
         let is_zip_final = ext.eq_ignore_ascii_case("zip");
 
         if !is_z_numbered && !is_zip_final {
             return None;
         }
 
-        // Fast-path: If the seed is a .zip file, check its EOCD record first.
-        // Standalone (single-volume) ZIP files specify disk 0 and CD disk 0.
-        // Bypasses parent directory scanning entirely for standard non-split archives.
-        if is_zip_final {
-            if let Ok(mut file) = fs::File::open(seed_path) {
-                if let Ok(metadata) = file.metadata() {
-                    let len = metadata.len();
-                    let scan_len = (len as usize).min(1024);
-                    if scan_len >= 22 && file.seek(SeekFrom::End(-(scan_len as i64))).is_ok() {
-                        let mut buf = vec![0u8; scan_len];
-                        if file.read_exact(&mut buf).is_ok() {
-                            for i in (0..=(scan_len - 22)).rev() {
-                                if &buf[i..i + 4] == b"PK\x05\x06" {
-                                    let disk_num = u16::from_le_bytes([buf[i + 4], buf[i + 5]]);
-                                    let cd_disk = u16::from_le_bytes([buf[i + 6], buf[i + 7]]);
-                                    if disk_num == 0 && cd_disk == 0 {
-                                        return None;
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        if is_zip_final && read_zip_eocd_disks(seed_path) == Some((0, 0)) {
+            return None;
         }
 
         let stem = &file_name[..dot_pos];
-        let mut present_z: Vec<(u32, PathBuf, u64)> = Vec::new();
-        let mut zip_path: Option<(PathBuf, u64)> = None;
-
-        if let Ok(entries) = fs::read_dir(parent_dir) {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let name_str = match name.to_str() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                if let Some(p) = name_str.rfind('.') {
-                    let p_stem = &name_str[..p];
-                    let p_ext = &name_str[p + 1..];
-                    if p_stem.eq_ignore_ascii_case(stem) {
-                        if p_ext.eq_ignore_ascii_case("zip") {
-                            let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                            zip_path = Some((entry.path(), size));
-                        } else if (p_ext.starts_with('z') || p_ext.starts_with('Z'))
-                            && p_ext.len() >= 3
-                            && p_ext[1..].chars().all(|c| c.is_ascii_digit())
-                        {
-                            if let Ok(idx) = p_ext[1..].parse::<u32>() {
-                                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                                present_z.push((idx, entry.path(), size));
-                            }
-                        }
-                    }
-                }
-            }
-        }
+        let (mut present_z, zip_path) = scan_pkzip_siblings(parent_dir, stem);
 
         if present_z.is_empty() {
-            if let Some((ref zp, len)) = zip_path {
-                if let Ok(mut file) = fs::File::open(zp) {
-                    let scan_len = (len as usize).min(1024);
-                    if scan_len >= 22 && file.seek(SeekFrom::End(-(scan_len as i64))).is_ok() {
-                        let mut buf = vec![0u8; scan_len];
-                        if file.read_exact(&mut buf).is_ok() {
-                            for i in 0..=(scan_len - 22) {
-                                if &buf[i..i + 4] == b"PK\x05\x06" {
-                                    let disk_num = u16::from_le_bytes([buf[i + 4], buf[i + 5]]);
-                                    let cd_disk = u16::from_le_bytes([buf[i + 6], buf[i + 7]]);
-                                    if (disk_num > 0 || cd_disk > 0)
-                                        && disk_num != u16::MAX
-                                        && cd_disk != u16::MAX
-                                    {
-                                        let total_vols = (disk_num as u32) + 1;
-                                        let mut missing_indices = Vec::new();
-                                        let mut missing_filenames = Vec::new();
-                                        for d in 1..=disk_num as u32 {
-                                            missing_indices.push(d);
-                                            missing_filenames.push(format!("{}.z{:02}", stem, d));
-                                        }
-                                        return Some(MissingVolumeDescriptor {
-                                            format: "PKZIP".to_string(),
-                                            base_stem: stem.to_string(),
-                                            seed_path: seed_path.to_string_lossy().to_string(),
-                                            expected_total_volumes: Some(total_vols),
-                                            present_volumes: vec![VolumePartInfo {
-                                                index: total_vols,
-                                                path: zp.to_string_lossy().to_string(),
-                                                file_size: len,
-                                            }],
-                                            missing_indices,
-                                            missing_filenames,
-                                            severity: MissingVolumeSeverity::CatalogBlocked,
-                                            recovery_hint: format!(
-                                                "Archive spans {} disks; prior segments are missing",
-                                                total_vols
-                                            ),
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            return None;
+            let (zp, len) = zip_path?;
+            return build_spanned_zip_only_descriptor(seed_path, stem, &zp, len);
         }
 
         present_z.sort_by_key(|p| p.0);
@@ -306,15 +174,7 @@ impl PreFlightVolumeProber {
             return None;
         }
 
-        let mut present_volumes: Vec<VolumePartInfo> = present_z
-            .into_iter()
-            .map(|(index, path, file_size)| VolumePartInfo {
-                index,
-                path: path.to_string_lossy().to_string(),
-                file_size,
-            })
-            .collect();
-
+        let mut present_volumes = to_volume_part_infos(present_z);
         if let Some((zp, size)) = zip_path {
             present_volumes.push(VolumePartInfo {
                 index: max_z + 1,
@@ -345,50 +205,10 @@ impl PreFlightVolumeProber {
         file_name: &str,
         parent_dir: &Path,
     ) -> Option<MissingVolumeDescriptor> {
-        let lower = file_name.to_lowercase();
-        let part_pos = lower.find(".part")?;
-        let after_part = &file_name[part_pos + 5..];
-        let dot_after = after_part.find('.')?;
-        let num_str = &after_part[..dot_after];
-        let suffix = &after_part[dot_after..];
-
-        if num_str.is_empty() || !num_str.chars().all(|c| c.is_ascii_digit()) {
-            return None;
-        }
-
-        let prefix = &file_name[..part_pos];
+        let (prefix, num_str, suffix) = split_part_filename(file_name)?;
         let width = num_str.len();
 
-        let mut present: Vec<(u32, PathBuf, u64)> = Vec::new();
-        if let Ok(entries) = fs::read_dir(parent_dir) {
-            for entry in entries.flatten() {
-                let name = entry.file_name();
-                let name_str = match name.to_str() {
-                    Some(s) => s,
-                    None => continue,
-                };
-                let n_lower = name_str.to_lowercase();
-                if let Some(pos) = n_lower.find(".part") {
-                    let p_prefix = &name_str[..pos];
-                    if p_prefix.eq_ignore_ascii_case(prefix) {
-                        let aft = &name_str[pos + 5..];
-                        if let Some(d_aft) = aft.find('.') {
-                            let n_num = &aft[..d_aft];
-                            let n_suf = &aft[d_aft..];
-                            if n_suf.eq_ignore_ascii_case(suffix)
-                                && n_num.chars().all(|c| c.is_ascii_digit())
-                            {
-                                if let Ok(idx) = n_num.parse::<u32>() {
-                                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
-                                    present.push((idx, entry.path(), size));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
+        let mut present = scan_part_siblings(parent_dir, prefix, suffix);
         if present.is_empty() {
             return None;
         }
@@ -417,28 +237,186 @@ impl PreFlightVolumeProber {
             return None;
         }
 
-        let present_volumes = present
-            .into_iter()
-            .map(|(index, path, file_size)| VolumePartInfo {
-                index,
-                path: path.to_string_lossy().to_string(),
-                file_size,
-            })
-            .collect();
-
         let missing_count = missing_indices.len();
         Some(MissingVolumeDescriptor {
             format: "PartNumbered".to_string(),
             base_stem: prefix.to_string(),
             seed_path: seed_path.to_string_lossy().to_string(),
             expected_total_volumes: Some(max_idx),
-            present_volumes,
+            present_volumes: to_volume_part_infos(present),
             missing_indices,
             missing_filenames,
             severity: MissingVolumeSeverity::CatalogBlocked,
             recovery_hint: format!("Missing {} part(s) in part sequence", missing_count),
         })
     }
+}
+
+fn to_volume_part_infos(present: Vec<(u32, PathBuf, u64)>) -> Vec<VolumePartInfo> {
+    present
+        .into_iter()
+        .map(|(index, path, file_size)| VolumePartInfo {
+            index,
+            path: path.to_string_lossy().to_string(),
+            file_size,
+        })
+        .collect()
+}
+
+fn scan_numbered_siblings(parent_dir: &Path, prefix: &str, width: usize) -> Vec<(u32, PathBuf, u64)> {
+    let mut present = Vec::new();
+    let Ok(entries) = fs::read_dir(parent_dir) else {
+        return present;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name_str) = name.to_str() else {
+            continue;
+        };
+        if let Some(p) = name_str.rfind('.') {
+            let p_prefix = &name_str[..p];
+            let p_ext = &name_str[p + 1..];
+            if p_prefix == prefix && p_ext.len() == width && p_ext.chars().all(|c| c.is_ascii_digit()) {
+                if let Ok(idx) = p_ext.parse::<u32>() {
+                    let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                    present.push((idx, entry.path(), size));
+                }
+            }
+        }
+    }
+    present
+}
+
+fn is_pkzip_part_ext(ext: &str) -> bool {
+    (ext.starts_with('z') || ext.starts_with('Z'))
+        && ext.len() >= 3
+        && ext[1..].chars().all(|c| c.is_ascii_digit())
+}
+
+fn read_zip_eocd_disks(zip_path: &Path) -> Option<(u16, u16)> {
+    let mut file = fs::File::open(zip_path).ok()?;
+    let len = file.metadata().ok()?.len();
+    let scan_len = (len as usize).min(1024);
+    if scan_len < 22 {
+        return None;
+    }
+    file.seek(SeekFrom::End(-(scan_len as i64))).ok()?;
+    let mut buf = vec![0u8; scan_len];
+    file.read_exact(&mut buf).ok()?;
+    for i in (0..=(scan_len - 22)).rev() {
+        if &buf[i..i + 4] == b"PK\x05\x06" {
+            let disk_num = u16::from_le_bytes([buf[i + 4], buf[i + 5]]);
+            let cd_disk = u16::from_le_bytes([buf[i + 6], buf[i + 7]]);
+            return Some((disk_num, cd_disk));
+        }
+    }
+    None
+}
+
+type PkzipSiblingsScan = (Vec<(u32, PathBuf, u64)>, Option<(PathBuf, u64)>);
+
+fn scan_pkzip_siblings(
+    parent_dir: &Path,
+    stem: &str,
+) -> PkzipSiblingsScan {
+    let mut present_z = Vec::new();
+    let mut zip_path = None;
+    let Ok(entries) = fs::read_dir(parent_dir) else {
+        return (present_z, zip_path);
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name_str) = name.to_str() else {
+            continue;
+        };
+        let Some(p) = name_str.rfind('.') else {
+            continue;
+        };
+        let p_stem = &name_str[..p];
+        let p_ext = &name_str[p + 1..];
+        if !p_stem.eq_ignore_ascii_case(stem) {
+            continue;
+        }
+        let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+        if p_ext.eq_ignore_ascii_case("zip") {
+            zip_path = Some((entry.path(), size));
+        } else if is_pkzip_part_ext(p_ext) {
+            if let Ok(idx) = p_ext[1..].parse::<u32>() {
+                present_z.push((idx, entry.path(), size));
+            }
+        }
+    }
+    (present_z, zip_path)
+}
+
+fn build_spanned_zip_only_descriptor(
+    seed_path: &Path,
+    stem: &str,
+    zp: &Path,
+    len: u64,
+) -> Option<MissingVolumeDescriptor> {
+    let (disk_num, cd_disk) = read_zip_eocd_disks(zp)?;
+    if (disk_num == 0 && cd_disk == 0) || disk_num == u16::MAX || cd_disk == u16::MAX {
+        return None;
+    }
+    let total_vols = (disk_num as u32) + 1;
+    let mut missing_indices = Vec::new();
+    let mut missing_filenames = Vec::new();
+    for d in 1..=disk_num as u32 {
+        missing_indices.push(d);
+        missing_filenames.push(format!("{}.z{:02}", stem, d));
+    }
+    Some(MissingVolumeDescriptor {
+        format: "PKZIP".to_string(),
+        base_stem: stem.to_string(),
+        seed_path: seed_path.to_string_lossy().to_string(),
+        expected_total_volumes: Some(total_vols),
+        present_volumes: vec![VolumePartInfo {
+            index: total_vols,
+            path: zp.to_string_lossy().to_string(),
+            file_size: len,
+        }],
+        missing_indices,
+        missing_filenames,
+        severity: MissingVolumeSeverity::CatalogBlocked,
+        recovery_hint: format!("Archive spans {} disks; prior segments are missing", total_vols),
+    })
+}
+
+fn split_part_filename(file_name: &str) -> Option<(&str, &str, &str)> {
+    let lower = file_name.to_lowercase();
+    let part_pos = lower.find(".part")?;
+    let after_part = &file_name[part_pos + 5..];
+    let dot_after = after_part.find('.')?;
+    let num_str = &after_part[..dot_after];
+    let suffix = &after_part[dot_after..];
+    if num_str.is_empty() || !num_str.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    Some((&file_name[..part_pos], num_str, suffix))
+}
+
+fn scan_part_siblings(parent_dir: &Path, prefix: &str, suffix: &str) -> Vec<(u32, PathBuf, u64)> {
+    let mut present = Vec::new();
+    let Ok(entries) = fs::read_dir(parent_dir) else {
+        return present;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name_str) = name.to_str() else {
+            continue;
+        };
+        let Some((p_prefix, n_num, n_suf)) = split_part_filename(name_str) else {
+            continue;
+        };
+        if p_prefix.eq_ignore_ascii_case(prefix) && n_suf.eq_ignore_ascii_case(suffix) {
+            if let Ok(idx) = n_num.parse::<u32>() {
+                let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
+                present.push((idx, entry.path(), size));
+            }
+        }
+    }
+    present
 }
 
 #[cfg(test)]

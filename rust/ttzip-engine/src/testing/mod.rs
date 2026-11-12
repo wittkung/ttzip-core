@@ -5,6 +5,7 @@
 
 pub mod archive_corpus_generator;
 pub mod differential;
+pub mod differential_runner;
 pub mod fuzz;
 pub mod fuzz_data_producer;
 pub mod hex_diff;

@@ -350,6 +350,28 @@ pub struct UniFFIParentAndPrefix {
     pub prefix: String,
 }
 
+/// Extended archive creation tuning options bridged from `ArchiveAdvancedOptions` in Swift.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UniFFICreateArchiveTuningOptions {
+    pub dictionary_size_mb: u32,
+    pub enable_solid_archive: bool,
+    pub zip_encryption_method: String,
+    pub zstd_level: Option<u8>,
+    pub enable_ldm: bool,
+}
+
+impl Default for UniFFICreateArchiveTuningOptions {
+    fn default() -> Self {
+        Self {
+            dictionary_size_mb: 0,
+            enable_solid_archive: true,
+            zip_encryption_method: "AES-256".to_string(),
+            zstd_level: None,
+            enable_ldm: false,
+        }
+    }
+}
+
 /// Structural role of a path involved in an incomplete creation transaction across FFI.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, uniffi::Enum)]
 pub enum UniFFIResidualPathRole {

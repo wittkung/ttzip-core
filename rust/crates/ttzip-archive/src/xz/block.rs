@@ -311,101 +311,26 @@ impl XzBlockHeader {
     /// Validates the 1-byte Header Size, Block Flags reserved bits, VLI sizes,
     /// filter properties bounds, zeroed header padding, and CRC32 integrity.
     pub fn parse(input: &[u8], check_type: XzCheckType) -> Result<Self, XzBlockError> {
-        if input.len() < MIN_BLOCK_HEADER_SIZE {
-            return Err(XzBlockError::UnexpectedEof);
-        }
+        let (header_size, payload_len) = Self::validate_header_crc32(input)?;
+        let payload = &input[..payload_len];
 
-        // 1. Read Header Size byte: real header size = (encoded + 1) * 4
-        let encoded_header_size = input[0];
-        let header_size = (encoded_header_size as usize + 1) * 4;
-
-        if !(MIN_BLOCK_HEADER_SIZE..=MAX_BLOCK_HEADER_SIZE).contains(&header_size) {
-            return Err(XzBlockError::InvalidHeaderSize(header_size));
-        }
-
-        if input.len() < header_size {
-            return Err(XzBlockError::UnexpectedEof);
-        }
-
-        // 2. Validate Header CRC32
-        let payload_len = header_size - 4;
-        let expected_crc = u32::from_le_bytes(
-            input[payload_len..header_size]
-                .try_into()
-                .map_err(|_| XzBlockError::UnexpectedEof)?,
-        );
-        let computed_crc = crc32_fast(0, &input[..payload_len]);
-
-        if expected_crc != computed_crc {
-            return Err(XzBlockError::Crc32Mismatch {
-                expected: expected_crc,
-                computed: computed_crc,
-            });
-        }
-
-        // 3. Parse Block Flags (byte 1)
-        let flags = input[1];
+        let flags = payload[1];
         if (flags & 0x3C) != 0 {
             return Err(XzBlockError::ReservedFlagsSet(flags));
         }
 
         let num_filters = ((flags & 0x03) as usize) + 1;
-        let has_compressed_size = (flags & 0x40) != 0;
-        let has_uncompressed_size = (flags & 0x80) != 0;
-
         let mut pos = 2;
+        let (compressed_size, uncompressed_size) = Self::parse_optional_sizes(
+            payload,
+            flags,
+            header_size,
+            check_type.check_size(),
+            &mut pos,
+        )?;
+        let filters = Self::parse_filter_chain(payload, num_filters, &mut pos)?;
 
-        // 4. Parse Optional Compressed Size VLI
-        let compressed_size = if has_compressed_size {
-            let val = decode_vli(&input[..payload_len], &mut pos)?;
-            if val == 0 {
-                return Err(XzBlockError::InvalidCompressedSize(0));
-            }
-            let max_allowed = 0x7FFF_FFFF_FFFF_FFFFu64
-                .saturating_sub(header_size as u64)
-                .saturating_sub(check_type.check_size() as u64);
-            if val > max_allowed {
-                return Err(XzBlockError::InvalidCompressedSize(val));
-            }
-            Some(val)
-        } else {
-            None
-        };
-
-        // 5. Parse Optional Uncompressed Size VLI
-        let uncompressed_size = if has_uncompressed_size {
-            let val = decode_vli(&input[..payload_len], &mut pos)?;
-            if val > 0x7FFF_FFFF_FFFF_FFFFu64 {
-                return Err(XzBlockError::InvalidUncompressedSize(val));
-            }
-            Some(val)
-        } else {
-            None
-        };
-
-        // 6. Parse Filter Flags chain
-        let mut filters = Vec::with_capacity(num_filters);
-        for _ in 0..num_filters {
-            let filter_id = decode_vli(&input[..payload_len], &mut pos)?;
-            let props_len_vli = decode_vli(&input[..payload_len], &mut pos)?;
-
-            let props_len = props_len_vli as usize;
-            if pos + props_len > payload_len {
-                return Err(XzBlockError::TruncatedFilterProperties);
-            }
-
-            let properties = input[pos..pos + props_len].to_vec();
-            pos += props_len;
-
-            filters.push(XzFilterConfig {
-                filter_id,
-                properties,
-            });
-        }
-
-        // 7. Validate Header Padding bytes (all must be 0x00)
-        let padding_slice = &input[pos..payload_len];
-        if padding_slice.iter().any(|&b| b != 0x00) {
+        if payload[pos..].iter().any(|&b| b != 0x00) {
             return Err(XzBlockError::NonZeroHeaderPadding);
         }
 
@@ -418,6 +343,90 @@ impl XzBlockHeader {
         })
     }
 
+    fn validate_header_crc32(input: &[u8]) -> Result<(usize, usize), XzBlockError> {
+        if input.len() < MIN_BLOCK_HEADER_SIZE {
+            return Err(XzBlockError::UnexpectedEof);
+        }
+
+        let header_size = (input[0] as usize + 1) * 4;
+        if !(MIN_BLOCK_HEADER_SIZE..=MAX_BLOCK_HEADER_SIZE).contains(&header_size) {
+            return Err(XzBlockError::InvalidHeaderSize(header_size));
+        }
+        if input.len() < header_size {
+            return Err(XzBlockError::UnexpectedEof);
+        }
+
+        let payload_len = header_size - 4;
+        let expected_crc = u32::from_le_bytes(
+            input[payload_len..header_size]
+                .try_into()
+                .map_err(|_| XzBlockError::UnexpectedEof)?,
+        );
+        let computed_crc = crc32_fast(0, &input[..payload_len]);
+        if expected_crc != computed_crc {
+            return Err(XzBlockError::Crc32Mismatch {
+                expected: expected_crc,
+                computed: computed_crc,
+            });
+        }
+        Ok((header_size, payload_len))
+    }
+
+    fn parse_optional_sizes(
+        payload: &[u8],
+        flags: u8,
+        header_size: usize,
+        check_size: usize,
+        pos: &mut usize,
+    ) -> Result<(Option<u64>, Option<u64>), XzBlockError> {
+        let compressed_size = if (flags & 0x40) != 0 {
+            let val = decode_vli(payload, pos)?;
+            let max_allowed = 0x7FFF_FFFF_FFFF_FFFFu64
+                .saturating_sub(header_size as u64)
+                .saturating_sub(check_size as u64);
+            if val == 0 || val > max_allowed {
+                return Err(XzBlockError::InvalidCompressedSize(val));
+            }
+            Some(val)
+        } else {
+            None
+        };
+
+        let uncompressed_size = if (flags & 0x80) != 0 {
+            let val = decode_vli(payload, pos)?;
+            if val > 0x7FFF_FFFF_FFFF_FFFFu64 {
+                return Err(XzBlockError::InvalidUncompressedSize(val));
+            }
+            Some(val)
+        } else {
+            None
+        };
+
+        Ok((compressed_size, uncompressed_size))
+    }
+
+    fn parse_filter_chain(
+        payload: &[u8],
+        num_filters: usize,
+        pos: &mut usize,
+    ) -> Result<Vec<XzFilterConfig>, XzBlockError> {
+        let mut filters = Vec::with_capacity(num_filters);
+        for _ in 0..num_filters {
+            let filter_id = decode_vli(payload, pos)?;
+            let props_len = decode_vli(payload, pos)? as usize;
+            if *pos + props_len > payload.len() {
+                return Err(XzBlockError::TruncatedFilterProperties);
+            }
+            let properties = payload[*pos..*pos + props_len].to_vec();
+            *pos += props_len;
+            filters.push(XzFilterConfig {
+                filter_id,
+                properties,
+            });
+        }
+        Ok(filters)
+    }
+
     /// Encode this `XzBlockHeader` into a byte buffer including padding and CRC32.
     pub fn encode(&self) -> Result<Vec<u8>, XzBlockError> {
         let filter_count = self.filters.len();
@@ -425,23 +434,52 @@ impl XzBlockHeader {
             return Err(XzBlockError::InvalidFilterCount(filter_count));
         }
 
+        let target_size = self.resolve_target_header_size()?;
+        let mut buf = Vec::with_capacity(target_size);
+
+        let encoded_size_byte = ((target_size / 4) - 1) as u8;
+        buf.push(encoded_size_byte);
+        buf.push(self.encode_block_flags(filter_count));
+
+        if let Some(cs) = self.compressed_size {
+            Self::push_encoded_vli(cs, &mut buf)?;
+        }
+        if let Some(us) = self.uncompressed_size {
+            Self::push_encoded_vli(us, &mut buf)?;
+        }
+        for filter in &self.filters {
+            Self::push_encoded_vli(filter.filter_id, &mut buf)?;
+            Self::push_encoded_vli(filter.properties.len() as u64, &mut buf)?;
+            buf.extend_from_slice(&filter.properties);
+        }
+
+        let payload_len = target_size - 4;
+        if buf.len() > payload_len {
+            return Err(XzBlockError::HeaderTooLarge(buf.len() + 4));
+        }
+        buf.resize(payload_len, 0x00);
+
+        let crc = crc32_fast(0, &buf);
+        buf.extend_from_slice(&crc.to_le_bytes());
+        debug_assert_eq!(buf.len(), target_size);
+        Ok(buf)
+    }
+
+    fn resolve_target_header_size(&self) -> Result<usize, XzBlockError> {
         let target_size = if self.header_size >= MIN_BLOCK_HEADER_SIZE {
             self.header_size
         } else {
             self.calculate_minimum_header_size()?
         };
-
-        if !(MIN_BLOCK_HEADER_SIZE..=MAX_BLOCK_HEADER_SIZE).contains(&target_size) || (target_size % 4) != 0 {
+        if !(MIN_BLOCK_HEADER_SIZE..=MAX_BLOCK_HEADER_SIZE).contains(&target_size)
+            || (target_size % 4) != 0
+        {
             return Err(XzBlockError::InvalidHeaderSize(target_size));
         }
+        Ok(target_size)
+    }
 
-        let mut buf = Vec::with_capacity(target_size);
-
-        // Byte 0: Header Size (placeholder, written later)
-        let encoded_size_byte = ((target_size / 4) - 1) as u8;
-        buf.push(encoded_size_byte);
-
-        // Byte 1: Block Flags
+    fn encode_block_flags(&self, filter_count: usize) -> u8 {
         let mut flags = (filter_count as u8) - 1;
         if self.compressed_size.is_some() {
             flags |= 0x40;
@@ -449,55 +487,15 @@ impl XzBlockHeader {
         if self.uncompressed_size.is_some() {
             flags |= 0x80;
         }
-        buf.push(flags);
+        flags
+    }
 
-        // Optional Compressed Size VLI
-        if let Some(cs) = self.compressed_size {
-            let mut vli_buf = [0u8; VLI_MAX_BYTES];
-            let mut vpos = 0;
-            let len = encode_vli(cs, &mut vli_buf, &mut vpos)?;
-            buf.extend_from_slice(&vli_buf[..len]);
-        }
-
-        // Optional Uncompressed Size VLI
-        if let Some(us) = self.uncompressed_size {
-            let mut vli_buf = [0u8; VLI_MAX_BYTES];
-            let mut vpos = 0;
-            let len = encode_vli(us, &mut vli_buf, &mut vpos)?;
-            buf.extend_from_slice(&vli_buf[..len]);
-        }
-
-        // Filter Flags chain
-        for filter in &self.filters {
-            let mut vli_buf = [0u8; VLI_MAX_BYTES];
-            let mut id_pos = 0;
-            let id_len = encode_vli(filter.filter_id, &mut vli_buf, &mut id_pos)?;
-            buf.extend_from_slice(&vli_buf[..id_len]);
-
-            let props_len = filter.properties.len() as u64;
-            let mut len_pos = 0;
-            let len_len = encode_vli(props_len, &mut vli_buf, &mut len_pos)?;
-            buf.extend_from_slice(&vli_buf[..len_len]);
-
-            buf.extend_from_slice(&filter.properties);
-        }
-
-        // Header Padding
-        let payload_len = target_size - 4;
-        if buf.len() > payload_len {
-            return Err(XzBlockError::HeaderTooLarge(buf.len() + 4));
-        }
-
-        let padding_needed = payload_len - buf.len();
-        buf.resize(payload_len, 0x00);
-
-        // Write CRC32 over input[0..payload_len]
-        let crc = crc32_fast(0, &buf);
-        buf.extend_from_slice(&crc.to_le_bytes());
-
-        debug_assert_eq!(buf.len(), target_size);
-        let _ = padding_needed; // ensure padding was applied
-        Ok(buf)
+    fn push_encoded_vli(val: u64, buf: &mut Vec<u8>) -> Result<(), XzBlockError> {
+        let mut vli_buf = [0u8; VLI_MAX_BYTES];
+        let mut vpos = 0;
+        let len = encode_vli(val, &mut vli_buf, &mut vpos)?;
+        buf.extend_from_slice(&vli_buf[..len]);
+        Ok(())
     }
 }
 

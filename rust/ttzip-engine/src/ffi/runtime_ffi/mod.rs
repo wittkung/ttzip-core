@@ -28,21 +28,30 @@ pub extern "C" fn ttzip_rust_init() -> TTZipStatus {
     result.unwrap_or(TTZipStatus::ErrPanicCaught)
 }
 
+fn operation_status_string(status: TTZipStatus) -> Option<*const c_char> {
+    match status {
+        TTZipStatus::Ok => Some(c"OK".as_ptr()),
+        TTZipStatus::Eof => Some(c"EOF".as_ptr()),
+        TTZipStatus::Cancelled => Some(c"Cancelled".as_ptr()),
+        TTZipStatus::ErrInvalidParam => Some(c"Invalid Parameter".as_ptr()),
+        TTZipStatus::ErrFileNotFound => Some(c"File Not Found".as_ptr()),
+        TTZipStatus::ErrMmapFailed => Some(c"Mmap Failed".as_ptr()),
+        TTZipStatus::ErrCorruptHeader => Some(c"Corrupt Header".as_ptr()),
+        TTZipStatus::ErrInvalidOffset => Some(c"Invalid Offset".as_ptr()),
+        TTZipStatus::ErrArchiveInitFailed => Some(c"Archive Init Failed".as_ptr()),
+        TTZipStatus::ErrOpenFailed => Some(c"Open Failed".as_ptr()),
+        TTZipStatus::ErrPathTooLong => Some(c"Path Too Long".as_ptr()),
+        _ => None,
+    }
+}
+
 /// Converts a TTZipStatus code to a human-readable English string description.
 #[unsafe(no_mangle)]
 pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char {
+    if let Some(ptr) = operation_status_string(status) {
+        return ptr;
+    }
     match status {
-        TTZipStatus::Ok => c"OK".as_ptr(),
-        TTZipStatus::Eof => c"EOF".as_ptr(),
-        TTZipStatus::Cancelled => c"Cancelled".as_ptr(),
-        TTZipStatus::ErrInvalidParam => c"Invalid Parameter".as_ptr(),
-        TTZipStatus::ErrFileNotFound => c"File Not Found".as_ptr(),
-        TTZipStatus::ErrMmapFailed => c"Mmap Failed".as_ptr(),
-        TTZipStatus::ErrCorruptHeader => c"Corrupt Header".as_ptr(),
-        TTZipStatus::ErrInvalidOffset => c"Invalid Offset".as_ptr(),
-        TTZipStatus::ErrArchiveInitFailed => c"Archive Init Failed".as_ptr(),
-        TTZipStatus::ErrOpenFailed => c"Open Failed".as_ptr(),
-        TTZipStatus::ErrPathTooLong => c"Path Too Long".as_ptr(),
         TTZipStatus::ErrOutOfMemory => c"Out Of Memory".as_ptr(),
         TTZipStatus::ErrInvalidPassword => c"Invalid Password".as_ptr(),
         TTZipStatus::ErrExtractionFailed => c"Extraction Failed".as_ptr(),
@@ -54,8 +63,8 @@ pub extern "C" fn ttzip_rust_status_string(status: TTZipStatus) -> *const c_char
         TTZipStatus::ErrIo => c"I/O Error".as_ptr(),
         TTZipStatus::ErrPanicCaught => c"Panic Caught".as_ptr(),
         TTZipStatus::ErrAbiMismatch => c"ABI Mismatch".as_ptr(),
+        _ => c"Unknown Status".as_ptr(),
     }
-
 }
 
 /// Returns true if hardware acceleration (ARM64 NEON / Crypto extensions) is active.

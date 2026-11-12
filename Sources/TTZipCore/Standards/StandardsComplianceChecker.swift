@@ -356,35 +356,18 @@ public enum StandardsComplianceChecker {
         )
     }
 
+    private static let formatNameMap: [String: ArchiveCompressionFormat] = [
+        "zip": .zip, "sevenzip": .sevenZip, "7z": .sevenZip,
+        "tar": .tar, "gzip": .gz, "gz": .gz, "bzip2": .bz2, "bz2": .bz2,
+        "xz": .xz, "zstd": .zst, "zst": .zst, "rar": .rar, "cab": .cab,
+        "iso": .iso, "dmg": .dmg, "xar": .xar, "lzh": .lzh, "ar": .ar,
+        "lzfse": .lzfse, "snappy": .snappy, "lz4": .lz4, "lzip": .lzip,
+        "lrzip": .lrzip, "brotli": .brotli, "aar": .aar, "wim": .wim,
+        "cpio": .cpio, "deb": .deb, "rpm": .rpm, "squashfs": .squashfs
+    ]
+
     private static func mapFormatNameToCompressionFormat(_ name: String) -> ArchiveCompressionFormat? {
-        switch name.lowercased() {
-        case "zip": return .zip
-        case "sevenzip", "7z": return .sevenZip
-        case "tar": return .tar
-        case "gzip", "gz": return .gz
-        case "bzip2", "bz2": return .bz2
-        case "xz": return .xz
-        case "zstd", "zst": return .zst
-        case "rar": return .rar
-        case "cab": return .cab
-        case "iso": return .iso
-        case "dmg": return .dmg
-        case "xar": return .xar
-        case "lzh": return .lzh
-        case "ar": return .ar
-        case "lzfse": return .lzfse
-        case "snappy": return .snappy
-        case "lz4": return .lz4
-        case "lzip": return .lzip
-        case "lrzip": return .lrzip
-        case "brotli": return .brotli
-        case "aar": return .aar
-        case "wim": return .wim
-        case "cpio": return .cpio
-        case "deb": return .deb
-        case "rpm": return .rpm
-        case "squashfs": return .squashfs
-        default: return ArchiveCompressionFormat(rawValue: name.lowercased())
-        }
+        let lower = name.lowercased()
+        return formatNameMap[lower] ?? ArchiveCompressionFormat(rawValue: lower)
     }
 }

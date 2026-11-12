@@ -33,33 +33,38 @@ pub enum ComplianceStandard {
     Generic,
 }
 
+const STANDARD_NAMES: &[(ComplianceStandard, &str)] = &[
+    (ComplianceStandard::PkwareAppnote, "PKWARE APPNOTE .ZIP (.ZIP File Format Specification 6.3.9)"),
+    (ComplianceStandard::Posix1Tar, "POSIX.1-2001 / IEEE Std 1003.1 ustar/pax tar specification"),
+    (ComplianceStandard::SevenZipSpec, "7-Zip 24.08 7z Container File Format Specification"),
+    (ComplianceStandard::Rfc1952Gzip, "RFC 1952 GZIP File Format Specification version 4.3"),
+    (ComplianceStandard::Rfc8878Zstd, "RFC 8878 Zstandard Compression and The 'application/zstd' Media Type"),
+    (ComplianceStandard::Rfc1951Deflate, "RFC 1951 DEFLATE Compressed Data Format Specification version 1.3"),
+    (ComplianceStandard::AppleDmgUdif, "Apple Universal Disk Image Format (UDIF) Specification"),
+    (ComplianceStandard::Iso9660, "ISO 9660 / ECMA-119 Volume and File Structure"),
+    (ComplianceStandard::Bzip2Spec, "bzip2 Burrows-Wheeler Transform Container Format"),
+    (ComplianceStandard::XzSpec, "The .xz File Format Specification version 1.1.0"),
+    (ComplianceStandard::RarSpec, "RAR Archive File Format 5.0 / 4.0 Technical Specification"),
+    (ComplianceStandard::XarSpec, "eXtensible ARchive (XAR) Specification v1.0"),
+    (ComplianceStandard::SnappySpec, "Snappy Framing Format Description"),
+    (ComplianceStandard::Lz4Spec, "LZ4 Frame Format Description"),
+    (ComplianceStandard::LzfseSpec, "Apple LZFSE Compression Format Specification"),
+    (ComplianceStandard::UnixArSpec, "Unix Common Archive Format (ar) / Debian Package format"),
+    (ComplianceStandard::CabSpec, "Microsoft Cabinet (CAB) File Format Specification"),
+    (ComplianceStandard::WimSpec, "Microsoft Windows Imaging Format (WIM) Specification"),
+    (ComplianceStandard::LzipSpec, "Lzip Compressed Format Specification"),
+    (ComplianceStandard::LrzipSpec, "Long Range ZIP (LRZIP) Format Specification"),
+    (ComplianceStandard::AarSpec, "Apple Archive (AAR) Format Specification"),
+    (ComplianceStandard::BrotliSpec, "RFC 7932 Brotli Compressed Data Format"),
+    (ComplianceStandard::Generic, "General Container Standards"),
+];
+
 impl ComplianceStandard {
     pub fn name(self) -> &'static str {
-        match self {
-            ComplianceStandard::PkwareAppnote => "PKWARE APPNOTE .ZIP (.ZIP File Format Specification 6.3.9)",
-            ComplianceStandard::Posix1Tar => "POSIX.1-2001 / IEEE Std 1003.1 ustar/pax tar specification",
-            ComplianceStandard::SevenZipSpec => "7-Zip 24.08 7z Container File Format Specification",
-            ComplianceStandard::Rfc1952Gzip => "RFC 1952 GZIP File Format Specification version 4.3",
-            ComplianceStandard::Rfc8878Zstd => "RFC 8878 Zstandard Compression and The 'application/zstd' Media Type",
-            ComplianceStandard::Rfc1951Deflate => "RFC 1951 DEFLATE Compressed Data Format Specification version 1.3",
-            ComplianceStandard::AppleDmgUdif => "Apple Universal Disk Image Format (UDIF) Specification",
-            ComplianceStandard::Iso9660 => "ISO 9660 / ECMA-119 Volume and File Structure",
-            ComplianceStandard::Bzip2Spec => "bzip2 Burrows-Wheeler Transform Container Format",
-            ComplianceStandard::XzSpec => "The .xz File Format Specification version 1.1.0",
-            ComplianceStandard::RarSpec => "RAR Archive File Format 5.0 / 4.0 Technical Specification",
-            ComplianceStandard::XarSpec => "eXtensible ARchive (XAR) Specification v1.0",
-            ComplianceStandard::SnappySpec => "Snappy Framing Format Description",
-            ComplianceStandard::Lz4Spec => "LZ4 Frame Format Description",
-            ComplianceStandard::LzfseSpec => "Apple LZFSE Compression Format Specification",
-            ComplianceStandard::UnixArSpec => "Unix Common Archive Format (ar) / Debian Package format",
-            ComplianceStandard::CabSpec => "Microsoft Cabinet (CAB) File Format Specification",
-            ComplianceStandard::WimSpec => "Microsoft Windows Imaging Format (WIM) Specification",
-            ComplianceStandard::LzipSpec => "Lzip Compressed Format Specification",
-            ComplianceStandard::LrzipSpec => "Long Range ZIP (LRZIP) Format Specification",
-            ComplianceStandard::AarSpec => "Apple Archive (AAR) Format Specification",
-            ComplianceStandard::BrotliSpec => "RFC 7932 Brotli Compressed Data Format",
-            ComplianceStandard::Generic => "General Container Standards",
-        }
+        STANDARD_NAMES
+            .iter()
+            .find_map(|&(std, label)| (std == self).then_some(label))
+            .unwrap_or("General Container Standards")
     }
 }
 

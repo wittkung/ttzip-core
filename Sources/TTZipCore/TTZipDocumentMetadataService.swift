@@ -362,7 +362,7 @@ public actor TTZipDocumentMetadataWorker {
 /// Provides zero-extraction streaming inspection of Microsoft Office documents (DOCX, XLSX, PPTX),
 /// EPUB publications, and Apple Property Lists for UI inspector panels and QuickLook preview engines.
 @Observable
-public final class TTZipDocumentMetadataService: @unchecked Sendable {
+public final class TTZipDocumentMetadataService: Sendable {
 
     // MARK: - Shared Singleton
 
@@ -371,32 +371,97 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
     // MARK: - Published Observable Metrics
 
     /// Indicates whether one or more document inspection tasks are actively running.
-    public private(set) var isProcessing: Bool = false
+    public private(set) var isProcessing: Bool {
+        get {
+            access(keyPath: \.isProcessing)
+            return lock.withLock { $0.isProcessing }
+        }
+        set {
+            withMutation(keyPath: \.isProcessing) {
+                lock.withLock { $0.isProcessing = newValue }
+            }
+        }
+    }
 
     /// Number of concurrent extraction operations currently in flight.
-    public private(set) var activeOperationsCount: Int = 0
+    public private(set) var activeOperationsCount: Int {
+        get {
+            access(keyPath: \.activeOperationsCount)
+            return lock.withLock { $0.activeCount }
+        }
+        set {
+            withMutation(keyPath: \.activeOperationsCount) {
+                lock.withLock { $0.activeCount = newValue }
+            }
+        }
+    }
 
     /// Cumulative total number of documents inspected across the lifetime of this service.
-    public private(set) var totalDocumentsInspected: Int = 0
+    public private(set) var totalDocumentsInspected: Int {
+        get {
+            access(keyPath: \.totalDocumentsInspected)
+            return lock.withLock { $0.totalDocumentsInspected }
+        }
+        set {
+            withMutation(keyPath: \.totalDocumentsInspected) {
+                lock.withLock { $0.totalDocumentsInspected = newValue }
+            }
+        }
+    }
 
     /// Most recently inspected document metadata record.
-    public private(set) var lastInspectedMetadata: TTZipDocumentMetadata? = nil
+    public private(set) var lastInspectedMetadata: TTZipDocumentMetadata? {
+        get {
+            access(keyPath: \.lastInspectedMetadata)
+            return lock.withLock { $0.lastInspectedMetadata }
+        }
+        set {
+            withMutation(keyPath: \.lastInspectedMetadata) {
+                lock.withLock { $0.lastInspectedMetadata = newValue }
+            }
+        }
+    }
 
     /// Most recently inspected document outline structure.
-    public private(set) var lastInspectedOutline: TTZipDocumentOutline? = nil
+    public private(set) var lastInspectedOutline: TTZipDocumentOutline? {
+        get {
+            access(keyPath: \.lastInspectedOutline)
+            return lock.withLock { $0.lastInspectedOutline }
+        }
+        set {
+            withMutation(keyPath: \.lastInspectedOutline) {
+                lock.withLock { $0.lastInspectedOutline = newValue }
+            }
+        }
+    }
 
     /// Most recent localized error encountered during document parsing.
-    public private(set) var latestError: String? = nil
+    public private(set) var latestError: String? {
+        get {
+            access(keyPath: \.latestError)
+            return lock.withLock { $0.latestError }
+        }
+        set {
+            withMutation(keyPath: \.latestError) {
+                lock.withLock { $0.latestError = newValue }
+            }
+        }
+    }
 
     // MARK: - Internal Storage & Actor Worker
 
     private let worker = TTZipDocumentMetadataWorker()
 
-    private struct CacheState {
+    private struct CacheState: Sendable {
         var metadataCache: [String: TTZipDocumentMetadata] = [:]
         var outlineCache: [String: TTZipDocumentOutline] = [:]
         var activeCount: Int = 0
         var totalCount: Int = 0
+        var isProcessing: Bool = false
+        var totalDocumentsInspected: Int = 0
+        var lastInspectedMetadata: TTZipDocumentMetadata? = nil
+        var lastInspectedOutline: TTZipDocumentOutline? = nil
+        var latestError: String? = nil
     }
 
     private let lock = OSAllocatedUnfairLock(initialState: CacheState())
@@ -427,7 +492,7 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
                 $0.totalCount += 1
             }
             self.lastInspectedMetadata = meta
-            self.totalDocumentsInspected += 1
+            incrementTotalDocumentsInspected()
             return meta
         } catch {
             self.latestError = error.localizedDescription
@@ -446,7 +511,7 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
         do {
             let meta = try await worker.extractOfficeMetadata(from: data)
             self.lastInspectedMetadata = meta
-            self.totalDocumentsInspected += 1
+            incrementTotalDocumentsInspected()
             return meta
         } catch {
             self.latestError = error.localizedDescription
@@ -510,7 +575,7 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
 
         do {
             let pub = try await worker.extractEpubMetadata(at: url.path)
-            self.totalDocumentsInspected += 1
+            incrementTotalDocumentsInspected()
             return pub
         } catch {
             self.latestError = error.localizedDescription
@@ -528,7 +593,7 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
 
         do {
             let pub = try await worker.extractEpubMetadata(from: data)
-            self.totalDocumentsInspected += 1
+            incrementTotalDocumentsInspected()
             return pub
         } catch {
             self.latestError = error.localizedDescription
@@ -564,7 +629,7 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
 
         do {
             let res = try await worker.parsePlist(from: data)
-            self.totalDocumentsInspected += 1
+            incrementTotalDocumentsInspected()
             return res
         } catch {
             self.latestError = error.localizedDescription
@@ -586,11 +651,21 @@ public final class TTZipDocumentMetadataService: @unchecked Sendable {
     // MARK: - Private State Synchronization
 
     private func updateOperationCount(delta: Int) {
-        let (newCount, isRunning) = lock.withLock { state -> (Int, Bool) in
-            state.activeCount = max(0, state.activeCount + delta)
-            return (state.activeCount, state.activeCount > 0)
+        withMutation(keyPath: \.activeOperationsCount) {
+            withMutation(keyPath: \.isProcessing) {
+                lock.withLock { state in
+                    state.activeCount = max(0, state.activeCount + delta)
+                    state.isProcessing = state.activeCount > 0
+                }
+            }
         }
-        self.activeOperationsCount = newCount
-        self.isProcessing = isRunning
+    }
+
+    private func incrementTotalDocumentsInspected() {
+        withMutation(keyPath: \.totalDocumentsInspected) {
+            lock.withLock { state in
+                state.totalDocumentsInspected += 1
+            }
+        }
     }
 }

@@ -66,54 +66,13 @@ impl BcjX86 {
             }
 
             let curr_pos = now_pos.wrapping_add(buffer_pos as u32);
-            let offset = curr_pos.wrapping_sub(prev_pos);
+            prev_mask = Self::advance_prev_mask(prev_mask, curr_pos.wrapping_sub(prev_pos));
             prev_pos = curr_pos;
 
-            if offset > 5 {
-                prev_mask = 0;
-            } else {
-                for _ in 0..offset {
-                    prev_mask &= 0x77;
-                    prev_mask <<= 1;
-                }
-            }
-
             let b = buffer[buffer_pos + 4];
-
-            if test_86_ms_byte(b) && (prev_mask >> 1) <= 4 && (prev_mask >> 1) != 3 {
-                let mut src = ((b as u32) << 24)
-                    | ((buffer[buffer_pos + 3] as u32) << 16)
-                    | ((buffer[buffer_pos + 2] as u32) << 8)
-                    | (buffer[buffer_pos + 1] as u32);
-
-                let mut dest;
-                loop {
-                    let adj = now_pos.wrapping_add(buffer_pos as u32).wrapping_add(5);
-                    if is_encoder {
-                        dest = src.wrapping_add(adj);
-                    } else {
-                        dest = src.wrapping_sub(adj);
-                    }
-
-                    if prev_mask == 0 {
-                        break;
-                    }
-
-                    let i = MASK_TO_BIT_NUMBER[(prev_mask >> 1) as usize];
-                    let b_check = (dest >> (24 - i * 8)) as u8;
-
-                    if !test_86_ms_byte(b_check) {
-                        break;
-                    }
-
-                    src = dest ^ ((1u32 << (32 - i * 8)).wrapping_sub(1));
-                }
-
-                let msb = (!(((dest >> 24) & 1).wrapping_sub(1))) as u8;
-                buffer[buffer_pos + 4] = msb;
-                buffer[buffer_pos + 3] = (dest >> 16) as u8;
-                buffer[buffer_pos + 2] = (dest >> 8) as u8;
-                buffer[buffer_pos + 1] = dest as u8;
+            if Self::can_transform_candidate(b, prev_mask) {
+                let adj = curr_pos.wrapping_add(5);
+                Self::rewrite_displacement(&mut buffer[buffer_pos..buffer_pos + 5], adj, prev_mask, is_encoder);
                 buffer_pos += 5;
                 prev_mask = 0;
             } else {
@@ -128,6 +87,54 @@ impl BcjX86 {
         self.prev_mask = prev_mask;
         self.prev_pos = prev_pos;
         buffer_pos
+    }
+
+    #[inline(always)]
+    fn advance_prev_mask(mut prev_mask: u32, offset: u32) -> u32 {
+        if offset > 5 {
+            return 0;
+        }
+        for _ in 0..offset {
+            prev_mask = (prev_mask & 0x77) << 1;
+        }
+        prev_mask
+    }
+
+    #[inline(always)]
+    fn can_transform_candidate(msb: u8, prev_mask: u32) -> bool {
+        let shifted = prev_mask >> 1;
+        test_86_ms_byte(msb) && shifted <= 4 && shifted != 3
+    }
+
+    #[inline(always)]
+    fn rewrite_displacement(slot: &mut [u8], adj: u32, prev_mask: u32, is_encoder: bool) {
+        let mut src = u32::from_le_bytes([slot[1], slot[2], slot[3], slot[4]]);
+        let mut dest;
+        loop {
+            dest = if is_encoder {
+                src.wrapping_add(adj)
+            } else {
+                src.wrapping_sub(adj)
+            };
+
+            if prev_mask == 0 {
+                break;
+            }
+
+            let i = MASK_TO_BIT_NUMBER[(prev_mask >> 1) as usize];
+            let b_check = (dest >> (24 - i * 8)) as u8;
+            if !test_86_ms_byte(b_check) {
+                break;
+            }
+
+            src = dest ^ ((1u32 << (32 - i * 8)).wrapping_sub(1));
+        }
+
+        let msb = (!(((dest >> 24) & 1).wrapping_sub(1))) as u8;
+        slot[4] = msb;
+        slot[3] = (dest >> 16) as u8;
+        slot[2] = (dest >> 8) as u8;
+        slot[1] = dest as u8;
     }
 }
 

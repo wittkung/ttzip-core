@@ -123,137 +123,26 @@ impl ExtendedAttributes {
 
     /// Extracts extended attributes from a file path using OS-native APIs.
     pub fn extract_from_path(path: &Path) -> std::io::Result<Self> {
-        #[cfg(target_os = "macos")]
+        #[cfg(unix)]
         {
             use std::ffi::CString;
             use std::os::unix::ffi::OsStrExt;
 
             let c_path = CString::new(path.as_os_str().as_bytes())
                 .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
-
-            let list_len = unsafe {
-                libc::listxattr(c_path.as_ptr(), std::ptr::null_mut(), 0, libc::XATTR_NOFOLLOW)
-            };
-            if list_len <= 0 {
-                return Ok(Self::new());
-            }
-
-            let mut name_buf = vec![0u8; list_len as usize];
-            let actual_len = unsafe {
-                libc::listxattr(
-                    c_path.as_ptr(),
-                    name_buf.as_mut_ptr() as *mut libc::c_char,
-                    name_buf.len(),
-                    libc::XATTR_NOFOLLOW,
-                )
-            };
-            if actual_len <= 0 {
+            let name_buf = list_xattr_names_buf(&c_path)?;
+            if name_buf.is_empty() {
                 return Ok(Self::new());
             }
 
             let mut xattrs = Self::new();
-            let mut cursor = 0;
-            while cursor < actual_len as usize {
-                let end = match name_buf[cursor..actual_len as usize].iter().position(|&b| b == 0) {
-                    Some(pos) => cursor + pos,
-                    None => break,
-                };
-                if let Ok(name) = std::str::from_utf8(&name_buf[cursor..end]) {
-                    let c_name = CString::new(name).map_err(|e| {
-                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e)
-                    })?;
-                    let val_len = unsafe {
-                        libc::getxattr(
-                            c_path.as_ptr(),
-                            c_name.as_ptr(),
-                            std::ptr::null_mut(),
-                            0,
-                            0,
-                            libc::XATTR_NOFOLLOW,
-                        )
-                    };
-                    if val_len > 0 {
-                        let mut val_buf = vec![0u8; val_len as usize];
-                        let got_len = unsafe {
-                            libc::getxattr(
-                                c_path.as_ptr(),
-                                c_name.as_ptr(),
-                                val_buf.as_mut_ptr() as *mut libc::c_void,
-                                val_buf.len(),
-                                0,
-                                libc::XATTR_NOFOLLOW,
-                            )
-                        };
-                        if got_len == val_len {
-                            xattrs.set(name, val_buf);
-                        }
+            for raw_name in name_buf.split(|&b| b == 0).filter(|s| !s.is_empty()) {
+                if let Ok(name) = std::str::from_utf8(raw_name) {
+                    if let Some(val_buf) = read_single_xattr(&c_path, name)? {
+                        xattrs.set(name, val_buf);
                     }
                 }
-                cursor = end + 1;
             }
-
-            Ok(xattrs)
-        }
-
-        #[cfg(all(unix, not(target_os = "macos")))]
-        {
-            use std::ffi::CString;
-            use std::os::unix::ffi::OsStrExt;
-
-            let c_path = CString::new(path.as_os_str().as_bytes())
-                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
-
-            let list_len = unsafe {
-                libc::llistxattr(c_path.as_ptr(), std::ptr::null_mut(), 0)
-            };
-            if list_len <= 0 {
-                return Ok(Self::new());
-            }
-
-            let mut name_buf = vec![0u8; list_len as usize];
-            let actual_len = unsafe {
-                libc::llistxattr(
-                    c_path.as_ptr(),
-                    name_buf.as_mut_ptr() as *mut libc::c_char,
-                    name_buf.len(),
-                )
-            };
-            if actual_len <= 0 {
-                return Ok(Self::new());
-            }
-
-            let mut xattrs = Self::new();
-            let mut cursor = 0;
-            while cursor < actual_len as usize {
-                let end = match name_buf[cursor..actual_len as usize].iter().position(|&b| b == 0) {
-                    Some(pos) => cursor + pos,
-                    None => break,
-                };
-                if let Ok(name) = std::str::from_utf8(&name_buf[cursor..end]) {
-                    let c_name = CString::new(name).map_err(|e| {
-                        std::io::Error::new(std::io::ErrorKind::InvalidInput, e)
-                    })?;
-                    let val_len = unsafe {
-                        libc::lgetxattr(c_path.as_ptr(), c_name.as_ptr(), std::ptr::null_mut(), 0)
-                    };
-                    if val_len > 0 {
-                        let mut val_buf = vec![0u8; val_len as usize];
-                        let got_len = unsafe {
-                            libc::lgetxattr(
-                                c_path.as_ptr(),
-                                c_name.as_ptr(),
-                                val_buf.as_mut_ptr() as *mut libc::c_void,
-                                val_buf.len(),
-                            )
-                        };
-                        if got_len == val_len {
-                            xattrs.set(name, val_buf);
-                        }
-                    }
-                }
-                cursor = end + 1;
-            }
-
             Ok(xattrs)
         }
 
@@ -337,4 +226,91 @@ impl ExtendedAttributes {
             Ok(())
         }
     }
+}
+
+#[cfg(unix)]
+fn list_xattr_names_buf(c_path: &std::ffi::CStr) -> std::io::Result<Vec<u8>> {
+    #[cfg(target_os = "macos")]
+    let list_len = unsafe {
+        libc::listxattr(c_path.as_ptr(), std::ptr::null_mut(), 0, libc::XATTR_NOFOLLOW)
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let list_len = unsafe { libc::llistxattr(c_path.as_ptr(), std::ptr::null_mut(), 0) };
+
+    if list_len <= 0 {
+        return Ok(Vec::new());
+    }
+
+    let mut name_buf = vec![0u8; list_len as usize];
+    #[cfg(target_os = "macos")]
+    let actual_len = unsafe {
+        libc::listxattr(
+            c_path.as_ptr(),
+            name_buf.as_mut_ptr() as *mut libc::c_char,
+            name_buf.len(),
+            libc::XATTR_NOFOLLOW,
+        )
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let actual_len = unsafe {
+        libc::llistxattr(
+            c_path.as_ptr(),
+            name_buf.as_mut_ptr() as *mut libc::c_char,
+            name_buf.len(),
+        )
+    };
+
+    if actual_len <= 0 {
+        return Ok(Vec::new());
+    }
+    name_buf.truncate(actual_len as usize);
+    Ok(name_buf)
+}
+
+#[cfg(unix)]
+fn read_single_xattr(c_path: &std::ffi::CStr, name: &str) -> std::io::Result<Option<Vec<u8>>> {
+    let c_name = std::ffi::CString::new(name)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidInput, e))?;
+
+    #[cfg(target_os = "macos")]
+    let val_len = unsafe {
+        libc::getxattr(
+            c_path.as_ptr(),
+            c_name.as_ptr(),
+            std::ptr::null_mut(),
+            0,
+            0,
+            libc::XATTR_NOFOLLOW,
+        )
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let val_len = unsafe { libc::lgetxattr(c_path.as_ptr(), c_name.as_ptr(), std::ptr::null_mut(), 0) };
+
+    if val_len <= 0 {
+        return Ok(None);
+    }
+
+    let mut val_buf = vec![0u8; val_len as usize];
+    #[cfg(target_os = "macos")]
+    let got_len = unsafe {
+        libc::getxattr(
+            c_path.as_ptr(),
+            c_name.as_ptr(),
+            val_buf.as_mut_ptr() as *mut libc::c_void,
+            val_buf.len(),
+            0,
+            libc::XATTR_NOFOLLOW,
+        )
+    };
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let got_len = unsafe {
+        libc::lgetxattr(
+            c_path.as_ptr(),
+            c_name.as_ptr(),
+            val_buf.as_mut_ptr() as *mut libc::c_void,
+            val_buf.len(),
+        )
+    };
+
+    Ok((got_len == val_len).then_some(val_buf))
 }

@@ -148,31 +148,7 @@ pub fn execute_tree(
     let total_uncompressed: u64 = entries.iter().map(|e| e.uncompressed_size).sum();
 
     if json {
-        let nodes: Vec<VfsNodeContractDto> = entries
-            .iter()
-            .map(|e| VfsNodeContractDto {
-                name: e.name.clone(),
-                relative_path: e.relative_path.clone(),
-                is_directory: e.is_directory,
-                uncompressed_size: e.uncompressed_size,
-                compressed_size: e.compressed_size,
-                crc32: e.crc32,
-                is_encrypted: e.is_encrypted,
-                match_indices: None,
-            })
-            .collect();
-
-        let contract = VfsTreeContractDto {
-            root_path: archive_path.to_string_lossy().to_string(),
-            total_entries_count: entries.len(),
-            total_uncompressed_bytes: total_uncompressed,
-            nodes,
-        };
-
-        let json_str = serde_json::to_string_pretty(&contract)
-            .map_err(|e| format!("Failed to serialize contract JSON: {}", e))?;
-        println!("{}", json_str);
-        return Ok(());
+        return print_tree_json(archive_path, &entries, total_uncompressed);
     }
 
     println!("{}/ ({})", sanitize_terminal_display(&archive_path.display().to_string()), format.name());
@@ -206,5 +182,37 @@ pub fn execute_tree(
         format_bytes(total_uncompressed)
     );
 
+    Ok(())
+}
+
+fn print_tree_json(
+    archive_path: &Path,
+    entries: &[crate::cli::format::ArchiveEntryInfo],
+    total_uncompressed: u64,
+) -> Result<(), String> {
+    let nodes: Vec<VfsNodeContractDto> = entries
+        .iter()
+        .map(|e| VfsNodeContractDto {
+            name: e.name.clone(),
+            relative_path: e.relative_path.clone(),
+            is_directory: e.is_directory,
+            uncompressed_size: e.uncompressed_size,
+            compressed_size: e.compressed_size,
+            crc32: e.crc32,
+            is_encrypted: e.is_encrypted,
+            match_indices: None,
+        })
+        .collect();
+
+    let contract = VfsTreeContractDto {
+        root_path: archive_path.to_string_lossy().to_string(),
+        total_entries_count: entries.len(),
+        total_uncompressed_bytes: total_uncompressed,
+        nodes,
+    };
+
+    let json_str = serde_json::to_string_pretty(&contract)
+        .map_err(|e| format!("Failed to serialize contract JSON: {}", e))?;
+    println!("{}", json_str);
     Ok(())
 }

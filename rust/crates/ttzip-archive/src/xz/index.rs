@@ -311,8 +311,6 @@ impl XzStreamIndex {
 
     /// Parses and validates an `XzStreamIndex` directly from a streaming reader.
     pub fn parse_stream<R: Read>(reader: &mut R) -> Result<(Self, usize), XzError> {
-        use crate::xz::vli::decode_vli_stream;
-
         let mut indicator_buf = [0u8; 1];
         reader.read_exact(&mut indicator_buf)?;
         if indicator_buf[0] != 0x00 {
@@ -323,42 +321,17 @@ impl XzStreamIndex {
         let mut crc_hasher = crc32fast::Hasher::new();
         crc_hasher.update(&indicator_buf);
 
-        let num_records_u64 = decode_vli_stream(reader)?;
-        let mut vli_buf = [0u8; 9];
-        let mut vpos = 0;
-        let len = encode_vli(num_records_u64, &mut vli_buf, &mut vpos)?;
-        crc_hasher.update(&vli_buf[..len]);
-        payload.extend_from_slice(&vli_buf[..len]);
-
+        let num_records_u64 = Self::read_and_hash_vli(reader, &mut crc_hasher, &mut payload)?;
         let num_records = num_records_u64 as usize;
         let mut index = Self::with_capacity(num_records);
 
         for _ in 0..num_records {
-            let unpadded = decode_vli_stream(reader)?;
-            vpos = 0;
-            let len1 = encode_vli(unpadded, &mut vli_buf, &mut vpos)?;
-            crc_hasher.update(&vli_buf[..len1]);
-            payload.extend_from_slice(&vli_buf[..len1]);
-
-            let uncompressed = decode_vli_stream(reader)?;
-            vpos = 0;
-            let len2 = encode_vli(uncompressed, &mut vli_buf, &mut vpos)?;
-            crc_hasher.update(&vli_buf[..len2]);
-            payload.extend_from_slice(&vli_buf[..len2]);
-
+            let unpadded = Self::read_and_hash_vli(reader, &mut crc_hasher, &mut payload)?;
+            let uncompressed = Self::read_and_hash_vli(reader, &mut crc_hasher, &mut payload)?;
             index.append(unpadded, uncompressed)?;
         }
 
-        let pad_len = pad_to_4(payload.len() as u64);
-        if pad_len > 0 {
-            let mut pad_buf = vec![0u8; pad_len];
-            reader.read_exact(&mut pad_buf)?;
-            if pad_buf.iter().any(|&b| b != 0x00) {
-                return Err(XzError::NonZeroIndexPadding);
-            }
-            crc_hasher.update(&pad_buf);
-            payload.extend_from_slice(&pad_buf);
-        }
+        Self::read_and_verify_index_padding(reader, &mut crc_hasher, &mut payload)?;
 
         let mut crc_buf = [0u8; 4];
         reader.read_exact(&mut crc_buf)?;
@@ -372,8 +345,40 @@ impl XzStreamIndex {
             });
         }
 
-        let total_consumed = payload.len() + 4;
-        Ok((index, total_consumed))
+        Ok((index, payload.len() + 4))
+    }
+
+    fn read_and_hash_vli<R: Read>(
+        reader: &mut R,
+        crc_hasher: &mut crc32fast::Hasher,
+        payload: &mut Vec<u8>,
+    ) -> Result<u64, XzError> {
+        use crate::xz::vli::decode_vli_stream;
+        let val = decode_vli_stream(reader)?;
+        let mut vli_buf = [0u8; 9];
+        let mut vpos = 0;
+        let len = encode_vli(val, &mut vli_buf, &mut vpos)?;
+        crc_hasher.update(&vli_buf[..len]);
+        payload.extend_from_slice(&vli_buf[..len]);
+        Ok(val)
+    }
+
+    fn read_and_verify_index_padding<R: Read>(
+        reader: &mut R,
+        crc_hasher: &mut crc32fast::Hasher,
+        payload: &mut Vec<u8>,
+    ) -> Result<(), XzError> {
+        let pad_len = pad_to_4(payload.len() as u64);
+        if pad_len > 0 {
+            let mut pad_buf = vec![0u8; pad_len];
+            reader.read_exact(&mut pad_buf)?;
+            if pad_buf.iter().any(|&b| b != 0x00) {
+                return Err(XzError::NonZeroIndexPadding);
+            }
+            crc_hasher.update(&pad_buf);
+            payload.extend_from_slice(&pad_buf);
+        }
+        Ok(())
     }
 
     /// Performs branchless binary-search jump table lookup to locate the target block

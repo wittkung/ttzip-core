@@ -152,6 +152,52 @@ pub fn extract_thumbnail_bytes(
     })
 }
 
+fn extract_cropped_rgba_subrect(
+    src: &DecodedImageRgba,
+    params: &UniFFIViewportCropParams,
+) -> (u32, u32, DecodedImageRgba) {
+    let valid_x = params.crop_x.min(src.width.saturating_sub(1));
+    let valid_y = params.crop_y.min(src.height.saturating_sub(1));
+    let max_avail_w = src.width.saturating_sub(valid_x).max(1);
+    let max_avail_h = src.height.saturating_sub(valid_y).max(1);
+
+    let actual_crop_w = if params.crop_width == 0 {
+        max_avail_w
+    } else {
+        params.crop_width.min(max_avail_w)
+    };
+    let actual_crop_h = if params.crop_height == 0 {
+        max_avail_h
+    } else {
+        params.crop_height.min(max_avail_h)
+    };
+
+    let mut cropped_data = Vec::with_capacity((actual_crop_w * actual_crop_h * 4) as usize);
+    let src_stride = (src.width * 4) as usize;
+    let crop_row_bytes = (actual_crop_w * 4) as usize;
+
+    for row in 0..actual_crop_h {
+        let sy = (valid_y + row) as usize;
+        let start_idx = sy * src_stride + (valid_x * 4) as usize;
+        let end_idx = start_idx + crop_row_bytes;
+        if end_idx <= src.data.len() {
+            cropped_data.extend_from_slice(&src.data[start_idx..end_idx]);
+        } else {
+            cropped_data.resize(cropped_data.len() + crop_row_bytes, 0);
+        }
+    }
+
+    (
+        valid_x,
+        valid_y,
+        DecodedImageRgba {
+            width: actual_crop_w,
+            height: actual_crop_h,
+            data: cropped_data,
+        },
+    )
+}
+
 /// Samples a cropped viewport rectangle from high-resolution image data and scales to target tile size.
 pub fn sample_viewport_bytes(
     data: &[u8],
@@ -173,44 +219,9 @@ pub fn sample_viewport_bytes(
         });
     }
 
-    // Clamp crop rectangle safely within source image bounds
-    let valid_x = params.crop_x.min(src.width.saturating_sub(1));
-    let valid_y = params.crop_y.min(src.height.saturating_sub(1));
-    let max_avail_w = src.width.saturating_sub(valid_x).max(1);
-    let max_avail_h = src.height.saturating_sub(valid_y).max(1);
-
-    let actual_crop_w = if params.crop_width == 0 {
-        max_avail_w
-    } else {
-        params.crop_width.min(max_avail_w)
-    };
-    let actual_crop_h = if params.crop_height == 0 {
-        max_avail_h
-    } else {
-        params.crop_height.min(max_avail_h)
-    };
-
-    // Extract cropped sub-rectangle buffer
-    let mut cropped_data = Vec::with_capacity((actual_crop_w * actual_crop_h * 4) as usize);
-    let src_stride = (src.width * 4) as usize;
-    let crop_row_bytes = (actual_crop_w * 4) as usize;
-
-    for row in 0..actual_crop_h {
-        let sy = (valid_y + row) as usize;
-        let start_idx = sy * src_stride + (valid_x * 4) as usize;
-        let end_idx = start_idx + crop_row_bytes;
-        if end_idx <= src.data.len() {
-            cropped_data.extend_from_slice(&src.data[start_idx..end_idx]);
-        } else {
-            cropped_data.resize(cropped_data.len() + crop_row_bytes, 0);
-        }
-    }
-
-    let cropped_img = DecodedImageRgba {
-        width: actual_crop_w,
-        height: actual_crop_h,
-        data: cropped_data,
-    };
+    let (valid_x, valid_y, cropped_img) = extract_cropped_rgba_subrect(&src, params);
+    let actual_crop_w = cropped_img.width;
+    let actual_crop_h = cropped_img.height;
 
     let dst_w = if params.target_width == 0 { actual_crop_w } else { params.target_width };
     let dst_h = if params.target_height == 0 { actual_crop_h } else { params.target_height };
@@ -221,8 +232,8 @@ pub fn sample_viewport_bytes(
         resize_rgba(&cropped_img, dst_w, dst_h, ThumbnailFilter::Bilinear)
     };
 
-    // Calculate level of detail pyramid level
-    let downsample_ratio = (actual_crop_w as f64 / dst_w as f64).max(actual_crop_h as f64 / dst_h as f64);
+    let downsample_ratio =
+        (actual_crop_w as f64 / dst_w as f64).max(actual_crop_h as f64 / dst_h as f64);
     let lod_level = if downsample_ratio > 1.0 {
         downsample_ratio.log2().floor() as u32
     } else {
@@ -249,33 +260,28 @@ fn parse_filter(filter_type: Option<&str>) -> ThumbnailFilter {
     }
 }
 
+const IMAGE_MAGIC_SIGNATURES: &[(&[u8], &str)] = &[
+    (b"\x89PNG\r\n\x1a\n", "PNG"),
+    (&[0xFF, 0xD8, 0xFF], "JPEG"),
+    (b"GIF87a", "GIF"),
+    (b"GIF89a", "GIF"),
+    (b"BM", "BMP"),
+    (b"II\x2A\x00", "TIFF"),
+    (b"MM\x00\x2A", "TIFF"),
+    (b"8BPS", "PSD"),
+    (b"qoif", "QOI"),
+    (b"#?RADIANCE", "HDR"),
+];
+
 fn infer_format_name(data: &[u8], file_name: Option<&str>) -> String {
-    if data.starts_with(b"\x89PNG\r\n\x1a\n") {
-        return "PNG".to_string();
-    }
-    if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
-        return "JPEG".to_string();
-    }
     if data.starts_with(b"RIFF") && data.len() >= 12 && &data[8..12] == b"WEBP" {
         return "WebP".to_string();
     }
-    if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
-        return "GIF".to_string();
-    }
-    if data.starts_with(b"BM") {
-        return "BMP".to_string();
-    }
-    if data.starts_with(b"II\x2A\x00") || data.starts_with(b"MM\x00\x2A") {
-        return "TIFF".to_string();
-    }
-    if data.starts_with(b"8BPS") {
-        return "PSD".to_string();
-    }
-    if data.starts_with(b"qoif") {
-        return "QOI".to_string();
-    }
-    if data.starts_with(b"#?RADIANCE") {
-        return "HDR".to_string();
+    if let Some(fmt) = IMAGE_MAGIC_SIGNATURES
+        .iter()
+        .find_map(|&(magic, name)| data.starts_with(magic).then_some(name))
+    {
+        return fmt.to_string();
     }
 
     if let Some(name) = file_name {

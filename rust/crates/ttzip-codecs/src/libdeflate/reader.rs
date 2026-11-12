@@ -274,6 +274,49 @@ impl<R: Read> LibdeflateReader<R> {
         Ok(())
     }
 
+    fn skip_gzip_optional_fields(&mut self, flg: u8) -> io::Result<()> {
+        if (flg & 0x04) != 0 {
+            if !self.fill_in_buf(2)? {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "unexpected EOF reading gzip extra length",
+                ));
+            }
+            let xlen = u16::from_le_bytes([self.in_buf[self.in_pos], self.in_buf[self.in_pos + 1]])
+                as usize;
+            self.in_pos += 2;
+            self.total_in += 2;
+
+            if !self.fill_in_buf(xlen)? {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "unexpected EOF reading gzip extra field",
+                ));
+            }
+            self.in_pos += xlen;
+            self.total_in += xlen as u64;
+        }
+
+        if (flg & 0x08) != 0 {
+            self.skip_zero_terminated_string("filename")?;
+        }
+        if (flg & 0x10) != 0 {
+            self.skip_zero_terminated_string("comment")?;
+        }
+
+        if (flg & 0x02) != 0 {
+            if !self.fill_in_buf(2)? {
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "unexpected EOF reading gzip header CRC16",
+                ));
+            }
+            self.in_pos += 2;
+            self.total_in += 2;
+        }
+        Ok(())
+    }
+
     /// Parses and validates RFC 1952 gzip container header (10+ bytes).
     fn parse_gzip_header(&mut self) -> io::Result<()> {
         if !self.fill_in_buf(10)? {
@@ -304,49 +347,7 @@ impl<R: Read> LibdeflateReader<R> {
         self.in_pos += 10;
         self.total_in += 10;
 
-        // FEXTRA flag (0x04)
-        if (flg & 0x04) != 0 {
-            if !self.fill_in_buf(2)? {
-                return Err(Error::new(
-                    ErrorKind::UnexpectedEof,
-                    "unexpected EOF reading gzip extra length",
-                ));
-            }
-            let xlen = u16::from_le_bytes([self.in_buf[self.in_pos], self.in_buf[self.in_pos + 1]]) as usize;
-            self.in_pos += 2;
-            self.total_in += 2;
-
-            if !self.fill_in_buf(xlen)? {
-                return Err(Error::new(
-                    ErrorKind::UnexpectedEof,
-                    "unexpected EOF reading gzip extra field",
-                ));
-            }
-            self.in_pos += xlen;
-            self.total_in += xlen as u64;
-        }
-
-        // FNAME flag (0x08)
-        if (flg & 0x08) != 0 {
-            self.skip_zero_terminated_string("filename")?;
-        }
-
-        // FCOMMENT flag (0x10)
-        if (flg & 0x10) != 0 {
-            self.skip_zero_terminated_string("comment")?;
-        }
-
-        // FHCRC flag (0x02)
-        if (flg & 0x02) != 0 {
-            if !self.fill_in_buf(2)? {
-                return Err(Error::new(
-                    ErrorKind::UnexpectedEof,
-                    "unexpected EOF reading gzip header CRC16",
-                ));
-            }
-            self.in_pos += 2;
-            self.total_in += 2;
-        }
+        self.skip_gzip_optional_fields(flg)?;
 
         self.decompressor.reset(false);
         self.crc = 0;
@@ -378,39 +379,59 @@ impl<R: Read> LibdeflateReader<R> {
 
     // MARK: - Payload Decompression Engine
 
+    #[inline]
+    fn transition_stream_end(&mut self) {
+        self.state = match self.format {
+            ContainerFormat::Raw => ReaderState::Done,
+            ContainerFormat::Zlib | ContainerFormat::Gzip => ReaderState::Trailer,
+        };
+    }
+
+    fn record_decompressed_chunk(&mut self, out_produced: usize, status: Status) {
+        self.out_pos = 0;
+        self.out_limit = out_produced;
+
+        let chunk = &self.out_buf[..out_produced];
+        self.adler = adler32_update(self.adler, chunk);
+        self.crc = crc32_update(self.crc, chunk);
+        self.total_out = self.total_out.wrapping_add(out_produced as u64);
+        self.member_total_out = self.member_total_out.wrapping_add(out_produced as u64);
+
+        if status == Status::StreamEnd {
+            self.transition_stream_end();
+        }
+    }
+
     /// Fills `out_buf` with decompressed data by driving the payload decompression state.
     fn fill_next_decompressed_chunk(&mut self) -> io::Result<bool> {
         loop {
-            let avail_in = self.in_limit - self.in_pos;
-            if avail_in == 0 && !self.fill_in_buf(1)? {
-                // Inner stream underflow
-                match self.format {
-                    ContainerFormat::Raw => {
-                        self.state = ReaderState::Done;
-                        return Ok(false);
-                    }
-                    ContainerFormat::Zlib | ContainerFormat::Gzip => {
-                        return Err(Error::new(
-                            ErrorKind::UnexpectedEof,
-                            "unexpected EOF in compressed DEFLATE payload",
-                        ));
-                    }
+            if self.in_pos == self.in_limit && !self.fill_in_buf(1)? {
+                if self.format == ContainerFormat::Raw {
+                    self.state = ReaderState::Done;
+                    return Ok(false);
                 }
+                return Err(Error::new(
+                    ErrorKind::UnexpectedEof,
+                    "unexpected EOF in compressed DEFLATE payload",
+                ));
             }
 
             let prev_in = self.decompressor.total_in();
             let prev_out = self.decompressor.total_out();
 
-            let status = self.decompressor.decompress(
-                &self.in_buf[self.in_pos..self.in_limit],
-                &mut self.out_buf[..],
-                FlushDecompress::None,
-            ).map_err(|e| {
-                Error::new(
-                    ErrorKind::InvalidData,
-                    format!("corrupt or invalid DEFLATE payload data: {e:?}"),
+            let status = self
+                .decompressor
+                .decompress(
+                    &self.in_buf[self.in_pos..self.in_limit],
+                    &mut self.out_buf[..],
+                    FlushDecompress::None,
                 )
-            })?;
+                .map_err(|e| {
+                    Error::new(
+                        ErrorKind::InvalidData,
+                        format!("corrupt or invalid DEFLATE payload data: {e:?}"),
+                    )
+                })?;
 
             let in_consumed = (self.decompressor.total_in() - prev_in) as usize;
             let out_produced = (self.decompressor.total_out() - prev_out) as usize;
@@ -419,37 +440,16 @@ impl<R: Read> LibdeflateReader<R> {
             self.total_in += in_consumed as u64;
 
             if out_produced > 0 {
-                self.out_pos = 0;
-                self.out_limit = out_produced;
-
-                let chunk = &self.out_buf[..out_produced];
-                self.adler = adler32_update(self.adler, chunk);
-                self.crc = crc32_update(self.crc, chunk);
-                self.total_out = self.total_out.wrapping_add(out_produced as u64);
-                self.member_total_out = self.member_total_out.wrapping_add(out_produced as u64);
-
-                if status == Status::StreamEnd {
-                    match self.format {
-                        ContainerFormat::Raw => self.state = ReaderState::Done,
-                        ContainerFormat::Zlib | ContainerFormat::Gzip => {
-                            self.state = ReaderState::Trailer;
-                        }
-                    }
-                }
+                self.record_decompressed_chunk(out_produced, status);
                 return Ok(true);
             }
 
             if status == Status::StreamEnd {
-                match self.format {
-                    ContainerFormat::Raw => self.state = ReaderState::Done,
-                    ContainerFormat::Zlib | ContainerFormat::Gzip => {
-                        self.state = ReaderState::Trailer;
-                    }
-                }
+                self.transition_stream_end();
                 return Ok(false);
             }
 
-            if in_consumed == 0 && out_produced == 0 {
+            if in_consumed == 0 {
                 let prev_avail = self.in_limit - self.in_pos;
                 if !self.fill_in_buf(prev_avail + 1)? {
                     return Err(Error::new(
@@ -463,6 +463,86 @@ impl<R: Read> LibdeflateReader<R> {
 
     // MARK: - Trailer Verification
 
+    fn verify_zlib_trailer(&mut self) -> io::Result<()> {
+        if !self.fill_in_buf(4)? {
+            return Err(Error::new(
+                ErrorKind::UnexpectedEof,
+                "unexpected EOF reading zlib Adler-32 trailer",
+            ));
+        }
+
+        let expected_adler = u32::from_be_bytes([
+            self.in_buf[self.in_pos],
+            self.in_buf[self.in_pos + 1],
+            self.in_buf[self.in_pos + 2],
+            self.in_buf[self.in_pos + 3],
+        ]);
+        self.in_pos += 4;
+        self.total_in += 4;
+
+        if expected_adler != self.adler {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "zlib Adler-32 mismatch: stream=0x{:08X}, computed=0x{:08X}",
+                    expected_adler, self.adler
+                ),
+            ));
+        }
+
+        self.state = ReaderState::Done;
+        Ok(())
+    }
+
+    fn verify_gzip_trailer(&mut self) -> io::Result<()> {
+        if !self.fill_in_buf(8)? {
+            return Err(Error::new(
+                ErrorKind::UnexpectedEof,
+                "unexpected EOF reading gzip CRC-32 / ISIZE trailer",
+            ));
+        }
+
+        let expected_crc = u32::from_le_bytes([
+            self.in_buf[self.in_pos],
+            self.in_buf[self.in_pos + 1],
+            self.in_buf[self.in_pos + 2],
+            self.in_buf[self.in_pos + 3],
+        ]);
+        let expected_isize = u32::from_le_bytes([
+            self.in_buf[self.in_pos + 4],
+            self.in_buf[self.in_pos + 5],
+            self.in_buf[self.in_pos + 6],
+            self.in_buf[self.in_pos + 7],
+        ]);
+        self.in_pos += 8;
+        self.total_in += 8;
+
+        if expected_crc != self.crc {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                format!(
+                    "gzip CRC-32 mismatch: stream=0x{:08X}, computed=0x{:08X}",
+                    expected_crc, self.crc
+                ),
+            ));
+        }
+
+        let actual_isize = self.member_total_out as u32;
+        if expected_isize != actual_isize {
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                format!("gzip ISIZE mismatch: stream={expected_isize}, computed={actual_isize}"),
+            ));
+        }
+
+        self.state = if self.fill_in_buf(1)? {
+            ReaderState::Header
+        } else {
+            ReaderState::Done
+        };
+        Ok(())
+    }
+
     /// Parses and verifies container trailer checksums (RFC 1950 Adler-32 / RFC 1952 CRC-32 & ISIZE).
     fn verify_trailer(&mut self) -> io::Result<()> {
         match self.format {
@@ -470,87 +550,8 @@ impl<R: Read> LibdeflateReader<R> {
                 self.state = ReaderState::Done;
                 Ok(())
             }
-            ContainerFormat::Zlib => {
-                if !self.fill_in_buf(4)? {
-                    return Err(Error::new(
-                        ErrorKind::UnexpectedEof,
-                        "unexpected EOF reading zlib Adler-32 trailer",
-                    ));
-                }
-
-                let expected_adler = u32::from_be_bytes([
-                    self.in_buf[self.in_pos],
-                    self.in_buf[self.in_pos + 1],
-                    self.in_buf[self.in_pos + 2],
-                    self.in_buf[self.in_pos + 3],
-                ]);
-                self.in_pos += 4;
-                self.total_in += 4;
-
-                if expected_adler != self.adler {
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!(
-                            "zlib Adler-32 mismatch: stream=0x{:08X}, computed=0x{:08X}",
-                            expected_adler, self.adler
-                        ),
-                    ));
-                }
-
-                self.state = ReaderState::Done;
-                Ok(())
-            }
-            ContainerFormat::Gzip => {
-                if !self.fill_in_buf(8)? {
-                    return Err(Error::new(
-                        ErrorKind::UnexpectedEof,
-                        "unexpected EOF reading gzip CRC-32 / ISIZE trailer",
-                    ));
-                }
-
-                let expected_crc = u32::from_le_bytes([
-                    self.in_buf[self.in_pos],
-                    self.in_buf[self.in_pos + 1],
-                    self.in_buf[self.in_pos + 2],
-                    self.in_buf[self.in_pos + 3],
-                ]);
-                let expected_isize = u32::from_le_bytes([
-                    self.in_buf[self.in_pos + 4],
-                    self.in_buf[self.in_pos + 5],
-                    self.in_buf[self.in_pos + 6],
-                    self.in_buf[self.in_pos + 7],
-                ]);
-                self.in_pos += 8;
-                self.total_in += 8;
-
-                if expected_crc != self.crc {
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!(
-                            "gzip CRC-32 mismatch: stream=0x{:08X}, computed=0x{:08X}",
-                            expected_crc, self.crc
-                        ),
-                    ));
-                }
-
-                let actual_isize = self.member_total_out as u32;
-                if expected_isize != actual_isize {
-                    return Err(Error::new(
-                        ErrorKind::InvalidData,
-                        format!(
-                            "gzip ISIZE mismatch: stream={expected_isize}, computed={actual_isize}",
-                        ),
-                    ));
-                }
-
-                // Check for concatenated GZIP members
-                if self.fill_in_buf(1)? {
-                    self.state = ReaderState::Header;
-                } else {
-                    self.state = ReaderState::Done;
-                }
-                Ok(())
-            }
+            ContainerFormat::Zlib => self.verify_zlib_trailer(),
+            ContainerFormat::Gzip => self.verify_gzip_trailer(),
         }
     }
 }

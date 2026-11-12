@@ -39,27 +39,6 @@ pub(crate) fn folder_final_unpack_size(folder: &crate::sevenz::header::SevenZFol
         .unwrap_or(0)
 }
 
-/// Returns `true` when the folder's coder graph needs the full coder-chain pipeline instead of
-/// the single-coder streaming fast path.
-///
-/// The fast path (`decoder::stream`) decodes exactly one single-input non-AES coder and cannot
-/// apply branch/delta filters or multi-input coders such as BCJ2. A folder qualifies for the
-/// fast path only when it has a single non-AES coder; an optional AES coder decrypts the packed
-/// stream in front of it and does not change the coder topology.
-pub(crate) fn folder_needs_coder_chain(folder: &crate::sevenz::header::SevenZFolder) -> bool {
-    let mut non_aes_coders = 0usize;
-    for coder in &folder.coders {
-        if coder.method_id == METHOD_AES {
-            continue;
-        }
-        non_aes_coders += 1;
-        if coder.num_in_streams > 1 {
-            return true;
-        }
-    }
-    non_aes_coders > 1
-}
-
 /// Resolves the true uncompressed size of a stream inside a folder, correcting for multi-coder
 /// folders (such as external 7z `[LZMA2, AES]`) where the final output coder is not last.
 pub(crate) fn resolve_folder_stream_size(
@@ -109,7 +88,8 @@ pub(crate) fn map_folder_decompress_err(err: TTZipStatus, has_aes: bool) -> TTZi
 }
 
 pub(crate) use super::codec_pump::{
-    emit_checked_chunk, init_lzma1_alone_decoder, pump_lzma1_stream, pump_lzma2_stream,
+    bounded_out_chunk_len, emit_checked_chunk, init_lzma1_alone_decoder, pump_lzma1_stream,
+    pump_lzma2_stream, resolve_decoder_threads, with_decode_scratch_buf, with_reusable_fl2_dstream,
 };
 
 fn decode_buffered_codec_chunked<F>(
@@ -149,26 +129,28 @@ fn decode_reader_codec_chunked<R: std::io::Read, F>(
 where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
 {
-    let mut out_chunk = vec![0u8; CHUNK_SIZE];
-    loop {
-        let max_read = if bound_to_expected && expected_unpack_size > 0 {
-            let rem = expected_unpack_size.saturating_sub(*total_decompressed) as usize;
-            if rem == 0 {
+    let chunk_len = bounded_out_chunk_len(expected_unpack_size, CHUNK_SIZE);
+    with_decode_scratch_buf(chunk_len, |out_chunk| {
+        loop {
+            let max_read = if bound_to_expected && expected_unpack_size > 0 {
+                let rem = expected_unpack_size.saturating_sub(*total_decompressed) as usize;
+                if rem == 0 {
+                    break;
+                }
+                rem.min(out_chunk.len())
+            } else {
+                out_chunk.len()
+            };
+            let n = reader
+                .read(&mut out_chunk[..max_read])
+                .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+            if n == 0 {
                 break;
             }
-            rem.min(out_chunk.len())
-        } else {
-            out_chunk.len()
-        };
-        let n = reader
-            .read(&mut out_chunk[..max_read])
-            .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
-        if n == 0 {
-            break;
+            emit_checked_chunk(&out_chunk[..n], total_decompressed, expected_unpack_size, sink)?;
         }
-        emit_checked_chunk(&out_chunk[..n], total_decompressed, expected_unpack_size, sink)?;
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 fn decode_lzma2_raw_chunked<F>(
@@ -183,28 +165,30 @@ where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
 {
     if raw_payload.is_empty() {
-        return if expected_unpack_size == 0 {
-            Ok(())
-        } else {
-            Err(TTZipStatus::ErrCorruptHeader)
-        };
+        return (expected_unpack_size == 0)
+            .then_some(())
+            .ok_or(TTZipStatus::ErrCorruptHeader);
     }
-    let mut dstream = crate::codecs::lzma2::Fl2DStream::new(threads.max(1))?;
-    dstream.init(coder_props.first().copied())?;
-    let mut out_chunk = vec![0u8; CHUNK_SIZE];
-    let finished = pump_lzma2_stream(
-        &mut dstream,
-        raw_payload,
-        &mut out_chunk,
-        true,
-        total_decompressed,
+    let chunk_len = bounded_out_chunk_len(expected_unpack_size, CHUNK_SIZE);
+    let finished = with_reusable_fl2_dstream(
+        resolve_decoder_threads(threads),
+        coder_props.first().copied(),
         expected_unpack_size,
-        sink,
+        |dstream| {
+            with_decode_scratch_buf(chunk_len, |out_chunk| {
+                pump_lzma2_stream(
+                    dstream,
+                    raw_payload,
+                    out_chunk,
+                    true,
+                    total_decompressed,
+                    expected_unpack_size,
+                    sink,
+                )
+            })
+        },
     )?;
-    if !finished {
-        return Err(TTZipStatus::ErrCorruptHeader);
-    }
-    Ok(())
+    finished.then_some(()).ok_or(TTZipStatus::ErrCorruptHeader)
 }
 
 fn decode_lzma1_raw_chunked<F>(
@@ -217,29 +201,31 @@ fn decode_lzma1_raw_chunked<F>(
 where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
 {
-    let mut out_chunk = vec![0u8; CHUNK_SIZE];
-    let (mut decoder, is_end) = init_lzma1_alone_decoder(
-        coder_props,
-        expected_unpack_size,
-        &mut out_chunk,
-        total_decompressed,
-        sink,
-    )?;
-    if !is_end {
-        let finished = pump_lzma1_stream(
-            &mut decoder,
-            raw_payload,
-            &mut out_chunk,
-            true,
-            total_decompressed,
+    let chunk_len = bounded_out_chunk_len(expected_unpack_size, CHUNK_SIZE);
+    with_decode_scratch_buf(chunk_len, |out_chunk| {
+        let (mut decoder, is_end) = init_lzma1_alone_decoder(
+            coder_props,
             expected_unpack_size,
+            out_chunk,
+            total_decompressed,
             sink,
         )?;
-        if !finished {
-            return Err(TTZipStatus::ErrCorruptHeader);
+        if !is_end {
+            let finished = pump_lzma1_stream(
+                &mut decoder,
+                raw_payload,
+                out_chunk,
+                true,
+                total_decompressed,
+                expected_unpack_size,
+                sink,
+            )?;
+            if !finished {
+                return Err(TTZipStatus::ErrCorruptHeader);
+            }
         }
-    }
-    Ok(())
+        Ok(())
+    })
 }
 
 fn decode_ppmd_raw_chunked<F>(
@@ -343,6 +329,11 @@ where
             let mut dec = brotli::Decompressor::new(raw_brotli, 65536);
             decode_reader_codec_chunked(&mut dec, false, expected_unpack_size, total, sink)
         }
+        METHOD_ZSTD => {
+            let mut dec = crate::codecs::zstd::ZstdStreamReader::new(raw_payload)
+                .map_err(map_codec_bitstream_err)?;
+            decode_reader_codec_chunked(&mut dec, false, expected_unpack_size, total, sink)
+        }
         _ => Err(TTZipStatus::ErrUnsupportedFeature),
     }
 }
@@ -418,47 +409,46 @@ pub(crate) fn apply_filter_inplace(method_id: u64, props: &[u8], buf: &mut [u8])
     }
 }
 
-fn is_branch_or_delta_filter(mid: u64) -> bool {
+pub(crate) fn is_branch_or_delta_filter(mid: u64) -> bool {
     mid == METHOD_BCJ_X86
         || mid == METHOD_ARM64
         || mid == METHOD_ARM64_ALT
         || mid == METHOD_DELTA
 }
 
-#[allow(clippy::too_many_arguments, reason = "Internal helper for filtered folder pipeline")]
-fn decode_filtered_folder_pipeline<F>(
-    raw_payload: &[u8],
-    filter_coder: &crate::sevenz::header::SevenZCoder,
-    comp_coder: Option<&crate::sevenz::header::SevenZCoder>,
+struct FilteredFolderPipelineSpec<'a> {
+    raw_payload: &'a [u8],
+    filter_coder: &'a crate::sevenz::header::SevenZCoder,
+    comp_coder: Option<&'a crate::sevenz::header::SevenZCoder>,
     expected_unpack_size: u64,
     threads: u32,
     has_aes: bool,
+}
+
+fn decode_filtered_folder_pipeline<F>(
+    spec: FilteredFolderPipelineSpec<'_>,
     sink: &mut F,
 ) -> Result<u64, TTZipStatus>
 where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
 {
-    let mid = comp_coder.map(|c| c.method_id).unwrap_or(METHOD_COPY);
-    let props = comp_coder.map(|c| c.properties.as_slice()).unwrap_or(&[]);
-    let mut decomp_buf = Vec::with_capacity(expected_unpack_size as usize);
-    decode_raw_payload_chunked(
-        raw_payload,
+    let mid = spec.comp_coder.map(|c| c.method_id).unwrap_or(METHOD_COPY);
+    let props = spec.comp_coder.map(|c| c.properties.as_slice()).unwrap_or(&[]);
+    let mut filter = super::stream::StreamingFilterState::new(
+        spec.filter_coder.method_id,
+        &spec.filter_coder.properties,
+    );
+    let total = decode_raw_payload_chunked(
+        spec.raw_payload,
         mid,
         props,
-        expected_unpack_size,
-        threads,
-        |chunk| {
-            decomp_buf.extend_from_slice(chunk);
-            Ok(())
-        },
+        spec.expected_unpack_size,
+        spec.threads,
+        |chunk| filter.push_chunk(chunk, sink),
     )
-    .map_err(|err| map_folder_decompress_err(err, has_aes))?;
-
-    apply_filter_inplace(filter_coder.method_id, &filter_coder.properties, &mut decomp_buf);
-    for chunk in decomp_buf.chunks(CHUNK_SIZE) {
-        sink(chunk)?;
-    }
-    Ok(decomp_buf.len() as u64)
+    .map_err(|err| map_folder_decompress_err(err, spec.has_aes))?;
+    filter.finish(sink)?;
+    Ok(total)
 }
 
 fn decrypt_folder_payload_in_memory(
@@ -543,6 +533,100 @@ where
     )
 }
 
+/// Decompresses and decrypts a contiguous packed 7z folder slice (for non-BCJ2 folders) in bounded streaming chunks.
+pub(crate) fn decode_7z_packed_folder_slice<F>(
+    raw_packed_folder: &[u8],
+    info: &SevenZHeaderInfo,
+    folder: &crate::sevenz::header::SevenZFolder,
+    password: Option<&str>,
+    threads: u32,
+    sink: F,
+) -> Result<u64, TTZipStatus>
+where
+    F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
+{
+    if folder_final_unpack_size(folder) > MAX_IN_MEMORY_DECOMPRESS_BYTES as u64 {
+        return Err(TTZipStatus::ErrOutOfMemory);
+    }
+    decode_7z_packed_folder_slice_bounded(
+        raw_packed_folder,
+        info,
+        folder,
+        password,
+        threads,
+        Some(MAX_IN_MEMORY_DECOMPRESS_BYTES as u64),
+        sink,
+    )
+}
+
+pub(crate) fn decode_7z_packed_folder_slice_bounded<F>(
+    raw_packed_folder: &[u8],
+    info: &SevenZHeaderInfo,
+    folder: &crate::sevenz::header::SevenZFolder,
+    password: Option<&str>,
+    threads: u32,
+    max_unpack_bytes: Option<u64>,
+    mut sink: F,
+) -> Result<u64, TTZipStatus>
+where
+    F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
+{
+    let budget = max_unpack_bytes
+        .unwrap_or(MAX_IN_MEMORY_DECOMPRESS_BYTES as u64)
+        .min(MAX_IN_MEMORY_DECOMPRESS_BYTES as u64);
+    let has_aes = folder.coders.iter().any(|c| c.method_id == METHOD_AES) || info.is_encrypted;
+    let mut decrypted_storage = zeroize::Zeroizing::new(Vec::new());
+    let mut raw_payload = raw_packed_folder;
+    let remaining_budget = if has_aes {
+        let decrypt_bytes = raw_packed_folder.len() as u64;
+        if decrypt_bytes > budget {
+            return Err(TTZipStatus::ErrOutOfMemory);
+        }
+        let valid_len = decrypt_folder_payload_in_memory(
+            raw_payload,
+            info,
+            folder,
+            password,
+            &mut decrypted_storage,
+        )?;
+        raw_payload = &decrypted_storage[..valid_len];
+        budget - decrypt_bytes
+    } else {
+        budget
+    };
+
+    let non_aes: Vec<_> = folder.coders.iter().filter(|c| c.method_id != METHOD_AES).collect();
+    let expected_unpack_size = folder_final_unpack_size(folder);
+    let uses_buffered_codec = non_aes
+        .iter()
+        .any(|c| matches!(c.method_id, METHOD_DEFLATE | METHOD_BZIP2));
+    if uses_buffered_codec && expected_unpack_size > remaining_budget {
+        return Err(TTZipStatus::ErrOutOfMemory);
+    }
+
+    if let Some(filter_coder) = non_aes.iter().find(|c| is_branch_or_delta_filter(c.method_id)) {
+        let comp_coder = non_aes.iter().find(|c| !is_branch_or_delta_filter(c.method_id)).copied();
+        return decode_filtered_folder_pipeline(
+            FilteredFolderPipelineSpec {
+                raw_payload,
+                filter_coder,
+                comp_coder,
+                expected_unpack_size,
+                threads,
+                has_aes,
+            },
+            &mut sink,
+        );
+    }
+
+    let primary_coder = non_aes.first().copied();
+    let method_id = primary_coder.map(|c| c.method_id).unwrap_or(info.primary_method_id);
+    let coder_props = primary_coder.map(|c| c.properties.as_slice()).unwrap_or(&info.coder_props);
+
+    decode_raw_payload_chunked(raw_payload, method_id, coder_props, expected_unpack_size, threads, sink)
+        .map_err(|err| map_folder_decompress_err(err, has_aes))
+}
+
 /// Decompresses and decrypts a specific 7z folder payload in bounded streaming chunks.
 pub fn decode_7z_folder_streaming<F>(
     mapped: &[u8],
@@ -550,7 +634,7 @@ pub fn decode_7z_folder_streaming<F>(
     folder_idx: usize,
     password: Option<&str>,
     threads: u32,
-    mut sink: F,
+    sink: F,
 ) -> Result<u64, TTZipStatus>
 where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
@@ -565,45 +649,17 @@ where
     if payload_end > mapped.len() {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
-
-    let has_aes = folder.coders.iter().any(|c| c.method_id == METHOD_AES) || info.is_encrypted;
-    let mut decrypted_storage = zeroize::Zeroizing::new(Vec::new());
-    let mut raw_payload = &mapped[folder.packed_offset..payload_end];
-    if has_aes {
-        let valid_len =
-            decrypt_folder_payload_in_memory(raw_payload, info, folder, password, &mut decrypted_storage)?;
-        raw_payload = &decrypted_storage[..valid_len];
-    }
-
-    let non_aes: Vec<_> = folder.coders.iter().filter(|c| c.method_id != METHOD_AES).collect();
-    if non_aes.iter().any(|c| c.method_id == METHOD_BCJ2) {
+    if folder.coders.iter().any(|c| c.method_id == METHOD_BCJ2) {
         return super::bcj2::decode_bcj2_folder_streaming(mapped, info, folder, folder_idx, threads, sink);
     }
-
-    let expected_unpack_size = folder_final_unpack_size(folder);
-    if expected_unpack_size > MAX_IN_MEMORY_DECOMPRESS_BYTES as u64 {
-        return Err(TTZipStatus::ErrOutOfMemory);
-    }
-
-    if let Some(filter_coder) = non_aes.iter().find(|c| is_branch_or_delta_filter(c.method_id)) {
-        let comp_coder = non_aes.iter().find(|c| !is_branch_or_delta_filter(c.method_id)).copied();
-        return decode_filtered_folder_pipeline(
-            raw_payload,
-            filter_coder,
-            comp_coder,
-            expected_unpack_size,
-            threads,
-            has_aes,
-            &mut sink,
-        );
-    }
-
-    let primary_coder = non_aes.first().copied();
-    let method_id = primary_coder.map(|c| c.method_id).unwrap_or(info.primary_method_id);
-    let coder_props = primary_coder.map(|c| c.properties.as_slice()).unwrap_or(&info.coder_props);
-
-    decode_raw_payload_chunked(raw_payload, method_id, coder_props, expected_unpack_size, threads, sink)
-        .map_err(|err| map_folder_decompress_err(err, has_aes))
+    decode_7z_packed_folder_slice(
+        &mapped[folder.packed_offset..payload_end],
+        info,
+        folder,
+        password,
+        threads,
+        sink,
+    )
 }
 
 /// Decompresses and decrypts the 7z solid payload block in bounded streaming chunks, feeding into a sink callback.
@@ -647,95 +703,6 @@ pub fn decode_7z_solid_payload(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
+#[path = "payload_tests.rs"]
+mod tests;
 
-    #[test]
-    fn test_decode_raw_payload_chunked_brotli_passthrough() {
-        let test_data = b"Brotli direct pass-through test payload without 0x184D2A50 magic framing.";
-        let mut compressed = Vec::new();
-        {
-            let mut writer = brotli::CompressorWriter::new(&mut compressed, 4096, 6, 22);
-            std::io::Write::write_all(&mut writer, test_data).unwrap();
-        }
-
-        let mut output = Vec::new();
-        let total = decode_raw_payload_chunked(
-            &compressed,
-            METHOD_BROTLI,
-            &[],
-            test_data.len() as u64,
-            1,
-            |chunk| {
-                output.extend_from_slice(chunk);
-                Ok(())
-            },
-        )
-        .expect("brotli decompression should succeed");
-
-        assert_eq!(total, test_data.len() as u64);
-        assert_eq!(output, test_data);
-    }
-
-    #[test]
-    fn test_decode_raw_payload_chunked_deflate_exceeds_memory_limit() {
-        let dummy_payload = [0u8; 16];
-        let bomb_size = (MAX_IN_MEMORY_DECOMPRESS_BYTES as u64) + 1;
-        let res = decode_raw_payload_chunked(
-            &dummy_payload,
-            METHOD_DEFLATE,
-            &[],
-            bomb_size,
-            1,
-            |_chunk| Ok(()),
-        );
-        assert_eq!(res, Err(TTZipStatus::ErrOutOfMemory));
-    }
-
-    #[test]
-    fn test_decode_raw_payload_chunked_bzip2_exceeds_memory_limit() {
-        let dummy_payload = [0u8; 16];
-        let bomb_size = (MAX_IN_MEMORY_DECOMPRESS_BYTES as u64) + 1;
-        let res = decode_raw_payload_chunked(
-            &dummy_payload,
-            METHOD_BZIP2,
-            &[],
-            bomb_size,
-            1,
-            |_chunk| Ok(()),
-        );
-        assert_eq!(res, Err(TTZipStatus::ErrOutOfMemory));
-    }
-
-    #[test]
-    fn test_decode_7z_folder_streaming_single_coder_bomb_exceeds_memory_limit() {
-        let dummy_payload = [0u8; 32];
-        let bomb_size = (MAX_IN_MEMORY_DECOMPRESS_BYTES as u64) + 1;
-        let folder = crate::sevenz::header::SevenZFolder {
-            coders: vec![crate::sevenz::header::SevenZCoder {
-                method_id: METHOD_COPY,
-                properties: Vec::new(),
-                num_in_streams: 1,
-                num_out_streams: 1,
-            }],
-            unpack_sizes: vec![bomb_size],
-            packed_offset: 0,
-            packed_len: dummy_payload.len(),
-            ..Default::default()
-        };
-        let info = SevenZHeaderInfo {
-            folders: vec![folder],
-            ..Default::default()
-        };
-
-        let res = decode_7z_folder_streaming(
-            &dummy_payload,
-            &info,
-            0,
-            None,
-            1,
-            |_chunk| Ok(()),
-        );
-        assert_eq!(res, Err(TTZipStatus::ErrOutOfMemory));
-    }
-}

@@ -94,6 +94,58 @@ fn render_diagnostic_banner(frame: &mut Frame, area: Rect, repair: &crate::app::
     frame.render_widget(banner_p, area);
 }
 
+fn build_salvage_row(
+    entry: &crate::app::repair_runner::SalvagedEntry,
+    is_cursor: bool,
+) -> Row<'static> {
+    let check_span = if entry.is_selected {
+        Span::styled(
+            " [x] ",
+            Style::default()
+                .fg(Theme::ACCENT_GOLD)
+                .add_modifier(Modifier::BOLD),
+        )
+    } else {
+        Span::styled(" [ ] ", Theme::style_muted_text())
+    };
+
+    let icon = if entry.is_directory { "📁 " } else { "📄 " };
+    let name_span = Span::styled(
+        format!("{}{}", icon, entry.rel_path),
+        Style::default().fg(if entry.is_directory {
+            Theme::ACCENT_BLUE
+        } else {
+            Theme::TEXT_PRIMARY
+        }),
+    );
+
+    let comp_str = format_bytes(entry.compressed_size);
+    let uncomp_str = format_bytes(entry.uncompressed_size);
+    let crc_str = if entry.crc32 != 0 {
+        format!("{:08X}", entry.crc32)
+    } else {
+        "-".to_string()
+    };
+
+    let cells = vec![
+        Cell::from(check_span),
+        Cell::from(Line::from(name_span)),
+        Cell::from(Span::styled(comp_str, Theme::style_muted_text())),
+        Cell::from(Span::styled(uncomp_str, Theme::style_secondary_text())),
+        Cell::from(Span::styled(crc_str, Theme::style_muted_text())),
+        Cell::from(Span::styled(
+            entry.method_name(),
+            Style::default().fg(Theme::ACCENT_GREEN),
+        )),
+    ];
+
+    let mut row = Row::new(cells).height(1);
+    if is_cursor {
+        row = row.style(Theme::style_table_selected());
+    }
+    row
+}
+
 fn render_salvage_table(frame: &mut Frame, area: Rect, repair: &crate::app::repair_runner::RepairState) {
     let header_cells = [
         " SEL ",
@@ -115,54 +167,16 @@ fn render_salvage_table(frame: &mut Frame, area: Rect, repair: &crate::app::repa
         .salvaged_entries
         .iter()
         .enumerate()
-        .map(|(idx, entry)| {
-            let is_cursor = idx == repair.selected_table_index;
-
-            let check_span = if entry.is_selected {
-                Span::styled(" [x] ", Style::default().fg(Theme::ACCENT_GOLD).add_modifier(Modifier::BOLD))
-            } else {
-                Span::styled(" [ ] ", Theme::style_muted_text())
-            };
-
-            let icon = if entry.is_directory { "📁 " } else { "📄 " };
-            let name_span = Span::styled(
-                format!("{}{}", icon, entry.rel_path),
-                Style::default().fg(if entry.is_directory { Theme::ACCENT_BLUE } else { Theme::TEXT_PRIMARY }),
-            );
-
-            let comp_str = format_bytes(entry.compressed_size);
-            let uncomp_str = format_bytes(entry.uncompressed_size);
-            let crc_str = if entry.crc32 != 0 {
-                format!("{:08X}", entry.crc32)
-            } else {
-                "-".to_string()
-            };
-            let method_str = entry.method_name();
-
-            let cells = vec![
-                Cell::from(check_span),
-                Cell::from(Line::from(name_span)),
-                Cell::from(Span::styled(comp_str, Theme::style_muted_text())),
-                Cell::from(Span::styled(uncomp_str, Theme::style_secondary_text())),
-                Cell::from(Span::styled(crc_str, Theme::style_muted_text())),
-                Cell::from(Span::styled(method_str, Style::default().fg(Theme::ACCENT_GREEN))),
-            ];
-
-            let mut row = Row::new(cells).height(1);
-            if is_cursor {
-                row = row.style(Theme::style_table_selected());
-            }
-            row
-        })
+        .map(|(idx, entry)| build_salvage_row(entry, idx == repair.selected_table_index))
         .collect();
 
     let widths = [
-        Constraint::Length(6),          // SEL
-        Constraint::Percentage(45),     // Path
-        Constraint::Length(12),         // Comp Size
-        Constraint::Length(12),         // Uncomp Size
-        Constraint::Length(10),         // CRC32
-        Constraint::Length(10),         // Method
+        Constraint::Length(6),
+        Constraint::Percentage(45),
+        Constraint::Length(12),
+        Constraint::Length(12),
+        Constraint::Length(10),
+        Constraint::Length(10),
     ];
 
     let count_info = format!(" Salvageable Local File Headers ({}) ", repair.salvaged_entries.len());

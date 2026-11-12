@@ -101,59 +101,22 @@ impl SecurePathExtractor {
     /// Returns `ErrSecurityViolation` if the path attempts traversal, escapes sandbox boundaries,
     /// or violates enabled security flags.
     pub fn sanitize_and_validate_path(&self, raw_path: &str) -> Result<PathBuf, TTZipStatus> {
-        if raw_path.is_empty() || raw_path.contains('\0') {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
+        self.validate_raw_path_prefix(raw_path)?;
 
-        // Check for URI schemes (e.g. file://, http://)
-        if raw_path.contains("://") {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-
-        // Detect absolute paths, UNC paths, and Windows drive letters
-        let is_abs_posix = raw_path.starts_with('/');
-        let is_abs_win = raw_path.starts_with('\\');
-        let is_unc = raw_path.starts_with(r"\\") || raw_path.starts_with("//");
-
-        let bytes = raw_path.as_bytes();
-        let has_drive_letter = bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':';
-
-        if self.flags.contains(SecurityFlags::SECURE_NOABSOLUTEPATHS)
-            && (is_abs_posix || is_abs_win || is_unc || has_drive_letter)
-        {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-
-        // Normalize slashes and process components
         let normalized = raw_path.replace('\\', "/");
         let path_obj = Path::new(&normalized);
-
         let mut segments: Vec<String> = Vec::with_capacity(8);
 
         for comp in path_obj.components() {
             match comp {
                 Component::Normal(c) => {
                     let s = c.to_string_lossy();
-                    // Multi-dot or embedded traversal checks
-                    if self.flags.contains(SecurityFlags::SECURE_NODOTDOT) {
-                        if s == ".." || s.contains("..") || s.chars().all(|ch| ch == '.') {
-                            return Err(TTZipStatus::ErrSecurityViolation);
-                        }
-                        // Check Windows drive letter within component
-                        if s.len() >= 2 && s.as_bytes()[1] == b':' && s.as_bytes()[0].is_ascii_alphabetic() {
-                            return Err(TTZipStatus::ErrSecurityViolation);
-                        }
-                    }
-                    segments.push(s.to_string());
+                    self.validate_normal_component(&s)?;
+                    segments.push(s.into_owned());
                 }
-                Component::CurDir => {
-                    // Current directory '.' is harmless, skip
-                }
+                Component::CurDir => {}
                 Component::ParentDir => {
-                    if self.flags.contains(SecurityFlags::SECURE_NODOTDOT) {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                    if segments.is_empty() {
+                    if self.flags.contains(SecurityFlags::SECURE_NODOTDOT) || segments.is_empty() {
                         return Err(TTZipStatus::ErrSecurityViolation);
                     }
                     segments.pop();
@@ -170,12 +133,28 @@ impl SecurePathExtractor {
             return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        let mut rel_buf = PathBuf::new();
-        for seg in segments {
-            rel_buf.push(seg);
+        Ok(segments.into_iter().collect())
+    }
+
+    fn validate_raw_path_prefix(&self, raw_path: &str) -> Result<(), TTZipStatus> {
+        if raw_path.is_empty() || raw_path.contains('\0') || raw_path.contains("://") {
+            return Err(TTZipStatus::ErrSecurityViolation);
         }
 
-        Ok(rel_buf)
+        if self.flags.contains(SecurityFlags::SECURE_NOABSOLUTEPATHS) && has_absolute_prefix(raw_path) {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        Ok(())
+    }
+
+    fn validate_normal_component(&self, s: &str) -> Result<(), TTZipStatus> {
+        if !self.flags.contains(SecurityFlags::SECURE_NODOTDOT) {
+            return Ok(());
+        }
+        if s == ".." || s.contains("..") || s.chars().all(|ch| ch == '.') || has_drive_letter_prefix(s) {
+            return Err(TTZipStatus::ErrSecurityViolation);
+        }
+        Ok(())
     }
 
     /// Validates that no intermediate directory in `rel_path` is a symlink.
@@ -294,81 +273,22 @@ impl SecurePathExtractor {
         self.validate_intermediate_path(rel_path)?;
 
         let full_target = self.sandbox_root.join(rel_path);
+        ensure_parent_dir_exists(&full_target)?;
 
-        // Ensure parent directory exists
-        if let Some(parent) = full_target.parent() {
-            if !parent.exists() {
-                fs::create_dir_all(parent).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-            }
+        let unlink_first = self.flags.contains(SecurityFlags::SECURE_UNLINK_FIRST) || overwrite;
+        let file = open_pinned_file(&full_target, overwrite, unlink_first)?;
+
+        if self.flags.contains(SecurityFlags::RESTORE_PERMISSIONS) {
+            self.deferred_entries.push(DeferredSecureEntry {
+                rel_path: rel_path.to_path_buf(),
+                mode,
+                mtime_epoch_secs: mtime_secs,
+                mtime_nanos,
+                is_directory: false,
+            });
         }
 
-        #[cfg(unix)]
-        {
-            let c_path = CString::new(full_target.as_os_str().as_bytes())
-                .map_err(|_| TTZipStatus::ErrInvalidParam)?;
-
-            // Unlink first if requested or if overwriting
-            if self.flags.contains(SecurityFlags::SECURE_UNLINK_FIRST) || overwrite {
-                unsafe {
-                    libc::unlink(c_path.as_ptr());
-                }
-            }
-
-            let mut open_flags = libc::O_WRONLY | libc::O_CREAT | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-            if overwrite {
-                open_flags |= libc::O_TRUNC;
-            } else {
-                open_flags |= libc::O_EXCL;
-            }
-
-            let fd = unsafe { libc::open(c_path.as_ptr(), open_flags, 0o600) };
-            if fd < 0 {
-                return Err(TTZipStatus::ErrExtractionFailed);
-            }
-
-            let file = unsafe { File::from_raw_fd(fd) };
-
-            if self.flags.contains(SecurityFlags::RESTORE_PERMISSIONS) {
-                self.deferred_entries.push(DeferredSecureEntry {
-                    rel_path: rel_path.to_path_buf(),
-                    mode,
-                    mtime_epoch_secs: mtime_secs,
-                    mtime_nanos,
-                    is_directory: false,
-                });
-            }
-
-            Ok(file)
-        }
-
-        #[cfg(not(unix))]
-        {
-            if (self.flags.contains(SecurityFlags::SECURE_UNLINK_FIRST) || overwrite) && full_target.exists() {
-                let _ = fs::remove_file(&full_target);
-            }
-
-            let mut options = fs::OpenOptions::new();
-            options.write(true).create(true);
-            if overwrite {
-                options.truncate(true);
-            } else {
-                options.create_new(true);
-            }
-
-            let file = options.open(&full_target).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-
-            if self.flags.contains(SecurityFlags::RESTORE_PERMISSIONS) {
-                self.deferred_entries.push(DeferredSecureEntry {
-                    rel_path: rel_path.to_path_buf(),
-                    mode,
-                    mtime_epoch_secs: mtime_secs,
-                    mtime_nanos,
-                    is_directory: false,
-                });
-            }
-
-            Ok(file)
-        }
+        Ok(file)
     }
 
     /// Securely creates a symbolic link within the sandbox after validating its target.
@@ -379,41 +299,11 @@ impl SecurePathExtractor {
         self.validate_intermediate_path(rel_path)?;
 
         if self.flags.contains(SecurityFlags::SECURE_SYMLINKS) {
-            // Reject absolute symlink targets
-            if symlink_target.starts_with('/')
-                || symlink_target.starts_with('\\')
-                || (symlink_target.len() >= 2 && symlink_target.as_bytes()[1] == b':')
-            {
-                return Err(TTZipStatus::ErrSecurityViolation);
-            }
-
-            // Check relative traversal of symlink target
-            let mut depth = rel_path.components().count().saturating_sub(1);
-            for comp in Path::new(symlink_target).components() {
-                match comp {
-                    Component::ParentDir => {
-                        if depth == 0 {
-                            return Err(TTZipStatus::ErrSecurityViolation);
-                        }
-                        depth -= 1;
-                    }
-                    Component::Normal(_) => {
-                        depth += 1;
-                    }
-                    Component::CurDir => {}
-                    Component::RootDir | Component::Prefix(_) => {
-                        return Err(TTZipStatus::ErrSecurityViolation);
-                    }
-                }
-            }
+            validate_symlink_target_within_sandbox(rel_path, symlink_target)?;
         }
 
         let full_target = self.sandbox_root.join(rel_path);
-        if let Some(parent) = full_target.parent() {
-            if !parent.exists() {
-                fs::create_dir_all(parent).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
-            }
-        }
+        ensure_parent_dir_exists(&full_target)?;
 
         #[cfg(unix)]
         {
@@ -437,6 +327,7 @@ impl SecurePathExtractor {
 
         #[cfg(not(unix))]
         {
+            let _ = symlink_target;
             Err(TTZipStatus::ErrUnsupportedFeature)
         }
     }
@@ -545,4 +436,91 @@ impl Drop for SecurePathExtractor {
             }
         }
     }
+}
+
+#[inline]
+fn has_drive_letter_prefix(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    bytes.len() >= 2 && bytes[0].is_ascii_alphabetic() && bytes[1] == b':'
+}
+
+#[inline]
+fn has_absolute_prefix(raw_path: &str) -> bool {
+    raw_path.starts_with('/')
+        || raw_path.starts_with('\\')
+        || raw_path.starts_with(r"\\")
+        || raw_path.starts_with("//")
+        || has_drive_letter_prefix(raw_path)
+}
+
+fn ensure_parent_dir_exists(full_target: &Path) -> Result<(), TTZipStatus> {
+    if let Some(parent) = full_target.parent() {
+        if !parent.exists() {
+            fs::create_dir_all(parent).map_err(|_| TTZipStatus::ErrExtractionFailed)?;
+        }
+    }
+    Ok(())
+}
+
+fn open_pinned_file(full_target: &Path, overwrite: bool, unlink_first: bool) -> Result<File, TTZipStatus> {
+    #[cfg(unix)]
+    {
+        let c_path = CString::new(full_target.as_os_str().as_bytes())
+            .map_err(|_| TTZipStatus::ErrInvalidParam)?;
+
+        if unlink_first {
+            unsafe {
+                libc::unlink(c_path.as_ptr());
+            }
+        }
+
+        let mode_flag = if overwrite { libc::O_TRUNC } else { libc::O_EXCL };
+        let open_flags = libc::O_WRONLY | libc::O_CREAT | libc::O_NOFOLLOW | libc::O_CLOEXEC | mode_flag;
+
+        let fd = unsafe { libc::open(c_path.as_ptr(), open_flags, 0o600) };
+        if fd < 0 {
+            return Err(TTZipStatus::ErrExtractionFailed);
+        }
+
+        Ok(unsafe { File::from_raw_fd(fd) })
+    }
+
+    #[cfg(not(unix))]
+    {
+        if unlink_first && full_target.exists() {
+            let _ = fs::remove_file(full_target);
+        }
+
+        let mut options = fs::OpenOptions::new();
+        options.write(true).create(true);
+        if overwrite {
+            options.truncate(true);
+        } else {
+            options.create_new(true);
+        }
+
+        options.open(full_target).map_err(|_| TTZipStatus::ErrExtractionFailed)
+    }
+}
+
+fn validate_symlink_target_within_sandbox(rel_path: &Path, symlink_target: &str) -> Result<(), TTZipStatus> {
+    if has_absolute_prefix(symlink_target) {
+        return Err(TTZipStatus::ErrSecurityViolation);
+    }
+
+    let mut depth = rel_path.components().count().saturating_sub(1);
+    for comp in Path::new(symlink_target).components() {
+        match comp {
+            Component::ParentDir => {
+                if depth == 0 {
+                    return Err(TTZipStatus::ErrSecurityViolation);
+                }
+                depth -= 1;
+            }
+            Component::Normal(_) => depth += 1,
+            Component::CurDir => {}
+            Component::RootDir | Component::Prefix(_) => return Err(TTZipStatus::ErrSecurityViolation),
+        }
+    }
+    Ok(())
 }

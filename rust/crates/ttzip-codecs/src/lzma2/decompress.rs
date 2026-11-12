@@ -178,10 +178,10 @@ where
 {
     TLS_FL2_DCTX.with(|cell| {
         let mut cached = cell.borrow_mut();
-        if cached.is_none() {
-            *cached = Some(Fl2DCtx::new()?);
-        }
-        let ctx = cached.as_mut().unwrap();
+        let ctx = match cached.as_mut() {
+            Some(c) => c,
+            None => cached.insert(Fl2DCtx::new()?),
+        };
         f(ctx)
     })
 }

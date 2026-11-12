@@ -142,6 +142,24 @@ impl Acl {
         }
     }
 
+    fn parse_posix1e_tag(tag_type: &str, qualifier: &str) -> Result<AclTag, AclError> {
+        match tag_type {
+            "u" | "user" => Ok(if qualifier.is_empty() {
+                AclTag::UserObj
+            } else {
+                AclTag::User(qualifier.to_string())
+            }),
+            "g" | "group" => Ok(if qualifier.is_empty() {
+                AclTag::GroupObj
+            } else {
+                AclTag::Group(qualifier.to_string())
+            }),
+            "m" | "mask" => Ok(AclTag::Mask),
+            "o" | "other" => Ok(AclTag::Other),
+            _ => Err(AclError::InvalidTag(tag_type.to_string())),
+        }
+    }
+
     /// Parses a POSIX.1e text representation (e.g., `user::rwx\ngroup::r-x\nother::r--`).
     pub fn parse_posix1e(text: &str) -> Result<Self, AclError> {
         let mut acl = Self::new(AclType::Posix1e);
@@ -151,46 +169,21 @@ impl Acl {
                 continue;
             }
 
-            let mut is_default = false;
-            let mut rem = line;
-            if rem.starts_with("default:") {
-                is_default = true;
-                rem = &rem["default:".len()..];
-            } else if rem.starts_with("d:") {
-                is_default = true;
-                rem = &rem["d:".len()..];
-            }
+            let (is_default, rem) = if let Some(stripped) = line.strip_prefix("default:") {
+                (true, stripped)
+            } else if let Some(stripped) = line.strip_prefix("d:") {
+                (true, stripped)
+            } else {
+                (false, line)
+            };
 
             let parts: Vec<&str> = rem.split(':').collect();
             if parts.len() < 3 {
                 return Err(AclError::InvalidSyntax(line.to_string()));
             }
 
-            let tag_type = parts[0];
-            let qualifier = parts[1];
-            let perm_str = parts[2];
-
-            let tag = match tag_type {
-                "u" | "user" => {
-                    if qualifier.is_empty() {
-                        AclTag::UserObj
-                    } else {
-                        AclTag::User(qualifier.to_string())
-                    }
-                }
-                "g" | "group" => {
-                    if qualifier.is_empty() {
-                        AclTag::GroupObj
-                    } else {
-                        AclTag::Group(qualifier.to_string())
-                    }
-                }
-                "m" | "mask" => AclTag::Mask,
-                "o" | "other" => AclTag::Other,
-                _ => return Err(AclError::InvalidTag(tag_type.to_string())),
-            };
-
-            let permissions = AclPermissions::from_posix_str(perm_str)?;
+            let tag = Self::parse_posix1e_tag(parts[0], parts[1])?;
+            let permissions = AclPermissions::from_posix_str(parts[2])?;
             let mut entry = AclEntry::new(tag, permissions);
             entry.is_default = is_default;
             if is_default {
@@ -200,6 +193,41 @@ impl Acl {
             acl.add_entry(entry);
         }
         Ok(acl)
+    }
+
+    fn parse_nfs4_tag_and_indices(
+        parts: &[&str],
+    ) -> Result<(AclTag, usize, usize, usize), AclError> {
+        if parts.len() == 4 {
+            let tag = match parts[0] {
+                "owner@" => AclTag::UserObj,
+                "group@" => AclTag::GroupObj,
+                "everyone@" => AclTag::Everyone,
+                "mask@" => AclTag::Mask,
+                _ => return Err(AclError::InvalidTag(parts[0].to_string())),
+            };
+            Ok((tag, 1, 2, 3))
+        } else {
+            let tag = match parts[0] {
+                "user" | "u" => AclTag::User(parts[1].to_string()),
+                "group" | "g" => AclTag::Group(parts[1].to_string()),
+                "owner@" => AclTag::UserObj,
+                "group@" => AclTag::GroupObj,
+                "everyone@" => AclTag::Everyone,
+                _ => return Err(AclError::InvalidTag(parts[0].to_string())),
+            };
+            Ok((tag, 2, 3, 4))
+        }
+    }
+
+    fn parse_nfs4_ace_type(raw: &str) -> Result<AceType, AclError> {
+        match raw.to_lowercase().as_str() {
+            "allow" => Ok(AceType::Allow),
+            "deny" => Ok(AceType::Deny),
+            "audit" => Ok(AceType::Audit),
+            "alarm" => Ok(AceType::Alarm),
+            _ => Err(AclError::InvalidAceType(raw.to_string())),
+        }
     }
 
     /// Parses an NFSv4 text representation (e.g., `user:alice:rwxp--a-R-c---:fd----:allow`).
@@ -216,36 +244,10 @@ impl Acl {
                 return Err(AclError::InvalidSyntax(line.to_string()));
             }
 
-            let (tag, perm_idx, inherit_idx, type_idx) = if parts.len() == 4 {
-                let tag = match parts[0] {
-                    "owner@" => AclTag::UserObj,
-                    "group@" => AclTag::GroupObj,
-                    "everyone@" => AclTag::Everyone,
-                    "mask@" => AclTag::Mask,
-                    _ => return Err(AclError::InvalidTag(parts[0].to_string())),
-                };
-                (tag, 1, 2, 3)
-            } else {
-                let tag = match parts[0] {
-                    "user" | "u" => AclTag::User(parts[1].to_string()),
-                    "group" | "g" => AclTag::Group(parts[1].to_string()),
-                    "owner@" => AclTag::UserObj,
-                    "group@" => AclTag::GroupObj,
-                    "everyone@" => AclTag::Everyone,
-                    _ => return Err(AclError::InvalidTag(parts[0].to_string())),
-                };
-                (tag, 2, 3, 4)
-            };
-
+            let (tag, perm_idx, inherit_idx, type_idx) = Self::parse_nfs4_tag_and_indices(&parts)?;
             let permissions = AclPermissions::from_nfs4_str(parts[perm_idx])?;
             let inheritance = AclInheritance::from_nfs4_str(parts[inherit_idx])?;
-            let ace_type = match parts[type_idx].to_lowercase().as_str() {
-                "allow" => AceType::Allow,
-                "deny" => AceType::Deny,
-                "audit" => AceType::Audit,
-                "alarm" => AceType::Alarm,
-                _ => return Err(AclError::InvalidAceType(parts[type_idx].to_string())),
-            };
+            let ace_type = Self::parse_nfs4_ace_type(parts[type_idx])?;
 
             acl.add_entry(AclEntry {
                 tag,

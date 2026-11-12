@@ -305,30 +305,26 @@ impl DepthFirstDirFixup {
         Ok(())
     }
 
-    /// Applies deferred metadata attributes to a single directory.
-    fn apply_single_dir_fixup(item: &DirFixupItem, preserve_permissions: bool) -> Result<(), TTZipStatus> {
-        let path_str = match item.path.to_str() {
-            Some(s) => s,
-            None => return Err(TTZipStatus::ErrInvalidParam),
-        };
-
-        let c_path = match CString::new(path_str) {
-            Ok(c) => c,
-            Err(_) => return Err(TTZipStatus::ErrInvalidParam),
-        };
-
+    fn lstat_non_symlink(c_path: &CString) -> Result<libc::stat, TTZipStatus> {
         unsafe {
-            // Verify path existence and verify it is not a symlink (TOCTOU defense)
             let mut st: libc::stat = std::mem::zeroed();
             if libc::lstat(c_path.as_ptr(), &mut st) != 0 {
                 return Err(TTZipStatus::ErrFileNotFound);
             }
-
             if (st.st_mode & libc::S_IFMT) == libc::S_IFLNK {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
+            Ok(st)
+        }
+    }
 
-            // 1. Apply UID / GID ownership if requested (ignore EPERM for non-root users)
+    fn apply_dir_ownership_and_mode(
+        c_path: &CString,
+        item: &DirFixupItem,
+        st: &libc::stat,
+        preserve_permissions: bool,
+    ) -> Result<(), TTZipStatus> {
+        unsafe {
             if item.uid.is_some() || item.gid.is_some() {
                 let target_uid = item.uid.map(|u| u as libc::uid_t).unwrap_or(st.st_uid);
                 let target_gid = item.gid.map(|g| g as libc::gid_t).unwrap_or(st.st_gid);
@@ -337,14 +333,12 @@ impl DepthFirstDirFixup {
                 }
             }
 
-            // 2. Apply ACL if present
             if let Some(acl) = &item.acl {
-                Self::apply_acl_internal(&c_path, acl)?;
+                Self::apply_acl_internal(c_path, acl)?;
             } else if let Some(acl_text) = &item.acl_text {
-                Self::apply_acl_text_internal(&c_path, acl_text)?;
+                Self::apply_acl_text_internal(c_path, acl_text)?;
             }
 
-            // 3. Apply POSIX mode / permissions
             if preserve_permissions {
                 if let Some(target_mode) = item.mode {
                     let mode_bits = (target_mode & 0o7777) as libc::mode_t;
@@ -353,31 +347,55 @@ impl DepthFirstDirFixup {
                     }
                 }
             }
+        }
+        Ok(())
+    }
 
-            // 4. Apply high-precision nanosecond timestamps (applied last to preserve parent mtime)
-            if item.mtime.is_some() || item.atime.is_some() {
-                let mtime = item.mtime.unwrap_or_else(|| TTZipTimestamp::new(st.st_mtime as i64, 0));
-                let atime = item.atime.unwrap_or_else(|| TTZipTimestamp::new(st.st_atime as i64, 0));
-
-                let times = [
-                    libc::timespec {
-                        tv_sec: atime.sec as libc::time_t,
-                        tv_nsec: atime.nsec as libc::c_long,
-                    },
-                    libc::timespec {
-                        tv_sec: mtime.sec as libc::time_t,
-                        tv_nsec: mtime.nsec as libc::c_long,
-                    },
-                ];
-
-                let res = libc::utimensat(libc::AT_FDCWD, c_path.as_ptr(), times.as_ptr(), libc::AT_SYMLINK_NOFOLLOW);
-                if res != 0 {
-                    return Err(TTZipStatus::ErrExtractionFailed);
-                }
-            }
+    fn apply_dir_timestamps(
+        c_path: &CString,
+        item: &DirFixupItem,
+        st: &libc::stat,
+    ) -> Result<(), TTZipStatus> {
+        if item.mtime.is_none() && item.atime.is_none() {
+            return Ok(());
         }
 
+        let mtime = item.mtime.unwrap_or_else(|| TTZipTimestamp::new(st.st_mtime, 0));
+        let atime = item.atime.unwrap_or_else(|| TTZipTimestamp::new(st.st_atime, 0));
+
+        let times = [
+            libc::timespec {
+                tv_sec: atime.sec as libc::time_t,
+                tv_nsec: atime.nsec as libc::c_long,
+            },
+            libc::timespec {
+                tv_sec: mtime.sec as libc::time_t,
+                tv_nsec: mtime.nsec as libc::c_long,
+            },
+        ];
+
+        let res = unsafe {
+            libc::utimensat(
+                libc::AT_FDCWD,
+                c_path.as_ptr(),
+                times.as_ptr(),
+                libc::AT_SYMLINK_NOFOLLOW,
+            )
+        };
+        if res != 0 {
+            return Err(TTZipStatus::ErrExtractionFailed);
+        }
         Ok(())
+    }
+
+    /// Applies deferred metadata attributes to a single directory.
+    fn apply_single_dir_fixup(item: &DirFixupItem, preserve_permissions: bool) -> Result<(), TTZipStatus> {
+        let path_str = item.path.to_str().ok_or(TTZipStatus::ErrInvalidParam)?;
+        let c_path = CString::new(path_str).map_err(|_| TTZipStatus::ErrInvalidParam)?;
+
+        let st = Self::lstat_non_symlink(&c_path)?;
+        Self::apply_dir_ownership_and_mode(&c_path, item, &st, preserve_permissions)?;
+        Self::apply_dir_timestamps(&c_path, item, &st)
     }
 
     #[cfg(target_os = "macos")]

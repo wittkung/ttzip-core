@@ -34,6 +34,25 @@ pub enum FilterKind {
     Lzfse,
 }
 
+const MAGIC_PREFIX_FILTERS: &[(&[u8], FilterKind)] = &[
+    (&[0xED, 0xAB, 0xEE, 0xDB], FilterKind::Rpm),
+    (&[0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00], FilterKind::Xz),
+    (&[0x28, 0xB5, 0x2F, 0xFD], FilterKind::Zstd),
+    (&[0x1F, 0x8B], FilterKind::Gzip),
+    (&[0x1F, 0x9D], FilterKind::Compress),
+    (b"BZh", FilterKind::Bzip2),
+    (&[0x89, 0x4C, 0x5A, 0x4F], FilterKind::Lzop),
+    (b"LZIP", FilterKind::Lzip),
+    (&[0x04, 0x22, 0x4D, 0x18], FilterKind::Lz4),
+    (&[0x02, 0x21, 0x4C, 0x18], FilterKind::Lz4),
+    (b"\xFF\x06\x00\x00sNaPpY", FilterKind::Snappy),
+    (b"bvx-", FilterKind::Lzfse),
+    (b"bvx1", FilterKind::Lzfse),
+    (b"bvx2", FilterKind::Lzfse),
+    (b"bvxn", FilterKind::Lzfse),
+    (&[0xCE, 0xB2, 0xCF, 0x81], FilterKind::Brotli),
+];
+
 impl FilterKind {
     /// Returns the canonical lower-case name of the filter.
     #[must_use]
@@ -62,76 +81,14 @@ impl FilterKind {
             return None;
         }
 
-        // 1. UUEncode check: "begin " at start or after leading whitespaces/newlines
         if is_uuencode_header(buffer) {
             return Some(Self::Uuencode);
         }
 
-        // 2. RPM check: \xED\xAB\xEE\xDB (RPM Lead)
-        if buffer.len() >= 4 && buffer[..4] == [0xED, 0xAB, 0xEE, 0xDB] {
-            return Some(Self::Rpm);
-        }
-
-        // 3. XZ check: \xFD7zXZ\x00
-        if buffer.len() >= 6 && buffer[..6] == [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00] {
-            return Some(Self::Xz);
-        }
-
-        // 4. Zstd check: \x28\xB5\x2F\xFD
-        if buffer.len() >= 4 && buffer[..4] == [0x28, 0xB5, 0x2F, 0xFD] {
-            return Some(Self::Zstd);
-        }
-
-        // 5. Gzip check: \x1F\x8B
-        if buffer.len() >= 2 && buffer[..2] == [0x1F, 0x8B] {
-            return Some(Self::Gzip);
-        }
-
-        // 6. Unix compress check: \x1F\x9D
-        if buffer.len() >= 2 && buffer[..2] == [0x1F, 0x9D] {
-            return Some(Self::Compress);
-        }
-
-        // 7. Bzip2 check: BZh
-        if buffer.len() >= 3 && &buffer[..3] == b"BZh" {
-            return Some(Self::Bzip2);
-        }
-
-        // 8. Lzop check: \x89LZO\0\r\n\x1a\n (9 bytes)
-        if buffer.len() >= 4 && buffer[..4] == [0x89, 0x4C, 0x5A, 0x4F] {
-            return Some(Self::Lzop);
-        }
-
-        // 9. Lzip check: LZIP
-        if buffer.len() >= 4 && &buffer[..4] == b"LZIP" {
-            return Some(Self::Lzip);
-        }
-
-        // 10. LZ4 Frame check
-        if buffer.len() >= 4
-            && (buffer[..4] == [0x04, 0x22, 0x4D, 0x18] || buffer[..4] == [0x02, 0x21, 0x4C, 0x18])
-        {
-            return Some(Self::Lz4);
-        }
-
-        // 11. Snappy check: \xFF\x06\x00\x00sNaPpY
-        if buffer.len() >= 10 && &buffer[..10] == b"\xFF\x06\x00\x00sNaPpY" {
-            return Some(Self::Snappy);
-        }
-
-        // 12. LZFSE check: bvx- or bvx1/2/n
-        if buffer.len() >= 4
-            && (&buffer[..4] == b"bvx-"
-                || &buffer[..4] == b"bvx1"
-                || &buffer[..4] == b"bvx2"
-                || &buffer[..4] == b"bvxn")
-        {
-            return Some(Self::Lzfse);
-        }
-
-        // 13. Brotli stream signature
-        if buffer.len() >= 4 && buffer[..4] == [0xCE, 0xB2, 0xCF, 0x81] {
-            return Some(Self::Brotli);
+        for &(magic, kind) in MAGIC_PREFIX_FILTERS {
+            if buffer.starts_with(magic) {
+                return Some(kind);
+            }
         }
 
         None

@@ -1,24 +1,32 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
-//! Spec 229 FR-023: every extraction C-ABI entry point maps Stop to `Cancelled`, a partial commit
-//! to `ErrExtractionFailed`, only a complete commit to `Ok`, reports actual commit counts, and
-//! keeps `sdk/include/ttzip.h` (`TTZipErrorInfo`, `TTZipExtractOptions`, `TTZIP_ABI_VERSION_3`)
-//! layout-identical to Rust.
+//! Spec 229 FR-023 & Issue #397: every extraction C-ABI entry point maps Stop to `Cancelled`, a
+//! partial commit to `ErrExtractionFailed`, only a complete commit to `Ok`, reports actual commit
+//! counts, and keeps `sdk/include/ttzip.h`, `bindings/cpp/ttzip_engine.hpp`, and
+//! `bindings/csharp/TTZipEngine.cs` layout- and discriminant-identical to Rust.
 
 extern crate ttzip_engine;
 
+#[path = "common/cabi_abi_probe_support.rs"]
+mod cabi_abi_probe_support;
+
 use std::ffi::{CStr, CString};
 use std::fs;
-use std::mem::{align_of, offset_of, size_of};
+use std::mem::size_of;
 use std::os::unix::fs::PermissionsExt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Command;
 
+use cabi_abi_probe_support::{
+    assert_cross_language_enum_parity_for_manifest, build_c_abi_probe_source,
+    expected_rust_abi_probe_lines, resolve_monorepo_bindings_dir, sdk_root_dir,
+};
 use tempfile::TempDir;
+use ttzip_engine::platform::TTZipCpuCapsRaw;
 use ttzip_engine::types::{
-    TTZipErrorInfo, TTZipExtractOptions, TTZipStatus, TTZIP_ABI_VERSION_3,
-    TTZIP_COLLISION_POLICY_KEEP_BOTH, TTZIP_COLLISION_POLICY_REPLACE, TTZIP_COLLISION_POLICY_SKIP,
+    TTZipEncryptionMethod, TTZipEntryMetadata, TTZipErrorInfo, TTZipExecutionProvenance,
+    TTZipExtractOptions, TTZipStatus, TTZIP_ABI_VERSION_3, TTZIP_COLLISION_POLICY_KEEP_BOTH,
     TTZIP_COLLISION_POLICY_STOP,
 };
 
@@ -47,6 +55,8 @@ unsafe extern "C" {
     ) -> TTZipStatus;
 
     fn ttzip_rust_get_last_error_info(out_info: *mut TTZipErrorInfo) -> bool;
+    fn ttzip_rust_cpu_get_capabilities(out_caps: *mut TTZipCpuCapsRaw) -> TTZipStatus;
+    fn ttzip_rust_get_last_execution_provenance(out_prov: *mut TTZipExecutionProvenance) -> bool;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,7 +68,6 @@ enum Entry {
 
 const ENTRIES: [Entry; 3] = [Entry::Full, Entry::UnifiedV2, Entry::Selective];
 
-/// Status plus the entry's numeric output: selective count, v2 bytes, or `None` for the full entry.
 type CallResult = (TTZipStatus, Option<u64>);
 
 fn build_tar(path: &Path, entries: &[(&str, &[u8])]) {
@@ -137,15 +146,6 @@ fn c_buf_str(buf: &[libc::c_char]) -> &str {
     unsafe { CStr::from_ptr(buf.as_ptr()).to_str().expect("valid UTF-8 C buffer") }
 }
 
-fn sdk_root_dir() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("core/rust")
-        .parent()
-        .expect("core")
-        .join("sdk")
-}
-
 #[test]
 fn stop_with_conflict_returns_cancelled_and_leaves_destination_unchanged() {
     for entry in ENTRIES {
@@ -172,7 +172,7 @@ fn stop_with_conflict_returns_cancelled_and_leaves_destination_unchanged() {
 fn partial_commit_failure_returns_extraction_failed_with_actual_count() {
     // SAFETY: geteuid has no preconditions.
     if unsafe { libc::geteuid() } == 0 {
-        return; // root bypasses the read-only directory used to force an item commit failure
+        return;
     }
     for entry in ENTRIES {
         let tmp = TempDir::new().unwrap();
@@ -248,60 +248,7 @@ fn c_sdk_header_abi_v3_layout_and_init_match_rust() {
     let tmp = TempDir::new().unwrap();
     let probe_c = tmp.path().join("abi_probe.c");
     let probe_bin = tmp.path().join("abi_probe");
-
-    let c_source = r#"
-#include "ttzip.h"
-#include <stddef.h>
-#include <stdio.h>
-
-int main(void) {
-    TTZipErrorInfo err;
-    ttzip_error_info_init(&err);
-    TTZipExtractOptions opt;
-    ttzip_extract_options_init(&opt);
-
-    printf("abi=%u,%u,%u,%u,%u,%u\n",
-        (unsigned)TTZIP_ABI_VERSION_3,
-        (unsigned)TTZIP_ABI_VERSION,
-        (unsigned)TTZIP_COLLISION_POLICY_KEEP_BOTH,
-        (unsigned)TTZIP_COLLISION_POLICY_REPLACE,
-        (unsigned)TTZIP_COLLISION_POLICY_SKIP,
-        (unsigned)TTZIP_COLLISION_POLICY_STOP);
-    printf("err=%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%u,%u,%d\n",
-        sizeof(TTZipErrorInfo),
-        _Alignof(TTZipErrorInfo),
-        offsetof(TTZipErrorInfo, struct_size),
-        offsetof(TTZipErrorInfo, abi_version),
-        offsetof(TTZipErrorInfo, status),
-        offsetof(TTZipErrorInfo, error_code),
-        offsetof(TTZipErrorInfo, message),
-        offsetof(TTZipErrorInfo, entry_path),
-        offsetof(TTZipErrorInfo, offset),
-        (unsigned)err.struct_size,
-        (unsigned)err.abi_version,
-        (int)err.status);
-    printf("opt=%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%zu,%u,%u,%u,%d,%d\n",
-        sizeof(TTZipExtractOptions),
-        _Alignof(TTZipExtractOptions),
-        offsetof(TTZipExtractOptions, struct_size),
-        offsetof(TTZipExtractOptions, abi_version),
-        offsetof(TTZipExtractOptions, destination_path),
-        offsetof(TTZipExtractOptions, password),
-        offsetof(TTZipExtractOptions, thread_budget),
-        offsetof(TTZipExtractOptions, collision_policy),
-        offsetof(TTZipExtractOptions, preserve_permissions),
-        offsetof(TTZipExtractOptions, dry_run),
-        offsetof(TTZipExtractOptions, progress_callback),
-        offsetof(TTZipExtractOptions, user_data),
-        (unsigned)opt.struct_size,
-        (unsigned)opt.abi_version,
-        (unsigned)opt.collision_policy,
-        (int)opt.preserve_permissions,
-        (int)opt.dry_run);
-    return 0;
-}
-"#;
-    fs::write(&probe_c, c_source).unwrap();
+    fs::write(&probe_c, build_c_abi_probe_source()).unwrap();
 
     let cc_out = Command::new("cc")
         .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-I"])
@@ -311,13 +258,8 @@ int main(void) {
         .arg(&probe_bin)
         .output()
         .expect("invoke cc for ABI probe");
-    assert!(
-        cc_out.status.success(),
-        "cc failed: {}",
-        String::from_utf8_lossy(&cc_out.stderr)
-    );
+    assert!(cc_out.status.success(), "cc failed: {}", String::from_utf8_lossy(&cc_out.stderr));
 
-    // Also verify `sdk/c/test_c_sdk.c` compiles cleanly against `ttzip.h`.
     let test_sdk_obj = tmp.path().join("test_c_sdk.o");
     let sdk_compile = Command::new("cc")
         .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-c", "-I"])
@@ -327,65 +269,50 @@ int main(void) {
         .arg(&test_sdk_obj)
         .output()
         .expect("compile test_c_sdk.c");
-    assert!(
-        sdk_compile.status.success(),
-        "test_c_sdk.c compile failed: {}",
-        String::from_utf8_lossy(&sdk_compile.stderr)
-    );
+    assert!(sdk_compile.status.success(), "test_c_sdk.c compile failed: {}", String::from_utf8_lossy(&sdk_compile.stderr));
 
     let run_out = Command::new(&probe_bin).output().expect("run ABI probe");
     assert!(run_out.status.success());
     let stdout = String::from_utf8(run_out.stdout).unwrap();
-    let lines: Vec<&str> = stdout.lines().collect();
+    let actual_lines: Vec<String> = stdout.lines().map(str::to_owned).collect();
+    assert_eq!(actual_lines, expected_rust_abi_probe_lines());
 
-    let expected_abi = format!(
-        "abi={},{},{},{},{},{}",
-        TTZIP_ABI_VERSION_3,
-        TTZIP_ABI_VERSION_3,
-        TTZIP_COLLISION_POLICY_KEEP_BOTH,
-        TTZIP_COLLISION_POLICY_REPLACE,
-        TTZIP_COLLISION_POLICY_SKIP,
-        TTZIP_COLLISION_POLICY_STOP,
-    );
-    let rust_err = TTZipErrorInfo::empty();
-    let expected_err = format!(
-        "err={},{},{},{},{},{},{},{},{},{},{},{}",
-        size_of::<TTZipErrorInfo>(),
-        align_of::<TTZipErrorInfo>(),
-        offset_of!(TTZipErrorInfo, struct_size),
-        offset_of!(TTZipErrorInfo, abi_version),
-        offset_of!(TTZipErrorInfo, status),
-        offset_of!(TTZipErrorInfo, error_code),
-        offset_of!(TTZipErrorInfo, message),
-        offset_of!(TTZipErrorInfo, entry_path),
-        offset_of!(TTZipErrorInfo, offset),
-        rust_err.struct_size,
-        rust_err.abi_version,
-        rust_err.status as i32,
-    );
-    let rust_opt = TTZipExtractOptions::default();
-    let expected_opt = format!(
-        "opt={},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}",
-        size_of::<TTZipExtractOptions>(),
-        align_of::<TTZipExtractOptions>(),
-        offset_of!(TTZipExtractOptions, struct_size),
-        offset_of!(TTZipExtractOptions, abi_version),
-        offset_of!(TTZipExtractOptions, destination_path),
-        offset_of!(TTZipExtractOptions, password),
-        offset_of!(TTZipExtractOptions, thread_budget),
-        offset_of!(TTZipExtractOptions, collision_policy),
-        offset_of!(TTZipExtractOptions, preserve_permissions),
-        offset_of!(TTZipExtractOptions, dry_run),
-        offset_of!(TTZipExtractOptions, progress_callback),
-        offset_of!(TTZipExtractOptions, user_data),
-        rust_opt.struct_size,
-        rust_opt.abi_version,
-        rust_opt.collision_policy,
-        i32::from(rust_opt.preserve_permissions),
-        i32::from(rust_opt.dry_run),
-    );
+    let mut caps = TTZipCpuCapsRaw::default();
+    let mut prov = TTZipExecutionProvenance::default();
+    // SAFETY: pointers reference valid stack-allocated repr(C) structs.
+    unsafe {
+        assert_eq!(ttzip_rust_cpu_get_capabilities(&mut caps), TTZipStatus::Ok);
+        assert!(ttzip_rust_get_last_execution_provenance(&mut prov));
+    }
+    assert_eq!(caps.struct_size, size_of::<TTZipCpuCapsRaw>() as u32);
+    assert_eq!(caps.abi_version, TTZIP_ABI_VERSION_3);
+    assert_eq!(prov.struct_size, size_of::<TTZipExecutionProvenance>() as u32);
+    assert_eq!(prov.abi_version, TTZIP_ABI_VERSION_3);
+    assert_eq!(TTZipEntryMetadata::default().struct_size, size_of::<TTZipEntryMetadata>() as u32);
+    assert_eq!(TTZipEntryMetadata::default().abi_version, TTZIP_ABI_VERSION_3);
+    assert_eq!(TTZipEncryptionMethod::None as i32, 0);
+}
 
-    assert_eq!(lines, vec![expected_abi.as_str(), expected_err.as_str(), expected_opt.as_str()]);
+#[test]
+fn cross_language_enum_discriminants_match_rust_c_cpp_and_csharp() {
+    let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let _checked_host_bindings = assert_cross_language_enum_parity_for_manifest(manifest_dir);
+
+    // Also verify standalone `ttzip-core` export layout where `../../sdk/include/ttzip.h`
+    // exists relative to `CARGO_MANIFEST_DIR`, while monorepo `bindings/` siblings are absent.
+    let tmp = TempDir::new().unwrap();
+    let standalone_manifest = tmp.path().join("rust/ttzip-engine");
+    let standalone_include = tmp.path().join("sdk/include");
+    fs::create_dir_all(&standalone_manifest).unwrap();
+    fs::create_dir_all(&standalone_include).unwrap();
+    let src_hdr = sdk_root_dir().join("include/ttzip.h");
+    fs::write(
+        standalone_include.join("ttzip.h"),
+        fs::read(&src_hdr).expect("read source ttzip.h"),
+    )
+    .unwrap();
+    assert!(resolve_monorepo_bindings_dir(&standalone_manifest).is_none());
+    assert!(!assert_cross_language_enum_parity_for_manifest(&standalone_manifest));
 }
 
 #[test]
@@ -399,7 +326,6 @@ fn unified_v2_and_thread_local_error_info_report_real_abi_and_commit_diagnostics
     let c_archive = CString::new(archive.to_str().unwrap()).unwrap();
     let c_dest = CString::new(dest.to_str().unwrap()).unwrap();
 
-    // 1. Stale ABI v2 options -> ErrAbiMismatch with populated TTZipErrorInfo.
     let bad_opt = TTZipExtractOptions { abi_version: 2, ..TTZipExtractOptions::default() };
     let mut bytes = 99u64;
     let mut err = TTZipErrorInfo::empty();
@@ -428,7 +354,6 @@ fn unified_v2_and_thread_local_error_info_report_real_abi_and_commit_diagnostics
     assert_eq!(tls_err.status, TTZipStatus::ErrAbiMismatch);
     assert_eq!(c_buf_str(&tls_err.message), c_buf_str(&err.message));
 
-    // 2. Partial commit failure -> out_error and TLS error record `entry_path == "sub/new.txt"`.
     // SAFETY: geteuid has no preconditions.
     if unsafe { libc::geteuid() } != 0 {
         fs::create_dir_all(dest.join("sub")).unwrap();
@@ -482,15 +407,9 @@ fn three_phase_metadata_keep_both_skip_and_partial_failure_preserve_permissions_
     let mut tar_bytes = Vec::new();
     let mut writer = ttzip_engine::archive::tar::writer::TarWriter::new(&mut tar_bytes);
     writer.append_dir("ro_dir/", 0o555, 1_700_000_000).unwrap();
-    writer
-        .append_file("ro_dir/keep.txt", b"incoming keep", 0o640, 1_700_000_100)
-        .unwrap();
-    writer
-        .append_file("ro_dir/skip.txt", b"incoming skip", 0o750, 1_700_000_200)
-        .unwrap();
-    writer
-        .append_file("locked_sub/fail.txt", b"incoming fail", 0o644, 1_700_000_300)
-        .unwrap();
+    writer.append_file("ro_dir/keep.txt", b"incoming keep", 0o640, 1_700_000_100).unwrap();
+    writer.append_file("ro_dir/skip.txt", b"incoming skip", 0o750, 1_700_000_200).unwrap();
+    writer.append_file("locked_sub/fail.txt", b"incoming fail", 0o644, 1_700_000_300).unwrap();
     writer.finish().unwrap();
     fs::write(&tar_path, &tar_bytes).unwrap();
 
@@ -499,11 +418,10 @@ fn three_phase_metadata_keep_both_skip_and_partial_failure_preserve_permissions_
     let locked_sub = dest.join("locked_sub");
     fs::create_dir_all(&pre_ro).unwrap();
     fs::set_permissions(&pre_ro, fs::Permissions::from_mode(0o700)).unwrap();
-    fs::write(pre_ro.join("keep.txt"), b"orig keep").unwrap();
-    fs::set_permissions(pre_ro.join("keep.txt"), fs::Permissions::from_mode(0o600)).unwrap();
-    fs::write(pre_ro.join("skip.txt"), b"orig skip").unwrap();
-    fs::set_permissions(pre_ro.join("skip.txt"), fs::Permissions::from_mode(0o600)).unwrap();
-
+    for (name, data) in [("keep.txt", b"orig keep".as_slice()), ("skip.txt", b"orig skip".as_slice())] {
+        fs::write(pre_ro.join(name), data).unwrap();
+        fs::set_permissions(pre_ro.join(name), fs::Permissions::from_mode(0o600)).unwrap();
+    }
     fs::create_dir_all(&locked_sub).unwrap();
     fs::set_permissions(&locked_sub, fs::Permissions::from_mode(0o555)).unwrap();
 
@@ -524,57 +442,38 @@ fn three_phase_metadata_keep_both_skip_and_partial_failure_preserve_permissions_
         .iter()
         .map(|r| ResolutionOverride {
             conflict_id: r.id,
-            action: if r.relative_path == "ro_dir/keep.txt" {
-                CollisionAction::KeepBoth
-            } else {
-                CollisionAction::Skip
-            },
+            action: if r.relative_path == "ro_dir/keep.txt" { CollisionAction::KeepBoth } else { CollisionAction::Skip },
         })
         .collect();
     overrides.sort_by_key(|o| o.conflict_id);
 
-    let CommitResult::Finished { outcome } = session
-        .commit(ResolutionSet {
-            default_action: None,
-            overrides,
-        })
-        .unwrap()
-    else {
+    let CommitResult::Finished { outcome } = session.commit(ResolutionSet { default_action: None, overrides }).unwrap() else {
         panic!("expected Finished");
     };
     fs::set_permissions(&locked_sub, fs::Permissions::from_mode(0o700)).unwrap();
 
     assert_eq!(outcome.status, OutcomeStatus::CompletedWithFailures);
-    assert_eq!(outcome.kept_both, 1);
-    assert_eq!(outcome.skipped, 1);
-    assert_eq!(outcome.failed.len(), 1);
-    assert_eq!(outcome.failed[0].relative_path, "locked_sub/fail.txt");
-    assert_eq!(outcome.failed[0].reason, FailureReason::PermissionDenied);
-
-    // Pre-existing directory keeps `0o700`
+    assert_eq!((outcome.kept_both, outcome.skipped, outcome.failed.len()), (1, 1, 1));
+    assert_eq!((outcome.failed[0].relative_path.as_str(), outcome.failed[0].reason), ("locked_sub/fail.txt", FailureReason::PermissionDenied));
     assert_eq!(fs::metadata(&pre_ro).unwrap().permissions().mode() & 0o777, 0o700);
-    // Original `keep.txt` and `skip.txt` are untouched (`0o600`)
     assert_eq!(fs::read(pre_ro.join("keep.txt")).unwrap(), b"orig keep");
     assert_eq!(fs::metadata(pre_ro.join("keep.txt")).unwrap().permissions().mode() & 0o777, 0o600);
     assert_eq!(fs::read(pre_ro.join("skip.txt")).unwrap(), b"orig skip");
     assert_eq!(fs::metadata(pre_ro.join("skip.txt")).unwrap().permissions().mode() & 0o777, 0o600);
-    // `keep 2.txt` received the incoming content, `0o640` mode, and `1_700_000_100` mtime
     let keep2_meta = fs::metadata(pre_ro.join("keep 2.txt")).unwrap();
     assert_eq!(fs::read(pre_ro.join("keep 2.txt")).unwrap(), b"incoming keep");
-    assert_eq!(keep2_meta.permissions().mode() & 0o777, 0o640);
-    assert_eq!(keep2_meta.mtime(), 1_700_000_100);
+    assert_eq!((keep2_meta.permissions().mode() & 0o777, keep2_meta.mtime()), (0o640, 1_700_000_100));
 }
 
 #[test]
 fn intra_archive_duplicate_uses_safe_replacement_without_truncating_hardlinked_sibling() {
     use std::os::unix::fs::MetadataExt;
+    use ttzip_engine::archive::tar::header::TYPE_HARDLINK;
+    use ttzip_engine::archive::tar::writer::{TarCustomEntryParams, TarWriter};
     use ttzip_engine::uniffi_api::extraction_session::{
         CollisionAction, CollisionPolicy, CommitResult, ExtractionRequest, ExtractionSession,
         OutcomeStatus, ResolutionSet,
     };
-
-    use ttzip_engine::archive::tar::header::TYPE_HARDLINK;
-    use ttzip_engine::archive::tar::writer::{TarCustomEntryParams, TarWriter};
 
     let tmp = TempDir::new().unwrap();
     let tar_path = tmp.path().join("dup_hardlink.tar");
@@ -600,8 +499,6 @@ fn intra_archive_duplicate_uses_safe_replacement_without_truncating_hardlinked_s
     writer.finish().unwrap();
     fs::write(&tar_path, &tar_bytes).unwrap();
 
-    // Test both full and selective extraction with `CollisionPolicy::Skip` (proving Stage 1
-    // intra-archive Last-Entry-Wins is decoupled from Stage 2 destination CollisionPolicy).
     for (sub_name, filter) in [
         ("full", None),
         ("selective", Some(vec!["a.txt".to_string(), "b.txt".to_string()])),
@@ -641,5 +538,3 @@ fn intra_archive_duplicate_uses_safe_replacement_without_truncating_hardlinked_s
         assert_ne!(a_meta.ino(), b_meta.ino(), "safe replacement must break hardlink inode sharing");
     }
 }
-
-

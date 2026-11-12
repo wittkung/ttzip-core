@@ -3,7 +3,9 @@
 
 import Foundation
 import XCTest
+#if canImport(TTZipCore)
 @testable import TTZipCore
+#endif
 #if canImport(TTZipCoreCrypto)
 @testable import TTZipCoreCrypto
 #endif

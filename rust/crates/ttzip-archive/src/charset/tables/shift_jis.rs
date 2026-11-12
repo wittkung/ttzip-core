@@ -3,63 +3,73 @@
 
 //! High-frequency Japanese character distribution and bigram tables for Shift-JIS (CP932).
 
+const TOP_SHIFT_JIS_KANJI: &[u16] = &[
+    0x93FA, // U+65E5
+    0x967B, // U+672C
+    0x8CEA, // U+8A9E
+    0x89E6, // U+753B
+    0x919C, // U+50CF
+    0x8F91, // U+66F8
+    0x97DE, // U+985E
+    0x8DEC, // U+4F5C
+    0x90AC, // U+6210
+    0x944E, // U+5E74
+    0x8C8E, // U+6708
+    0x938C, // U+6771
+    0x8B9E, // U+4EAC
+    0x8F6F, // U+51FA
+    0x97CD, // U+529B
+    0x8F88, // U+5904
+    0x979D, // U+7406
+    0x8E77, // U+6307
+    0x92E8, // U+5B9A
+    0x95BD, // U+95ED
+    0x8A4A, // U+5F00
+    0x8D87, // U+518D
+    0x90B6, // U+751F
+    0x959F, // U+8868
+    0x8E8A, // U+793A
+];
+
+#[inline]
+fn is_shift_jis_trail_byte(b1: u8) -> bool {
+    (0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)
+}
+
 /// Returns a frequency weight (0..=100) for a 2-byte Shift-JIS sequence `[b0, b1]`.
 pub fn score_shift_jis_2byte(b0: u8, b1: u8) -> u32 {
     let code = ((b0 as u16) << 8) | (b1 as u16);
 
-    // 1. Japanese Hiragana range (0x829F..=0x82F1) - extremely distinctive to Japanese
-    if (0x829F..=0x82F1).contains(&code) {
+    // 1. Japanese Hiragana range (0x829F..=0x82F1) or Katakana range (0x8340..=0x8396)
+    if (0x829F..=0x82F1).contains(&code) || (0x8340..=0x8396).contains(&code) {
         return 100;
     }
 
-    // 2. Japanese Katakana range (0x8340..=0x8396)
-    if (0x8340..=0x8396).contains(&code) {
-        return 100;
-    }
-
-    // 3. Distinctive Japanese Punctuation (Choonpu "ー" 0x815B, Touten "、" 0x8141, Kuten "。" 0x8142, Kagikakko "「" 0x8175, "」" 0x8176)
+    // 2. Distinctive Japanese Punctuation (Choonpu U+30FC 0x815B, Touten U+3001 0x8141, Kuten U+3002 0x8142, Kagikakko U+300C 0x8175, U+300D 0x8176)
     if matches!(code, 0x815B | 0x8141 | 0x8142 | 0x8175 | 0x8176 | 0x8145) {
         return 80;
     }
 
-    // 4. Ultra-high frequency Kanji in Shift-JIS
-    match code {
-        0x93FA // 日
-        | 0x967B // 本
-        | 0x8CEA // 語
-        | 0x89E6 // 画
-        | 0x919C // 像
-        | 0x8F91 // 書
-        | 0x97DE // 類
-        | 0x8DEC // 作
-        | 0x90AC // 成
-        | 0x944E // 年
-        | 0x8C8E // 月
-        | 0x938C // 東
-        | 0x8B9E // 京
-        | 0x8F6F // 出
-        | 0x97CD // 力
-        | 0x8F88 // 处
-        | 0x979D // 理
-        | 0x8E77 // 指
-        | 0x92E8 // 定
-        | 0x95BD // 闭
-        | 0x8A4A // 开
-        | 0x8D87 // 再
-        | 0x90B6 // 生
-        | 0x959F // 表
-        | 0x8E8A // 示
-        => 100,
+    // 3. Ultra-high frequency Kanji in Shift-JIS
+    if TOP_SHIFT_JIS_KANJI.contains(&code) {
+        return 100;
+    }
 
-        // 5. Shift-JIS Level 1 Kanji Zone (0x889F..=0x9872)
-        _ if (0x88..=0x98).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 70,
+    if is_shift_jis_trail_byte(b1) {
+        // 4. Shift-JIS Level 1 Kanji Zone (0x889F..=0x9872)
+        if (0x88..=0x98).contains(&b0) {
+            return 70;
+        }
+        // 5. Shift-JIS Level 2 Kanji Zone (0x989F..=0xEA40, 0xE0..=0xFC)
+        if (0xE0..=0xFC).contains(&b0) {
+            return 10;
+        }
+    }
 
-        // 6. Shift-JIS Level 2 Kanji Zone (0x989F..=0xEA40, 0xE0..=0xFC)
-        _ if (0xE0..=0xFC).contains(&b0) && ((0x40..=0x7E).contains(&b1) || (0x80..=0xFC).contains(&b1)) => 10,
-
-        // 7. General Shift-JIS Punctuation/Symbols (0x8140..=0x81AC)
-        _ if (0x8140..=0x81AC).contains(&code) => 5,
-
-        _ => 0,
+    // 6. General Shift-JIS Punctuation/Symbols (0x8140..=0x81AC)
+    if (0x8140..=0x81AC).contains(&code) {
+        5
+    } else {
+        0
     }
 }

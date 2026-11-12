@@ -44,72 +44,65 @@ impl TTZipCompressionPreset {
         }
     }
 
+    #[inline]
+    const fn is_uncompressed_preset_format(format: TTZipArchiveFormat) -> bool {
+        matches!(
+            format,
+            TTZipArchiveFormat::Tar
+                | TTZipArchiveFormat::Dmg
+                | TTZipArchiveFormat::Iso
+                | TTZipArchiveFormat::Aar
+                | TTZipArchiveFormat::Cpio
+                | TTZipArchiveFormat::Ar
+                | TTZipArchiveFormat::Rar
+                | TTZipArchiveFormat::Squashfs
+                | TTZipArchiveFormat::Lzh
+        )
+    }
+
+    #[inline]
+    const fn format_level_table(format: TTZipArchiveFormat) -> [i32; 5] {
+        if Self::is_uncompressed_preset_format(format) {
+            return [0, 0, 0, 0, 0];
+        }
+        match format {
+            TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => [0, 1, 3, 9, 19],
+            TTZipArchiveFormat::Brotli | TTZipArchiveFormat::TarBrotli => [0, 1, 4, 9, 11],
+            TTZipArchiveFormat::Lz4 | TTZipArchiveFormat::TarLz4 => [0, 1, 1, 9, 9],
+            TTZipArchiveFormat::Zip => [0, 1, 6, 9, 12],
+            _ => [0, 1, 6, 9, 9],
+        }
+    }
+
     /// Returns the recommended integer compression level for the given archive format.
     #[must_use]
     pub fn recommended_level(self, format: TTZipArchiveFormat) -> i32 {
+        Self::format_level_table(format)[self as usize]
+    }
+
+    const fn resolve_sevenzip_tuning(self, ram_mb: u64) -> (u32, u32, &'static str) {
         match self {
-            Self::Store => 0,
-            Self::Fast => match format {
-                TTZipArchiveFormat::Tar
-                | TTZipArchiveFormat::Dmg
-                | TTZipArchiveFormat::Iso
-                | TTZipArchiveFormat::Aar
-                | TTZipArchiveFormat::Cpio
-                | TTZipArchiveFormat::Ar
-                | TTZipArchiveFormat::Rar
-                | TTZipArchiveFormat::Squashfs
-                | TTZipArchiveFormat::Lzh => 0,
-                TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => 1,
-                TTZipArchiveFormat::Brotli | TTZipArchiveFormat::TarBrotli => 1,
-                TTZipArchiveFormat::Lz4 | TTZipArchiveFormat::TarLz4 => 1,
-                _ => 1,
-            },
-            Self::Balanced => match format {
-                TTZipArchiveFormat::Tar
-                | TTZipArchiveFormat::Dmg
-                | TTZipArchiveFormat::Iso
-                | TTZipArchiveFormat::Aar
-                | TTZipArchiveFormat::Cpio
-                | TTZipArchiveFormat::Ar
-                | TTZipArchiveFormat::Rar
-                | TTZipArchiveFormat::Squashfs
-                | TTZipArchiveFormat::Lzh => 0,
-                TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => 3,
-                TTZipArchiveFormat::Brotli | TTZipArchiveFormat::TarBrotli => 4,
-                TTZipArchiveFormat::Lz4 | TTZipArchiveFormat::TarLz4 => 1,
-                _ => 6,
-            },
-            Self::Maximum => match format {
-                TTZipArchiveFormat::Tar
-                | TTZipArchiveFormat::Dmg
-                | TTZipArchiveFormat::Iso
-                | TTZipArchiveFormat::Aar
-                | TTZipArchiveFormat::Cpio
-                | TTZipArchiveFormat::Ar
-                | TTZipArchiveFormat::Rar
-                | TTZipArchiveFormat::Squashfs
-                | TTZipArchiveFormat::Lzh => 0,
-                TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => 9,
-                TTZipArchiveFormat::Brotli | TTZipArchiveFormat::TarBrotli => 9,
-                TTZipArchiveFormat::Lz4 | TTZipArchiveFormat::TarLz4 => 9,
-                _ => 9,
-            },
-            Self::Ultra => match format {
-                TTZipArchiveFormat::Tar
-                | TTZipArchiveFormat::Dmg
-                | TTZipArchiveFormat::Iso
-                | TTZipArchiveFormat::Aar
-                | TTZipArchiveFormat::Cpio
-                | TTZipArchiveFormat::Ar
-                | TTZipArchiveFormat::Rar
-                | TTZipArchiveFormat::Squashfs
-                | TTZipArchiveFormat::Lzh => 0,
-                TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => 19,
-                TTZipArchiveFormat::Brotli | TTZipArchiveFormat::TarBrotli => 11,
-                TTZipArchiveFormat::Lz4 | TTZipArchiveFormat::TarLz4 => 9,
-                TTZipArchiveFormat::Zip => 12,
-                _ => 9,
-            },
+            Self::Store => (0, 0, "None"),
+            Self::Fast => (16, 64, "HC4"),
+            Self::Balanced => (if ram_mb >= 8192 { 64 } else { 32 }, 256, "BT4"),
+            Self::Maximum => {
+                let dict = if ram_mb >= 16384 { 128 } else if ram_mb >= 8192 { 64 } else { 32 };
+                (dict, 1024, "BT4")
+            }
+            Self::Ultra => {
+                let dict = if ram_mb >= 32768 { 256 } else if ram_mb >= 16384 { 128 } else { 64 };
+                (dict, 4096, "BT4")
+            }
+        }
+    }
+
+    const fn resolve_zstd_tuning(self) -> (u32, u32, &'static str) {
+        match self {
+            Self::Store => (0, 0, "None"),
+            Self::Fast => (4, 0, "Fast"),
+            Self::Balanced => (8, 0, "Dfast"),
+            Self::Maximum => (32, 0, "Btopt"),
+            Self::Ultra => (128, 0, "Btultra"),
         }
     }
 
@@ -131,29 +124,8 @@ impl TTZipCompressionPreset {
         let level = self.recommended_level(format);
 
         let (dict_mb, solid_mb, match_finder) = match format {
-            TTZipArchiveFormat::SevenZip => match self {
-                Self::Store => (0, 0, "None"),
-                Self::Fast => (16, 64, "HC4"),
-                Self::Balanced => {
-                    let dict = if ram_mb >= 8192 { 64 } else { 32 };
-                    (dict, 256, "BT4")
-                }
-                Self::Maximum => {
-                    let dict = if ram_mb >= 16384 { 128 } else if ram_mb >= 8192 { 64 } else { 32 };
-                    (dict, 1024, "BT4")
-                }
-                Self::Ultra => {
-                    let dict = if ram_mb >= 32768 { 256 } else if ram_mb >= 16384 { 128 } else { 64 };
-                    (dict, 4096, "BT4")
-                }
-            },
-            TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => match self {
-                Self::Store => (0, 0, "None"),
-                Self::Fast => (4, 0, "Fast"),
-                Self::Balanced => (8, 0, "Dfast"),
-                Self::Maximum => (32, 0, "Btopt"),
-                Self::Ultra => (128, 0, "Btultra"),
-            },
+            TTZipArchiveFormat::SevenZip => self.resolve_sevenzip_tuning(ram_mb),
+            TTZipArchiveFormat::Zstd | TTZipArchiveFormat::TarZstd => self.resolve_zstd_tuning(),
             _ => (0, 0, "Standard"),
         };
 

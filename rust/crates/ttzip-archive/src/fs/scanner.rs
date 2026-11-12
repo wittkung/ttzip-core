@@ -127,6 +127,102 @@ pub fn scan_directory_parallel(root_path: &Path, options: &ScanOptions) -> Vec<S
     }
 }
 
+fn join_rel_path(rel_prefix: &str, file_name: &str) -> String {
+    if rel_prefix.is_empty() {
+        file_name.to_string()
+    } else {
+        let mut s = String::with_capacity(rel_prefix.len() + 1 + file_name.len());
+        s.push_str(rel_prefix);
+        s.push('/');
+        s.push_str(file_name);
+        s
+    }
+}
+
+fn classify_dir_entry(
+    entry: fs::DirEntry,
+    rel_prefix: &str,
+    options: &ScanOptions,
+    detector: &CycleDetector,
+) -> Option<(ScannedFsItem, Option<(std::path::PathBuf, String)>)> {
+    let file_name_os = entry.file_name();
+    if !options.include_hidden && file_name_os.as_encoded_bytes().starts_with(b".") {
+        return None;
+    }
+
+    let file_name = file_name_os.to_string_lossy();
+    if options.skip_mac_junk && is_mac_junk_file(&file_name) {
+        return None;
+    }
+
+    let entry_path = entry.path();
+    let meta = entry.metadata().ok()?;
+    let rel_path = join_rel_path(rel_prefix, file_name.as_ref());
+
+    if meta.is_dir() {
+        if !detector.visit(meta.dev(), meta.ino()) {
+            return None;
+        }
+        let item = ScannedFsItem {
+            src_path: entry_path.to_string_lossy().to_string(),
+            rel_path: rel_path.clone(),
+            file_size: 0,
+            mtime_epoch_secs: meta.mtime(),
+            mode: meta.mode(),
+            is_directory: true,
+        };
+        Some((item, Some((entry_path, rel_path))))
+    } else {
+        let item = ScannedFsItem {
+            src_path: entry_path.to_string_lossy().to_string(),
+            rel_path,
+            file_size: meta.len(),
+            mtime_epoch_secs: meta.mtime(),
+            mode: meta.mode(),
+            is_directory: false,
+        };
+        Some((item, None))
+    }
+}
+
+fn scan_subdirs_parallel(
+    sub_dirs: Vec<(std::path::PathBuf, String)>,
+    next_depth: u32,
+    options: &ScanOptions,
+    detector: &CycleDetector,
+) -> Vec<ScannedFsItem> {
+    let num_threads = ttzip_types::recommended_compute_threads()
+        .min(sub_dirs.len())
+        .max(1);
+    let mut buckets: Vec<Vec<(std::path::PathBuf, String)>> =
+        (0..num_threads).map(|_| Vec::new()).collect();
+    for (idx, item) in sub_dirs.into_iter().enumerate() {
+        buckets[idx % num_threads].push(item);
+    }
+
+    let results_mutex = Mutex::new(Vec::new());
+    let pool = LocalWorkStealingPool::with_threads(num_threads);
+    pool.scope(|s| {
+        for bucket in buckets {
+            let results_ref = &results_mutex;
+            s.spawn(move || {
+                let mut local = Vec::new();
+                for (sub_path, sub_rel) in bucket {
+                    local.extend(scan_dir_recursive_parallel(
+                        &sub_path,
+                        &sub_rel,
+                        next_depth,
+                        options,
+                        detector,
+                    ));
+                }
+                results_ref.lock().extend(local);
+            });
+        }
+    });
+    results_mutex.into_inner()
+}
+
 fn scan_dir_recursive_parallel(
     dir_path: &Path,
     rel_prefix: &str,
@@ -147,91 +243,22 @@ fn scan_dir_recursive_parallel(
     let mut sub_dirs = Vec::with_capacity(16);
 
     for entry in entries.flatten() {
-        let file_name_os = entry.file_name();
-        let file_name_bytes = file_name_os.as_encoded_bytes();
-        if !options.include_hidden && file_name_bytes.starts_with(b".") {
-            continue;
-        }
-
-        let file_name = file_name_os.to_string_lossy();
-        if options.skip_mac_junk && is_mac_junk_file(&file_name) {
-            continue;
-        }
-
-        let entry_path = entry.path();
-        let meta = match entry.metadata() {
-            Ok(m) => m,
-            Err(_) => continue,
-        };
-
-        let file_name_str = file_name.as_ref();
-        let rel_path = if rel_prefix.is_empty() {
-            file_name_str.to_string()
-        } else {
-            let mut s = String::with_capacity(rel_prefix.len() + 1 + file_name_str.len());
-            s.push_str(rel_prefix);
-            s.push('/');
-            s.push_str(file_name_str);
-            s
-        };
-
-        if meta.is_dir() {
-            if detector.visit(meta.dev(), meta.ino()) {
-                direct_files.push(ScannedFsItem {
-                    src_path: entry_path.to_string_lossy().to_string(),
-                    rel_path: rel_path.clone(),
-                    file_size: 0,
-                    mtime_epoch_secs: meta.mtime(),
-                    mode: meta.mode(),
-                    is_directory: true,
-                });
-                sub_dirs.push((entry_path, rel_path));
+        if let Some((item, sub_dir)) = classify_dir_entry(entry, rel_prefix, options, detector) {
+            direct_files.push(item);
+            if let Some(sub) = sub_dir {
+                sub_dirs.push(sub);
             }
-        } else {
-            direct_files.push(ScannedFsItem {
-                src_path: entry_path.to_string_lossy().to_string(),
-                rel_path,
-                file_size: meta.len(),
-                mtime_epoch_secs: meta.mtime(),
-                mode: meta.mode(),
-                is_directory: false,
-            });
         }
     }
 
+    let next_depth = current_depth + 1;
     let recursive_sub_items: Vec<ScannedFsItem> = if current_depth == 0 && sub_dirs.len() > 1 {
-        let num_threads = ttzip_types::recommended_compute_threads().min(sub_dirs.len()).max(1);
-        let mut buckets: Vec<Vec<(std::path::PathBuf, String)>> = (0..num_threads).map(|_| Vec::new()).collect();
-        for (idx, item) in sub_dirs.into_iter().enumerate() {
-            buckets[idx % num_threads].push(item);
-        }
-
-        let results_mutex = Mutex::new(Vec::new());
-        let pool = LocalWorkStealingPool::with_threads(num_threads);
-        pool.scope(|s| {
-            for bucket in buckets {
-                let results_ref = &results_mutex;
-                s.spawn(move || {
-                    let mut local = Vec::new();
-                    for (sub_path, sub_rel) in bucket {
-                        local.extend(scan_dir_recursive_parallel(
-                            &sub_path,
-                            &sub_rel,
-                            current_depth + 1,
-                            options,
-                            detector,
-                        ));
-                    }
-                    results_ref.lock().extend(local);
-                });
-            }
-        });
-        results_mutex.into_inner()
+        scan_subdirs_parallel(sub_dirs, next_depth, options, detector)
     } else {
         sub_dirs
             .into_iter()
             .flat_map(|(sub_path, sub_rel)| {
-                scan_dir_recursive_parallel(&sub_path, &sub_rel, current_depth + 1, options, detector)
+                scan_dir_recursive_parallel(&sub_path, &sub_rel, next_depth, options, detector)
             })
             .collect()
     };

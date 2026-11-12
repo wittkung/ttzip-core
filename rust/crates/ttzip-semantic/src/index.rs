@@ -198,6 +198,11 @@ impl PersistentScopeIndex {
         self.files_by_path.values().find(|f| f.file_id == file_id)
     }
 
+    /// Returns whether a file at `relative_path` currently has an entry in the index.
+    pub fn contains_file(&self, relative_path: &str) -> bool {
+        self.files_by_path.contains_key(relative_path)
+    }
+
     pub fn segments(&self) -> &[IndexedSegmentRecord] {
         &self.segments
     }

@@ -24,85 +24,48 @@ public enum ArchivePipelineCompositor: Sendable {
         )
     }
     
+    private static let suffixCompositionRules: [(suffix: String, container: ArchiveContainerFormat, filter: ArchiveStreamFilter)] = [
+        // 1. Compound extension matching
+        (".tar.gz", .tar, .gzip),
+        (".tgz", .tar, .gzip),
+        (".tar.bz2", .tar, .bzip2),
+        (".tbz2", .tar, .bzip2),
+        (".tbz", .tar, .bzip2),
+        (".tar.xz", .tar, .xz),
+        (".txz", .tar, .xz),
+        (".tar.zst", .tar, .zstd),
+        (".tzst", .tar, .zstd),
+        (".tar.lz4", .tar, .lz4),
+        (".tar.br", .tar, .brotli),
+        (".tar.lz", .tar, .lzip),
+        (".tar.lrz", .tar, .lrzip),
+        // 2. Single container extension matching
+        (".zip", .zip, .none),
+        (".zipx", .zip, .none),
+        (".7z", .sevenZip, .none),
+        (".tar", .tar, .none),
+        (".cpio", .cpio, .none),
+        (".ar", .ar, .none),
+        (".a", .ar, .none),
+        (".iso", .iso, .none),
+        (".wim", .wim, .none),
+        // 3. Raw stream filter matching
+        (".gz", .raw, .gzip),
+        (".bz2", .raw, .bzip2),
+        (".xz", .raw, .xz),
+        (".zst", .raw, .zstd),
+        (".lz4", .raw, .lz4),
+        (".br", .raw, .brotli),
+        (".lz", .raw, .lzip),
+        (".lrz", .raw, .lrzip)
+    ]
+
     /// Decomposes file path suffix into container format and stream filter.
     public static func decompose(filePath: String) -> ArchivePipelineComposition {
         let lower = filePath.lowercased()
-        
-        // 1. Compound extension matching
-        if lower.hasSuffix(".tar.gz") || lower.hasSuffix(".tgz") {
-            return compose(container: .tar, filter: .gzip)
+        for rule in suffixCompositionRules where lower.hasSuffix(rule.suffix) {
+            return compose(container: rule.container, filter: rule.filter)
         }
-        if lower.hasSuffix(".tar.bz2") || lower.hasSuffix(".tbz2") || lower.hasSuffix(".tbz") {
-            return compose(container: .tar, filter: .bzip2)
-        }
-        if lower.hasSuffix(".tar.xz") || lower.hasSuffix(".txz") {
-            return compose(container: .tar, filter: .xz)
-        }
-        if lower.hasSuffix(".tar.zst") || lower.hasSuffix(".tzst") {
-            return compose(container: .tar, filter: .zstd)
-        }
-        if lower.hasSuffix(".tar.lz4") {
-            return compose(container: .tar, filter: .lz4)
-        }
-        if lower.hasSuffix(".tar.br") {
-            return compose(container: .tar, filter: .brotli)
-        }
-        if lower.hasSuffix(".tar.lz") {
-            return compose(container: .tar, filter: .lzip)
-        }
-        if lower.hasSuffix(".tar.lrz") {
-            return compose(container: .tar, filter: .lrzip)
-        }
-        
-        // 2. Single container extension matching
-        if lower.hasSuffix(".zip") || lower.hasSuffix(".zipx") {
-            return compose(container: .zip, filter: .none)
-        }
-        if lower.hasSuffix(".7z") {
-            return compose(container: .sevenZip, filter: .none)
-        }
-        if lower.hasSuffix(".tar") {
-            return compose(container: .tar, filter: .none)
-        }
-        if lower.hasSuffix(".cpio") {
-            return compose(container: .cpio, filter: .none)
-        }
-        if lower.hasSuffix(".a") || lower.hasSuffix(".ar") {
-            return compose(container: .ar, filter: .none)
-        }
-        if lower.hasSuffix(".iso") {
-            return compose(container: .iso, filter: .none)
-        }
-        if lower.hasSuffix(".wim") {
-            return compose(container: .wim, filter: .none)
-        }
-        
-        // 3. Raw stream filter matching
-        if lower.hasSuffix(".gz") {
-            return compose(container: .raw, filter: .gzip)
-        }
-        if lower.hasSuffix(".bz2") {
-            return compose(container: .raw, filter: .bzip2)
-        }
-        if lower.hasSuffix(".xz") {
-            return compose(container: .raw, filter: .xz)
-        }
-        if lower.hasSuffix(".zst") {
-            return compose(container: .raw, filter: .zstd)
-        }
-        if lower.hasSuffix(".lz4") {
-            return compose(container: .raw, filter: .lz4)
-        }
-        if lower.hasSuffix(".br") {
-            return compose(container: .raw, filter: .brotli)
-        }
-        if lower.hasSuffix(".lz") {
-            return compose(container: .raw, filter: .lzip)
-        }
-        if lower.hasSuffix(".lrz") {
-            return compose(container: .raw, filter: .lrzip)
-        }
-        
         return compose(container: .zip, filter: .none)
     }
     

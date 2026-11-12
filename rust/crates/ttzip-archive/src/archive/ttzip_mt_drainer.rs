@@ -286,11 +286,8 @@ impl JobScheduler {
         F: Fn(Job) -> CompletedJob + Sync + Send,
     {
         let total = jobs.len();
-        if total == 0 {
-            return Vec::new();
-        }
-        if total == 1 {
-            return vec![worker(jobs.into_iter().next().unwrap())];
+        if total <= 1 {
+            return jobs.into_iter().map(worker).collect();
         }
 
         let num_threads = ttzip_types::recommended_compute_threads().min(total).max(1);
@@ -326,7 +323,7 @@ impl JobScheduler {
         result_slots
             .into_inner()
             .into_iter()
-            .map(|opt| opt.expect("All jobs in batch must be processed"))
+            .flatten()
             .collect()
     }
 }

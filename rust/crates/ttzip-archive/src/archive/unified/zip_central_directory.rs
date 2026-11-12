@@ -83,6 +83,15 @@ pub fn locate_zip_central_directory(
     file: &File,
     file_len: u64,
 ) -> Result<(u64, u64, u64), TTZipStatus> {
+    let file_len = if let Ok(mut dup) = file.try_clone()
+        && let Ok(Some(info)) = crate::crypto::rs_fec::inspect_recovery_record_reader(&mut dup)
+        && info.protected_payload_length >= 22
+        && info.protected_payload_length <= file_len
+    {
+        info.protected_payload_length
+    } else {
+        file_len
+    };
     let search_window = (file_len.min(65535 + 22)) as usize;
     let tail_offset = file_len - search_window as u64;
 
@@ -442,6 +451,15 @@ pub fn locate_zip_central_directory_reader<R: std::io::Read + std::io::Seek>(
     reader: &mut R,
     total_len: u64,
 ) -> Result<(u64, u64, u64), TTZipStatus> {
+    let total_len = match crate::crypto::rs_fec::inspect_recovery_record_reader(reader) {
+        Ok(Some(info))
+            if info.protected_payload_length >= 22
+                && info.protected_payload_length <= total_len =>
+        {
+            info.protected_payload_length
+        }
+        _ => total_len,
+    };
     if total_len < 22 {
         return Err(TTZipStatus::ErrCorruptHeader);
     }

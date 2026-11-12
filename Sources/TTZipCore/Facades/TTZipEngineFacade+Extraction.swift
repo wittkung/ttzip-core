@@ -57,65 +57,131 @@ extension TTZipEngineFacade {
         if Task.isCancelled || token?.isCancelled() == true {
             throw ArchiveError.cancelled
         }
-        let initialResolutions: ResolutionSet
-        switch handling {
-        case .policy(let policy):
-            if policy == .ask {
-                throw TtZipError.InvalidArgument(message: "CollisionPolicy.ask cannot be used as a non-interactive policy")
-            }
-            initialResolutions = ResolutionSet(defaultAction: policy.defaultAction, overrides: [])
-        case .interactive:
-            initialResolutions = ResolutionSet(defaultAction: nil, overrides: [])
-        }
+        var accumulatedResolutions = try makeInitialResolutions(for: handling)
 
         let session = try ExtractionSession(request: request)
         ExtractionStagingRegistry.shared.register(destinationRoot: request.destinationRoot)
         defer {
             ExtractionStagingRegistry.shared.unregister(destinationRoot: request.destinationRoot)
         }
-        var accumulatedResolutions = initialResolutions
-
 
         let cancelToken = UniFfiCancellationToken()
         let abortIfCancelled = {
-            if Task.isCancelled || token?.isCancelled() == true || cancelToken.isCancelled() {
-                cancelToken.cancel()
-                _ = try? session.abort()
-                throw ArchiveError.cancelled
-            }
+            try self.checkAndAbortIfCancelled(session: session, externalToken: token, cancelToken: cancelToken)
         }
 
         if let preflightSummary = try session.preflight() {
             try abortIfCancelled()
-            switch handling {
-            case .policy(let policy):
-                if policy == .stop {
-                    return try session.abort()
-                }
-            case .interactive(let provider):
-                let fetch: @Sendable (UInt32, UInt32) async throws -> ConflictPage = { [weak session] offset, limit in
-                    guard let s = session else {
-                        throw ArchiveError.engineFailure(code: -1, message: "ExtractionSession deallocated during fetch")
-                    }
-                    return try s.conflictPage(offset: offset, limit: limit)
-                }
-                guard let decisions = await provider.decide(summary: preflightSummary, fetch: fetch) else {
-                    return try session.abort()
-                }
-                accumulatedResolutions = mergeResolutions(accumulatedResolutions, with: decisions)
+            if let earlyOutcome = try await resolveConflictSummary(
+                preflightSummary,
+                session: session,
+                handling: handling,
+                accumulatedResolutions: &accumulatedResolutions
+            ) {
+                return earlyOutcome
             }
         }
 
         try abortIfCancelled()
 
-        let stageReport: StageReport
+        let stageReport = try await executeExtractionStage(
+            session: session,
+            progress: progress,
+            externalToken: token,
+            cancelToken: cancelToken
+        )
+
+        try abortIfCancelled()
+
+        if let postStageConflicts = stageReport.postStageConflicts {
+            if let earlyOutcome = try await resolveConflictSummary(
+                postStageConflicts,
+                session: session,
+                handling: handling,
+                accumulatedResolutions: &accumulatedResolutions
+            ) {
+                return earlyOutcome
+            }
+        }
+
+        return try await commitExtractionLoop(
+            session: session,
+            handling: handling,
+            initialResolutions: accumulatedResolutions,
+            abortIfCancelled: abortIfCancelled
+        )
+    }
+
+    private func makeInitialResolutions(for handling: CollisionHandling) throws -> ResolutionSet {
+        switch handling {
+        case .policy(let policy):
+            if policy == .ask {
+                throw TtZipError.InvalidArgument(message: "CollisionPolicy.ask cannot be used as a non-interactive policy")
+            }
+            return ResolutionSet(defaultAction: policy.defaultAction, overrides: [])
+        case .interactive:
+            return ResolutionSet(defaultAction: nil, overrides: [])
+        }
+    }
+
+    private func checkAndAbortIfCancelled(
+        session: ExtractionSession,
+        externalToken: CancellationToken?,
+        cancelToken: UniFfiCancellationToken
+    ) throws {
+        if Task.isCancelled || externalToken?.isCancelled() == true || cancelToken.isCancelled() {
+            cancelToken.cancel()
+            _ = try? session.abort()
+            throw ArchiveError.cancelled
+        }
+    }
+
+    private func makeConflictPageFetcher(
+        session: ExtractionSession
+    ) -> @Sendable (UInt32, UInt32) async throws -> ConflictPage {
+        { [weak session] offset, limit in
+            guard let s = session else {
+                throw ArchiveError.engineFailure(code: -1, message: "ExtractionSession deallocated during fetch")
+            }
+            return try s.conflictPage(offset: offset, limit: limit)
+        }
+    }
+
+    private func resolveConflictSummary(
+        _ summary: ConflictSummary,
+        session: ExtractionSession,
+        handling: CollisionHandling,
+        accumulatedResolutions: inout ResolutionSet
+    ) async throws -> ExtractionOutcome? {
+        switch handling {
+        case .policy(let policy):
+            if policy == .stop {
+                return try session.abort()
+            }
+            return nil
+        case .interactive(let provider):
+            let fetch = makeConflictPageFetcher(session: session)
+            guard let decisions = await provider.decide(summary: summary, fetch: fetch) else {
+                return try session.abort()
+            }
+            accumulatedResolutions = mergeResolutions(accumulatedResolutions, with: decisions)
+            return nil
+        }
+    }
+
+    private func executeExtractionStage(
+        session: ExtractionSession,
+        progress: ProgressSink?,
+        externalToken: CancellationToken?,
+        cancelToken: UniFfiCancellationToken
+    ) async throws -> StageReport {
         do {
-            stageReport = try await withTaskCancellationHandler {
+            return try await withTaskCancellationHandler {
                 try await NativeComputeDispatcher.shared.dispatchCompute(qos: .userInitiated) {
-                    let relay = (progress != nil || token != nil)
+                    let relay = (progress != nil || externalToken != nil)
                         ? FacadeExtractionProgressRelay(
                             handler: progress,
-                            externalToken: token,
+                            externalToken: externalToken,
                             stageCancelToken: cancelToken
                         )
                         : nil
@@ -126,36 +192,21 @@ extension TTZipEngineFacade {
                 _ = try? session.abort()
             }
         } catch {
-            if Task.isCancelled || token?.isCancelled() == true || cancelToken.isCancelled() {
+            if Task.isCancelled || externalToken?.isCancelled() == true || cancelToken.isCancelled() {
                 _ = try? session.abort()
                 throw ArchiveError.cancelled
             }
             throw error
         }
+    }
 
-        try abortIfCancelled()
-
-        if let postStageConflicts = stageReport.postStageConflicts {
-            switch handling {
-            case .policy(let policy):
-                if policy == .stop {
-                    return try session.abort()
-                }
-            case .interactive(let provider):
-                let fetch: @Sendable (UInt32, UInt32) async throws -> ConflictPage = { [weak session] offset, limit in
-                    guard let s = session else {
-                        throw ArchiveError.engineFailure(code: -1, message: "ExtractionSession deallocated during fetch")
-                    }
-                    return try s.conflictPage(offset: offset, limit: limit)
-                }
-                guard let decisions = await provider.decide(summary: postStageConflicts, fetch: fetch) else {
-                    return try session.abort()
-                }
-                accumulatedResolutions = mergeResolutions(accumulatedResolutions, with: decisions)
-            }
-        }
-
-        // Commit Point of No Return #1: check both Task.isCancelled and external token before session.commit.
+    private func commitExtractionLoop(
+        session: ExtractionSession,
+        handling: CollisionHandling,
+        initialResolutions: ResolutionSet,
+        abortIfCancelled: () throws -> Void
+    ) async throws -> ExtractionOutcome {
+        var accumulatedResolutions = initialResolutions
         try abortIfCancelled()
 
         var commitResult = try session.commit(resolutions: accumulatedResolutions)
@@ -165,33 +216,43 @@ extension TTZipEngineFacade {
                 return outcome
             case .needsDecision(let summary):
                 try abortIfCancelled()
-                switch handling {
-                case .policy(let policy):
-                    if policy == .stop {
-                        return try session.abort()
-                    }
-                    accumulatedResolutions = ResolutionSet(
-                        defaultAction: policy.defaultAction,
-                        overrides: accumulatedResolutions.overrides
-                    )
-                    try abortIfCancelled()
-                    commitResult = try session.commit(resolutions: accumulatedResolutions)
-                case .interactive(let provider):
-                    let fetch: @Sendable (UInt32, UInt32) async throws -> ConflictPage = { [weak session] offset, limit in
-                        guard let s = session else {
-                            throw ArchiveError.engineFailure(code: -1, message: "ExtractionSession deallocated during fetch")
-                        }
-                        return try s.conflictPage(offset: offset, limit: limit)
-                    }
-                    guard let decisions = await provider.decide(summary: summary, fetch: fetch) else {
-                        return try session.abort()
-                    }
-                    accumulatedResolutions = mergeResolutions(accumulatedResolutions, with: decisions)
-                    // Commit Point of No Return #2: check both Task.isCancelled and external token after decide returns.
-                    try abortIfCancelled()
-                    commitResult = try session.commit(resolutions: accumulatedResolutions)
+                if let abortedOutcome = try await updateResolutionsForCommitDecision(
+                    summary: summary,
+                    session: session,
+                    handling: handling,
+                    accumulatedResolutions: &accumulatedResolutions
+                ) {
+                    return abortedOutcome
                 }
+                try abortIfCancelled()
+                commitResult = try session.commit(resolutions: accumulatedResolutions)
             }
+        }
+    }
+
+    private func updateResolutionsForCommitDecision(
+        summary: ConflictSummary,
+        session: ExtractionSession,
+        handling: CollisionHandling,
+        accumulatedResolutions: inout ResolutionSet
+    ) async throws -> ExtractionOutcome? {
+        switch handling {
+        case .policy(let policy):
+            if policy == .stop {
+                return try session.abort()
+            }
+            accumulatedResolutions = ResolutionSet(
+                defaultAction: policy.defaultAction,
+                overrides: accumulatedResolutions.overrides
+            )
+            return nil
+        case .interactive(let provider):
+            let fetch = makeConflictPageFetcher(session: session)
+            guard let decisions = await provider.decide(summary: summary, fetch: fetch) else {
+                return try session.abort()
+            }
+            accumulatedResolutions = mergeResolutions(accumulatedResolutions, with: decisions)
+            return nil
         }
     }
 
@@ -203,10 +264,165 @@ extension TTZipEngineFacade {
         for item in newResolutions.overrides {
             overrideMap[item.conflictId] = item.action
         }
-        let mergedOverrides = overrideMap.keys.sorted().map {
-            ResolutionOverride(conflictId: $0, action: overrideMap[$0]!)
+        let mergedOverrides = overrideMap.keys.sorted().compactMap { key in
+            overrideMap[key].map { ResolutionOverride(conflictId: key, action: $0) }
         }
         let defaultAction = newResolutions.defaultAction ?? current.defaultAction
         return ResolutionSet(defaultAction: defaultAction, overrides: mergedOverrides)
+    }
+
+    /// Extracts one entry (a directory entry includes its descendants) directly into `destinationDir`.
+    @discardableResult
+    public func extractSingleEntry(
+        archivePath: String,
+        entryPath: String,
+        destinationDir: String,
+        password: String? = nil,
+        handling: CollisionHandling = .policy(.keepBoth)
+    ) async throws -> ExtractionOutcome {
+        let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
+        return try await extractEntries(
+            archivePath: archivePath,
+            entryPaths: [entryPath],
+            destinationDir: destinationDir,
+            password: explicitPwd,
+            handling: handling
+        )
+    }
+
+    /// Extracts the selected entries, plus every descendant of a selected directory, through the
+    /// collision-safe session loop. Entries are placed relative to their deepest common parent:
+    /// selecting `docs/report.pdf` writes `<destinationDir>/report.pdf`.
+    @discardableResult
+    public func extractEntries(
+        archivePath: String,
+        entryPaths: [String],
+        destinationDir: String,
+        password: String?,
+        handling: CollisionHandling = .policy(.keepBoth),
+        progress: ProgressSink? = nil
+    ) async throws -> ExtractionOutcome {
+        guard !archivePath.isEmpty, !destinationDir.isEmpty, FileManager.default.fileExists(atPath: archivePath) else {
+            throw ArchiveError.fileNotFound
+        }
+        guard !entryPaths.isEmpty else { return .nothingSelected }
+        try FileManager.default.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
+
+        let spotlightCreated = ArchiveExtractor.preventSpotlightIndexing(at: destinationDir)
+        defer {
+            ArchiveExtractor.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
+        }
+
+        let request = ExtractionRequest(
+            archivePath: archivePath,
+            destinationRoot: destinationDir,
+            password: password,
+            entryFilter: entryPaths,
+            rootAtCommonParent: true,
+            policy: handling.requestPolicy
+        )
+        let outcome: ExtractionOutcome
+        do {
+            outcome = try await extract(request, handling: handling, progress: progress)
+        } catch {
+            throw ArchiveError.from(error: error)
+        }
+        ArchiveExtractor.propagateQuarantine(from: archivePath, to: destinationDir)
+        return outcome
+    }
+
+    internal func executePipelineExtract(
+        archivePath: String,
+        destinationDir: String,
+        password: String?,
+        progress: (@Sendable (ArchiveProgress) -> Void)?,
+        token: CancellationToken? = nil
+    ) async throws -> Double {
+        let startTime = CFAbsoluteTimeGetCurrent()
+        let request = ExtractionRequest(
+            archivePath: archivePath,
+            destinationRoot: destinationDir,
+            password: password,
+            entryFilter: nil,
+            rootAtCommonParent: false,
+            policy: .keepBoth
+        )
+        let outcome = try await extract(request, handling: .policy(.keepBoth), progress: progress, token: token)
+        switch outcome.status {
+        case .stopped:
+            throw ArchiveError.extractionStopped
+        case .completedWithFailures:
+            throw ArchiveError.partialExtractionFailure(outcome: outcome)
+        case .completed:
+            return max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
+        }
+    }
+}
+
+// MARK: - Selected-Entry Extraction on Extractor Types
+
+// Defined in the TTZipCore module because the session loop (`extract(_:handling:progress:)`) and the
+// staging registry live here; `ArchiveExtractor` itself sits in the lower TTZipCoreArchive module.
+
+extension ArchiveExtractor {
+    /// Extracts a single entry (a directory entry includes its descendants) directly into `destinationDir`.
+    @discardableResult
+    public func extractSingleFile(
+        archivePath: String,
+        entryPath: String,
+        destinationDir: String,
+        password: String?,
+        handling: CollisionHandling = .policy(.keepBoth)
+    ) async throws -> ExtractionOutcome {
+        try await TTZipEngineFacade.shared.extractEntries(
+            archivePath: archivePath,
+            entryPaths: [entryPath],
+            destinationDir: destinationDir,
+            password: password,
+            handling: handling
+        )
+    }
+}
+
+extension ArchiveSelectiveExtractor {
+    /// Extracts the selected entries (a directory entry includes its descendants) into `destinationDir`,
+    /// relative to their deepest common parent.
+    @discardableResult
+    public func extractSelected(
+        archivePath: String,
+        targetEntryPaths: Set<String>,
+        destinationDir: String,
+        password: String? = nil,
+        handling: CollisionHandling = .policy(.keepBoth)
+    ) async throws -> ExtractionOutcome {
+        try await TTZipEngineFacade.shared.extractEntries(
+            archivePath: archivePath,
+            entryPaths: targetEntryPaths.sorted(),
+            destinationDir: destinationDir,
+            password: password,
+            handling: handling
+        )
+    }
+}
+
+// MARK: - Extraction Request Helpers
+
+internal extension CollisionHandling {
+    /// Policy recorded in the `ExtractionRequest`; interactive sessions resolve conflicts
+    /// through the decision provider, so the request carries the non-destructive default.
+    var requestPolicy: CollisionPolicy {
+        switch self {
+        case .policy(let policy):
+            return policy
+        case .interactive:
+            return .keepBoth
+        }
+    }
+}
+
+internal extension ExtractionOutcome {
+    /// Outcome of a selection that names no entries: nothing is read or written.
+    static var nothingSelected: ExtractionOutcome {
+        ExtractionOutcome(status: .completed, extracted: 0, replaced: 0, keptBoth: 0, skipped: 0, failed: [])
     }
 }

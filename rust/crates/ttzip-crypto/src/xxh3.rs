@@ -53,12 +53,12 @@ const PRIME32_3: u32 = 0x165667B1;
 
 #[inline(always)]
 fn read_u32_le(p: &[u8]) -> u32 {
-    u32::from_le_bytes(p[..4].try_into().unwrap())
+    u32::from_le_bytes([p[0], p[1], p[2], p[3]])
 }
 
 #[inline(always)]
 fn read_u64_le(p: &[u8]) -> u64 {
-    u64::from_le_bytes(p[..8].try_into().unwrap())
+    u64::from_le_bytes([p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]])
 }
 
 #[inline(always)]

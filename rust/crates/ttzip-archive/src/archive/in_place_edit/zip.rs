@@ -9,8 +9,7 @@
 //! - Instant disk landing eliminating `mapped.to_vec()` cloning and `assemble_zip_archive` contiguous buffer allocation.
 //! - Full Zip64 automatic promotion for archives >4GB or catalogs >65535 entries.
 
-use super::InPlaceAction;
-use crate::codecs::deflate::{deflate_compress, deflate_compress_bound};
+use super::{InPlaceAction, PartitionedActions};
 use crate::crypto::crc32_fast;
 use crate::types::{record_execution_provenance, TTZipEngineTag, TTZipExecutionProvenance, TTZipStatus};
 use crate::zip::extra::ZipExtraFields;
@@ -18,10 +17,11 @@ use crate::zip::parser::{
     parse_all_entries, parse_local_file_header, ZipEntry, MAGIC_CDFH, MAGIC_EOCD, MAGIC_LFH,
     MAGIC_ZIP64_EOCD, MAGIC_ZIP64_LOCATOR,
 };
+use crate::zip::writer::streaming_sink::{BoundedSink, EntryPayload, STREAM_CHUNK_SIZE};
 use crate::zip::writer::unix_to_dos_time;
-use std::collections::{HashMap, HashSet};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::collections::HashSet;
+use std::fs::{self, File, OpenOptions};
+use std::io::{BufWriter, Read, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
@@ -50,135 +50,16 @@ pub fn in_place_edit_zip(
     let source = crate::archive::source::open_archive_source(archive_path)?;
     let mapped = source.as_slice().ok_or(TTZipStatus::ErrOpenFailed)?;
     let entries = parse_all_entries(mapped)?;
+    let plan = PartitionedActions::from_slice(actions);
 
-    let mut deleted = HashSet::new();
-    let mut replaced = HashMap::new();
-    let mut appended = Vec::new();
-
-    for action in actions {
-        match action {
-            InPlaceAction::Delete { entry_path } => {
-                deleted.insert(entry_path.trim_start_matches('/').to_string());
-            }
-            InPlaceAction::Replace { entry_path, source_path } => {
-                replaced.insert(entry_path.trim_start_matches('/').to_string(), source_path.clone());
-            }
-            InPlaceAction::Append { entry_path, source_path } => {
-                appended.push((entry_path.trim_start_matches('/').to_string(), source_path.clone()));
-            }
-        }
-    }
-
-    if let Some(parent) = shadow_path.parent() {
-        if !parent.exists() {
-            let _ = fs::create_dir_all(parent);
-        }
-    }
-
-    let mut shadow_file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(shadow_path)
-        .map_err(|_| TTZipStatus::ErrOpenFailed)?;
-
+    let shadow_file = open_shadow_file(shadow_path)?;
+    let mut shadow_writer = BufWriter::with_capacity(64 * 1024, shadow_file);
     let mut current_offset: u64 = 0;
-    let mut cd_entries: Vec<InPlaceCdMeta> = Vec::with_capacity(entries.len() + appended.len());
-    let mut processed_replaced = HashSet::new();
+    let mut cd_entries: Vec<InPlaceCdMeta> = Vec::with_capacity(entries.len() + plan.appended.len());
 
-    // 1. Process existing entries: delete, replace, or stream-splice untouched
-    for entry in &entries {
-        let key = entry.rel_path.trim_start_matches('/').to_string();
-        if deleted.contains(&key) {
-            continue;
-        }
-
-        if let Some(src_path) = replaced.get(&key) {
-            processed_replaced.insert(key);
-            stream_write_new_entry(
-                &mut shadow_file,
-                &mut current_offset,
-                &entry.rel_path,
-                src_path,
-                &mut cd_entries,
-            )?;
-        } else {
-            stream_copy_untouched_entry(
-                &mut shadow_file,
-                &mut current_offset,
-                mapped,
-                entry,
-                &mut cd_entries,
-            )?;
-        }
-    }
-
-    // 2. Process replacement items for keys not present in original archive
-    for (key, src_path) in &replaced {
-        if !processed_replaced.contains(key) {
-            stream_write_new_entry(
-                &mut shadow_file,
-                &mut current_offset,
-                key,
-                src_path,
-                &mut cd_entries,
-            )?;
-        }
-    }
-
-    // 3. Process appended items
-    for (rel_path, src_path) in &appended {
-        stream_write_new_entry(
-            &mut shadow_file,
-            &mut current_offset,
-            rel_path,
-            src_path,
-            &mut cd_entries,
-        )?;
-    }
-
-    // 4. Write Central Directory and EOCD structures
-    let cd_start_offset = current_offset;
-    for cd in &cd_entries {
-        let cdfh_len = write_cdfh(&mut shadow_file, cd)?;
-        current_offset += cdfh_len as u64;
-    }
-    let cd_size = current_offset - cd_start_offset;
-
-    let total_uncompressed: u64 = cd_entries.iter().map(|c| c.uncompressed_size).sum();
-    let needs_zip64 = cd_entries.len() >= 0xFFFF
-        || cd_start_offset >= 0xFFFF_FFFF
-        || cd_size >= 0xFFFF_FFFF
-        || total_uncompressed >= 0xFFFF_FFFF;
-
-    if needs_zip64 {
-        let zip64_eocd_offset = current_offset;
-        let zip64_eocd = build_zip64_eocd(cd_entries.len() as u64, cd_size, cd_start_offset);
-        shadow_file
-            .write_all(&zip64_eocd)
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        current_offset += zip64_eocd.len() as u64;
-
-        let zip64_locator = build_zip64_locator(zip64_eocd_offset);
-        shadow_file
-            .write_all(&zip64_locator)
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        current_offset += zip64_locator.len() as u64;
-    }
-
-    let eocd = build_eocd(
-        cd_entries.len().min(0xFFFF) as u16,
-        cd_size.min(0xFFFF_FFFF) as u32,
-        cd_start_offset.min(0xFFFF_FFFF) as u32,
-    );
-    shadow_file
-        .write_all(&eocd)
-        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-    current_offset += eocd.len() as u64;
-
-    shadow_file
-        .flush()
-        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    write_mutated_zip_entries(&mut shadow_writer, &mut current_offset, mapped, &entries, &plan, &mut cd_entries)?;
+    write_central_directory_and_eocd(&mut shadow_writer, &mut current_offset, &cd_entries)?;
+    shadow_writer.flush().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
 
     let prov = TTZipExecutionProvenance {
         engine_tag: TTZipEngineTag::RustInPlaceZip,
@@ -188,6 +69,101 @@ pub fn in_place_edit_zip(
     };
     record_execution_provenance(prov);
 
+    Ok(())
+}
+
+fn write_mutated_zip_entries<W: Write>(
+    writer: &mut W,
+    current_offset: &mut u64,
+    mapped: &[u8],
+    entries: &[ZipEntry],
+    plan: &PartitionedActions,
+    cd_entries: &mut Vec<InPlaceCdMeta>,
+) -> Result<(), TTZipStatus> {
+    let mut processed_replaced: HashSet<&str> = HashSet::new();
+
+    for entry in entries {
+        let key = entry.rel_path.trim_start_matches('/');
+        if plan.deleted.contains(key) {
+            continue;
+        }
+        if let Some((plan_key, src_path)) = plan.replaced.get_key_value(key) {
+            processed_replaced.insert(plan_key.as_str());
+            stream_write_new_entry(writer, current_offset, &entry.rel_path, src_path, cd_entries)?;
+        } else {
+            stream_copy_untouched_entry(writer, current_offset, mapped, entry, cd_entries)?;
+        }
+    }
+
+    for (key, src_path) in &plan.replaced {
+        if !processed_replaced.contains(key.as_str()) {
+            stream_write_new_entry(writer, current_offset, key, src_path, cd_entries)?;
+        }
+    }
+
+    for (rel_path, src_path) in &plan.appended {
+        stream_write_new_entry(writer, current_offset, rel_path, src_path, cd_entries)?;
+    }
+
+    Ok(())
+}
+
+fn open_shadow_file(shadow_path: &Path) -> Result<fs::File, TTZipStatus> {
+    if let Some(parent) = shadow_path.parent() {
+        if !parent.exists() {
+            let _ = fs::create_dir_all(parent);
+        }
+    }
+    OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(shadow_path)
+        .map_err(|_| TTZipStatus::ErrOpenFailed)
+}
+
+fn write_central_directory_and_eocd<W: Write>(
+    writer: &mut W,
+    current_offset: &mut u64,
+    cd_entries: &[InPlaceCdMeta],
+) -> Result<(), TTZipStatus> {
+    let cd_start_offset = *current_offset;
+    for cd in cd_entries {
+        let cdfh_len = write_cdfh(writer, cd)?;
+        *current_offset += cdfh_len as u64;
+    }
+    let cd_size = *current_offset - cd_start_offset;
+
+    let total_uncompressed: u64 = cd_entries.iter().map(|c| c.uncompressed_size).sum();
+    let needs_zip64 = cd_entries.len() >= 0xFFFF
+        || cd_start_offset >= 0xFFFF_FFFF
+        || cd_size >= 0xFFFF_FFFF
+        || total_uncompressed >= 0xFFFF_FFFF;
+
+    if needs_zip64 {
+        let zip64_eocd_offset = *current_offset;
+        let zip64_eocd = build_zip64_eocd(cd_entries.len() as u64, cd_size, cd_start_offset);
+        writer
+            .write_all(&zip64_eocd)
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        *current_offset += zip64_eocd.len() as u64;
+
+        let zip64_locator = build_zip64_locator(zip64_eocd_offset);
+        writer
+            .write_all(&zip64_locator)
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        *current_offset += zip64_locator.len() as u64;
+    }
+
+    let eocd = build_eocd(
+        cd_entries.len().min(0xFFFF) as u16,
+        cd_size.min(0xFFFF_FFFF) as u32,
+        cd_start_offset.min(0xFFFF_FFFF) as u32,
+    );
+    writer
+        .write_all(&eocd)
+        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    *current_offset += eocd.len() as u64;
     Ok(())
 }
 
@@ -344,14 +320,7 @@ fn stream_write_new_entry<W: Write>(
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
         .map(|d| d.as_secs() as u32)
         .unwrap_or(0);
-
-    let mode_final = if mode != 0 {
-        mode
-    } else if is_dir {
-        0o755
-    } else {
-        0o644
-    };
+    let mode_final = if mode != 0 { mode } else if is_dir { 0o755 } else { 0o644 };
 
     if is_dir {
         let mut dir_path = rel_path.to_string();
@@ -371,31 +340,14 @@ fn stream_write_new_entry<W: Write>(
             mode: mode_final,
             is_directory: true,
         };
-        let lfh_len = write_lfh(writer, &cd)?;
-        *current_offset += lfh_len as u64;
+        *current_offset += write_lfh(writer, &cd)? as u64;
         cd_entries.push(cd);
         return Ok(());
     }
 
-    let raw_data = fs::read(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-    let uncompressed_size = raw_data.len() as u64;
-    let crc = crc32_fast(0, &raw_data);
+    let (comp_method, uncompressed_size, crc, payload) = stream_compress_disk_file(src_path)?;
+    let compressed_size = payload.len();
 
-    let (comp_method, payload) = if raw_data.is_empty() {
-        (0u16, Vec::new())
-    } else {
-        let max_bound = deflate_compress_bound(raw_data.len(), 6);
-        let mut comp_buf = vec![0u8; max_bound];
-        match deflate_compress(&raw_data, &mut comp_buf, 6) {
-            Ok(comp_len) if (comp_len as u64) < uncompressed_size => {
-                comp_buf.truncate(comp_len);
-                (8u16, comp_buf)
-            }
-            _ => (0u16, raw_data),
-        }
-    };
-
-    let compressed_size = payload.len() as u64;
     let cd = InPlaceCdMeta {
         rel_path: rel_path.to_string(),
         lfh_offset: *current_offset,
@@ -410,17 +362,84 @@ fn stream_write_new_entry<W: Write>(
         is_directory: false,
     };
 
-    let lfh_len = write_lfh(writer, &cd)?;
-    *current_offset += lfh_len as u64;
-
+    *current_offset += write_lfh(writer, &cd)? as u64;
     if !payload.is_empty() {
-        writer
-            .write_all(&payload)
-            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-        *current_offset += payload.len() as u64;
+        write_entry_payload_to_stream(writer, &payload)?;
+        *current_offset += compressed_size;
     }
 
     cd_entries.push(cd);
+    Ok(())
+}
+
+fn stream_compress_disk_file(
+    src_path: &Path,
+) -> Result<(u16, u64, u32, EntryPayload), TTZipStatus> {
+    let mut file = File::open(src_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let mut encoder =
+        flate2::write::DeflateEncoder::new(BoundedSink::new(), flate2::Compression::default());
+    let mut buf = [0u8; STREAM_CHUNK_SIZE];
+    let mut crc = 0u32;
+    let mut uncompressed_size = 0u64;
+
+    loop {
+        let n = file
+            .read(&mut buf)
+            .map_err(|_| TTZipStatus::ErrFileNotFound)?;
+        if n == 0 {
+            break;
+        }
+        let chunk = &buf[..n];
+        crc = crc32_fast(crc, chunk);
+        uncompressed_size += n as u64;
+        encoder
+            .write_all(chunk)
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    }
+
+    let sink = encoder
+        .finish()
+        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    if uncompressed_size > 0 && sink.total_written < uncompressed_size {
+        Ok((8u16, uncompressed_size, crc, sink.into_payload()))
+    } else {
+        Ok((
+            0u16,
+            uncompressed_size,
+            crc,
+            EntryPayload::OriginalFile {
+                path: src_path.to_path_buf(),
+                len: uncompressed_size,
+            },
+        ))
+    }
+}
+
+fn write_entry_payload_to_stream<W: Write>(
+    writer: &mut W,
+    payload: &EntryPayload,
+) -> Result<(), TTZipStatus> {
+    match payload {
+        EntryPayload::Memory(bytes) => writer
+            .write_all(bytes)
+            .map_err(|_| TTZipStatus::ErrCompressionFailed),
+        EntryPayload::Spill(spill) => stream_disk_file_to_writer(&spill.path, writer),
+        EntryPayload::OriginalFile { path, .. } => stream_disk_file_to_writer(path, writer),
+    }
+}
+
+fn stream_disk_file_to_writer<W: Write>(path: &Path, writer: &mut W) -> Result<(), TTZipStatus> {
+    let mut file = File::open(path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    let mut buf = [0u8; STREAM_CHUNK_SIZE];
+    loop {
+        let n = file.read(&mut buf).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+        if n == 0 {
+            break;
+        }
+        writer
+            .write_all(&buf[..n])
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    }
     Ok(())
 }
 

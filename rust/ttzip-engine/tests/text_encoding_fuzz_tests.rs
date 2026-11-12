@@ -356,7 +356,7 @@ fn test_target_10_ascii_tiny_payload_detection_invariant() {
 // ============================================================================
 #[test]
 fn test_target_11_shift_jis_trail_byte_backslash_defense() {
-    // Kanji '表' (0x95 0x5C) and '申' (0x90 0x5C) in Shift-JIS have trail byte '\\' (0x5C)
+    // Shift-JIS kanji sequences (0x95 0x5C) and (0x90 0x5C) have trail byte '\\' (0x5C)
     let text = "表_予定表_申告書.txt";
     let (encoded, _, _) = encoding_rs::SHIFT_JIS.encode(text);
     assert!(encoded.contains(&0x5C), "Encoded Shift-JIS must contain 0x5C trail bytes");

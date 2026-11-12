@@ -20,6 +20,129 @@ pub fn detect_archive_sniff(path: &Path) -> Result<SniffResult, TTZipStatus> {
     FormatSniffer::sniff_file(path).map_err(|_| TTZipStatus::ErrFileNotFound)
 }
 
+const DETECT_EXTENSION_TABLE: &[(&str, DetectedFormat, Option<CompoundFormat>)] = &[
+    (".zip", DetectedFormat::Zip, None),
+    (".cbz", DetectedFormat::Zip, None),
+    (".jar", DetectedFormat::Zip, None),
+    (".apk", DetectedFormat::Zip, None),
+    (".epub", DetectedFormat::Zip, None),
+    (".7z", DetectedFormat::SevenZip, None),
+    (".cb7", DetectedFormat::SevenZip, None),
+    (".tar.gz", DetectedFormat::Gzip, Some(CompoundFormat::TarGz)),
+    (".tgz", DetectedFormat::Gzip, Some(CompoundFormat::TarGz)),
+    (".tar.bz2", DetectedFormat::Bzip2, Some(CompoundFormat::TarBz2)),
+    (".tbz2", DetectedFormat::Bzip2, Some(CompoundFormat::TarBz2)),
+    (".tbz", DetectedFormat::Bzip2, Some(CompoundFormat::TarBz2)),
+    (".tar.xz", DetectedFormat::Xz, Some(CompoundFormat::TarXz)),
+    (".txz", DetectedFormat::Xz, Some(CompoundFormat::TarXz)),
+    (".tar.zst", DetectedFormat::Zstd, Some(CompoundFormat::TarZstd)),
+    (".tzst", DetectedFormat::Zstd, Some(CompoundFormat::TarZstd)),
+    (".tar.lz4", DetectedFormat::Lz4, Some(CompoundFormat::TarLz4)),
+    (".tlz4", DetectedFormat::Lz4, Some(CompoundFormat::TarLz4)),
+    (".tar.br", DetectedFormat::Brotli, Some(CompoundFormat::TarBrotli)),
+    (".tbr", DetectedFormat::Brotli, Some(CompoundFormat::TarBrotli)),
+    (".tar.lz", DetectedFormat::Lzip, Some(CompoundFormat::TarLzip)),
+    (".tlz", DetectedFormat::Lzip, Some(CompoundFormat::TarLzip)),
+    (".tar.lrz", DetectedFormat::Lrzip, Some(CompoundFormat::TarLrzip)),
+    (".tlrz", DetectedFormat::Lrzip, Some(CompoundFormat::TarLrzip)),
+    (".tar", DetectedFormat::Tar, None),
+    (".cbt", DetectedFormat::Tar, None),
+    (".rar", DetectedFormat::Rar, None),
+    (".cbr", DetectedFormat::Rar, None),
+    (".cab", DetectedFormat::Cab, None),
+    (".iso", DetectedFormat::Iso, None),
+    (".img", DetectedFormat::Iso, None),
+    (".wim", DetectedFormat::Wim, None),
+    (".swm", DetectedFormat::Wim, None),
+    (".esd", DetectedFormat::Wim, None),
+    (".dmg", DetectedFormat::Dmg, None),
+    (".xar", DetectedFormat::Xar, None),
+    (".pkg", DetectedFormat::Xar, None),
+    (".cpio", DetectedFormat::Cpio, None),
+    (".ar", DetectedFormat::Ar, None),
+    (".a", DetectedFormat::Ar, None),
+    (".deb", DetectedFormat::Deb, None),
+    (".rpm", DetectedFormat::Rpm, None),
+    (".squashfs", DetectedFormat::Squashfs, None),
+    (".sqsh", DetectedFormat::Squashfs, None),
+    (".aar", DetectedFormat::Aar, None),
+    (".aea", DetectedFormat::Aar, None),
+    (".lzh", DetectedFormat::Lzh, None),
+    (".lha", DetectedFormat::Lzh, None),
+    (".lzfse", DetectedFormat::Lzfse, None),
+    (".sz", DetectedFormat::Snappy, None),
+    (".snappy", DetectedFormat::Snappy, None),
+    (".lz", DetectedFormat::Lzip, None),
+    (".lzip", DetectedFormat::Lzip, None),
+    (".lrz", DetectedFormat::Lrzip, None),
+    (".lrzip", DetectedFormat::Lrzip, None),
+    (".lz4", DetectedFormat::Lz4, None),
+    (".br", DetectedFormat::Brotli, None),
+    (".gz", DetectedFormat::Gzip, None),
+    (".bz2", DetectedFormat::Bzip2, None),
+    (".xz", DetectedFormat::Xz, None),
+    (".zst", DetectedFormat::Zstd, None),
+];
+
+const CREATE_FORMAT_EXTENSION_TABLE: &[(&str, TTZipArchiveFormat)] = &[
+    (".tar.gz", TTZipArchiveFormat::TarGz),
+    (".tgz", TTZipArchiveFormat::TarGz),
+    (".tar.bz2", TTZipArchiveFormat::TarBz2),
+    (".tbz2", TTZipArchiveFormat::TarBz2),
+    (".tbz", TTZipArchiveFormat::TarBz2),
+    (".tar.xz", TTZipArchiveFormat::TarXz),
+    (".txz", TTZipArchiveFormat::TarXz),
+    (".tar.zst", TTZipArchiveFormat::TarZstd),
+    (".tzst", TTZipArchiveFormat::TarZstd),
+    (".tar.lz4", TTZipArchiveFormat::TarLz4),
+    (".tlz4", TTZipArchiveFormat::TarLz4),
+    (".tar.br", TTZipArchiveFormat::TarBrotli),
+    (".tbr", TTZipArchiveFormat::TarBrotli),
+    (".tar.lz", TTZipArchiveFormat::TarLzip),
+    (".tlz", TTZipArchiveFormat::TarLzip),
+    (".tar.lrz", TTZipArchiveFormat::TarLrzip),
+    (".tlrz", TTZipArchiveFormat::TarLrzip),
+    (".7z", TTZipArchiveFormat::SevenZip),
+    (".cb7", TTZipArchiveFormat::SevenZip),
+    (".tar", TTZipArchiveFormat::Tar),
+    (".cbt", TTZipArchiveFormat::Tar),
+    (".iso", TTZipArchiveFormat::Iso),
+    (".img", TTZipArchiveFormat::Iso),
+    (".cab", TTZipArchiveFormat::Cab),
+    (".wim", TTZipArchiveFormat::Wim),
+    (".swm", TTZipArchiveFormat::Wim),
+    (".esd", TTZipArchiveFormat::Wim),
+    (".cpio", TTZipArchiveFormat::Cpio),
+    (".deb", TTZipArchiveFormat::Deb),
+    (".ar", TTZipArchiveFormat::Ar),
+    (".a", TTZipArchiveFormat::Ar),
+    (".rpm", TTZipArchiveFormat::Rpm),
+    (".squashfs", TTZipArchiveFormat::Squashfs),
+    (".sqsh", TTZipArchiveFormat::Squashfs),
+    (".aar", TTZipArchiveFormat::Aar),
+    (".aea", TTZipArchiveFormat::Aar),
+    (".xar", TTZipArchiveFormat::Xar),
+    (".pkg", TTZipArchiveFormat::Xar),
+    (".dmg", TTZipArchiveFormat::Dmg),
+    (".rar", TTZipArchiveFormat::Rar),
+    (".cbr", TTZipArchiveFormat::Rar),
+    (".lzh", TTZipArchiveFormat::Lzh),
+    (".lha", TTZipArchiveFormat::Lzh),
+    (".gz", TTZipArchiveFormat::Gzip),
+    (".bz2", TTZipArchiveFormat::Bzip2),
+    (".xz", TTZipArchiveFormat::Xz),
+    (".zst", TTZipArchiveFormat::Zstd),
+    (".lz4", TTZipArchiveFormat::Lz4),
+    (".br", TTZipArchiveFormat::Brotli),
+    (".lzfse", TTZipArchiveFormat::Lzfse),
+    (".sz", TTZipArchiveFormat::Snappy),
+    (".snappy", TTZipArchiveFormat::Snappy),
+    (".lz", TTZipArchiveFormat::Lzip),
+    (".lzip", TTZipArchiveFormat::Lzip),
+    (".lrz", TTZipArchiveFormat::Lrzip),
+    (".lrzip", TTZipArchiveFormat::Lrzip),
+];
+
 /// Detects format of an archive from file headers with extension fallback.
 pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundFormat>), TTZipStatus> {
     if let Some(special) = sniff_special_container_headers(path) {
@@ -31,7 +154,6 @@ pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundForm
         return Ok((sniff.format, sniff.compound_format));
     }
 
-    // Secondary 50+ FormatSniffer lookup
     if let Ok(SniffResult::Yes { format, .. }) = FormatSniffer::sniff_file(path) {
         let detected = format.to_detected_format();
         if detected != DetectedFormat::Unknown {
@@ -39,86 +161,15 @@ pub fn detect_format(path: &Path) -> Result<(DetectedFormat, Option<CompoundForm
         }
     }
 
-    // Extension fallback (stripping numeric split suffix like .001 first)
     let ext_str = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     let lower_raw = ext_str.to_lowercase();
     let lower = strip_split_suffix_for_detect(&lower_raw);
-    if lower.ends_with(".zip")
-        || lower.ends_with(".cbz")
-        || lower.ends_with(".jar")
-        || lower.ends_with(".apk")
-        || lower.ends_with(".epub")
-    {
-        Ok((DetectedFormat::Zip, None))
-    } else if lower.ends_with(".7z") || lower.ends_with(".cb7") {
-        Ok((DetectedFormat::SevenZip, None))
-    } else if lower.ends_with(".tar.gz") || lower.ends_with(".tgz") {
-        Ok((DetectedFormat::Gzip, Some(CompoundFormat::TarGz)))
-    } else if lower.ends_with(".tar.bz2") || lower.ends_with(".tbz2") || lower.ends_with(".tbz") {
-        Ok((DetectedFormat::Bzip2, Some(CompoundFormat::TarBz2)))
-    } else if lower.ends_with(".tar.xz") || lower.ends_with(".txz") {
-        Ok((DetectedFormat::Xz, Some(CompoundFormat::TarXz)))
-    } else if lower.ends_with(".tar.zst") || lower.ends_with(".tzst") {
-        Ok((DetectedFormat::Zstd, Some(CompoundFormat::TarZstd)))
-    } else if lower.ends_with(".tar.lz4") || lower.ends_with(".tlz4") {
-        Ok((DetectedFormat::Lz4, Some(CompoundFormat::TarLz4)))
-    } else if lower.ends_with(".tar.br") || lower.ends_with(".tbr") {
-        Ok((DetectedFormat::Brotli, Some(CompoundFormat::TarBrotli)))
-    } else if lower.ends_with(".tar.lz") || lower.ends_with(".tlz") {
-        Ok((DetectedFormat::Lzip, Some(CompoundFormat::TarLzip)))
-    } else if lower.ends_with(".tar.lrz") || lower.ends_with(".tlrz") {
-        Ok((DetectedFormat::Lrzip, Some(CompoundFormat::TarLrzip)))
-    } else if lower.ends_with(".tar") || lower.ends_with(".cbt") {
-        Ok((DetectedFormat::Tar, None))
-    } else if lower.ends_with(".rar") || lower.ends_with(".cbr") {
-        Ok((DetectedFormat::Rar, None))
-    } else if lower.ends_with(".cab") {
-        Ok((DetectedFormat::Cab, None))
-    } else if lower.ends_with(".iso") || lower.ends_with(".img") {
-        Ok((DetectedFormat::Iso, None))
-    } else if lower.ends_with(".wim") || lower.ends_with(".swm") || lower.ends_with(".esd") {
-        Ok((DetectedFormat::Wim, None))
-    } else if lower.ends_with(".dmg") {
-        Ok((DetectedFormat::Dmg, None))
-    } else if lower.ends_with(".xar") || lower.ends_with(".pkg") {
-        Ok((DetectedFormat::Xar, None))
-    } else if lower.ends_with(".cpio") {
-        Ok((DetectedFormat::Cpio, None))
-    } else if lower.ends_with(".ar") || lower.ends_with(".a") {
-        Ok((DetectedFormat::Ar, None))
-    } else if lower.ends_with(".deb") {
-        Ok((DetectedFormat::Deb, None))
-    } else if lower.ends_with(".rpm") {
-        Ok((DetectedFormat::Rpm, None))
-    } else if lower.ends_with(".squashfs") || lower.ends_with(".sqsh") {
-        Ok((DetectedFormat::Squashfs, None))
-    } else if lower.ends_with(".aar") || lower.ends_with(".aea") {
-        Ok((DetectedFormat::Aar, None))
-    } else if lower.ends_with(".lzh") || lower.ends_with(".lha") {
-        Ok((DetectedFormat::Lzh, None))
-    } else if lower.ends_with(".lzfse") {
-        Ok((DetectedFormat::Lzfse, None))
-    } else if lower.ends_with(".sz") || lower.ends_with(".snappy") {
-        Ok((DetectedFormat::Snappy, None))
-    } else if lower.ends_with(".lz") || lower.ends_with(".lzip") {
-        Ok((DetectedFormat::Lzip, None))
-    } else if lower.ends_with(".lrz") || lower.ends_with(".lrzip") {
-        Ok((DetectedFormat::Lrzip, None))
-    } else if lower.ends_with(".lz4") {
-        Ok((DetectedFormat::Lz4, None))
-    } else if lower.ends_with(".br") {
-        Ok((DetectedFormat::Brotli, None))
-    } else if lower.ends_with(".gz") {
-        Ok((DetectedFormat::Gzip, None))
-    } else if lower.ends_with(".bz2") {
-        Ok((DetectedFormat::Bzip2, None))
-    } else if lower.ends_with(".xz") {
-        Ok((DetectedFormat::Xz, None))
-    } else if lower.ends_with(".zst") {
-        Ok((DetectedFormat::Zstd, None))
-    } else {
-        Ok((DetectedFormat::Unknown, None))
-    }
+
+    let matched = DETECT_EXTENSION_TABLE
+        .iter()
+        .find_map(|&(ext, det, comp)| lower.ends_with(ext).then_some((det, comp)))
+        .unwrap_or((DetectedFormat::Unknown, None));
+    Ok(matched)
 }
 
 /// Resolves target archive creation format from explicit format and destination path.
@@ -133,79 +184,10 @@ pub fn resolve_create_format(format: TTZipArchiveFormat, dest_path: &Path) -> TT
         .unwrap_or("")
         .to_lowercase();
 
-    // 1. Compound Tar formats
-    if name.ends_with(".tar.gz") || name.ends_with(".tgz") {
-        TTZipArchiveFormat::TarGz
-    } else if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") || name.ends_with(".tbz") {
-        TTZipArchiveFormat::TarBz2
-    } else if name.ends_with(".tar.xz") || name.ends_with(".txz") {
-        TTZipArchiveFormat::TarXz
-    } else if name.ends_with(".tar.zst") || name.ends_with(".tzst") {
-        TTZipArchiveFormat::TarZstd
-    } else if name.ends_with(".tar.lz4") || name.ends_with(".tlz4") {
-        TTZipArchiveFormat::TarLz4
-    } else if name.ends_with(".tar.br") || name.ends_with(".tbr") {
-        TTZipArchiveFormat::TarBrotli
-    } else if name.ends_with(".tar.lz") || name.ends_with(".tlz") {
-        TTZipArchiveFormat::TarLzip
-    } else if name.ends_with(".tar.lrz") || name.ends_with(".tlrz") {
-        TTZipArchiveFormat::TarLrzip
-    // 2. Primary container formats
-    } else if name.ends_with(".7z") || name.ends_with(".cb7") {
-        TTZipArchiveFormat::SevenZip
-    } else if name.ends_with(".tar") || name.ends_with(".cbt") {
-        TTZipArchiveFormat::Tar
-    } else if name.ends_with(".iso") || name.ends_with(".img") {
-        TTZipArchiveFormat::Iso
-    } else if name.ends_with(".cab") {
-        TTZipArchiveFormat::Cab
-    } else if name.ends_with(".wim") || name.ends_with(".swm") || name.ends_with(".esd") {
-        TTZipArchiveFormat::Wim
-    } else if name.ends_with(".cpio") {
-        TTZipArchiveFormat::Cpio
-    } else if name.ends_with(".deb") {
-        TTZipArchiveFormat::Deb
-    } else if name.ends_with(".ar") || name.ends_with(".a") {
-        TTZipArchiveFormat::Ar
-    } else if name.ends_with(".rpm") {
-        TTZipArchiveFormat::Rpm
-    } else if name.ends_with(".squashfs") || name.ends_with(".sqsh") {
-        TTZipArchiveFormat::Squashfs
-    } else if name.ends_with(".aar") || name.ends_with(".aea") {
-        TTZipArchiveFormat::Aar
-    } else if name.ends_with(".xar") || name.ends_with(".pkg") {
-        TTZipArchiveFormat::Xar
-    } else if name.ends_with(".dmg") {
-        TTZipArchiveFormat::Dmg
-    } else if name.ends_with(".rar") || name.ends_with(".cbr") {
-        TTZipArchiveFormat::Rar
-    } else if name.ends_with(".lzh") || name.ends_with(".lha") {
-        TTZipArchiveFormat::Lzh
-    // 3. Single-stream compression formats
-    } else if name.ends_with(".gz") {
-        TTZipArchiveFormat::Gzip
-    } else if name.ends_with(".bz2") {
-        TTZipArchiveFormat::Bzip2
-    } else if name.ends_with(".xz") {
-        TTZipArchiveFormat::Xz
-    } else if name.ends_with(".zst") {
-        TTZipArchiveFormat::Zstd
-    } else if name.ends_with(".lz4") {
-        TTZipArchiveFormat::Lz4
-    } else if name.ends_with(".br") {
-        TTZipArchiveFormat::Brotli
-    } else if name.ends_with(".lzfse") {
-        TTZipArchiveFormat::Lzfse
-    } else if name.ends_with(".sz") || name.ends_with(".snappy") {
-        TTZipArchiveFormat::Snappy
-    } else if name.ends_with(".lz") || name.ends_with(".lzip") {
-        TTZipArchiveFormat::Lzip
-    } else if name.ends_with(".lrz") || name.ends_with(".lrzip") {
-        TTZipArchiveFormat::Lrzip
-    // 4. Default format
-    } else {
-        TTZipArchiveFormat::Zip
-    }
+    CREATE_FORMAT_EXTENSION_TABLE
+        .iter()
+        .find_map(|&(ext, fmt)| name.ends_with(ext).then_some(fmt))
+        .unwrap_or(TTZipArchiveFormat::Zip)
 }
 
 fn strip_split_suffix_for_detect(name_lower: &str) -> &str {

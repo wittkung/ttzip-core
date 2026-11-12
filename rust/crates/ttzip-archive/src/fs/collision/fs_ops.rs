@@ -53,6 +53,21 @@ impl LibcFsOps {
             std::io::Error::new(std::io::ErrorKind::InvalidInput, "path contains null byte")
         })
     }
+
+    fn remove_dir_child(&self, dir_fd: RawFd, name_bytes: &[u8]) -> Result<(), std::io::Error> {
+        if name_bytes == b"." || name_bytes == b".." {
+            return Ok(());
+        }
+        let child_path = Path::new(std::ffi::OsStr::from_bytes(name_bytes));
+        if let Some(meta) = self.fstatat_nofollow(dir_fd, child_path)? {
+            if meta.kind == ItemKind::Directory {
+                self.remove_tree(dir_fd, child_path)?;
+            } else {
+                self.unlinkat(dir_fd, child_path, false)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 impl FsOps for LibcFsOps {
@@ -202,33 +217,39 @@ impl FsOps for LibcFsOps {
 
     fn remove_tree(&self, dirfd: RawFd, path: &Path) -> Result<(), std::io::Error> {
         let fd = self.openat_dir_nofollow(dirfd, path)?;
-        
+
         // SAFETY: duplicating a valid fd
         let dup_fd = unsafe { libc::dup(fd.as_raw_fd()) };
         if dup_fd < 0 {
             return Err(std::io::Error::last_os_error());
         }
-        
+
         // SAFETY: valid duplicated fd
         let dir = unsafe { libc::fdopendir(dup_fd) };
         if dir.is_null() {
             // SAFETY: safe to close fd on error
-            unsafe { libc::close(dup_fd); }
+            unsafe {
+                libc::close(dup_fd);
+            }
             return Err(std::io::Error::last_os_error());
         }
-        
+
         struct DirGuard(*mut libc::DIR);
         impl Drop for DirGuard {
             fn drop(&mut self) {
                 // SAFETY: closing a valid DIR pointer
-                unsafe { libc::closedir(self.0); }
+                unsafe {
+                    libc::closedir(self.0);
+                }
             }
         }
         let _dir_guard = DirGuard(dir);
-        
+
         loop {
             // SAFETY: resetting errno before calling readdir
-            unsafe { *libc::__error() = 0; }
+            unsafe {
+                *libc::__error() = 0;
+            }
             // SAFETY: reading from valid DIR pointer
             let entry = unsafe { libc::readdir(dir) };
             if entry.is_null() {
@@ -239,30 +260,14 @@ impl FsOps for LibcFsOps {
                 }
                 break;
             }
-            
+
             // SAFETY: d_name is null terminated
             let name_cstr = unsafe { std::ffi::CStr::from_ptr((*entry).d_name.as_ptr()) };
-            let name_bytes = name_cstr.to_bytes();
-            if name_bytes == b"." || name_bytes == b".." {
-                continue;
-            }
-            
-            let child_path = Path::new(std::ffi::OsStr::from_bytes(name_bytes));
-            
-            let meta = self.fstatat_nofollow(fd.as_raw_fd(), child_path)?;
-            if let Some(meta) = meta {
-                if meta.kind == ItemKind::Directory {
-                    self.remove_tree(fd.as_raw_fd(), child_path)?;
-                } else {
-                    self.unlinkat(fd.as_raw_fd(), child_path, false)?;
-                }
-            }
+            self.remove_dir_child(fd.as_raw_fd(), name_cstr.to_bytes())?;
         }
-        
+
         // Finally remove the directory itself
-        self.unlinkat(dirfd, path, true)?;
-        
-        Ok(())
+        self.unlinkat(dirfd, path, true)
     }
 
     fn probe_vol_caps(&self, path: &Path) -> Result<VolCaps, std::io::Error> {

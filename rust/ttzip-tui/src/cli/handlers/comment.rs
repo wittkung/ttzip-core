@@ -27,10 +27,13 @@ fn locate_eocd<F: Read + Seek>(file: &mut F, file_len: u64) -> Result<Option<(u6
 
     let mut rel_pos = search_back - 22;
     loop {
-        let sig = u32::from_le_bytes(tail_buf[rel_pos..rel_pos + 4].try_into().unwrap());
+        let sig = u32::from_le_bytes(tail_buf[rel_pos..rel_pos + 4].try_into().unwrap_or([0u8; 4]));
         if sig == MAGIC_EOCD {
-            let comment_len =
-                u16::from_le_bytes(tail_buf[rel_pos + 20..rel_pos + 22].try_into().unwrap()) as usize;
+            let comment_len = u16::from_le_bytes(
+                tail_buf[rel_pos + 20..rel_pos + 22]
+                    .try_into()
+                    .unwrap_or([0u8; 2]),
+            ) as usize;
             if rel_pos + 22 + comment_len <= search_back {
                 let eocd_abs_pos = search_start + rel_pos as u64;
                 let existing_comment = tail_buf[rel_pos + 22..rel_pos + 22 + comment_len].to_vec();
@@ -43,6 +46,51 @@ fn locate_eocd<F: Read + Seek>(file: &mut F, file_len: u64) -> Result<Option<(u6
         rel_pos -= 1;
     }
     Ok(None)
+}
+
+fn update_eocd_comment(
+    file: &mut std::fs::File,
+    archive_path: &Path,
+    eocd_info: Option<(u64, Vec<u8>)>,
+    new_comment: &str,
+) -> Result<String, String> {
+    let (eocd_pos, _) = eocd_info.ok_or_else(|| {
+        format!(
+            "Failed to set comment: {} is not a valid ZIP archive",
+            archive_path.display()
+        )
+    })?;
+
+    let comment_bytes = new_comment.as_bytes();
+    if comment_bytes.len() > 0xFFFF {
+        return Err("Comment length exceeds maximum ZIP EOCD limit of 65,535 bytes".to_string());
+    }
+
+    file.seek(SeekFrom::Start(eocd_pos + 20))
+        .map_err(|e| format!("Failed to seek to EOCD comment field: {}", e))?;
+    file.write_all(&(comment_bytes.len() as u16).to_le_bytes())
+        .map_err(|e| format!("Failed to write comment length: {}", e))?;
+    file.write_all(comment_bytes)
+        .map_err(|e| format!("Failed to write comment payload: {}", e))?;
+
+    let new_total_len = eocd_pos + 22 + comment_bytes.len() as u64;
+    file.set_len(new_total_len)
+        .map_err(|e| format!("Failed to truncate archive tail: {}", e))?;
+    file.flush()
+        .map_err(|e| format!("Failed to flush archive writes: {}", e))?;
+
+    Ok(format!("Set archive comment to: \"{}\"", new_comment))
+}
+
+fn format_existing_comment(eocd_info: Option<(u64, Vec<u8>)>) -> String {
+    match eocd_info {
+        Some((_, existing_bytes)) if !existing_bytes.is_empty() => {
+            let text = String::from_utf8_lossy(&existing_bytes);
+            format!("Archive comment: \"{}\"", text)
+        }
+        Some(_) => "Archive comment: none".to_string(),
+        None => "Archive comment: none (not a valid ZIP archive or comment is empty)".to_string(),
+    }
 }
 
 /// Executes headless `comment` subcommand without loading entire archive into RAM.
@@ -64,54 +112,12 @@ pub fn execute_comment(archive_path: &Path, comment: Option<&str>, json: bool) -
         .len();
 
     let eocd_info = locate_eocd(&mut file, file_len)?;
-
     let message = match comment {
-        Some(new_comment) => {
-            let (eocd_pos, _) = eocd_info.ok_or_else(|| {
-                format!(
-                    "Failed to set comment: {} is not a valid ZIP archive",
-                    archive_path.display()
-                )
-            })?;
-
-            let comment_bytes = new_comment.as_bytes();
-            if comment_bytes.len() > 0xFFFF {
-                return Err("Comment length exceeds maximum ZIP EOCD limit of 65,535 bytes".to_string());
-            }
-
-            // Seek to comment length field in EOCD (offset 20) and update in-place
-            file.seek(SeekFrom::Start(eocd_pos + 20))
-                .map_err(|e| format!("Failed to seek to EOCD comment field: {}", e))?;
-            file.write_all(&(comment_bytes.len() as u16).to_le_bytes())
-                .map_err(|e| format!("Failed to write comment length: {}", e))?;
-            file.write_all(comment_bytes)
-                .map_err(|e| format!("Failed to write comment payload: {}", e))?;
-
-            // Truncate trailing garbage if previous comment was longer
-            let new_total_len = eocd_pos + 22 + comment_bytes.len() as u64;
-            file.set_len(new_total_len)
-                .map_err(|e| format!("Failed to truncate archive tail: {}", e))?;
-            file.flush()
-                .map_err(|e| format!("Failed to flush archive writes: {}", e))?;
-
-            format!("Set archive comment to: \"{}\"", new_comment)
-        }
-        None => {
-            if let Some((_, existing_bytes)) = eocd_info {
-                if !existing_bytes.is_empty() {
-                    let text = String::from_utf8_lossy(&existing_bytes);
-                    format!("Archive comment: \"{}\"", text)
-                } else {
-                    "Archive comment: none".to_string()
-                }
-            } else {
-                "Archive comment: none (not a valid ZIP archive or comment is empty)".to_string()
-            }
-        }
+        Some(new_comment) => update_eocd_comment(&mut file, archive_path, eocd_info, new_comment)?,
+        None => format_existing_comment(eocd_info),
     };
 
     let elapsed = start.elapsed().as_millis() as u64;
-
     if json {
         let dto = GenericResultDto {
             command: "comment".to_string(),
@@ -120,7 +126,6 @@ pub fn execute_comment(archive_path: &Path, comment: Option<&str>, json: bool) -
             message,
             elapsed_ms: elapsed,
         };
-
         let json_str = serde_json::to_string_pretty(&dto)
             .map_err(|e| format!("Failed to serialize comment JSON: {}", e))?;
         println!("{}", json_str);

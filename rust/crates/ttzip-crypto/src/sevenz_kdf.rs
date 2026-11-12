@@ -8,11 +8,11 @@
 //! acceleration via the `sha2` crate, DoS exhaustion prevention via strict cycle upper limits,
 //! raw key (`0x3F`) pass-through mode, thread-safe LRU caching, and sensitive memory erasure.
 
-use parking_lot::Mutex;
+use parking_lot::{Mutex, MutexGuard};
 use std::sync::LazyLock;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
-use crate::sha256::HardwareSha256;
+use crate::arm64_sha256::HardwareSha256;
 
 /// Errors that can occur during 7z AES key derivation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
@@ -86,18 +86,28 @@ impl core::fmt::Debug for DerivedKey {
 }
 
 // ============================================================================
-// 1. Thread-Safe LRU Key Cache Pool
+// 1. Thread-Safe Unified LRU Key Cache Pool
 // ============================================================================
 
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
+#[derive(Clone)]
 struct CachedKeyEntry {
-    password_bytes: Vec<u8>,
+    password_bytes: Zeroizing<Vec<u8>>,
     salt: Vec<u8>,
-    cycles_power: u8,
-    derived_key: [u8; 32],
+    cycles_power: u32,
+    derived_key: Zeroizing<[u8; 32]>,
 }
 
-struct AesKdfCacheInner {
+impl Zeroize for CachedKeyEntry {
+    #[inline]
+    fn zeroize(&mut self) {
+        self.password_bytes.zeroize();
+        self.salt.zeroize();
+        self.cycles_power.zeroize();
+        self.derived_key.zeroize();
+    }
+}
+
+pub(crate) struct AesKdfCacheInner {
     entries: Vec<CachedKeyEntry>,
     capacity: usize,
 }
@@ -110,14 +120,19 @@ impl AesKdfCacheInner {
         }
     }
 
-    fn get(&mut self, password_utf16le: &[u8], salt: &[u8], cycles_power: u8) -> Option<[u8; 32]> {
+    fn get(
+        &mut self,
+        password_utf16le: &[u8],
+        salt: &[u8],
+        cycles_power: u32,
+    ) -> Option<Zeroizing<[u8; 32]>> {
         if let Some(pos) = self.entries.iter().position(|e| {
             e.cycles_power == cycles_power
                 && e.salt.as_slice() == salt
                 && e.password_bytes.as_slice() == password_utf16le
         }) {
             let entry = self.entries.remove(pos);
-            let key = entry.derived_key;
+            let key = entry.derived_key.clone();
             self.entries.insert(0, entry);
             Some(key)
         } else {
@@ -125,22 +140,30 @@ impl AesKdfCacheInner {
         }
     }
 
-    fn insert(&mut self, password_utf16le: &[u8], salt: &[u8], cycles_power: u8, key: [u8; 32]) {
+    fn insert(
+        &mut self,
+        password_utf16le: &[u8],
+        salt: &[u8],
+        cycles_power: u32,
+        key: Zeroizing<[u8; 32]>,
+    ) {
         if let Some(pos) = self.entries.iter().position(|e| {
             e.cycles_power == cycles_power
                 && e.salt.as_slice() == salt
                 && e.password_bytes.as_slice() == password_utf16le
         }) {
-            self.entries.remove(pos);
-        } else if self.entries.len() >= self.capacity && !self.entries.is_empty() {
-            let mut evicted = self.entries.pop().unwrap();
+            let mut removed = self.entries.remove(pos);
+            removed.zeroize();
+        } else if self.entries.len() >= self.capacity
+            && let Some(mut evicted) = self.entries.pop()
+        {
             evicted.zeroize();
         }
 
         self.entries.insert(
             0,
             CachedKeyEntry {
-                password_bytes: password_utf16le.to_vec(),
+                password_bytes: Zeroizing::new(password_utf16le.to_vec()),
                 salt: salt.to_vec(),
                 cycles_power,
                 derived_key: key,
@@ -156,9 +179,27 @@ impl AesKdfCacheInner {
     }
 }
 
+static GLOBAL_KDF_CACHE_INNER: LazyLock<Mutex<AesKdfCacheInner>> =
+    LazyLock::new(|| Mutex::new(AesKdfCacheInner::new(AesKdfCache::DEFAULT_CAPACITY)));
+
+enum KdfCacheBackend {
+    Global,
+    Local(Mutex<AesKdfCacheInner>),
+}
+
+impl KdfCacheBackend {
+    #[inline]
+    fn lock(&self) -> MutexGuard<'_, AesKdfCacheInner> {
+        match self {
+            Self::Global => GLOBAL_KDF_CACHE_INNER.lock(),
+            Self::Local(mutex) => mutex.lock(),
+        }
+    }
+}
+
 /// Thread-safe LRU cache pool for 7z AES-256 derived keys to prevent duplicate block derivations.
 pub struct AesKdfCache {
-    inner: Mutex<AesKdfCacheInner>,
+    backend: KdfCacheBackend,
 }
 
 impl AesKdfCache {
@@ -168,35 +209,69 @@ impl AesKdfCache {
     /// Creates a new `AesKdfCache` with the specified entry capacity.
     pub fn new(capacity: usize) -> Self {
         Self {
-            inner: Mutex::new(AesKdfCacheInner::new(capacity)),
+            backend: KdfCacheBackend::Local(Mutex::new(AesKdfCacheInner::new(capacity))),
+        }
+    }
+
+    pub(crate) const fn new_global() -> Self {
+        Self {
+            backend: KdfCacheBackend::Global,
         }
     }
 
     /// Returns the global singleton instance of `AesKdfCache`.
     pub fn global() -> &'static Self {
-        static INSTANCE: LazyLock<AesKdfCache> =
-            LazyLock::new(|| AesKdfCache::new(AesKdfCache::DEFAULT_CAPACITY));
+        static INSTANCE: AesKdfCache = AesKdfCache::new_global();
         &INSTANCE
+    }
+
+    /// Retrieves a cached 32-byte AES key wrapped in `Zeroizing` if available.
+    pub fn get_zeroizing(
+        &self,
+        password_utf16le: &[u8],
+        salt: &[u8],
+        cycles_power: u32,
+    ) -> Option<Zeroizing<[u8; 32]>> {
+        self.backend.lock().get(password_utf16le, salt, cycles_power)
     }
 
     /// Retrieves a cached 32-byte AES key if available.
     pub fn get(&self, password_utf16le: &[u8], salt: &[u8], cycles_power: u8) -> Option<[u8; 32]> {
-        self.inner.lock().get(password_utf16le, salt, cycles_power)
+        self.get_zeroizing(password_utf16le, salt, cycles_power as u32)
+            .map(|k| *k)
+    }
+
+    /// Inserts a newly derived 32-byte `Zeroizing` AES key into the cache.
+    pub fn insert_zeroizing(
+        &self,
+        password_utf16le: &[u8],
+        salt: &[u8],
+        cycles_power: u32,
+        key: Zeroizing<[u8; 32]>,
+    ) {
+        self.backend
+            .lock()
+            .insert(password_utf16le, salt, cycles_power, key);
     }
 
     /// Inserts a newly derived 32-byte AES key into the cache.
     pub fn insert(&self, password_utf16le: &[u8], salt: &[u8], cycles_power: u8, key: [u8; 32]) {
-        self.inner.lock().insert(password_utf16le, salt, cycles_power, key);
+        self.insert_zeroizing(
+            password_utf16le,
+            salt,
+            cycles_power as u32,
+            Zeroizing::new(key),
+        );
     }
 
     /// Clears and zeroizes all cached keys and credentials.
     pub fn clear(&self) {
-        self.inner.lock().clear();
+        self.backend.lock().clear();
     }
 
     /// Returns the current number of cached entries.
     pub fn len(&self) -> usize {
-        self.inner.lock().entries.len()
+        self.backend.lock().entries.len()
     }
 
     /// Returns `true` if the cache is empty.
@@ -218,113 +293,162 @@ pub fn password_to_utf16le(password: &str) -> Vec<u8> {
     out
 }
 
+fn hash_7z_batched_rounds(
+    hasher: &mut HardwareSha256,
+    password_utf16le: &[u8],
+    salt: &[u8],
+    num_cycles: u64,
+) {
+    let prefix_len = salt.len() + password_utf16le.len();
+    let step_len = prefix_len + 8;
+    let mut iter_buf = [0u8; 1024];
+    iter_buf[..salt.len()].copy_from_slice(salt);
+    iter_buf[salt.len()..prefix_len].copy_from_slice(password_utf16le);
+
+    const BATCH_BUF_SIZE: usize = 8192;
+    let batch_count = (BATCH_BUF_SIZE / step_len).clamp(1, 64);
+    let mut batch_buf = [0u8; BATCH_BUF_SIZE];
+    let batch_total_bytes = batch_count * step_len;
+
+    for step_idx in 0..batch_count {
+        let offset = step_idx * step_len;
+        batch_buf[offset..offset + prefix_len].copy_from_slice(&iter_buf[..prefix_len]);
+    }
+
+    let mut i = 0u64;
+    while i + (batch_count as u64) <= num_cycles {
+        for step_idx in 0..batch_count {
+            let current_cycle = i + (step_idx as u64);
+            let counter_offset = step_idx * step_len + prefix_len;
+            batch_buf[counter_offset..counter_offset + 8]
+                .copy_from_slice(&current_cycle.to_le_bytes());
+        }
+        hasher.update(&batch_buf[..batch_total_bytes]);
+        i += batch_count as u64;
+    }
+
+    while i < num_cycles {
+        iter_buf[prefix_len..step_len].copy_from_slice(&i.to_le_bytes());
+        hasher.update(&iter_buf[..step_len]);
+        i += 1;
+    }
+
+    iter_buf.zeroize();
+    batch_buf.zeroize();
+}
+
+/// Computes the canonical 7z SHA-256 stretching rounds without consulting the cache.
+pub fn compute_7z_sha256_rounds(
+    password_utf16le: &[u8],
+    salt: &[u8],
+    cycles_power: u32,
+) -> Zeroizing<[u8; 32]> {
+    let num_cycles = 1u64.checked_shl(cycles_power).unwrap_or(0);
+    let step_len = salt.len() + password_utf16le.len() + 8;
+    let mut hasher = HardwareSha256::new();
+
+    if step_len <= 1024 {
+        hash_7z_batched_rounds(&mut hasher, password_utf16le, salt, num_cycles);
+    } else {
+        for i in 0..num_cycles {
+            hasher.update(salt);
+            hasher.update(password_utf16le);
+            hasher.update(&i.to_le_bytes());
+        }
+    }
+
+    Zeroizing::new(hasher.finalize())
+}
+
+/// Derives a 32-byte 7z AES key from UTF-16LE password bytes via the unified global cache.
+pub fn derive_7z_key_utf16le(
+    password_utf16le: &[u8],
+    salt: &[u8],
+    cycles_power: u32,
+) -> Zeroizing<[u8; 32]> {
+    if let Some(cached_key) =
+        AesKdfCache::global().get_zeroizing(password_utf16le, salt, cycles_power)
+    {
+        return cached_key;
+    }
+
+    let key = compute_7z_sha256_rounds(password_utf16le, salt, cycles_power);
+    AesKdfCache::global().insert_zeroizing(password_utf16le, salt, cycles_power, key.clone());
+    key
+}
+
 /// Derives the 32-byte AES-256 key and 16-byte IV for 7z archives using hardware-accelerated SHA-256.
-///
-/// # Parameters
-/// - `password_utf16le`: Plaintext password encoded as Little-Endian UTF-16 bytes.
-/// - `salt`: Cryptographic salt bytes (up to 16 bytes).
-/// - `cycles_power`: Iteration count power ($2^{\text{cycles\_power}}$ rounds), or `0x3F` for raw key mode.
-/// - `raw_iv`: Archive-provided IV bytes (0 to 16 bytes).
-///
-/// # Returns
-/// - `Ok(DerivedKey)` containing 32-byte key and 16-byte IV on success.
-/// - `Err(SevenZKdfError::CryptoExhaustion)` if `cycles_power > MAX_AES_CYCLES_POWER` (24) and not `0x3F`.
 pub fn derive_7z_aes_key(
     password_utf16le: &[u8],
     salt: &[u8],
     cycles_power: u8,
     raw_iv: &[u8],
 ) -> Result<DerivedKey, SevenZKdfError> {
-    // 1. Resolve 16-byte initialization vector (zero-padded)
     let mut iv = [0u8; 16];
     let copy_iv_len = raw_iv.len().min(16);
-    if copy_iv_len > 0 {
-        iv[..copy_iv_len].copy_from_slice(&raw_iv[..copy_iv_len]);
-    }
+    iv[..copy_iv_len].copy_from_slice(&raw_iv[..copy_iv_len]);
 
-    // 2. Check 0x3F Raw Key pass-through mode
     if cycles_power == RAW_KEY_CYCLES_POWER {
         let mut key = [0u8; 32];
         let copy_key_len = password_utf16le.len().min(32);
-        if copy_key_len > 0 {
-            key[..copy_key_len].copy_from_slice(&password_utf16le[..copy_key_len]);
-        }
+        key[..copy_key_len].copy_from_slice(&password_utf16le[..copy_key_len]);
         return Ok(DerivedKey { key, iv });
     }
 
-    // 3. Security threshold check for DoS / CPU exhaustion prevention
     if cycles_power > MAX_AES_CYCLES_POWER {
         return Err(SevenZKdfError::CryptoExhaustion);
     }
 
-    // 4. Fast LRU singleton cache lookup
-    if let Some(cached_key) = AesKdfCache::global().get(password_utf16le, salt, cycles_power) {
-        return Ok(DerivedKey { key: cached_key, iv });
+    let key = derive_7z_key_utf16le(password_utf16le, salt, cycles_power as u32);
+    Ok(DerivedKey { key: *key, iv })
+}
+
+#[cfg(test)]
+pub(crate) static GLOBAL_CACHE_TEST_LOCK: Mutex<()> = Mutex::new(());
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::arm64_sha256::{derive_7z_key_arm64, SevenZKeyCache};
+    use crate::sha256::sha256_7z_kdf;
+
+    #[test]
+    fn test_unified_7z_kdf_cache_sharing_and_clear() {
+        let _guard = GLOBAL_CACHE_TEST_LOCK.lock();
+        AesKdfCache::global().clear();
+        assert!(AesKdfCache::global().is_empty());
+        assert!(SevenZKeyCache::global().is_empty());
+
+        let password = "UnifiedCacheTestPassword!2026";
+        let pw_utf16 = password_to_utf16le(password);
+        let salt = [0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80];
+        let iv = [0xAA; 16];
+        let cycles_power = 8u8;
+
+        let derived =
+            derive_7z_aes_key(&pw_utf16, &salt, cycles_power, &iv).expect("derive_7z_aes_key");
+        assert_eq!(
+            SevenZKeyCache::global().get(password, &salt, cycles_power as u32),
+            Some(derived.key)
+        );
+        assert_eq!(
+            AesKdfCache::global().get(&pw_utf16, &salt, cycles_power),
+            Some(derived.key)
+        );
+
+        let key_via_arm64 = derive_7z_key_arm64(password, &salt, cycles_power as u32);
+        let key_via_sha256 = sha256_7z_kdf(password, &salt, cycles_power as u32);
+        assert_eq!(key_via_arm64, derived.key);
+        assert_eq!(key_via_sha256, derived.key);
+
+        SevenZKeyCache::global().clear();
+        assert_eq!(AesKdfCache::global().get(&pw_utf16, &salt, cycles_power), None);
+
+        let key2 = sha256_7z_kdf("SecondUnifiedEntry", &salt, 6);
+        let pw2_utf16 = password_to_utf16le("SecondUnifiedEntry");
+        assert_eq!(AesKdfCache::global().get(&pw2_utf16, &salt, 6), Some(key2));
+
+        AesKdfCache::global().clear();
+        assert_eq!(SevenZKeyCache::global().get("SecondUnifiedEntry", &salt, 6), None);
     }
-
-    // 5. Hardware-accelerated multi-round SHA-256 iteration
-    let num_cycles = 1u64 << (cycles_power as u32);
-    let prefix_len = salt.len() + password_utf16le.len();
-    let step_len = prefix_len + 8;
-    let mut hasher = HardwareSha256::new();
-
-    if step_len <= 1024 {
-        let mut iter_buf = [0u8; 1024];
-        if !salt.is_empty() {
-            iter_buf[..salt.len()].copy_from_slice(salt);
-        }
-        if !password_utf16le.is_empty() {
-            iter_buf[salt.len()..prefix_len].copy_from_slice(password_utf16le);
-        }
-
-        const BATCH_BUF_SIZE: usize = 8192;
-        let batch_count = (BATCH_BUF_SIZE / step_len).clamp(1, 64);
-        let mut batch_buf = [0u8; BATCH_BUF_SIZE];
-        let batch_total_bytes = batch_count * step_len;
-
-        for step_idx in 0..batch_count {
-            let offset = step_idx * step_len;
-            batch_buf[offset..offset + prefix_len].copy_from_slice(&iter_buf[..prefix_len]);
-        }
-
-        let mut i = 0u64;
-        while i + (batch_count as u64) <= num_cycles {
-            for step_idx in 0..batch_count {
-                let current_cycle = i + (step_idx as u64);
-                let counter_offset = step_idx * step_len + prefix_len;
-                batch_buf[counter_offset..counter_offset + 8]
-                    .copy_from_slice(&current_cycle.to_le_bytes());
-            }
-            hasher.update(&batch_buf[..batch_total_bytes]);
-            i += batch_count as u64;
-        }
-
-        while i < num_cycles {
-            iter_buf[prefix_len..step_len].copy_from_slice(&i.to_le_bytes());
-            hasher.update(&iter_buf[..step_len]);
-            i += 1;
-        }
-
-        iter_buf.zeroize();
-        batch_buf.zeroize();
-    } else {
-        for i in 0..num_cycles {
-            if !salt.is_empty() {
-                hasher.update(salt);
-            }
-            if !password_utf16le.is_empty() {
-                hasher.update(password_utf16le);
-            }
-            hasher.update(&i.to_le_bytes());
-        }
-    }
-
-    let digest_output = hasher.finalize();
-    let mut key = [0u8; 32];
-    key.copy_from_slice(&digest_output);
-
-    // 6. Cache computed key for subsequent blocks
-    AesKdfCache::global().insert(password_utf16le, salt, cycles_power, key);
-
-    Ok(DerivedKey { key, iv })
 }

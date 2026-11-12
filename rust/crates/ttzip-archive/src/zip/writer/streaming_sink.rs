@@ -186,11 +186,43 @@ pub struct CentralDirectoryMeta {
 pub fn build_cdfh_bytes(cd: &CentralDirectoryMeta) -> Vec<u8> {
     let (dos_time, dos_date) = unix_to_dos_time(cd.mtime_secs);
     let name_bytes = cd.rel_path.as_bytes();
-
     let is_zip64 = cd.uncompressed_size >= 0xFFFF_FFFF
         || cd.compressed_size >= 0xFFFF_FFFF
         || cd.lfh_offset >= 0xFFFF_FFFF;
 
+    let extra_fields = build_streaming_cdfh_extra(cd, is_zip64);
+    let flag = resolve_streaming_cdfh_flag(cd);
+    let version_needed = if is_zip64 || cd.is_encrypted { 45u16 } else { 20u16 };
+    let crc32_field = if cd.is_encrypted && cd.compression_method == 99 { 0u32 } else { cd.crc32 };
+    let comp_size_field = if is_zip64 { 0xFFFF_FFFFu32 } else { cd.compressed_size as u32 };
+    let uncomp_size_field = if is_zip64 { 0xFFFF_FFFFu32 } else { cd.uncompressed_size as u32 };
+    let lfh_offset_field = if is_zip64 { 0xFFFF_FFFFu32 } else { cd.lfh_offset as u32 };
+    let external_attr = (cd.mode << 16) | if cd.is_directory { 0x10 } else { 0x20 };
+
+    let mut buf = Vec::with_capacity(46 + name_bytes.len() + extra_fields.len());
+    buf.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
+    buf.extend_from_slice(&0x031Eu16.to_le_bytes());
+    buf.extend_from_slice(&version_needed.to_le_bytes());
+    buf.extend_from_slice(&flag.to_le_bytes());
+    buf.extend_from_slice(&cd.compression_method.to_le_bytes());
+    buf.extend_from_slice(&dos_time.to_le_bytes());
+    buf.extend_from_slice(&dos_date.to_le_bytes());
+    buf.extend_from_slice(&crc32_field.to_le_bytes());
+    buf.extend_from_slice(&comp_size_field.to_le_bytes());
+    buf.extend_from_slice(&uncomp_size_field.to_le_bytes());
+    buf.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
+    buf.extend_from_slice(&(extra_fields.len() as u16).to_le_bytes());
+    buf.extend_from_slice(&0u16.to_le_bytes());
+    buf.extend_from_slice(&0u16.to_le_bytes());
+    buf.extend_from_slice(&0u16.to_le_bytes());
+    buf.extend_from_slice(&external_attr.to_le_bytes());
+    buf.extend_from_slice(&lfh_offset_field.to_le_bytes());
+    buf.extend_from_slice(name_bytes);
+    buf.extend_from_slice(&extra_fields);
+    buf
+}
+
+fn build_streaming_cdfh_extra(cd: &CentralDirectoryMeta, is_zip64: bool) -> Vec<u8> {
     let mut extra_fields = if is_zip64 {
         ZipExtraFields::build_zip64_extra(
             Some(cd.uncompressed_size),
@@ -205,65 +237,17 @@ pub fn build_cdfh_bytes(cd: &CentralDirectoryMeta) -> Vec<u8> {
         extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(cd.actual_method));
     }
     extra_fields.extend_from_slice(&ZipExtraFields::build_extended_timestamp(cd.mtime_secs));
+    extra_fields
+}
 
-    let flag = if cd.is_directory {
+fn resolve_streaming_cdfh_flag(cd: &CentralDirectoryMeta) -> u16 {
+    if cd.is_directory {
         0x0800u16
     } else if cd.is_encrypted {
         0x0809u16
     } else {
         0x0808u16
-    };
-
-    let mut buf = Vec::with_capacity(46 + name_bytes.len() + extra_fields.len());
-    buf.extend_from_slice(&MAGIC_CDFH.to_le_bytes());
-    buf.extend_from_slice(&0x031Eu16.to_le_bytes());
-    buf.extend_from_slice(&(if is_zip64 || cd.is_encrypted { 45u16 } else { 20u16 }).to_le_bytes());
-    buf.extend_from_slice(&flag.to_le_bytes());
-    buf.extend_from_slice(&cd.compression_method.to_le_bytes());
-    buf.extend_from_slice(&dos_time.to_le_bytes());
-    buf.extend_from_slice(&dos_date.to_le_bytes());
-    buf.extend_from_slice(
-        &(if cd.is_encrypted && cd.compression_method == 99 {
-            0u32
-        } else {
-            cd.crc32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(
-        &(if is_zip64 {
-            0xFFFF_FFFFu32
-        } else {
-            cd.compressed_size as u32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(
-        &(if is_zip64 {
-            0xFFFF_FFFFu32
-        } else {
-            cd.uncompressed_size as u32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(&(name_bytes.len() as u16).to_le_bytes());
-    buf.extend_from_slice(&(extra_fields.len() as u16).to_le_bytes());
-    buf.extend_from_slice(&0u16.to_le_bytes());
-    buf.extend_from_slice(&0u16.to_le_bytes());
-    buf.extend_from_slice(&0u16.to_le_bytes());
-    let external_attr = (cd.mode << 16) | if cd.is_directory { 0x10 } else { 0x20 };
-    buf.extend_from_slice(&external_attr.to_le_bytes());
-    buf.extend_from_slice(
-        &(if is_zip64 {
-            0xFFFF_FFFFu32
-        } else {
-            cd.lfh_offset as u32
-        })
-        .to_le_bytes(),
-    );
-    buf.extend_from_slice(name_bytes);
-    buf.extend_from_slice(&extra_fields);
-    buf
+    }
 }
 
 pub fn build_zip64_eocd(total_entries: u64, cd_size: u64, cd_offset: u64) -> Vec<u8> {

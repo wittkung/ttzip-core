@@ -109,6 +109,40 @@ unsafe fn load_apple_archive_api() -> Result<AppleArchiveApi, TTZipStatus> {
 }
 
 #[cfg(target_os = "macos")]
+unsafe fn stream_aa_regular_file_blob(
+    api: &AppleArchiveApi,
+    e_stream: *mut c_void,
+    hdr: *mut c_void,
+    k_dat: AaFieldKey,
+    abs_path: &Path,
+    file_size: u64,
+) -> Result<(), TTZipStatus> {
+    let mut f = std::fs::File::open(abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    unsafe {
+        (api.set_blob)(hdr, u32::MAX, k_dat, file_size);
+        if (api.write_hdr)(e_stream, hdr) < 0 {
+            return Err(TTZipStatus::ErrCompressionFailed);
+        }
+        let mut remaining = file_size;
+        let mut buf = [0u8; 64 * 1024];
+        while remaining > 0 {
+            let to_read = (remaining as usize).min(buf.len());
+            let n = f
+                .read(&mut buf[..to_read])
+                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            if n == 0 {
+                return Err(TTZipStatus::ErrCompressionFailed);
+            }
+            if (api.write_blob)(e_stream, k_dat, buf.as_ptr() as *const c_void, n) < 0 {
+                return Err(TTZipStatus::ErrCompressionFailed);
+            }
+            remaining -= n as u64;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(target_os = "macos")]
 unsafe fn write_single_aa_entry(
     api: &AppleArchiveApi,
     e_stream: *mut c_void,
@@ -154,24 +188,10 @@ unsafe fn write_single_aa_entry(
                 .then_some(())
                 .ok_or(TTZipStatus::ErrCompressionFailed)
         } else {
-            let mut f = std::fs::File::open(abs_path).map_err(|_| {
-                (api.hdr_destroy)(hdr);
-                TTZipStatus::ErrFileNotFound
-            })?;
-            let mut data = Vec::new();
-            f.read_to_end(&mut data).map_err(|_| {
-                (api.hdr_destroy)(hdr);
-                TTZipStatus::ErrCompressionFailed
-            })?;
             (api.set_uint)(hdr, u32::MAX, k_typ, b'F' as u64);
             (api.set_str)(hdr, u32::MAX, k_pat, rel_c.as_ptr(), clean_rel.len());
             (api.set_uint)(hdr, u32::MAX, k_mod, perm);
-            (api.set_blob)(hdr, u32::MAX, k_dat, data.len() as u64);
-            let ok = (api.write_hdr)(e_stream, hdr) >= 0
-                && (data.is_empty()
-                    || (api.write_blob)(e_stream, k_dat, data.as_ptr() as *const c_void, data.len())
-                        >= 0);
-            ok.then_some(()).ok_or(TTZipStatus::ErrCompressionFailed)
+            stream_aa_regular_file_blob(api, e_stream, hdr, k_dat, abs_path, meta.len())
         };
         (api.hdr_destroy)(hdr);
         res

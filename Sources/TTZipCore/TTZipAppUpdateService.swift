@@ -231,18 +231,26 @@ public enum AppUpdateState: Sendable, Equatable {
 
 // MARK: - TTZipAppUpdateService
 
-/// Swift 6 `@Observable` and `Sendable` desktop system update and binary delta patch service.
+/// Swift 6 `@Observable` and `Sendable` SDK service for directory manifest hashing, Appcast verification, and binary delta patching.
 ///
-/// Integrates directly with the Rust microkernel via Mozilla UniFFI to provide:
-/// - Zero-disk-decompression in-memory binary delta patch application
-/// - Detached Ed25519 signature verification for Appcast feeds and packages
-/// - Version monotonicity enforcement preventing downgrade attacks
-/// - AppGroup state synchronization and cache persistence
+/// Retention and consumer boundary policy (Issue #186):
+/// - Exported as part of the public `TTZipCore` cross-platform SDK (`tools/copybara/sync_outbound.sh` -> `ttzip-core`).
+/// - Provides deterministic directory manifest comparison (`calculateTreeHash`), in-memory rolling-block delta patching
+///   (`createDeltaPatch`, `applyDeltaPatchInMemory`), detached Ed25519 signature verification, and version monotonicity checks.
+/// - Does not perform macOS Desktop App binary self-patching (`handlesDesktopAppSelfUpdate == false`). The macOS Desktop App
+///   updates exclusively through `TTZipApp/Services/UpdateManager.swift` (`MAS_BUILD` -> Mac App Store, `STEAM_BUILD` -> Steam
+///   client, `DIRECT_BUILD` -> Sparkle 2.0 or GitHub Releases).
 @Observable
 public final class TTZipAppUpdateService: @unchecked Sendable {
 
     /// Shared singleton instance.
     public static let shared = TTZipAppUpdateService()
+
+    /// Public SDK module that owns directory manifest hashing and binary delta patch verification.
+    public static let sdkCapabilityOwner = "TTZipCore"
+
+    /// Whether this service performs macOS Desktop App self-updates (handled exclusively by `UpdateManager`).
+    public static let handlesDesktopAppSelfUpdate = false
 
     /// Default AppGroup identifier for TTZip suite synchronization.
     public static let defaultAppGroupIdentifier = "group.com.wittkung.ttzip"

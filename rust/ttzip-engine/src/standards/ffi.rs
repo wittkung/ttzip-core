@@ -99,6 +99,38 @@ pub unsafe extern "C" fn ttzip_rust_detect_format_file(
     }
 }
 
+const FORMAT_HINT_TABLE: &[(i32, DetectedFormat)] = &[
+    (1, DetectedFormat::Zip),
+    (2, DetectedFormat::SevenZip),
+    (3, DetectedFormat::Tar),
+    (4, DetectedFormat::Gzip),
+    (5, DetectedFormat::Bzip2),
+    (6, DetectedFormat::Xz),
+    (7, DetectedFormat::Zstd),
+    (8, DetectedFormat::Rar),
+    (9, DetectedFormat::Cab),
+    (10, DetectedFormat::Iso),
+    (11, DetectedFormat::Dmg),
+    (12, DetectedFormat::Xar),
+    (13, DetectedFormat::Lzh),
+    (14, DetectedFormat::Ar),
+    (15, DetectedFormat::Lzfse),
+    (16, DetectedFormat::Snappy),
+    (17, DetectedFormat::Lz4),
+    (18, DetectedFormat::Lzip),
+    (19, DetectedFormat::Lrzip),
+    (20, DetectedFormat::Brotli),
+    (21, DetectedFormat::Aar),
+    (22, DetectedFormat::Wim),
+];
+
+fn format_from_hint(format_hint: i32) -> DetectedFormat {
+    FORMAT_HINT_TABLE
+        .iter()
+        .find_map(|&(code, fmt)| (code == format_hint).then_some(fmt))
+        .unwrap_or(DetectedFormat::Unknown)
+}
+
 /// Validates format compliance on an in-memory buffer, outputting a structured JSON report.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn ttzip_rust_check_compliance_buffer(
@@ -115,32 +147,7 @@ pub unsafe extern "C" fn ttzip_rust_check_compliance_buffer(
             }
 
             let slice = slice::from_raw_parts(buf, len);
-            let format = match format_hint {
-                1 => DetectedFormat::Zip,
-                2 => DetectedFormat::SevenZip,
-                3 => DetectedFormat::Tar,
-                4 => DetectedFormat::Gzip,
-                5 => DetectedFormat::Bzip2,
-                6 => DetectedFormat::Xz,
-                7 => DetectedFormat::Zstd,
-                8 => DetectedFormat::Rar,
-                9 => DetectedFormat::Cab,
-                10 => DetectedFormat::Iso,
-                11 => DetectedFormat::Dmg,
-                12 => DetectedFormat::Xar,
-                13 => DetectedFormat::Lzh,
-                14 => DetectedFormat::Ar,
-                15 => DetectedFormat::Lzfse,
-                16 => DetectedFormat::Snappy,
-                17 => DetectedFormat::Lz4,
-                18 => DetectedFormat::Lzip,
-                19 => DetectedFormat::Lrzip,
-                20 => DetectedFormat::Brotli,
-                21 => DetectedFormat::Aar,
-                22 => DetectedFormat::Wim,
-                _ => DetectedFormat::Unknown,
-            };
-
+            let format = format_from_hint(format_hint);
             let report = check_compliance_buffer(format, slice);
 
             if !out_is_compliant.is_null() {

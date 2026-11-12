@@ -149,75 +149,81 @@ pub fn open_virtual_file_stream(
     target_entry: &str,
     password: Option<&str>,
 ) -> Result<Arc<VirtualFileStream>, TTZipError> {
-    if drill_path.len() > MAX_NESTED_DRILL_DEPTH {
-        return Err(TTZipError::SecurityViolation {
-            reason: format!(
-                "Nested drill depth {} exceeds maximum limit {}",
-                drill_path.len(),
-                MAX_NESTED_DRILL_DEPTH
-            ),
-        });
-    }
+    validate_drill_depth(drill_path.len())?;
 
     let p = std::path::Path::new(archive_path);
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path.to_string() });
     }
-    let source = Arc::new(crate::archive::source::open_archive_source(p)
-        .map_err(|e| TTZipError::IoError { message: e.to_string() })?);
+    let source = Arc::new(
+        crate::archive::source::open_archive_source(p)
+            .map_err(|e| TTZipError::IoError { message: e.to_string() })?,
+    );
     let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError {
         message: "Failed to map archive bytes".to_string(),
     })?;
     let (drill, eff_target) = parse_nested_specifier(drill_path, target_entry);
-    if drill.len() > MAX_NESTED_DRILL_DEPTH {
-        return Err(TTZipError::SecurityViolation {
-            reason: format!(
-                "Nested drill depth {} exceeds maximum limit {}",
-                drill.len(),
-                MAX_NESTED_DRILL_DEPTH
-            ),
-        });
-    }
+    validate_drill_depth(drill.len())?;
+
     if drill.is_empty() {
-        if (mapped.starts_with(b"PK\x03\x04") || mapped.starts_with(b"PK\x05\x06")) && password.is_none() {
-            if let Ok(zip) = ZipArchive::open_slice(mapped) {
-                if let Some(entry) = zip.entries().iter().find(|e| matches_entry_path(&e.rel_path, &eff_target)) {
-                    if entry.actual_method == 0 && !entry.is_encrypted {
-                        if let Ok((payload_off, _)) = crate::zip::parser::parse_local_file_header(mapped, entry.lfh_offset as usize) {
-                            let total_size = entry.uncompressed_size;
-                            let chunk_size = calculate_chunk_size(total_size);
-                            let source_arc = Arc::clone(&source);
-                            let base_off = payload_off as u64;
-                            let loader = Arc::new(move |offset: u64, len: usize| {
-                                let mut buf = vec![0u8; len];
-                                let n = source_arc.read_at(&mut buf, base_off + offset)
-                                    .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                                buf.truncate(n);
-                                Ok(buf)
-                            });
-                            return Ok(Arc::new(VirtualFileStream::new(VirtualChunkedStream::new(total_size, chunk_size, loader))));
-                        }
-                    }
-                }
-            }
-        }
-        if let Ok(tar) = TarArchive::open_slice(mapped) {
-            if let Some(entry) = tar.entries().iter().find(|e| matches_entry_path(e.path.as_ref(), &eff_target)) {
-                let total_size = entry.size;
-                let chunk_size = calculate_chunk_size(total_size);
-                let source_arc = Arc::clone(&source);
-                let base_off = entry.data_offset as u64;
-                let loader = Arc::new(move |offset: u64, len: usize| {
-                    let mut buf = vec![0u8; len];
-                    let n = source_arc.read_at(&mut buf, base_off + offset)
-                        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-                    buf.truncate(n);
-                    Ok(buf)
-                });
-                return Ok(Arc::new(VirtualFileStream::new(VirtualChunkedStream::new(total_size, chunk_size, loader))));
-            }
+        if let Some(stream) = try_open_direct_chunked_stream(&source, mapped, &eff_target, password) {
+            return Ok(stream);
         }
     }
     let payload = extract_nested_entry_buffer(mapped, drill_path, target_entry, password)?;
     Ok(Arc::new(VirtualFileStream::from_vec(payload)))
+}
+
+fn validate_drill_depth(depth: usize) -> Result<(), TTZipError> {
+    if depth > MAX_NESTED_DRILL_DEPTH {
+        return Err(TTZipError::SecurityViolation {
+            reason: format!(
+                "Nested drill depth {} exceeds maximum limit {}",
+                depth, MAX_NESTED_DRILL_DEPTH
+            ),
+        });
+    }
+    Ok(())
+}
+
+fn try_open_direct_chunked_stream(
+    source: &Arc<Box<dyn crate::archive::source::ArchiveSource>>,
+    mapped: &[u8],
+    eff_target: &str,
+    password: Option<&str>,
+) -> Option<Arc<VirtualFileStream>> {
+    if (mapped.starts_with(b"PK\x03\x04") || mapped.starts_with(b"PK\x05\x06")) && password.is_none() {
+        let zip = ZipArchive::open_slice(mapped).ok()?;
+        let entry = zip.entries().iter().find(|e| matches_entry_path(&e.rel_path, eff_target))?;
+        if entry.actual_method == 0 && !entry.is_encrypted {
+            let (payload_off, _) = crate::zip::parser::parse_local_file_header(mapped, entry.lfh_offset as usize).ok()?;
+            return Some(build_chunked_stream(source, payload_off as u64, entry.uncompressed_size));
+        }
+    }
+    if let Ok(tar) = TarArchive::open_slice(mapped) {
+        if let Some(entry) = tar.entries().iter().find(|e| matches_entry_path(e.path.as_ref(), eff_target)) {
+            return Some(build_chunked_stream(source, entry.data_offset as u64, entry.size));
+        }
+    }
+    None
+}
+
+fn build_chunked_stream(
+    source: &Arc<Box<dyn crate::archive::source::ArchiveSource>>,
+    base_off: u64,
+    total_size: u64,
+) -> Arc<VirtualFileStream> {
+    let chunk_size = calculate_chunk_size(total_size);
+    let source_arc = Arc::clone(source);
+    let loader = Arc::new(move |offset: u64, len: usize| {
+        let mut buf = vec![0u8; len];
+        let n = source_arc
+            .read_at(&mut buf, base_off + offset)
+            .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
+        buf.truncate(n);
+        Ok(buf)
+    });
+    Arc::new(VirtualFileStream::new(VirtualChunkedStream::new(
+        total_size, chunk_size, loader,
+    )))
 }

@@ -140,54 +140,47 @@ pub fn libdeflate_gzip_decompress(src: &[u8], dst: &mut [u8]) -> Result<usize, T
     gzip_decompress(src, dst)
 }
 
+#[inline]
+fn is_valid_zlib_header(src: &[u8]) -> bool {
+    if src.len() < 6 {
+        return false;
+    }
+    let cmf = src[0] as u16;
+    let flg = src[1] as u16;
+    (cmf * 256 + flg).is_multiple_of(31) && (src[0] & 0x0F) == 8 && (src[0] >> 4) <= 7
+}
+
+#[inline]
+fn is_valid_gzip_header(src: &[u8]) -> bool {
+    src.len() >= 18 && src[0] == 0x1F && src[1] == 0x8B && src[2] == 8
+}
+
+#[inline]
+fn is_probe_decompress_ok(res: Result<usize, DeflateDecompressError>) -> bool {
+    matches!(res, Ok(_) | Err(DeflateDecompressError::InsufficientSpace))
+}
+
 /// Validates whether `src` is a valid DEFLATE / Zlib / Gzip container stream.
 pub fn libdeflate_validate(src: &[u8], format: ContainerFormat) -> Result<bool, TTZipStatus> {
     if src.is_empty() {
         return Ok(false);
     }
-    match format {
+    let mut decompressor = DeflateDecompressor::new()?;
+    let mut test_dst = [0u8; 4096];
+    let ok = match format {
         ContainerFormat::Raw => {
-            let mut decompressor = DeflateDecompressor::new()?;
-            let mut test_dst = [0u8; 4096];
-            match decompressor.decompress_precise(src, &mut test_dst) {
-                Ok(_) | Err(DeflateDecompressError::InsufficientSpace) => Ok(true),
-                Err(DeflateDecompressError::BadData) | Err(DeflateDecompressError::ShortOutput) => Ok(false),
-            }
+            is_probe_decompress_ok(decompressor.decompress_precise(src, &mut test_dst))
         }
         ContainerFormat::Zlib => {
-            if src.len() < 6 {
-                return Ok(false);
-            }
-            let cmf = src[0] as u16;
-            let flg = src[1] as u16;
-            if !(cmf * 256 + flg).is_multiple_of(31) {
-                return Ok(false);
-            }
-            if (src[0] & 0x0F) != 8 || (src[0] >> 4) > 7 {
-                return Ok(false);
-            }
-            let mut decompressor = DeflateDecompressor::new()?;
-            let mut test_dst = [0u8; 4096];
-            match decompressor.zlib_decompress_precise(src, &mut test_dst) {
-                Ok(_) | Err(DeflateDecompressError::InsufficientSpace) => Ok(true),
-                Err(DeflateDecompressError::BadData) | Err(DeflateDecompressError::ShortOutput) => Ok(false),
-            }
+            is_valid_zlib_header(src)
+                && is_probe_decompress_ok(decompressor.zlib_decompress_precise(src, &mut test_dst))
         }
         ContainerFormat::Gzip => {
-            if src.len() < 18 {
-                return Ok(false);
-            }
-            if src[0] != 0x1F || src[1] != 0x8B || src[2] != 8 {
-                return Ok(false);
-            }
-            let mut decompressor = DeflateDecompressor::new()?;
-            let mut test_dst = [0u8; 4096];
-            match decompressor.gzip_decompress_precise(src, &mut test_dst) {
-                Ok(_) | Err(DeflateDecompressError::InsufficientSpace) => Ok(true),
-                Err(DeflateDecompressError::BadData) | Err(DeflateDecompressError::ShortOutput) => Ok(false),
-            }
+            is_valid_gzip_header(src)
+                && is_probe_decompress_ok(decompressor.gzip_decompress_precise(src, &mut test_dst))
         }
-    }
+    };
+    Ok(ok)
 }
 
 #[cfg(test)]

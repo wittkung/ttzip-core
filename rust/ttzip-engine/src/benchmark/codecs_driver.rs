@@ -32,7 +32,7 @@ use crate::codecs::{
     },
     zstd::{
         zstd_compress, zstd_compress_advanced, zstd_compress_bound, zstd_decompress,
-        ZstdConfig, ZstdDCtx, ZstdDictionaryManager,
+        ZstdCCtx, ZstdConfig, ZstdDictionaryManager,
     },
 };
 
@@ -190,19 +190,43 @@ impl CodecBenchmarkDriver for ZstdLdmBenchmarkDriver {
     }
 
     fn bench_compress(&self, src: &[u8], level: i32) -> Result<Vec<u8>, TTZipStatus> {
+        thread_local! {
+            static TLS_LDM_CCTX: std::cell::RefCell<Option<ZstdCCtx>> = const { std::cell::RefCell::new(None) };
+        }
         let bound = zstd_compress_bound(src.len()) + 1024;
         let mut dst = vec![0u8; bound];
-        let config = ZstdConfig::ldm(9, level as u32).with_ldm_tuning(18, 32, 3, 2);
-        let written = zstd_compress_advanced(src, &mut dst, &config)?;
+        let (comp_level, window_log) = if (26..=31).contains(&level) {
+            (3, level as u32)
+        } else {
+            let max_needed_log = (usize::BITS
+                - src.len().max(1024).next_power_of_two().leading_zeros())
+            .saturating_sub(1)
+            .clamp(18, 26);
+            (level.clamp(1, 22), max_needed_log)
+        };
+        let config = ZstdConfig::ldm(comp_level, window_log);
+        let written = TLS_LDM_CCTX.with(|cell| {
+            let mut cached = cell.borrow_mut();
+            if cached.is_none() {
+                *cached = Some(ZstdCCtx::new()?);
+            }
+            let Some(cctx) = cached.as_mut() else {
+                return Err(TTZipStatus::ErrInvalidParam);
+            };
+            cctx.reset()?;
+            cctx.apply_config(&config)?;
+            cctx.compress2(src, &mut dst)
+        })?;
         dst.truncate(written);
         Ok(dst)
     }
 
     fn bench_decompress(&self, compressed: &[u8], orig_len: usize) -> Result<Vec<u8>, TTZipStatus> {
         let mut dst = vec![0u8; orig_len];
-        let mut dctx = ZstdDCtx::new()?;
-        dctx.set_max_window_log(31)?;
-        let written = dctx.decompress(compressed, &mut dst)?;
+        let written = crate::codecs::zstd::with_thread_local_zstd_dctx(|dctx| {
+            dctx.set_max_window_log(31)?;
+            dctx.decompress(compressed, &mut dst)
+        })?;
         if written != orig_len {
             return Err(TTZipStatus::ErrExtractionFailed);
         }
@@ -608,22 +632,20 @@ impl MatrixCodecDriver {
     /// Resolves driver by canonical name (case-insensitive, alias-tolerant).
     pub fn find_driver(name: &str) -> Option<&'static (dyn CodecBenchmarkDriver + 'static)> {
         let name_lower = name.to_ascii_lowercase();
-        for driver in Self::drivers() {
-            let id_lower = driver.algorithm_id().to_ascii_lowercase();
-            if id_lower == name_lower
-                || (name_lower == "libdeflate" && id_lower == "deflate")
-                || (name_lower == "deflate" && id_lower == "deflate")
-                || (name_lower == "fast-lzma2" && id_lower == "lzma2")
-                || (name_lower == "zstandard" && id_lower == "zstd")
-                || (name_lower == "zstd-ldm" && id_lower == "zstd-ldm")
-                || (name_lower == "zstd-dict" && id_lower == "zstd-dict")
-                || (name_lower == "ppmd" && id_lower == "ppmd")
-                || (name_lower == "bzip2" && id_lower == "bzip2")
-            {
-                return Some(&**driver);
-            }
+        let canonical = Self::canonical_driver_id(&name_lower);
+        Self::drivers()
+            .iter()
+            .find(|d| d.algorithm_id().eq_ignore_ascii_case(canonical))
+            .map(|d| &**d)
+    }
+
+    fn canonical_driver_id(name_lower: &str) -> &str {
+        match name_lower {
+            "libdeflate" => "deflate",
+            "fast-lzma2" => "lzma2",
+            "zstandard" => "zstd",
+            other => other,
         }
-        None
     }
 
     /// Generates all standard benchmark configurations covering 60+ points (90+ total points).
@@ -651,7 +673,6 @@ impl MatrixCodecDriver {
         for ord in [2, 4, 6, 8, 12, 16] { configs.push(MatrixCodecConfig::new("PPMd", ord, format!("PPMd Order {}", ord))); }
         configs
     }
-
 
     /// Compresses source slice using the given configuration.
     pub fn compress(cfg: &MatrixCodecConfig, src: &[u8]) -> Result<Vec<u8>, TTZipStatus> {

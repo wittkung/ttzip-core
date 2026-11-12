@@ -193,11 +193,11 @@ impl VfsSession {
         if data.len() < 64 {
             return Ok(false);
         }
-        let magic = u32::from_le_bytes(data[0..4].try_into().unwrap());
+        let magic = u32::from_le_bytes([data[0], data[1], data[2], data[3]]);
         if magic != 0x54545645 {
             return Ok(false);
         }
-        let entry_count = u32::from_le_bytes(data[8..12].try_into().unwrap()) as usize;
+        let entry_count = u32::from_le_bytes([data[8], data[9], data[10], data[11]]) as usize;
         let expected_len = 64 + entry_count * 128;
         if data.len() < expected_len {
             return Ok(false);
@@ -557,34 +557,42 @@ pub fn load_archive_vfs_tree(
     }))
 }
 
-fn map_nested_err(e: crate::archive::nested_vfs::NestedVfsError) -> super::types::TTZipError {
-    match e {
-        crate::archive::nested_vfs::NestedVfsError::FileNotFound { path } => super::types::TTZipError::FileNotFound { path },
-        crate::archive::nested_vfs::NestedVfsError::InvalidPassword => super::types::TTZipError::InvalidPassword,
-        crate::archive::nested_vfs::NestedVfsError::CorruptHeader { details, offset } => super::types::TTZipError::CorruptHeader { details, offset },
-        crate::archive::nested_vfs::NestedVfsError::SecurityViolation { reason } => super::types::TTZipError::SecurityViolation { reason },
-        crate::archive::nested_vfs::NestedVfsError::Cancelled => super::types::TTZipError::Cancelled,
-        crate::archive::nested_vfs::NestedVfsError::EngineError { code } => super::types::TTZipError::EngineError { code },
-        crate::archive::nested_vfs::NestedVfsError::Status(s) => match s {
-            crate::types::TTZipStatus::ErrInvalidPassword => super::types::TTZipError::InvalidPassword,
-            crate::types::TTZipStatus::ErrCorruptHeader => super::types::TTZipError::CorruptHeader {
-                details: "Corrupted nested archive header or payload".to_string(),
-                offset: 0,
-            },
-            crate::types::TTZipStatus::ErrFileNotFound => super::types::TTZipError::FileNotFound {
-                path: "Nested entry or archive not found".to_string(),
-            },
-            crate::types::TTZipStatus::ErrOpenFailed | crate::types::TTZipStatus::ErrMmapFailed => {
-                super::types::TTZipError::IoError { message: s.as_str().to_string() }
-            }
-            crate::types::TTZipStatus::ErrOutOfMemory => super::types::TTZipError::OutOfMemory { details: s.as_str().to_string() },
-            crate::types::TTZipStatus::Cancelled => super::types::TTZipError::Cancelled,
-            crate::types::TTZipStatus::ErrSecurityViolation | crate::types::TTZipStatus::ErrSolidBudgetExceeded => {
-                super::types::TTZipError::SecurityViolation { reason: s.as_str().to_string() }
-            }
-            _ => super::types::TTZipError::EngineError { code: s.to_i32() },
+fn map_nested_status(s: crate::types::TTZipStatus) -> super::types::TTZipError {
+    use crate::types::TTZipStatus;
+    match s {
+        TTZipStatus::ErrInvalidPassword => super::types::TTZipError::InvalidPassword,
+        TTZipStatus::ErrCorruptHeader => super::types::TTZipError::CorruptHeader {
+            details: "Corrupted nested archive header or payload".to_string(),
+            offset: 0,
         },
-        crate::archive::nested_vfs::NestedVfsError::IoError { message } => super::types::TTZipError::IoError { message },
+        TTZipStatus::ErrFileNotFound => super::types::TTZipError::FileNotFound {
+            path: "Nested entry or archive not found".to_string(),
+        },
+        TTZipStatus::ErrOpenFailed | TTZipStatus::ErrMmapFailed => {
+            super::types::TTZipError::IoError { message: s.as_str().to_string() }
+        }
+        TTZipStatus::ErrOutOfMemory => {
+            super::types::TTZipError::OutOfMemory { details: s.as_str().to_string() }
+        }
+        TTZipStatus::Cancelled => super::types::TTZipError::Cancelled,
+        TTZipStatus::ErrSecurityViolation | TTZipStatus::ErrSolidBudgetExceeded => {
+            super::types::TTZipError::SecurityViolation { reason: s.as_str().to_string() }
+        }
+        _ => super::types::TTZipError::EngineError { code: s.to_i32() },
+    }
+}
+
+fn map_nested_err(e: crate::archive::nested_vfs::NestedVfsError) -> super::types::TTZipError {
+    use crate::archive::nested_vfs::NestedVfsError;
+    match e {
+        NestedVfsError::FileNotFound { path } => super::types::TTZipError::FileNotFound { path },
+        NestedVfsError::InvalidPassword => super::types::TTZipError::InvalidPassword,
+        NestedVfsError::CorruptHeader { details, offset } => super::types::TTZipError::CorruptHeader { details, offset },
+        NestedVfsError::SecurityViolation { reason } => super::types::TTZipError::SecurityViolation { reason },
+        NestedVfsError::Cancelled => super::types::TTZipError::Cancelled,
+        NestedVfsError::EngineError { code } => super::types::TTZipError::EngineError { code },
+        NestedVfsError::Status(s) => map_nested_status(s),
+        NestedVfsError::IoError { message } => super::types::TTZipError::IoError { message },
     }
 }
 

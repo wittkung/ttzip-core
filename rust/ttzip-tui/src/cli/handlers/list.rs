@@ -5,7 +5,8 @@
 
 use crate::cli::args::{VfsNodeContractDto, VfsTreeContractDto};
 use crate::cli::format::{
-    format_bytes, parse_archive_entries, read_archive_data_auto, sanitize_terminal_display,
+    format_bytes, parse_archive_entries_with_password, read_archive_data_auto,
+    sanitize_terminal_display,
 };
 use crate::cli::handlers::extract::pattern_matches;
 use std::path::Path;
@@ -25,10 +26,76 @@ pub fn truncate_path_display(s: &str, max_width: usize) -> String {
     format!("...{}", suffix)
 }
 
+fn print_list_json(
+    archive_path: &Path,
+    entries: &[crate::cli::format::ArchiveEntryInfo],
+    total_uncompressed: u64,
+) -> Result<(), String> {
+    let nodes: Vec<VfsNodeContractDto> = entries
+        .iter()
+        .map(|e| VfsNodeContractDto {
+            name: e.name.clone(),
+            relative_path: e.relative_path.clone(),
+            is_directory: e.is_directory,
+            uncompressed_size: e.uncompressed_size,
+            compressed_size: e.compressed_size,
+            crc32: e.crc32,
+            is_encrypted: e.is_encrypted,
+            match_indices: None,
+        })
+        .collect();
+
+    let contract = VfsTreeContractDto {
+        root_path: archive_path.to_string_lossy().to_string(),
+        total_entries_count: entries.len(),
+        total_uncompressed_bytes: total_uncompressed,
+        nodes,
+    };
+
+    let json_str = serde_json::to_string_pretty(&contract)
+        .map_err(|e| format!("Failed to serialize contract JSON: {}", e))?;
+    println!("{}", json_str);
+    Ok(())
+}
+
+fn print_list_entry_row(entry: &crate::cli::format::ArchiveEntryInfo) {
+    let ratio = if entry.uncompressed_size > 0 {
+        format!(
+            "{:.1}%",
+            (entry.compressed_size as f64 / entry.uncompressed_size as f64) * 100.0
+        )
+    } else {
+        "-".to_string()
+    };
+
+    let raw_path_display = if entry.is_directory {
+        format!("{}/", entry.relative_path.trim_end_matches('/'))
+    } else {
+        entry.relative_path.clone()
+    };
+
+    let path_display = sanitize_terminal_display(&raw_path_display);
+    let path_truncated = truncate_path_display(&path_display, 36);
+    let crc_str = if entry.is_directory {
+        "-".to_string()
+    } else {
+        format!("0x{:08X}", entry.crc32)
+    };
+
+    println!(
+        "{:<36} {:>12} {:>15} {:>7}  {:>10}",
+        path_truncated,
+        format_bytes(entry.uncompressed_size),
+        format_bytes(entry.compressed_size),
+        ratio,
+        crc_str
+    );
+}
+
 /// Executes headless `list` subcommand.
 pub fn execute_list(
     archive_path: &Path,
-    _password: Option<&str>,
+    password: Option<&str>,
     json: bool,
     include: &[String],
     exclude: &[String],
@@ -38,7 +105,7 @@ pub fn execute_list(
     }
 
     let (volumes, data) = read_archive_data_auto(archive_path)?;
-    let (format, all_entries) = parse_archive_entries(archive_path, &data)?;
+    let (format, all_entries) = parse_archive_entries_with_password(archive_path, &data, password)?;
 
     let entries: Vec<_> = all_entries
         .into_iter()
@@ -46,36 +113,11 @@ pub fn execute_list(
         .collect();
 
     let total_uncompressed: u64 = entries.iter().map(|e| e.uncompressed_size).sum();
-    let _total_compressed: u64 = entries.iter().map(|e| e.compressed_size).sum();
     let dir_count = entries.iter().filter(|e| e.is_directory).count();
     let file_count = entries.len() - dir_count;
 
     if json {
-        let nodes: Vec<VfsNodeContractDto> = entries
-            .iter()
-            .map(|e| VfsNodeContractDto {
-                name: e.name.clone(),
-                relative_path: e.relative_path.clone(),
-                is_directory: e.is_directory,
-                uncompressed_size: e.uncompressed_size,
-                compressed_size: e.compressed_size,
-                crc32: e.crc32,
-                is_encrypted: e.is_encrypted,
-                match_indices: None,
-            })
-            .collect();
-
-        let contract = VfsTreeContractDto {
-            root_path: archive_path.to_string_lossy().to_string(),
-            total_entries_count: entries.len(),
-            total_uncompressed_bytes: total_uncompressed,
-            nodes,
-        };
-
-        let json_str = serde_json::to_string_pretty(&contract)
-            .map_err(|e| format!("Failed to serialize contract JSON: {}", e))?;
-        println!("{}", json_str);
-        return Ok(());
+        return print_list_json(archive_path, &entries, total_uncompressed);
     }
 
     let safe_archive_path = sanitize_terminal_display(&archive_path.display().to_string());
@@ -103,38 +145,7 @@ pub fn execute_list(
     println!("{:-<80}", "");
 
     for entry in &entries {
-        let ratio = if entry.uncompressed_size > 0 {
-            format!(
-                "{:.1}%",
-                (entry.compressed_size as f64 / entry.uncompressed_size as f64) * 100.0
-            )
-        } else {
-            "-".to_string()
-        };
-
-        let raw_path_display = if entry.is_directory {
-            format!("{}/", entry.relative_path.trim_end_matches('/'))
-        } else {
-            entry.relative_path.clone()
-        };
-
-        let path_display = sanitize_terminal_display(&raw_path_display);
-        let path_truncated = truncate_path_display(&path_display, 36);
-
-        let crc_str = if entry.is_directory {
-            "-".to_string()
-        } else {
-            format!("0x{:08X}", entry.crc32)
-        };
-
-        println!(
-            "{:<36} {:>12} {:>15} {:>7}  {:>10}",
-            path_truncated,
-            format_bytes(entry.uncompressed_size),
-            format_bytes(entry.compressed_size),
-            ratio,
-            crc_str
-        );
+        print_list_entry_row(entry);
     }
 
     println!("{:-<80}", "");

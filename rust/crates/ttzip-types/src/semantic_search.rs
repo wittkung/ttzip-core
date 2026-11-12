@@ -12,11 +12,12 @@
 //! - Single-Pass Streaming Calibrated Fusion:
 //!   $$\text{FusedScore}(d) = w_{\text{lex}} \cdot (\bar{S}_{\text{lex}}(d))^{1.5} + w_{\text{sem}} \cdot \bar{S}_{\text{sem}}(d) + \text{SynergyBonus} + \text{DefBonus}$$
 
-use crate::node::{make_sort_prefix, CompactNode, TTWorkspaceEntryNode};
-use crate::search::{
-    ascii_to_lower_u64, compute_name_mask, evaluate_node_match, LazyTopKSelector, MASK_CHAR_SET,
-};
+mod lexical;
+
+use crate::node::{CompactNode, TTWorkspaceEntryNode};
+use crate::search::LazyTopKSelector;
 use crate::snapshot::CompactVector128;
+use lexical::{compact_node_name, PreparedLexicalQuery};
 
 /// Unit-vector INT8 dot product normalization scale: 127^2 = 16,129.
 pub const INT8_UNIT_DOT_BASE: i32 = 16_129;
@@ -190,215 +191,34 @@ pub fn compute_calibrated_fused_score(
     fused
 }
 
-struct PreparedLexicalQuery<'a> {
-    has_text: bool,
-    query_bytes: &'a [u8],
-    q_char_mask: u64,
-    is_short_prefix: bool,
-    prefix_mask: u64,
-    q_prefix_lower: u64,
-    is_ascii_query: bool,
-    query_lower: Option<String>,
-}
-
-impl<'a> PreparedLexicalQuery<'a> {
-    fn new(text_query: &'a str) -> Self {
-        let has_text = !text_query.trim().is_empty();
-        let query_bytes = text_query.as_bytes();
-        let query_len = query_bytes.len();
-        let q_mask = compute_name_mask(query_bytes);
-        let q_char_mask = q_mask & MASK_CHAR_SET;
-
-        let is_short_prefix = query_len <= 8;
-        let q_prefix_lower = if is_short_prefix {
-            ascii_to_lower_u64(make_sort_prefix(query_bytes))
-        } else {
-            ascii_to_lower_u64(make_sort_prefix(&query_bytes[..8]))
-        };
-
-        let prefix_mask = if is_short_prefix {
-            if query_len == 8 {
-                0xFFFF_FFFF_FFFF_FFFF
-            } else if query_len == 0 {
-                0
-            } else {
-                !((1u64 << ((8 - query_len) * 8)) - 1)
-            }
-        } else {
-            0xFFFF_FFFF_FFFF_FFFF
-        };
-
-        let is_ascii_query = query_bytes.is_ascii();
-        let query_lower = (!is_ascii_query).then(|| text_query.to_lowercase());
-
-        Self {
-            has_text,
-            query_bytes,
-            q_char_mask,
-            is_short_prefix,
-            prefix_mask,
-            q_prefix_lower,
-            is_ascii_query,
-            query_lower,
-        }
-    }
-
-    #[inline(always)]
-    fn evaluate_node(
-        &self,
-        node: &TTWorkspaceEntryNode,
-        string_arena: &[u8],
-        name_mask: Option<u64>,
-    ) -> i32 {
-        if !self.has_text {
-            return 0;
-        }
-        if let Some(m) = name_mask {
-            if (self.q_char_mask & !m) != 0 {
-                return 0;
-            }
-        }
-        evaluate_node_match(
-            node,
-            string_arena,
-            self.query_bytes,
-            self.query_lower.as_deref(),
-            self.is_ascii_query,
-            self.is_short_prefix,
-            self.prefix_mask,
-            self.q_prefix_lower,
-        )
-        .unwrap_or(0)
-    }
-
-    #[inline(always)]
-    fn evaluate_compact_node(
-        &self,
-        node: &CompactNode,
-        string_arena: &[u8],
-        name_mask: Option<u64>,
-    ) -> i32 {
-        if !self.has_text {
-            return 0;
-        }
-        if let Some(m) = name_mask {
-            if (self.q_char_mask & !m) != 0 {
-                return 0;
-            }
-        }
-        let Some(name_bytes) = compact_node_name(node, string_arena) else {
-            return 0;
-        };
-        let query_len = self.query_bytes.len();
-        if self.is_short_prefix
-            && name_bytes.len() >= query_len
-            && name_bytes[..query_len].eq_ignore_ascii_case(self.query_bytes)
-        {
-            return if name_bytes.len() == query_len {
-                1000
-            } else {
-                500 - (name_bytes.len() as i32).min(200)
-            };
-        }
-        if match_compact_substring(name_bytes, self.query_bytes, self.query_lower.as_deref(), self.is_ascii_query) {
-            calculate_compact_match_score(name_bytes, self.query_bytes)
-        } else {
-            0
-        }
-    }
-}
-
 #[inline(always)]
-fn compact_node_name<'a>(node: &CompactNode, arena: &'a [u8]) -> Option<&'a [u8]> {
-    let start = node.name_offset as usize;
-    let end = start.checked_add(node.name_len as usize)?;
-    arena.get(start..end)
-}
-
-#[inline(always)]
-fn contains_ascii_case_insensitive(haystack: &[u8], needle: &[u8]) -> bool {
-    if needle.is_empty() {
-        return true;
+fn score_hybrid_candidate(
+    lex_score: i32,
+    sem_dot: i32,
+    is_code: bool,
+    query: &HybridSearchQuery<'_>,
+) -> f32 {
+    if lex_score <= 0 && sem_dot < query.min_raw_dot_threshold {
+        return 0.0;
     }
-    if haystack.len() < needle.len() {
-        return false;
-    }
-    let first = needle[0].to_ascii_lowercase();
-    let end = haystack.len() - needle.len();
-    for i in 0..=end {
-        if haystack[i].to_ascii_lowercase() == first
-            && haystack[i..i + needle.len()].eq_ignore_ascii_case(needle)
-        {
-            return true;
-        }
-    }
-    false
-}
-
-#[inline]
-fn match_compact_substring(
-    name_bytes: &[u8],
-    query_bytes: &[u8],
-    query_lower: Option<&str>,
-    is_ascii_query: bool,
-) -> bool {
-    if is_ascii_query && name_bytes.is_ascii() {
-        contains_ascii_case_insensitive(name_bytes, query_bytes)
-    } else if let Some(q_low) = query_lower {
-        if let Ok(name_str) = core::str::from_utf8(name_bytes) {
-            name_str.to_lowercase().contains(q_low)
-        } else {
-            contains_ascii_case_insensitive(name_bytes, query_bytes)
-        }
+    let active_dot_threshold = if lex_score > 0 {
+        (query.min_raw_dot_threshold * 6) / 10
     } else {
-        contains_ascii_case_insensitive(name_bytes, query_bytes)
+        query.min_raw_dot_threshold
+    };
+    let definition_strength = if query.is_code_lookup && is_code { 2 } else { 0 };
+    let mut fused = compute_calibrated_fused_score(
+        lex_score,
+        sem_dot,
+        query.lexical_weight,
+        query.semantic_weight,
+        active_dot_threshold,
+        definition_strength,
+    );
+    if query.is_code_lookup && !is_code {
+        fused *= 0.35;
     }
-}
-
-#[inline]
-fn find_compact_match_pos(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    if needle.is_empty() {
-        return Some(0);
-    }
-    if haystack.len() < needle.len() {
-        return None;
-    }
-    let first = needle[0].to_ascii_lowercase();
-    let end = haystack.len() - needle.len();
-    for i in 0..=end {
-        if haystack[i].to_ascii_lowercase() == first
-            && haystack[i..i + needle.len()].eq_ignore_ascii_case(needle)
-        {
-            return Some(i);
-        }
-    }
-    None
-}
-
-#[inline]
-fn calculate_compact_match_score(name: &[u8], query: &[u8]) -> i32 {
-    if name.len() == query.len() && name.eq_ignore_ascii_case(query) {
-        return 1000;
-    }
-    if name.len() >= query.len() && name[..query.len()].eq_ignore_ascii_case(query) {
-        return 500 - (name.len() as i32).min(200);
-    }
-    if let Some(pos) = find_compact_match_pos(name, query) {
-        let is_word_boundary = if pos == 0 {
-            true
-        } else {
-            let prev = name[pos - 1];
-            prev == b'-' || prev == b'_' || prev == b'.' || prev == b'/' || prev == b' '
-                || (name[pos].is_ascii_uppercase() && prev.is_ascii_lowercase())
-        };
-        if is_word_boundary {
-            300 - (pos as i32).min(100)
-        } else {
-            100 - (pos as i32).min(50)
-        }
-    } else {
-        100
-    }
+    fused
 }
 
 #[inline(always)]
@@ -415,28 +235,62 @@ fn evaluate_semantic_dot(
     }
 }
 
-fn reconstruct_candidate(
-    k: u64,
-    nodes: &[TTWorkspaceEntryNode],
-    string_arena: &[u8],
-    lex_prep: &PreparedLexicalQuery<'_>,
-    q_vec: Option<&[i8; 128]>,
+fn search_hybrid_with<'a, N, F, G>(
+    name_masks: &[u64],
+    nodes: &'a [N],
+    string_arena: &'a [u8],
     vectors: Option<&[CompactVector128]>,
-) -> HybridSearchCandidate {
-    let (fused, id) = unpack_hybrid_sort_key(k);
-    let idx = id as usize;
-    let lex = if idx < nodes.len() {
-        lex_prep.evaluate_node(&nodes[idx], string_arena, None)
-    } else {
-        0
-    };
-    let sem = evaluate_semantic_dot(idx, q_vec, vectors);
-    HybridSearchCandidate {
-        node_id: id,
-        lexical_score: lex,
-        semantic_dot_product: sem,
-        fused_score: fused,
+    query: &HybridSearchQuery<'_>,
+    eval_lex: F,
+    get_name: G,
+) -> Vec<HybridSearchCandidate>
+where
+    F: Fn(&PreparedLexicalQuery<'_>, &'a N, &'a [u8], Option<u64>) -> i32,
+    G: Fn(&'a N, &'a [u8]) -> Option<&'a [u8]>,
+{
+    let limit = query.limit as usize;
+    if limit == 0 || nodes.is_empty() {
+        return Vec::new();
     }
+
+    let lex_prep = PreparedLexicalQuery::new(query.text_query);
+    let has_vectors = query.query_vector.is_some() && vectors.is_some();
+    if !lex_prep.has_text && !has_vectors {
+        return Vec::new();
+    }
+
+    let mut selector = LazyTopKSelector::new(limit);
+    let q_vec = query.query_vector;
+
+    for (i, node) in nodes.iter().enumerate() {
+        let lex_score = eval_lex(&lex_prep, node, string_arena, name_masks.get(i).copied());
+        let sem_dot = evaluate_semantic_dot(i, q_vec, vectors);
+        let is_code = get_name(node, string_arena).is_some_and(is_code_filename);
+        let fused = score_hybrid_candidate(lex_score, sem_dot, is_code, query);
+        if fused > 0.0 {
+            selector.push(make_hybrid_sort_key(fused, i as u32));
+        }
+    }
+
+    selector
+        .finish()
+        .into_iter()
+        .map(|k| {
+            let (fused, id) = unpack_hybrid_sort_key(k);
+            let idx = id as usize;
+            let lex = if idx < nodes.len() {
+                eval_lex(&lex_prep, &nodes[idx], string_arena, None)
+            } else {
+                0
+            };
+            HybridSearchCandidate {
+                node_id: id,
+                lexical_score: lex,
+                semantic_dot_product: evaluate_semantic_dot(idx, q_vec, vectors),
+                fused_score: fused,
+            }
+        })
+        .collect()
 }
 
 /// Evaluates hybrid search in a single streaming pass over VFS workspace nodes.
@@ -448,85 +302,15 @@ pub fn search_hybrid_nodes_top_k(
     vectors: Option<&[CompactVector128]>,
     query: &HybridSearchQuery<'_>,
 ) -> Vec<HybridSearchCandidate> {
-    let limit = query.limit as usize;
-    if limit == 0 || nodes.is_empty() {
-        return Vec::new();
-    }
-
-    let lex_prep = PreparedLexicalQuery::new(query.text_query);
-    let has_vectors = query.query_vector.is_some() && vectors.is_some();
-    if !lex_prep.has_text && !has_vectors {
-        return Vec::new();
-    }
-
-    let mut selector = LazyTopKSelector::new(limit);
-    let q_vec = query.query_vector;
-
-    for (i, node) in nodes.iter().enumerate() {
-        let lex_score = lex_prep.evaluate_node(node, string_arena, name_masks.get(i).copied());
-        let sem_dot = evaluate_semantic_dot(i, q_vec, vectors);
-
-        if lex_score <= 0 && sem_dot < query.min_raw_dot_threshold {
-            continue;
-        }
-
-        let active_dot_threshold = if lex_score > 0 {
-            (query.min_raw_dot_threshold * 6) / 10
-        } else {
-            query.min_raw_dot_threshold
-        };
-
-        let is_code = node.name(string_arena).is_some_and(is_code_filename);
-        let definition_strength = if query.is_code_lookup && is_code { 2 } else { 0 };
-
-        let mut fused = compute_calibrated_fused_score(
-            lex_score,
-            sem_dot,
-            query.lexical_weight,
-            query.semantic_weight,
-            active_dot_threshold,
-            definition_strength,
-        );
-
-        if query.is_code_lookup && !is_code {
-            fused *= 0.35;
-        }
-
-        if fused > 0.0 {
-            let key = make_hybrid_sort_key(fused, i as u32);
-            selector.push(key);
-        }
-    }
-
-    selector
-        .finish()
-        .into_iter()
-        .map(|k| reconstruct_candidate(k, nodes, string_arena, &lex_prep, q_vec, vectors))
-        .collect()
-}
-
-fn reconstruct_compact_candidate(
-    k: u64,
-    nodes: &[CompactNode],
-    string_arena: &[u8],
-    lex_prep: &PreparedLexicalQuery<'_>,
-    q_vec: Option<&[i8; 128]>,
-    vectors: Option<&[CompactVector128]>,
-) -> HybridSearchCandidate {
-    let (fused, id) = unpack_hybrid_sort_key(k);
-    let idx = id as usize;
-    let lex = if idx < nodes.len() {
-        lex_prep.evaluate_compact_node(&nodes[idx], string_arena, None)
-    } else {
-        0
-    };
-    let sem = evaluate_semantic_dot(idx, q_vec, vectors);
-    HybridSearchCandidate {
-        node_id: id,
-        lexical_score: lex,
-        semantic_dot_product: sem,
-        fused_score: fused,
-    }
+    search_hybrid_with(
+        name_masks,
+        nodes,
+        string_arena,
+        vectors,
+        query,
+        |prep, node, arena, mask| prep.evaluate_node(node, arena, mask),
+        |node, arena| node.name(arena),
+    )
 }
 
 /// Evaluates hybrid search in a single streaming pass over 24-byte compact VFS nodes.
@@ -538,66 +322,22 @@ pub fn search_hybrid_compact_nodes_top_k(
     vectors: Option<&[CompactVector128]>,
     query: &HybridSearchQuery<'_>,
 ) -> Vec<HybridSearchCandidate> {
-    let limit = query.limit as usize;
-    if limit == 0 || nodes.is_empty() {
-        return Vec::new();
-    }
-
-    let lex_prep = PreparedLexicalQuery::new(query.text_query);
-    let has_vectors = query.query_vector.is_some() && vectors.is_some();
-    if !lex_prep.has_text && !has_vectors {
-        return Vec::new();
-    }
-
-    let mut selector = LazyTopKSelector::new(limit);
-    let q_vec = query.query_vector;
-
-    for (i, node) in nodes.iter().enumerate() {
-        let lex_score = lex_prep.evaluate_compact_node(node, string_arena, name_masks.get(i).copied());
-        let sem_dot = evaluate_semantic_dot(i, q_vec, vectors);
-
-        if lex_score <= 0 && sem_dot < query.min_raw_dot_threshold {
-            continue;
-        }
-
-        let active_dot_threshold = if lex_score > 0 {
-            (query.min_raw_dot_threshold * 6) / 10
-        } else {
-            query.min_raw_dot_threshold
-        };
-
-        let is_code = compact_node_name(node, string_arena).is_some_and(is_code_filename);
-        let definition_strength = if query.is_code_lookup && is_code { 2 } else { 0 };
-
-        let mut fused = compute_calibrated_fused_score(
-            lex_score,
-            sem_dot,
-            query.lexical_weight,
-            query.semantic_weight,
-            active_dot_threshold,
-            definition_strength,
-        );
-
-        if query.is_code_lookup && !is_code {
-            fused *= 0.35;
-        }
-
-        if fused > 0.0 {
-            let key = make_hybrid_sort_key(fused, i as u32);
-            selector.push(key);
-        }
-    }
-
-    selector
-        .finish()
-        .into_iter()
-        .map(|k| reconstruct_compact_candidate(k, nodes, string_arena, &lex_prep, q_vec, vectors))
-        .collect()
+    search_hybrid_with(
+        name_masks,
+        nodes,
+        string_arena,
+        vectors,
+        query,
+        |prep, node, arena, mask| prep.evaluate_compact_node(node, arena, mask),
+        compact_node_name,
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::node::make_sort_prefix;
+    use crate::search::compute_name_mask;
 
     #[test]
     fn test_make_hybrid_sort_key_monotonicity() {

@@ -173,7 +173,7 @@ public struct MicrokernelDecompressionLimits: Sendable, Equatable {
 }
 
 /// In-memory threat and vulnerability scanning engine (Zip Slip, dangerous extensions, and traversal checks).
-public final class SecurityScanner: @unchecked Sendable {
+public final class SecurityScanner: Sendable {
     public static let shared = SecurityScanner()
     
     private let dangerousExtensions: Set<String> = [

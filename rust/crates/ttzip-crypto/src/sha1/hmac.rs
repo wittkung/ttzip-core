@@ -7,8 +7,7 @@ use super::{sha1, FastSha1};
 use ttzip_types::TTZipStatus;
 use zeroize::Zeroize;
 
-/// Computes standard 20-byte HMAC-SHA1.
-pub fn hmac_sha1(key: &[u8], data: &[u8]) -> [u8; 20] {
+fn init_hmac_sha1_contexts(key: &[u8]) -> (FastSha1, FastSha1) {
     let mut k_pad = [0u8; 64];
     if key.len() > 64 {
         let digest = sha1(key);
@@ -24,21 +23,26 @@ pub fn hmac_sha1(key: &[u8], data: &[u8]) -> [u8; 20] {
         k_opad[i] ^= k_pad[i];
     }
 
-    let mut inner = FastSha1::new();
-    inner.update(&k_ipad);
-    inner.update(data);
-    let inner_hash = inner.finalize();
+    let mut base_inner = FastSha1::new();
+    base_inner.update(&k_ipad);
 
-    let mut outer = FastSha1::new();
-    outer.update(&k_opad);
-    outer.update(&inner_hash);
-    let result = outer.finalize();
+    let mut base_outer = FastSha1::new();
+    base_outer.update(&k_opad);
 
     k_pad.zeroize();
     k_ipad.zeroize();
     k_opad.zeroize();
 
-    result
+    (base_inner, base_outer)
+}
+
+/// Computes standard 20-byte HMAC-SHA1.
+pub fn hmac_sha1(key: &[u8], data: &[u8]) -> [u8; 20] {
+    let (mut inner, mut outer) = init_hmac_sha1_contexts(key);
+    inner.update(data);
+    let inner_hash = inner.finalize();
+    outer.update(&inner_hash);
+    outer.finalize()
 }
 
 /// Computes truncated 10-byte HMAC-SHA1 tag for WinZip AES.
@@ -57,35 +61,11 @@ pub fn pbkdf2_sha1(
     rounds: u32,
     out_key: &mut [u8],
 ) -> Result<(), TTZipStatus> {
-    if password.is_empty() && salt.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
-    }
-    if rounds == 0 || out_key.is_empty() {
+    if (password.is_empty() && salt.is_empty()) || rounds == 0 || out_key.is_empty() {
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    let mut k_pad = [0u8; 64];
-    if password.len() > 64 {
-        let digest = sha1(password);
-        k_pad[..20].copy_from_slice(&digest);
-    } else {
-        k_pad[..password.len()].copy_from_slice(password);
-    }
-
-    let mut k_ipad = [0x36u8; 64];
-    let mut k_opad = [0x5cu8; 64];
-    for i in 0..64 {
-        k_ipad[i] ^= k_pad[i];
-        k_opad[i] ^= k_pad[i];
-    }
-
-    // Pre-calculate inner and outer context base states
-    let mut base_inner = FastSha1::new();
-    base_inner.update(&k_ipad);
-
-    let mut base_outer = FastSha1::new();
-    base_outer.update(&k_opad);
-
+    let (base_inner, base_outer) = init_hmac_sha1_contexts(password);
     let key_len = out_key.len();
     let blocks_needed = key_len.div_ceil(20);
 
@@ -103,7 +83,6 @@ pub fn pbkdf2_sha1(
         let mut outer = base_outer.clone();
         outer.update(&inner_hash);
         u_digest = outer.finalize();
-
         t_digest.copy_from_slice(&u_digest);
 
         for _ in 1..rounds {
@@ -125,9 +104,6 @@ pub fn pbkdf2_sha1(
         out_key[offset..offset + copy_len].copy_from_slice(&t_digest[..copy_len]);
     }
 
-    k_pad.zeroize();
-    k_ipad.zeroize();
-    k_opad.zeroize();
     u_digest.zeroize();
     t_digest.zeroize();
 

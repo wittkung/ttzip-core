@@ -32,52 +32,14 @@ pub fn decompress_lzma2_payload(
         return Ok(Vec::new());
     }
 
-    let first_ctrl = compressed[0];
-    if (0x03..=0x7F).contains(&first_ctrl)
-        || first_ctrl == 0x02
-        || (0x80..0xE0).contains(&first_ctrl)
-    {
-        return Err(XzError::DecompressError(format!(
-            "Invalid first LZMA2 chunk control byte 0x{first_ctrl:02X} (dictionary reset required)"
-        )));
-    }
+    validate_first_lzma2_control_byte(compressed[0])?;
 
-    // Pure Safe Rust Lzma2StreamDecoder with 100% specification compliance
     let mut safe_decoder = Lzma2StreamDecoder::new(dict_size.max(LZMA2_DEFAULT_DICT_SIZE));
     let mut out = Vec::with_capacity(compressed.len().saturating_mul(2));
     let mut pos = 0;
 
     while pos < compressed.len() && !safe_decoder.is_eos() {
-        match Lzma2ChunkHeader::parse(&compressed[pos..]) {
-            Ok(Some((header, hdr_len))) => {
-                pos += hdr_len;
-                let pack = header.pack_size();
-                if pos + pack > compressed.len() && !header.is_eos() {
-                    return Err(XzError::TruncatedData {
-                        expected: pos + pack,
-                        actual: compressed.len(),
-                    });
-                }
-                let payload = if pack > 0 {
-                    &compressed[pos..pos + pack]
-                } else {
-                    &[]
-                };
-                pos += pack;
-                safe_decoder.decode_chunk(&header, payload, &mut out).map_err(|e| {
-                    XzError::DecompressError(format!("LZMA2 safe decode error: {e:?}"))
-                })?;
-            }
-            Ok(None) => {
-                return Err(XzError::TruncatedData {
-                    expected: pos + 1,
-                    actual: compressed.len(),
-                });
-            }
-            Err(e) => {
-                return Err(XzError::DecompressError(format!("LZMA2 header parse error: {e:?}")));
-            }
-        }
+        decode_next_lzma2_chunk(compressed, &mut pos, &mut safe_decoder, &mut out)?;
     }
 
     if !safe_decoder.is_eos() {
@@ -87,17 +49,62 @@ pub fn decompress_lzma2_payload(
         });
     }
 
-    if pos < compressed.len() {
-        let remainder = &compressed[pos..];
-        if remainder.iter().any(|&b| b != 0x00) {
-            return Err(XzError::DecompressError(format!(
-                "Unexpected trailing non-zero data after LZMA2 EOS marker ({} bytes)",
-                remainder.len()
-            )));
-        }
-    }
-
+    validate_trailing_zeros(&compressed[pos..])?;
     Ok(out)
+}
+
+fn validate_first_lzma2_control_byte(first_ctrl: u8) -> Result<(), XzError> {
+    let invalid = (0x03..=0x7F).contains(&first_ctrl)
+        || first_ctrl == 0x02
+        || (0x80..0xE0).contains(&first_ctrl);
+    if invalid {
+        return Err(XzError::DecompressError(format!(
+            "Invalid first LZMA2 chunk control byte 0x{first_ctrl:02X} (dictionary reset required)"
+        )));
+    }
+    Ok(())
+}
+
+fn decode_next_lzma2_chunk(
+    compressed: &[u8],
+    pos: &mut usize,
+    safe_decoder: &mut Lzma2StreamDecoder,
+    out: &mut Vec<u8>,
+) -> Result<(), XzError> {
+    let (header, hdr_len) = Lzma2ChunkHeader::parse(&compressed[*pos..])
+        .map_err(|e| XzError::DecompressError(format!("LZMA2 header parse error: {e:?}")))?
+        .ok_or(XzError::TruncatedData {
+            expected: *pos + 1,
+            actual: compressed.len(),
+        })?;
+    *pos += hdr_len;
+    let pack = header.pack_size();
+    if *pos + pack > compressed.len() && !header.is_eos() {
+        return Err(XzError::TruncatedData {
+            expected: *pos + pack,
+            actual: compressed.len(),
+        });
+    }
+    let payload = if pack > 0 {
+        &compressed[*pos..*pos + pack]
+    } else {
+        &[]
+    };
+    *pos += pack;
+    safe_decoder
+        .decode_chunk(&header, payload, out)
+        .map(|_| ())
+        .map_err(|e| XzError::DecompressError(format!("LZMA2 safe decode error: {e:?}")))
+}
+
+fn validate_trailing_zeros(remainder: &[u8]) -> Result<(), XzError> {
+    if remainder.iter().any(|&b| b != 0x00) {
+        return Err(XzError::DecompressError(format!(
+            "Unexpected trailing non-zero data after LZMA2 EOS marker ({} bytes)",
+            remainder.len()
+        )));
+    }
+    Ok(())
 }
 
 /// Decompresses an entire XZ Block's payload and validates its checksum.
@@ -108,11 +115,9 @@ pub fn decompress_block_payload(
     expected_check: &[u8],
     memlimit: u64,
 ) -> Result<Vec<u8>, XzError> {
-    if header.filters.is_empty() {
+    let Some(lzma2_filter) = header.filters.last() else {
         return Err(XzError::DecompressError("Empty filter chain".to_string()));
-    }
-
-    let lzma2_filter = header.filters.last().unwrap();
+    };
     if lzma2_filter.filter_id != FILTER_ID_LZMA2 {
         return Err(XzError::UnsupportedFilter(lzma2_filter.filter_id));
     }

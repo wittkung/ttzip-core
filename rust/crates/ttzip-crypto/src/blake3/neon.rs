@@ -122,6 +122,31 @@ pub unsafe fn rot7_128(x: uint32x4_t) -> uint32x4_t {
     }
 }
 
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn g4_quarter_rounds(
+    v: &mut [uint32x4_t; 16],
+    a: [usize; 4],
+    b: [usize; 4],
+    c: [usize; 4],
+    d: [usize; 4],
+    mx: [uint32x4_t; 4],
+    my: [uint32x4_t; 4],
+) {
+    unsafe {
+        for i in 0..4 {
+            v[a[i]] = add_128(add_128(v[a[i]], v[b[i]]), mx[i]);
+            v[d[i]] = rot16_128(xor_128(v[d[i]], v[a[i]]));
+            v[c[i]] = add_128(v[c[i]], v[d[i]]);
+            v[b[i]] = rot12_128(xor_128(v[b[i]], v[c[i]]));
+            v[a[i]] = add_128(add_128(v[a[i]], v[b[i]]), my[i]);
+            v[d[i]] = rot8_128(xor_128(v[d[i]], v[a[i]]));
+            v[c[i]] = add_128(v[c[i]], v[d[i]]);
+            v[b[i]] = rot7_128(xor_128(v[b[i]], v[c[i]]));
+        }
+    }
+}
+
 /// Executes one round of 4-way parallel BLAKE3 permutation across 16 NEON vector registers.
 ///
 /// # Safety
@@ -130,123 +155,25 @@ pub unsafe fn rot7_128(x: uint32x4_t) -> uint32x4_t {
 #[inline(always)]
 pub unsafe fn round_fn4(v: &mut [uint32x4_t; 16], m: &[uint32x4_t; 16], r: usize) {
     unsafe {
-        let schedule = &MSG_SCHEDULE[r];
-
-        // Column mixing step
-        v[0] = add_128(v[0], m[schedule[0]]);
-        v[1] = add_128(v[1], m[schedule[2]]);
-        v[2] = add_128(v[2], m[schedule[4]]);
-        v[3] = add_128(v[3], m[schedule[6]]);
-        v[0] = add_128(v[0], v[4]);
-        v[1] = add_128(v[1], v[5]);
-        v[2] = add_128(v[2], v[6]);
-        v[3] = add_128(v[3], v[7]);
-        v[12] = xor_128(v[12], v[0]);
-        v[13] = xor_128(v[13], v[1]);
-        v[14] = xor_128(v[14], v[2]);
-        v[15] = xor_128(v[15], v[3]);
-        v[12] = rot16_128(v[12]);
-        v[13] = rot16_128(v[13]);
-        v[14] = rot16_128(v[14]);
-        v[15] = rot16_128(v[15]);
-        v[8] = add_128(v[8], v[12]);
-        v[9] = add_128(v[9], v[13]);
-        v[10] = add_128(v[10], v[14]);
-        v[11] = add_128(v[11], v[15]);
-        v[4] = xor_128(v[4], v[8]);
-        v[5] = xor_128(v[5], v[9]);
-        v[6] = xor_128(v[6], v[10]);
-        v[7] = xor_128(v[7], v[11]);
-        v[4] = rot12_128(v[4]);
-        v[5] = rot12_128(v[5]);
-        v[6] = rot12_128(v[6]);
-        v[7] = rot12_128(v[7]);
-        v[0] = add_128(v[0], m[schedule[1]]);
-        v[1] = add_128(v[1], m[schedule[3]]);
-        v[2] = add_128(v[2], m[schedule[5]]);
-        v[3] = add_128(v[3], m[schedule[7]]);
-        v[0] = add_128(v[0], v[4]);
-        v[1] = add_128(v[1], v[5]);
-        v[2] = add_128(v[2], v[6]);
-        v[3] = add_128(v[3], v[7]);
-        v[12] = xor_128(v[12], v[0]);
-        v[13] = xor_128(v[13], v[1]);
-        v[14] = xor_128(v[14], v[2]);
-        v[15] = xor_128(v[15], v[3]);
-        v[12] = rot8_128(v[12]);
-        v[13] = rot8_128(v[13]);
-        v[14] = rot8_128(v[14]);
-        v[15] = rot8_128(v[15]);
-        v[8] = add_128(v[8], v[12]);
-        v[9] = add_128(v[9], v[13]);
-        v[10] = add_128(v[10], v[14]);
-        v[11] = add_128(v[11], v[15]);
-        v[4] = xor_128(v[4], v[8]);
-        v[5] = xor_128(v[5], v[9]);
-        v[6] = xor_128(v[6], v[10]);
-        v[7] = xor_128(v[7], v[11]);
-        v[4] = rot7_128(v[4]);
-        v[5] = rot7_128(v[5]);
-        v[6] = rot7_128(v[6]);
-        v[7] = rot7_128(v[7]);
-
-        // Diagonal mixing step
-        v[0] = add_128(v[0], m[schedule[8]]);
-        v[1] = add_128(v[1], m[schedule[10]]);
-        v[2] = add_128(v[2], m[schedule[12]]);
-        v[3] = add_128(v[3], m[schedule[14]]);
-        v[0] = add_128(v[0], v[5]);
-        v[1] = add_128(v[1], v[6]);
-        v[2] = add_128(v[2], v[7]);
-        v[3] = add_128(v[3], v[4]);
-        v[15] = xor_128(v[15], v[0]);
-        v[12] = xor_128(v[12], v[1]);
-        v[13] = xor_128(v[13], v[2]);
-        v[14] = xor_128(v[14], v[3]);
-        v[15] = rot16_128(v[15]);
-        v[12] = rot16_128(v[12]);
-        v[13] = rot16_128(v[13]);
-        v[14] = rot16_128(v[14]);
-        v[10] = add_128(v[10], v[15]);
-        v[11] = add_128(v[11], v[12]);
-        v[8] = add_128(v[8], v[13]);
-        v[9] = add_128(v[9], v[14]);
-        v[5] = xor_128(v[5], v[10]);
-        v[6] = xor_128(v[6], v[11]);
-        v[7] = xor_128(v[7], v[8]);
-        v[4] = xor_128(v[4], v[9]);
-        v[5] = rot12_128(v[5]);
-        v[6] = rot12_128(v[6]);
-        v[7] = rot12_128(v[7]);
-        v[4] = rot12_128(v[4]);
-        v[0] = add_128(v[0], m[schedule[9]]);
-        v[1] = add_128(v[1], m[schedule[11]]);
-        v[2] = add_128(v[2], m[schedule[13]]);
-        v[3] = add_128(v[3], m[schedule[15]]);
-        v[0] = add_128(v[0], v[5]);
-        v[1] = add_128(v[1], v[6]);
-        v[2] = add_128(v[2], v[7]);
-        v[3] = add_128(v[3], v[4]);
-        v[15] = xor_128(v[15], v[0]);
-        v[12] = xor_128(v[12], v[1]);
-        v[13] = xor_128(v[13], v[2]);
-        v[14] = xor_128(v[14], v[3]);
-        v[15] = rot8_128(v[15]);
-        v[12] = rot8_128(v[12]);
-        v[13] = rot8_128(v[13]);
-        v[14] = rot8_128(v[14]);
-        v[10] = add_128(v[10], v[15]);
-        v[11] = add_128(v[11], v[12]);
-        v[8] = add_128(v[8], v[13]);
-        v[9] = add_128(v[9], v[14]);
-        v[5] = xor_128(v[5], v[10]);
-        v[6] = xor_128(v[6], v[11]);
-        v[7] = xor_128(v[7], v[8]);
-        v[4] = xor_128(v[4], v[9]);
-        v[5] = rot7_128(v[5]);
-        v[6] = rot7_128(v[6]);
-        v[7] = rot7_128(v[7]);
-        v[4] = rot7_128(v[4]);
+        let s = &MSG_SCHEDULE[r];
+        g4_quarter_rounds(
+            v,
+            [0, 1, 2, 3],
+            [4, 5, 6, 7],
+            [8, 9, 10, 11],
+            [12, 13, 14, 15],
+            [m[s[0]], m[s[2]], m[s[4]], m[s[6]]],
+            [m[s[1]], m[s[3]], m[s[5]], m[s[7]]],
+        );
+        g4_quarter_rounds(
+            v,
+            [0, 1, 2, 3],
+            [5, 6, 7, 4],
+            [10, 11, 8, 9],
+            [15, 12, 13, 14],
+            [m[s[8]], m[s[10]], m[s[12]], m[s[14]]],
+            [m[s[9]], m[s[11]], m[s[13]], m[s[15]]],
+        );
     }
 }
 
@@ -345,17 +272,7 @@ pub fn hash4_neon(
     }
 
     unsafe {
-        let mut h_vecs = [
-            set1_128(chunk.key[0]),
-            set1_128(chunk.key[1]),
-            set1_128(chunk.key[2]),
-            set1_128(chunk.key[3]),
-            set1_128(chunk.key[4]),
-            set1_128(chunk.key[5]),
-            set1_128(chunk.key[6]),
-            set1_128(chunk.key[7]),
-        ];
-
+        let mut h_vecs: [uint32x4_t; 8] = core::array::from_fn(|i| set1_128(chunk.key[i]));
         let (counter_low_vec, counter_high_vec) =
             load_counters4(chunk.counter, chunk.increment_counter);
         let mut block_flags = chunk.flags | chunk.flags_start;
@@ -389,22 +306,13 @@ pub fn hash4_neon(
                 block_flags_vec,
             ];
 
-            round_fn4(&mut v, &msg_vecs, 0);
-            round_fn4(&mut v, &msg_vecs, 1);
-            round_fn4(&mut v, &msg_vecs, 2);
-            round_fn4(&mut v, &msg_vecs, 3);
-            round_fn4(&mut v, &msg_vecs, 4);
-            round_fn4(&mut v, &msg_vecs, 5);
-            round_fn4(&mut v, &msg_vecs, 6);
+            for r in 0..7 {
+                round_fn4(&mut v, &msg_vecs, r);
+            }
 
-            h_vecs[0] = xor_128(v[0], v[8]);
-            h_vecs[1] = xor_128(v[1], v[9]);
-            h_vecs[2] = xor_128(v[2], v[10]);
-            h_vecs[3] = xor_128(v[3], v[11]);
-            h_vecs[4] = xor_128(v[4], v[12]);
-            h_vecs[5] = xor_128(v[5], v[13]);
-            h_vecs[6] = xor_128(v[6], v[14]);
-            h_vecs[7] = xor_128(v[7], v[15]);
+            for i in 0..8 {
+                h_vecs[i] = xor_128(v[i], v[i + 8]);
+            }
 
             block_flags = chunk.flags;
         }

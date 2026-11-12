@@ -18,175 +18,165 @@ struct CandidateScore {
     final_confidence: f32,
 }
 
-/// Detects character set encoding for given raw byte sequence with confidence score [0.0..1.0].
-pub fn detect_charset_with_confidence(data: &[u8]) -> (&'static str, f32) {
-    if data.is_empty() {
-        return ("ASCII", 1.0);
+struct CjkTracker {
+    kind: CharsetKind,
+    csm: CodingStateMachine,
+    score: u32,
+    active: bool,
+    scorer: fn(u8, u8) -> u32,
+}
+
+impl CjkTracker {
+    fn new(kind: CharsetKind, scorer: fn(u8, u8) -> u32) -> Self {
+        Self {
+            kind,
+            csm: CodingStateMachine::new(kind),
+            score: 0,
+            active: true,
+            scorer,
+        }
     }
 
-    // 1. SIMD ASCII Fast-Path: If pure 7-bit ASCII, return ASCII immediately.
-    if data.is_ascii() {
-        return ("ASCII", 1.0);
+    #[inline]
+    fn feed_byte(&mut self, b: u8) {
+        if !self.active {
+            return;
+        }
+        if let Some((tok, len)) = self.csm.feed_byte(b) {
+            if len == 2 {
+                self.score += (self.scorer)(tok[0], tok[1]);
+            }
+        } else if !self.csm.is_valid() {
+            self.active = false;
+        }
     }
 
-    // Check for explicit UTF-8 BOM
-    if data.starts_with(b"\xEF\xBB\xBF") {
-        return ("UTF-8", 1.0);
+    fn density(&self) -> f32 {
+        let mb = self.csm.multibyte_chars();
+        if self.csm.is_valid() && mb > 0 {
+            (self.score as f32) / (mb as f32 * 100.0)
+        } else {
+            0.0
+        }
     }
 
-    let is_valid_utf8 = std::str::from_utf8(data).is_ok();
-    if is_valid_utf8 {
-        return ("UTF-8", 1.0);
+    fn to_candidate(&self, is_chardet: bool) -> CandidateScore {
+        CandidateScore {
+            kind: self.kind,
+            is_valid_csm: self.csm.is_valid(),
+            final_confidence: calc_cjk_confidence(
+                self.csm.is_valid(),
+                self.csm.multibyte_chars(),
+                self.score,
+                is_chardet,
+            ),
+        }
     }
+}
 
-    // 2. CSM State Machine Pruning & 2-Byte Bigram Statistical Evaluation (Fast SIMD/Array Pass)
-    let mut csm_gb = CodingStateMachine::new(CharsetKind::Gb18030);
-    let mut csm_sjis = CodingStateMachine::new(CharsetKind::ShiftJis);
-    let mut csm_big5 = CodingStateMachine::new(CharsetKind::Big5);
-    let mut csm_euckr = CodingStateMachine::new(CharsetKind::EucKr);
+fn calc_cjk_confidence(is_valid: bool, mb_count: usize, acc_score: u32, is_chardet: bool) -> f32 {
+    if !is_valid {
+        return 0.0;
+    }
+    if mb_count == 0 {
+        return if is_chardet { 0.5 } else { 0.1 };
+    }
+    let base_density = (acc_score as f32) / (mb_count as f32 * 100.0);
+    // Genuine CJK multi-byte text will have substantial bigram density (>= 0.20).
+    // If density is below 0.20, it is random or single-byte CP437 ASCII pair collisions.
+    if base_density < 0.20 {
+        return 0.0;
+    }
+    let chardet_boost = if is_chardet { 0.35 } else { 0.0 };
+    (base_density * 0.75 + chardet_boost).min(1.0)
+}
+
+fn detect_fast_ascii_or_utf8(data: &[u8]) -> Option<(&'static str, f32)> {
+    if data.is_empty() || data.is_ascii() {
+        return Some(("ASCII", 1.0));
+    }
+    if data.starts_with(b"\xEF\xBB\xBF") || std::str::from_utf8(data).is_ok() {
+        return Some(("UTF-8", 1.0));
+    }
+    None
+}
+
+fn evaluate_csm_trackers(data: &[u8]) -> ([CjkTracker; 4], CodingStateMachine) {
+    let mut trackers = [
+        CjkTracker::new(CharsetKind::Gb18030, score_gb18030_2byte),
+        CjkTracker::new(CharsetKind::ShiftJis, score_shift_jis_2byte),
+        CjkTracker::new(CharsetKind::Big5, score_big5_2byte),
+        CjkTracker::new(CharsetKind::EucKr, score_euc_kr_2byte),
+    ];
     let mut csm_win = CodingStateMachine::new(CharsetKind::Windows1252);
 
-    let mut score_gb: u32 = 0;
-    let mut score_sjis: u32 = 0;
-    let mut score_big5: u32 = 0;
-    let mut score_euckr: u32 = 0;
-
-    let mut gb_ok = true;
-    let mut sjis_ok = true;
-    let mut big5_ok = true;
-    let mut euckr_ok = true;
-
     for &b in data {
-        if gb_ok {
-            if let Some((tok, len)) = csm_gb.feed_byte(b) {
-                if len == 2 {
-                    score_gb += score_gb18030_2byte(tok[0], tok[1]);
-                }
-            } else if !csm_gb.is_valid() {
-                gb_ok = false;
-            }
-        }
-        if sjis_ok {
-            if let Some((tok, len)) = csm_sjis.feed_byte(b) {
-                if len == 2 {
-                    score_sjis += score_shift_jis_2byte(tok[0], tok[1]);
-                }
-            } else if !csm_sjis.is_valid() {
-                sjis_ok = false;
-            }
-        }
-        if big5_ok {
-            if let Some((tok, len)) = csm_big5.feed_byte(b) {
-                if len == 2 {
-                    score_big5 += score_big5_2byte(tok[0], tok[1]);
-                }
-            } else if !csm_big5.is_valid() {
-                big5_ok = false;
-            }
-        }
-        if euckr_ok {
-            if let Some((tok, len)) = csm_euckr.feed_byte(b) {
-                if len == 2 {
-                    score_euckr += score_euc_kr_2byte(tok[0], tok[1]);
-                }
-            } else if !csm_euckr.is_valid() {
-                euckr_ok = false;
-            }
+        for tracker in &mut trackers {
+            tracker.feed_byte(b);
         }
         let _ = csm_win.feed_byte(b);
     }
 
-    let density_gb = if csm_gb.is_valid() && csm_gb.multibyte_chars() > 0 {
-        (score_gb as f32) / (csm_gb.multibyte_chars() as f32 * 100.0)
-    } else {
-        0.0
-    };
-    let density_sjis = if csm_sjis.is_valid() && csm_sjis.multibyte_chars() > 0 {
-        (score_sjis as f32) / (csm_sjis.multibyte_chars() as f32 * 100.0)
-    } else {
-        0.0
-    };
-    let density_big5 = if csm_big5.is_valid() && csm_big5.multibyte_chars() > 0 {
-        (score_big5 as f32) / (csm_big5.multibyte_chars() as f32 * 100.0)
-    } else {
-        0.0
-    };
-    let density_euckr = if csm_euckr.is_valid() && csm_euckr.multibyte_chars() > 0 {
-        (score_euckr as f32) / (csm_euckr.multibyte_chars() as f32 * 100.0)
-    } else {
-        0.0
-    };
+    (trackers, csm_win)
+}
 
-    // Fast-path: If single decisive CJK match with strong bigram density
-    let cjk_scores = [
-        (CharsetKind::Gb18030, density_gb),
-        (CharsetKind::ShiftJis, density_sjis),
-        (CharsetKind::Big5, density_big5),
-        (CharsetKind::EucKr, density_euckr),
+fn find_decisive_cjk_match(trackers: &[CjkTracker; 4]) -> Option<(&'static str, f32)> {
+    let mut sorted_cjk = [
+        (trackers[0].kind, trackers[0].density()),
+        (trackers[1].kind, trackers[1].density()),
+        (trackers[2].kind, trackers[2].density()),
+        (trackers[3].kind, trackers[3].density()),
     ];
-    let mut sorted_cjk = cjk_scores;
     sorted_cjk.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-    if sorted_cjk[0].1 > 0.15 && (sorted_cjk[0].1 > sorted_cjk[1].1 * 1.12 || sorted_cjk[1].1 == 0.0) {
-        return (sorted_cjk[0].0.canonical_name(), (sorted_cjk[0].1 * 0.95).min(1.0));
+    let top_wins = sorted_cjk[0].1 > sorted_cjk[1].1 * 1.12 || sorted_cjk[1].1 == 0.0;
+    if sorted_cjk[0].1 > 0.15 && top_wins {
+        Some((sorted_cjk[0].0.canonical_name(), (sorted_cjk[0].1 * 0.95).min(1.0)))
+    } else {
+        None
+    }
+}
+
+fn matches_chardet_kind(kind: CharsetKind, chardet_name: &str) -> bool {
+    match kind {
+        CharsetKind::Utf8 => chardet_name.eq_ignore_ascii_case("utf-8"),
+        CharsetKind::Gb18030 => {
+            chardet_name.eq_ignore_ascii_case("gb18030")
+                || chardet_name.eq_ignore_ascii_case("gbk")
+        }
+        CharsetKind::ShiftJis => chardet_name.eq_ignore_ascii_case("shift_jis"),
+        CharsetKind::Big5 => chardet_name.eq_ignore_ascii_case("big5"),
+        CharsetKind::EucKr => chardet_name.eq_ignore_ascii_case("euc-kr"),
+        CharsetKind::Windows1252 => chardet_name.eq_ignore_ascii_case("windows-1252"),
+    }
+}
+
+/// Detects character set encoding for given raw byte sequence with confidence score [0.0..1.0].
+pub fn detect_charset_with_confidence(data: &[u8]) -> (&'static str, f32) {
+    // 1. SIMD ASCII & strict UTF-8 fast-path.
+    if let Some(fast) = detect_fast_ascii_or_utf8(data) {
+        return fast;
+    }
+
+    // 2. CSM State Machine Pruning & 2-Byte Bigram Statistical Evaluation
+    let (trackers, csm_win) = evaluate_csm_trackers(data);
+    if let Some(decisive) = find_decisive_cjk_match(&trackers) {
+        return decisive;
     }
 
     // 3. Chardetng oracle prediction fallback
     let mut chardet = EncodingDetector::new();
     chardet.feed(data, true);
-    let chardet_guess = chardet.guess(None, true);
-    let chardet_name = chardet_guess.name();
+    let chardet_name = chardet.guess(None, true).name();
 
-    let is_chardet_gb = chardet_name.eq_ignore_ascii_case("gb18030") || chardet_name.eq_ignore_ascii_case("gbk");
-    let is_chardet_sjis = chardet_name.eq_ignore_ascii_case("shift_jis");
-    let is_chardet_big5 = chardet_name.eq_ignore_ascii_case("big5");
-    let is_chardet_euckr = chardet_name.eq_ignore_ascii_case("euc-kr");
-    let is_chardet_win1252 = chardet_name.eq_ignore_ascii_case("windows-1252");
+    let candidates: [CandidateScore; 4] = std::array::from_fn(|i| {
+        let is_match = matches_chardet_kind(trackers[i].kind, chardet_name);
+        trackers[i].to_candidate(is_match)
+    });
 
-    let calc_confidence = |is_valid: bool, mb_count: usize, acc_score: u32, is_chardet: bool| -> f32 {
-        if !is_valid {
-            return 0.0;
-        }
-        if mb_count == 0 {
-            return if is_chardet { 0.5 } else { 0.1 };
-        }
-        let base_density = (acc_score as f32) / (mb_count as f32 * 100.0);
-        // Genuine CJK multi-byte text will have substantial bigram density (>= 0.20).
-        // If density is below 0.20, it is random or single-byte CP437 ASCII pair collisions.
-        if base_density < 0.20 {
-            return 0.0;
-        }
-        let chardet_boost = if is_chardet { 0.35 } else { 0.0 };
-        (base_density * 0.75 + chardet_boost).min(1.0)
-    };
-
-    let candidates = [
-        CandidateScore {
-            kind: CharsetKind::Gb18030,
-            is_valid_csm: csm_gb.is_valid(),
-            final_confidence: calc_confidence(csm_gb.is_valid(), csm_gb.multibyte_chars(), score_gb, is_chardet_gb),
-        },
-        CandidateScore {
-            kind: CharsetKind::ShiftJis,
-            is_valid_csm: csm_sjis.is_valid(),
-            final_confidence: calc_confidence(csm_sjis.is_valid(), csm_sjis.multibyte_chars(), score_sjis, is_chardet_sjis),
-        },
-        CandidateScore {
-            kind: CharsetKind::Big5,
-            is_valid_csm: csm_big5.is_valid(),
-            final_confidence: calc_confidence(csm_big5.is_valid(), csm_big5.multibyte_chars(), score_big5, is_chardet_big5),
-        },
-        CandidateScore {
-            kind: CharsetKind::EucKr,
-            is_valid_csm: csm_euckr.is_valid(),
-            final_confidence: calc_confidence(csm_euckr.is_valid(), csm_euckr.multibyte_chars(), score_euckr, is_chardet_euckr),
-        },
-    ];
-
-    // Find the highest confidence among valid CJK candidates
     let best_candidate = candidates
         .iter()
         .filter(|c| c.is_valid_csm)
-        .max_by(|a, b| a.final_confidence.partial_cmp(&b.final_confidence).unwrap());
+        .max_by(|a, b| a.final_confidence.total_cmp(&b.final_confidence));
 
     if let Some(best) = best_candidate {
         if best.final_confidence > 0.20 {
@@ -195,7 +185,7 @@ pub fn detect_charset_with_confidence(data: &[u8]) -> (&'static str, f32) {
     }
 
     // Fallbacks
-    if is_chardet_win1252 || csm_win.is_valid() {
+    if matches_chardet_kind(CharsetKind::Windows1252, chardet_name) || csm_win.is_valid() {
         ("windows-1252", 0.5)
     } else {
         ("UTF-8", 0.1)

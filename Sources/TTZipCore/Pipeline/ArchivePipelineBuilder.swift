@@ -252,6 +252,7 @@ public struct ArchiveOptionsBuilder: Sendable, Equatable {
     public var level: ArchiveCompressionLevel?
     public var password: String?
     public var cpuThreads: Int
+    public var recoveryRecordRedundancyPercent: Int
     public var zipOptions: ZipFormatOptions
     public var sevenZipOptions: SevenZipFormatOptions
     public var zstdOptions: ZstdFormatOptions
@@ -262,6 +263,7 @@ public struct ArchiveOptionsBuilder: Sendable, Equatable {
     
     public init(baseOptions: ArchiveAdvancedOptions = .defaultOptions) {
         self.cpuThreads = baseOptions.cpuThreads
+        self.recoveryRecordRedundancyPercent = baseOptions.recoveryRecordRedundancyPercent
         self.zipOptions = baseOptions.zipOptions
         self.sevenZipOptions = baseOptions.sevenZipOptions
         self.zstdOptions = baseOptions.zstdOptions
@@ -457,10 +459,18 @@ public struct ArchiveOptionsBuilder: Sendable, Equatable {
         copy.wimOptions = options
         return copy
     }
+
+    @discardableResult
+    public func withRecoveryRecordRedundancyPercent(_ percent: Int) -> ArchiveOptionsBuilder {
+        var copy = self
+        copy.recoveryRecordRedundancyPercent = percent
+        return copy
+    }
     
     public func build() -> ArchiveAdvancedOptions {
         return ArchiveAdvancedOptions(
             cpuThreads: cpuThreads,
+            recoveryRecordRedundancyPercent: recoveryRecordRedundancyPercent,
             zipOptions: zipOptions,
             sevenZipOptions: sevenZipOptions,
             zstdOptions: zstdOptions,

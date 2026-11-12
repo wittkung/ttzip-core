@@ -3,8 +3,11 @@
 
 //! Systematic Cauchy Reed-Solomon Erasure Coding and Matrix Inversion over $\text{GF}(2^8)$.
 
-use super::gf8::{gf_inv, gf_mul, gf8_mul_add_slice};
+use super::gf8::{gf_inv, gf_mul, gf8_mul_acc_slice};
+use rayon::prelude::*;
 use ttzip_types::TTZipStatus;
+
+const PARALLEL_PARITY_THRESHOLD_BYTES: usize = 65536;
 
 /// Constructs an $M \times K$ Cauchy generator matrix.
 ///
@@ -20,6 +23,35 @@ pub fn create_cauchy_matrix(rows_m: usize, cols_k: usize) -> Vec<u8> {
     matrix
 }
 
+fn eliminate_pivot_column(aug: &mut [u8], n: usize, col: usize) -> Result<(), TTZipStatus> {
+    let width = n * 2;
+    let pivot_row = (col..n)
+        .find(|&r| aug[r * width + col] != 0)
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+
+    if pivot_row != col {
+        for k in 0..width {
+            aug.swap(col * width + k, pivot_row * width + k);
+        }
+    }
+
+    let pivot_inv = gf_inv(aug[col * width + col]);
+    for k in 0..width {
+        aug[col * width + k] = gf_mul(aug[col * width + k], pivot_inv);
+    }
+
+    for r in 0..n {
+        let factor = aug[r * width + col];
+        if r == col || factor == 0 {
+            continue;
+        }
+        for k in 0..width {
+            aug[r * width + k] ^= gf_mul(aug[col * width + k], factor);
+        }
+    }
+    Ok(())
+}
+
 /// Inverts an $N \times N$ matrix over $\text{GF}(2^8)$ using Gaussian elimination.
 pub fn invert_matrix(matrix: &[u8], n: usize) -> Result<Vec<u8>, TTZipStatus> {
     if matrix.len() != n * n || n == 0 {
@@ -28,56 +60,18 @@ pub fn invert_matrix(matrix: &[u8], n: usize) -> Result<Vec<u8>, TTZipStatus> {
 
     let width = n * 2;
     let mut aug = vec![0u8; n * width];
-
     for i in 0..n {
-        for j in 0..n {
-            aug[i * width + j] = matrix[i * n + j];
-        }
-        for j in 0..n {
-            aug[i * width + n + j] = if i == j { 1 } else { 0 };
-        }
+        aug[i * width..i * width + n].copy_from_slice(&matrix[i * n..(i + 1) * n]);
+        aug[i * width + n + i] = 1;
     }
 
     for col in 0..n {
-        let mut pivot_row = col;
-        while pivot_row < n && aug[pivot_row * width + col] == 0 {
-            pivot_row += 1;
-        }
-        if pivot_row == n {
-            return Err(TTZipStatus::ErrCorruptHeader); // Singular matrix
-        }
-
-        if pivot_row != col {
-            for k in 0..width {
-                aug.swap(col * width + k, pivot_row * width + k);
-            }
-        }
-
-        let pivot_inv = gf_inv(aug[col * width + col]);
-        for k in 0..width {
-            aug[col * width + k] = gf_mul(aug[col * width + k], pivot_inv);
-        }
-
-        for r in 0..n {
-            if r == col {
-                continue;
-            }
-            let factor = aug[r * width + col];
-            if factor == 0 {
-                continue;
-            }
-            for k in 0..width {
-                let term = gf_mul(aug[col * width + k], factor);
-                aug[r * width + k] ^= term;
-            }
-        }
+        eliminate_pivot_column(&mut aug, n, col)?;
     }
 
     let mut inv = vec![0u8; n * n];
     for i in 0..n {
-        for j in 0..n {
-            inv[i * n + j] = aug[i * width + n + j];
-        }
+        inv[i * n..(i + 1) * n].copy_from_slice(&aug[i * width + n..i * width + width]);
     }
     Ok(inv)
 }
@@ -104,8 +98,9 @@ impl ReedSolomonEngine {
         })
     }
 
-    /// Encodes $K$ data shards into $M$ parity shards.
-    pub fn encode(
+    /// Encodes $K$ data shards into $M$ parity shards in-place, parallelizing across parity
+    /// rows via Rayon when `m * shard_len >= 65536`.
+    pub fn encode_in_place(
         &self,
         data_shards: &[&[u8]],
         parity_shards: &mut [&mut [u8]],
@@ -113,27 +108,69 @@ impl ReedSolomonEngine {
         if data_shards.len() != self.k || parity_shards.len() != self.m {
             return Err(TTZipStatus::ErrInvalidParam);
         }
-        let block_size = data_shards[0].len();
-        if block_size == 0 {
+        let shard_len = data_shards[0].len();
+        if shard_len == 0
+            || data_shards.iter().any(|s| s.len() != shard_len)
+            || parity_shards.iter().any(|s| s.len() != shard_len)
+        {
             return Err(TTZipStatus::ErrInvalidParam);
         }
 
-        for (p, p_slice) in parity_shards.iter_mut().enumerate() {
-            if p_slice.len() != block_size {
-                return Err(TTZipStatus::ErrInvalidParam);
-            }
-            p_slice.fill(0);
-            for (d, d_slice) in data_shards.iter().enumerate() {
-                if d_slice.len() != block_size {
-                    return Err(TTZipStatus::ErrInvalidParam);
-                }
-                let coeff = self.cauchy_matrix[p * self.k + d];
-                if coeff != 0 {
-                    gf8_mul_add_slice(coeff, d_slice, p_slice);
+        if self.m * shard_len >= PARALLEL_PARITY_THRESHOLD_BYTES {
+            parity_shards
+                .par_iter_mut()
+                .enumerate()
+                .for_each(|(p, p_slice)| {
+                    p_slice.fill(0);
+                    let row = &self.cauchy_matrix[p * self.k..(p + 1) * self.k];
+                    for (d, d_slice) in data_shards.iter().enumerate() {
+                        let coeff = row[d];
+                        if coeff != 0 {
+                            gf8_mul_acc_slice(coeff, d_slice, p_slice);
+                        }
+                    }
+                });
+        } else {
+            for (p, p_slice) in parity_shards.iter_mut().enumerate() {
+                p_slice.fill(0);
+                let row = &self.cauchy_matrix[p * self.k..(p + 1) * self.k];
+                for (d, d_slice) in data_shards.iter().enumerate() {
+                    let coeff = row[d];
+                    if coeff != 0 {
+                        gf8_mul_acc_slice(coeff, d_slice, p_slice);
+                    }
                 }
             }
         }
         Ok(())
+    }
+
+    /// Encodes $K$ data shards into $M$ parity shards.
+    #[inline]
+    pub fn encode(
+        &self,
+        data_shards: &[&[u8]],
+        parity_shards: &mut [&mut [u8]],
+    ) -> Result<(), TTZipStatus> {
+        self.encode_in_place(data_shards, parity_shards)
+    }
+
+    fn build_decode_submatrix(&self, available_indices: &[usize]) -> Result<Vec<u8>, TTZipStatus> {
+        let k = self.k;
+        let mut submatrix = vec![0u8; k * k];
+        for (r, &idx) in available_indices.iter().take(k).enumerate() {
+            if idx < k {
+                submatrix[r * k + idx] = 1;
+            } else {
+                let parity_row = idx - k;
+                if parity_row >= self.m {
+                    return Err(TTZipStatus::ErrInvalidParam);
+                }
+                submatrix[r * k..(r + 1) * k]
+                    .copy_from_slice(&self.cauchy_matrix[parity_row * k..(parity_row + 1) * k]);
+            }
+        }
+        Ok(submatrix)
     }
 
     /// Reconstructs missing data shards from any $K$ available shards (data or parity).
@@ -157,29 +194,11 @@ impl ReedSolomonEngine {
             return Err(TTZipStatus::ErrInvalidParam);
         }
 
-        let k = self.k;
-        let mut submatrix = vec![0u8; k * k];
-        for r in 0..k {
-            let idx = available_indices[r];
-            if idx < k {
-                for c in 0..k {
-                    submatrix[r * k + c] = if c == idx { 1 } else { 0 };
-                }
-            } else {
-                let parity_row = idx - k;
-                if parity_row >= self.m {
-                    return Err(TTZipStatus::ErrInvalidParam);
-                }
-                for c in 0..k {
-                    submatrix[r * k + c] = self.cauchy_matrix[parity_row * k + c];
-                }
-            }
-        }
-
-        let inv_matrix = invert_matrix(&submatrix, k)?;
+        let submatrix = self.build_decode_submatrix(available_indices)?;
+        let inv_matrix = invert_matrix(&submatrix, self.k)?;
 
         for (m_idx, &missing_col) in missing_indices.iter().enumerate() {
-            if missing_col >= k {
+            if missing_col >= self.k {
                 continue;
             }
             let dst = &mut reconstructed[m_idx];
@@ -188,10 +207,10 @@ impl ReedSolomonEngine {
             }
             dst.fill(0);
 
-            for r in 0..k {
-                let coeff = inv_matrix[missing_col * k + r];
+            for (r, shard) in available_shards.iter().take(self.k).enumerate() {
+                let coeff = inv_matrix[missing_col * self.k + r];
                 if coeff != 0 {
-                    gf8_mul_add_slice(coeff, available_shards[r], dst);
+                    gf8_mul_acc_slice(coeff, shard, dst);
                 }
             }
         }

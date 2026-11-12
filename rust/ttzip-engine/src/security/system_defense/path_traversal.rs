@@ -66,68 +66,9 @@ impl PathTraversalProtectionGuard {
 
     /// Validates and sanitizes a raw path string, returning a clean relative path.
     pub fn sanitize_path(&self, raw_path: &str) -> Result<String, SystemDefenseError> {
-        // 1. Length bound check
-        if raw_path.len() > self.options.max_path_len {
-            return Err(SystemDefenseError::PathTooLong {
-                len: raw_path.len(),
-                max_len: self.options.max_path_len,
-            });
-        }
+        self.check_length_and_null_bytes(raw_path)?;
+        self.check_path_prefixes_and_encodings(raw_path)?;
 
-        // 2. Null-byte injection check
-        if raw_path.contains('\0') {
-            return Err(SystemDefenseError::NullByteInjectionDetected {
-                path: raw_path.replace('\0', "\\0"),
-            });
-        }
-
-        // 3. Absolute path and Windows namespace device checks
-        let trimmed = raw_path.trim();
-        if self.options.disallow_absolute {
-            if trimmed.starts_with('/') || trimmed.starts_with('\\') {
-                return Err(SystemDefenseError::PathTraversalAttackDetected {
-                    path: raw_path.to_string(),
-                    reason: "Absolute root prefix is prohibited".to_string(),
-                });
-            }
-            // Check Windows drive letter: `C:` or `D:\`
-            if trimmed.len() >= 2 && trimmed.as_bytes()[1] == b':' {
-                let drive_letter = trimmed.as_bytes()[0];
-                if drive_letter.is_ascii_alphabetic() {
-                    return Err(SystemDefenseError::PathTraversalAttackDetected {
-                        path: raw_path.to_string(),
-                        reason: "Drive letter prefix is prohibited".to_string(),
-                    });
-                }
-            }
-        }
-
-        // Check malicious canonical device namespace prefixes
-        if self.options.disallow_malicious_canonical_paths
-            && (trimmed.starts_with(r"\\?\")
-                || trimmed.starts_with(r"\\.\")
-                || trimmed.starts_with(r"\??\")
-                || trimmed.starts_with("//?/")
-                || trimmed.starts_with("//./"))
-        {
-            return Err(SystemDefenseError::PathTraversalAttackDetected {
-                path: raw_path.to_string(),
-                reason: "Windows namespace device prefix is prohibited".to_string(),
-            });
-        }
-
-        // Check for URL-encoded traversal patterns (%2e%2e, %2f, %5c)
-        if self.options.disallow_malicious_canonical_paths {
-            let upper = trimmed.to_ascii_uppercase();
-            if upper.contains("%2E%2E") || upper.contains("%2F") || upper.contains("%5C") {
-                return Err(SystemDefenseError::PathTraversalAttackDetected {
-                    path: raw_path.to_string(),
-                    reason: "URL-encoded traversal sequence is prohibited".to_string(),
-                });
-            }
-        }
-
-        // 4. Single-pass stack-based segment normalization
         let mut stack: Vec<&str> = Vec::new();
         for segment in raw_path.split(['/', '\\']) {
             let clean_seg = segment.trim();
@@ -143,30 +84,7 @@ impl PathTraversalProtectionGuard {
                     });
                 }
             } else {
-                // Check for NTFS Alternate Data Stream syntax
-                if self.options.disallow_malicious_canonical_paths && clean_seg.contains(':') {
-                    return Err(SystemDefenseError::PathTraversalAttackDetected {
-                        path: raw_path.to_string(),
-                        reason: "NTFS alternate data stream syntax (':') is prohibited".to_string(),
-                    });
-                }
-
-                // Check for multi-dot canonical bypass patterns (e.g. "...", "....")
-                if clean_seg.len() > 2 && clean_seg.chars().all(|c| c == '.') {
-                    return Err(SystemDefenseError::PathTraversalAttackDetected {
-                        path: raw_path.to_string(),
-                        reason: "Multi-dot sequence is prohibited".to_string(),
-                    });
-                }
-
-                // 5. Reserved device names check
-                if self.options.disallow_reserved_devices
-                    && Self::is_reserved_device_name(clean_seg)
-                {
-                    return Err(SystemDefenseError::ReservedDeviceNameDetected {
-                        segment: clean_seg.to_string(),
-                    });
-                }
+                self.validate_sanitized_segment(raw_path, clean_seg)?;
                 stack.push(clean_seg);
             }
         }
@@ -190,75 +108,15 @@ impl PathTraversalProtectionGuard {
         symlink_path: &str,
         target: &str,
     ) -> Result<String, SystemDefenseError> {
-        if target.len() > self.options.max_path_len {
-            return Err(SystemDefenseError::PathTooLong {
-                len: target.len(),
-                max_len: self.options.max_path_len,
-            });
-        }
+        self.check_length_and_null_bytes(target)?;
+        self.check_symlink_target_prefixes(symlink_path, target)?;
 
-        if target.contains('\0') {
-            return Err(SystemDefenseError::NullByteInjectionDetected {
-                path: target.replace('\0', "\\0"),
-            });
-        }
-
-        let trimmed_target = target.trim();
-        if self.options.disallow_absolute {
-            if trimmed_target.starts_with('/') || trimmed_target.starts_with('\\') {
-                return Err(SystemDefenseError::SymlinkEscapingDetected {
-                    path: symlink_path.to_string(),
-                    reason: "Symlink points to absolute path".to_string(),
-                });
-            }
-
-            if trimmed_target.len() >= 2 && trimmed_target.as_bytes()[1] == b':' {
-                let drive = trimmed_target.as_bytes()[0];
-                if drive.is_ascii_alphabetic() {
-                    return Err(SystemDefenseError::SymlinkEscapingDetected {
-                        path: symlink_path.to_string(),
-                        reason: "Symlink points to drive letter root".to_string(),
-                    });
-                }
-            }
-        }
-
-        if self.options.disallow_malicious_canonical_paths
-            && (trimmed_target.starts_with(r"\\?\")
-                || trimmed_target.starts_with(r"\\.\")
-                || trimmed_target.starts_with(r"\??\")
-                || trimmed_target.starts_with("//?/")
-                || trimmed_target.starts_with("//./"))
-        {
-            return Err(SystemDefenseError::SymlinkEscapingDetected {
-                path: symlink_path.to_string(),
-                reason: "Symlink points to Windows device namespace".to_string(),
-            });
-        }
-
-        if self.options.disallow_malicious_canonical_paths {
-            let upper = trimmed_target.to_ascii_uppercase();
-            if upper.contains("%2E%2E") || upper.contains("%2F") || upper.contains("%5C") {
-                return Err(SystemDefenseError::SymlinkEscapingDetected {
-                    path: symlink_path.to_string(),
-                    reason: "Symlink target contains URL-encoded traversal sequence".to_string(),
-                });
-            }
-        }
-
-        // Resolve target relative to symlink's parent directory
         let symlink_clean = symlink_path.replace('\\', "/");
         let parent_components: Vec<&str> = symlink_clean
             .split('/')
             .filter(|s| !s.is_empty() && *s != ".")
             .collect();
-
-        let parent_depth = if !parent_components.is_empty() {
-            parent_components.len() - 1
-        } else {
-            0
-        };
-
+        let parent_depth = parent_components.len().saturating_sub(1);
         let mut stack: Vec<&str> = parent_components[..parent_depth].to_vec();
 
         for segment in target.split(['/', '\\']) {
@@ -278,19 +136,7 @@ impl PathTraversalProtectionGuard {
                     });
                 }
             } else {
-                if self.options.disallow_reserved_devices && Self::is_reserved_device_name(clean) {
-                    return Err(SystemDefenseError::ReservedDeviceNameDetected {
-                        segment: clean.to_string(),
-                    });
-                }
-
-                if self.options.disallow_malicious_canonical_paths && clean.contains(':') {
-                    return Err(SystemDefenseError::PathTraversalAttackDetected {
-                        path: target.to_string(),
-                        reason: "NTFS alternate data stream in symlink target is prohibited".to_string(),
-                    });
-                }
-
+                self.validate_symlink_segment(target, clean)?;
                 stack.push(clean);
             }
         }
@@ -322,34 +168,8 @@ impl PathTraversalProtectionGuard {
                 .join(base_root)
         };
 
-        let target = abs_base.join(&clean_rel);
-
-        // Lexical normalization without disk I/O
-        let mut normalized = std::path::PathBuf::new();
-        for component in target.components() {
-            match component {
-                std::path::Component::Prefix(p) => normalized.push(std::path::Component::Prefix(p)),
-                std::path::Component::RootDir => normalized.push(std::path::Component::RootDir),
-                std::path::Component::CurDir => {}
-                std::path::Component::ParentDir => {
-                    normalized.pop();
-                }
-                std::path::Component::Normal(c) => normalized.push(c),
-            }
-        }
-
-        let mut norm_base = std::path::PathBuf::new();
-        for component in abs_base.components() {
-            match component {
-                std::path::Component::Prefix(p) => norm_base.push(std::path::Component::Prefix(p)),
-                std::path::Component::RootDir => norm_base.push(std::path::Component::RootDir),
-                std::path::Component::CurDir => {}
-                std::path::Component::ParentDir => {
-                    norm_base.pop();
-                }
-                std::path::Component::Normal(c) => norm_base.push(c),
-            }
-        }
+        let normalized = normalize_lexical_path(&abs_base.join(&clean_rel));
+        let norm_base = normalize_lexical_path(&abs_base);
 
         if !normalized.starts_with(&norm_base) {
             return Err(SystemDefenseError::PathTraversalAttackDetected {
@@ -362,27 +182,134 @@ impl PathTraversalProtectionGuard {
             });
         }
 
-        // If path or ancestors exist on disk and symlink traversal is disallowed, verify ancestors
         if self.options.disallow_symlink_traversal {
-            let mut current = norm_base.clone();
-            if let Ok(rel_components) = normalized.strip_prefix(&norm_base) {
-                for comp in rel_components.components() {
-                    if let std::path::Component::Normal(part) = comp {
-                        current.push(part);
-                        if let Ok(meta) = std::fs::symlink_metadata(&current) {
-                            if meta.file_type().is_symlink() {
-                                return Err(SystemDefenseError::SymlinkEscapingDetected {
-                                    path: current.display().to_string(),
-                                    reason: "Intermediate canonical directory component is an active symlink".to_string(),
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+            verify_no_symlink_ancestors(&norm_base, &normalized)?;
         }
 
         Ok(normalized)
+    }
+
+    fn check_length_and_null_bytes(&self, raw: &str) -> Result<(), SystemDefenseError> {
+        if raw.len() > self.options.max_path_len {
+            return Err(SystemDefenseError::PathTooLong {
+                len: raw.len(),
+                max_len: self.options.max_path_len,
+            });
+        }
+        if raw.contains('\0') {
+            return Err(SystemDefenseError::NullByteInjectionDetected {
+                path: raw.replace('\0', "\\0"),
+            });
+        }
+        Ok(())
+    }
+
+    fn check_path_prefixes_and_encodings(&self, raw_path: &str) -> Result<(), SystemDefenseError> {
+        let trimmed = raw_path.trim();
+        if self.options.disallow_absolute {
+            if trimmed.starts_with('/') || trimmed.starts_with('\\') {
+                return Err(SystemDefenseError::PathTraversalAttackDetected {
+                    path: raw_path.to_string(),
+                    reason: "Absolute root prefix is prohibited".to_string(),
+                });
+            }
+            if has_drive_letter_root(trimmed) {
+                return Err(SystemDefenseError::PathTraversalAttackDetected {
+                    path: raw_path.to_string(),
+                    reason: "Drive letter prefix is prohibited".to_string(),
+                });
+            }
+        }
+
+        if self.options.disallow_malicious_canonical_paths {
+            if has_windows_device_namespace(trimmed) {
+                return Err(SystemDefenseError::PathTraversalAttackDetected {
+                    path: raw_path.to_string(),
+                    reason: "Windows namespace device prefix is prohibited".to_string(),
+                });
+            }
+            if has_url_encoded_traversal(trimmed) {
+                return Err(SystemDefenseError::PathTraversalAttackDetected {
+                    path: raw_path.to_string(),
+                    reason: "URL-encoded traversal sequence is prohibited".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_sanitized_segment(&self, raw_path: &str, clean_seg: &str) -> Result<(), SystemDefenseError> {
+        if self.options.disallow_malicious_canonical_paths && clean_seg.contains(':') {
+            return Err(SystemDefenseError::PathTraversalAttackDetected {
+                path: raw_path.to_string(),
+                reason: "NTFS alternate data stream syntax (':') is prohibited".to_string(),
+            });
+        }
+        if clean_seg.len() > 2 && clean_seg.chars().all(|c| c == '.') {
+            return Err(SystemDefenseError::PathTraversalAttackDetected {
+                path: raw_path.to_string(),
+                reason: "Multi-dot sequence is prohibited".to_string(),
+            });
+        }
+        if self.options.disallow_reserved_devices && Self::is_reserved_device_name(clean_seg) {
+            return Err(SystemDefenseError::ReservedDeviceNameDetected {
+                segment: clean_seg.to_string(),
+            });
+        }
+        Ok(())
+    }
+
+    fn check_symlink_target_prefixes(
+        &self,
+        symlink_path: &str,
+        target: &str,
+    ) -> Result<(), SystemDefenseError> {
+        let trimmed = target.trim();
+        if self.options.disallow_absolute {
+            if trimmed.starts_with('/') || trimmed.starts_with('\\') {
+                return Err(SystemDefenseError::SymlinkEscapingDetected {
+                    path: symlink_path.to_string(),
+                    reason: "Symlink points to absolute path".to_string(),
+                });
+            }
+            if has_drive_letter_root(trimmed) {
+                return Err(SystemDefenseError::SymlinkEscapingDetected {
+                    path: symlink_path.to_string(),
+                    reason: "Symlink points to drive letter root".to_string(),
+                });
+            }
+        }
+
+        if self.options.disallow_malicious_canonical_paths {
+            if has_windows_device_namespace(trimmed) {
+                return Err(SystemDefenseError::SymlinkEscapingDetected {
+                    path: symlink_path.to_string(),
+                    reason: "Symlink points to Windows device namespace".to_string(),
+                });
+            }
+            if has_url_encoded_traversal(trimmed) {
+                return Err(SystemDefenseError::SymlinkEscapingDetected {
+                    path: symlink_path.to_string(),
+                    reason: "Symlink target contains URL-encoded traversal sequence".to_string(),
+                });
+            }
+        }
+        Ok(())
+    }
+
+    fn validate_symlink_segment(&self, target: &str, clean: &str) -> Result<(), SystemDefenseError> {
+        if self.options.disallow_reserved_devices && Self::is_reserved_device_name(clean) {
+            return Err(SystemDefenseError::ReservedDeviceNameDetected {
+                segment: clean.to_string(),
+            });
+        }
+        if self.options.disallow_malicious_canonical_paths && clean.contains(':') {
+            return Err(SystemDefenseError::PathTraversalAttackDetected {
+                path: target.to_string(),
+                reason: "NTFS alternate data stream in symlink target is prohibited".to_string(),
+            });
+        }
+        Ok(())
     }
 
     /// Checks if a segment matches Windows or POSIX reserved device names.
@@ -406,6 +333,68 @@ impl PathTraversalProtectionGuard {
         let trimmed_stem = stem.trim_end_matches([' ', '.']).to_ascii_uppercase();
         WINDOWS_RESERVED_DEVICES.contains(&trimmed_stem.as_str())
     }
+}
+
+#[inline]
+fn has_drive_letter_root(trimmed: &str) -> bool {
+    let bytes = trimmed.as_bytes();
+    bytes.len() >= 2 && bytes[1] == b':' && bytes[0].is_ascii_alphabetic()
+}
+
+#[inline]
+fn has_windows_device_namespace(trimmed: &str) -> bool {
+    trimmed.starts_with(r"\\?\")
+        || trimmed.starts_with(r"\\.\")
+        || trimmed.starts_with(r"\??\")
+        || trimmed.starts_with("//?/")
+        || trimmed.starts_with("//./")
+}
+
+#[inline]
+fn has_url_encoded_traversal(trimmed: &str) -> bool {
+    let upper = trimmed.to_ascii_uppercase();
+    upper.contains("%2E%2E") || upper.contains("%2F") || upper.contains("%5C")
+}
+
+fn normalize_lexical_path(path: &std::path::Path) -> std::path::PathBuf {
+    let mut normalized = std::path::PathBuf::new();
+    for component in path.components() {
+        match component {
+            std::path::Component::Prefix(p) => normalized.push(std::path::Component::Prefix(p)),
+            std::path::Component::RootDir => normalized.push(std::path::Component::RootDir),
+            std::path::Component::CurDir => {}
+            std::path::Component::ParentDir => {
+                normalized.pop();
+            }
+            std::path::Component::Normal(c) => normalized.push(c),
+        }
+    }
+    normalized
+}
+
+fn verify_no_symlink_ancestors(
+    norm_base: &std::path::Path,
+    normalized: &std::path::Path,
+) -> Result<(), SystemDefenseError> {
+    let Ok(rel_components) = normalized.strip_prefix(norm_base) else {
+        return Ok(());
+    };
+    let mut current = norm_base.to_path_buf();
+    for comp in rel_components.components() {
+        if let std::path::Component::Normal(part) = comp {
+            current.push(part);
+            if let Ok(meta) = std::fs::symlink_metadata(&current) {
+                if meta.file_type().is_symlink() {
+                    return Err(SystemDefenseError::SymlinkEscapingDetected {
+                        path: current.display().to_string(),
+                        reason: "Intermediate canonical directory component is an active symlink"
+                            .to_string(),
+                    });
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

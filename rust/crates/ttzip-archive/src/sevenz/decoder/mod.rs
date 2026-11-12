@@ -11,7 +11,9 @@ pub(crate) mod codec_pump;
 pub mod mach_rss;
 pub mod payload;
 pub mod solid_stream;
+pub(crate) mod solid_stream_state;
 pub mod stream;
+pub(crate) mod stream_folder;
 
 pub use archive::{SevenZArchive, SevenZReader};
 pub use mach_rss::get_current_rss_bytes;

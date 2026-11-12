@@ -43,6 +43,7 @@ const ZS_BROTLI_HEADER: [u8; 4] = [0x42, 0x52, 0x01, 0x00];
 ///
 /// The streaming compressor is used (not the one-shot context) because 7z stores the LZMA2
 /// dictionary property in the folder header and omits it from the payload stream.
+#[cfg(test)]
 fn lzma2_pack(src: &[u8]) -> (Vec<u8>, u8) {
     let mut cstream = Fl2CStream::new().expect("lzma2 stream context");
     cstream
@@ -461,4 +462,146 @@ fn test_header_rejects_absurd_coder_stream_count() {
         crate::sevenz::header::parse_7z_header_stream(&header, &mut info),
         Err(crate::types::TTZipStatus::ErrCorruptHeader)
     );
+}
+
+#[test]
+fn test_streaming_filter_state_matches_full_buffer_across_unaligned_chunks() {
+    use crate::sevenz::decoder::payload::apply_filter_inplace;
+    use crate::sevenz::decoder::stream::StreamingFilterState;
+    use crate::sevenz::format::{METHOD_ARM64, METHOD_BCJ_X86};
+
+    let mut sample = Vec::with_capacity(256);
+    for i in 0..32u32 {
+        sample.extend_from_slice(&[0xE8, (i as u8).wrapping_mul(3), 0x00, 0x00, 0x00, 0x90, 0x90, 0x94]);
+    }
+    for &(method, props) in &[
+        (METHOD_DELTA, &[3u8][..]),
+        (METHOD_ARM64, &[][..]),
+        (METHOD_BCJ_X86, &[][..]),
+    ] {
+        let mut expected = sample.clone();
+        apply_filter_inplace(method, props, &mut expected);
+
+        let mut filter = StreamingFilterState::new(method, props);
+        let mut actual = Vec::with_capacity(sample.len());
+        let mut sink = |chunk: &[u8]| -> Result<(), crate::types::TTZipStatus> {
+            actual.extend_from_slice(chunk);
+            Ok(())
+        };
+        let mut pos = 0usize;
+        for step in [1usize, 3, 5, 7, 11, 13, 17].into_iter().cycle() {
+            if pos >= sample.len() {
+                break;
+            }
+            let end = (pos + step).min(sample.len());
+            filter.push_chunk(&sample[pos..end], &mut sink).unwrap();
+            pos = end;
+        }
+        filter.finish(&mut sink).unwrap();
+        assert_eq!(actual, expected, "filter {method:#x} mismatch across unaligned chunks");
+    }
+}
+
+#[test]
+fn test_filtered_and_brotli_solid_folders_above_64mib_stream_without_oom() {
+    use crate::sevenz::decoder::payload::MAX_IN_MEMORY_DECOMPRESS_BYTES;
+
+    let prefix_len = MAX_IN_MEMORY_DECOMPRESS_BYTES + 64 * 1024;
+    let target_plain = vec![0x5Au8; 4096];
+    let total_len = prefix_len + target_plain.len();
+    let mut full_plain = vec![0u8; prefix_len];
+    full_plain.extend_from_slice(&target_plain);
+
+    let delta_bytes = delta_encode(&full_plain);
+    let (delta_packed, prop) = lzma2_pack(&delta_bytes);
+    let delta_folder = SevenZFolder {
+        coders: vec![
+            SevenZCoder {
+                method_id: METHOD_LZMA2,
+                num_in_streams: 1,
+                num_out_streams: 1,
+                properties: vec![prop],
+            },
+            SevenZCoder {
+                method_id: METHOD_DELTA,
+                num_in_streams: 1,
+                num_out_streams: 1,
+                properties: vec![0],
+            },
+        ],
+        bind_pairs: vec![(1, 0)],
+        packed_streams: Vec::new(),
+        unpack_sizes: vec![total_len as u64, total_len as u64],
+        crc: None,
+        num_unpack_streams: 2,
+        packed_offset: 0,
+        packed_len: delta_packed.len(),
+    };
+    let (mut delta_info, _) = single_entry_case(
+        delta_folder,
+        delta_packed.clone(),
+        vec![delta_packed.len() as u64],
+        "tail.bin",
+        &target_plain,
+        METHOD_DELTA,
+    );
+    delta_info.stream_sizes = vec![prefix_len as u64, target_plain.len() as u64];
+    let delta_seek = SevenZSeekIndex {
+        entries: vec![
+            SevenZEntryLocation {
+                file_index: 0,
+                rel_path: "prefix.bin".to_string(),
+                is_directory: false,
+                is_empty_stream: false,
+                folder_index: Some(0),
+                stream_index: Some(0),
+                offset_in_folder: 0,
+                uncompressed_size: prefix_len as u64,
+                crc: None,
+            },
+            SevenZEntryLocation {
+                file_index: 1,
+                rel_path: "tail.bin".to_string(),
+                is_directory: false,
+                is_empty_stream: false,
+                folder_index: Some(0),
+                stream_index: Some(1),
+                offset_in_folder: prefix_len as u64,
+                uncompressed_size: target_plain.len() as u64,
+                crc: Some(crc32_fast(0, &target_plain)),
+            },
+        ],
+    };
+    let extracted_delta = extract_entry_bytes_stream(&delta_packed, &delta_info, &delta_seek, 1, None)
+        .expect(">64MiB [LZMA2, Delta] folder must stream without ErrOutOfMemory");
+    assert_eq!(extracted_delta, target_plain);
+
+    let brotli_packed = wrap_zs_brotli(&brotli_compress(&full_plain));
+    let brotli_folder = SevenZFolder {
+        coders: vec![SevenZCoder {
+            method_id: METHOD_BROTLI,
+            num_in_streams: 1,
+            num_out_streams: 1,
+            properties: vec![0x01, 0x00, 0x03],
+        }],
+        bind_pairs: Vec::new(),
+        packed_streams: Vec::new(),
+        unpack_sizes: vec![total_len as u64],
+        crc: None,
+        num_unpack_streams: 2,
+        packed_offset: 0,
+        packed_len: brotli_packed.len(),
+    };
+    let (mut brotli_info, _) = single_entry_case(
+        brotli_folder,
+        brotli_packed.clone(),
+        vec![brotli_packed.len() as u64],
+        "tail.bin",
+        &target_plain,
+        METHOD_BROTLI,
+    );
+    brotli_info.stream_sizes = vec![prefix_len as u64, target_plain.len() as u64];
+    let extracted_brotli = extract_entry_bytes_stream(&brotli_packed, &brotli_info, &delta_seek, 1, None)
+        .expect(">64MiB Brotli folder must stream without ErrOutOfMemory");
+    assert_eq!(extracted_brotli, target_plain);
 }

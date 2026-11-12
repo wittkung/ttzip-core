@@ -103,6 +103,13 @@ impl TarEntryType {
             b'5' => Self::Directory,
             b'6' => Self::Fifo,
             b'7' => Self::Contiguous,
+            other => Self::from_extended_byte(other),
+        }
+    }
+
+    #[inline]
+    const fn from_extended_byte(b: u8) -> Self {
+        match b {
             b'L' => Self::GNULongName,
             b'K' => Self::GNULongLink,
             b'S' => Self::GNUSparse,
@@ -125,6 +132,13 @@ impl TarEntryType {
             Self::Directory => b'5',
             Self::Fifo => b'6',
             Self::Contiguous => b'7',
+            other => other.as_extended_byte(),
+        }
+    }
+
+    #[inline]
+    const fn as_extended_byte(self) -> u8 {
+        match self {
             Self::GNULongName => b'L',
             Self::GNULongLink => b'K',
             Self::GNUSparse => b'S',
@@ -132,6 +146,7 @@ impl TarEntryType {
             Self::XGlobalHeader => b'g',
             Self::SolarisExt => b'X',
             Self::Other(b) => b,
+            _ => b'0',
         }
     }
 

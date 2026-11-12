@@ -5,7 +5,8 @@
 
 use crate::app::modal_state::RecoveryModalState;
 use crate::app::recovery_runner::{
-    extract_recovery_target, generate_numeric_pins, get_top_passwords, spawn_recovery_worker,
+    extract_recovery_target, generate_numeric_pins, get_top_passwords, numeric_pins_iter,
+    spawn_recovery_worker, RecoveryCandidateSource, NUMERIC_PINS_COUNT,
 };
 use crate::app::state::AppState;
 use crate::app::types::AppMode;
@@ -158,7 +159,13 @@ fn test_recovery_runner_generator_and_pre_start_cancellation() {
     // Cancellation precedes worker creation; dictionary size is not synchronization.
     token.cancel(ttzip_engine::runtime::cancellation::CancellationReason::UserRequested);
     let deadline = std::time::Instant::now() + std::time::Duration::from_millis(5000);
-    spawn_recovery_worker(target, pins, 2, token, tx);
+    spawn_recovery_worker(
+        target,
+        RecoveryCandidateSource::WordList(pins),
+        2,
+        token,
+        tx,
+    );
 
     let event = rx
         .recv_timeout(deadline.saturating_duration_since(std::time::Instant::now()))
@@ -193,4 +200,43 @@ fn test_render_recovery_modal_widget_drawing() {
             crate::ui::modals::recovery::render_recovery_modal(f, f.area(), &state);
         })
         .expect("draw recovery modal");
+}
+
+#[test]
+fn test_numeric_pins_lazy_iterator_and_recovery_source() {
+    let mut iter = numeric_pins_iter();
+    assert_eq!(iter.len(), NUMERIC_PINS_COUNT);
+    assert_eq!(iter.next().as_deref(), Some("0000"));
+    assert_eq!(iter.len(), NUMERIC_PINS_COUNT - 1);
+    assert_eq!(iter.nth(41).as_deref(), Some("0042"));
+    assert_eq!(iter.nth(9999 - 42).as_deref(), Some("000000"));
+
+    let src = RecoveryCandidateSource::NumericPins;
+    assert_eq!(src.total_keys(), NUMERIC_PINS_COUNT);
+
+    let password = "0000";
+    let tmp = create_encrypted_zip_file(password);
+    let mut state = AppState::new(tmp.path().to_path_buf()).expect("init state");
+    let (tx, rx) = crossbeam_channel::unbounded();
+
+    state.current_mode = AppMode::PasswordRecovery;
+    state.recovery_modal_state = Some(RecoveryModalState {
+        dict_choice: 1,
+        ..RecoveryModalState::default()
+    });
+
+    state.handle_key_event(KeyEvent::from(KeyCode::Enter), tx.clone());
+    let rec_state = state.recovery_modal_state.as_ref().unwrap();
+    assert!(rec_state.is_running);
+    assert_eq!(rec_state.total_keys, NUMERIC_PINS_COUNT);
+
+    let mut found = false;
+    while let Ok(event) = rx.recv_timeout(std::time::Duration::from_secs(5)) {
+        if let AppEvent::RecoveryCompleted(Ok(Some(pwd))) = event {
+            assert_eq!(pwd, password);
+            found = true;
+            break;
+        }
+    }
+    assert!(found);
 }

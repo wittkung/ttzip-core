@@ -8,10 +8,41 @@ use std::io::{self, Read, Seek, SeekFrom};
 use std::path::Path;
 
 use super::anchors::Anchor;
-use super::signatures::{CompoundFormat, DetectedFormat, PRIORITIZED_SIGNATURES};
+use super::signatures::{CompoundFormat, DetectedFormat, SignatureEntry, PRIORITIZED_SIGNATURES};
 
 /// Maximum scan window for Self-Extracting (SFX) archive detection (64 KB).
 const SFX_SCAN_LIMIT: usize = 65536;
+
+const COMPOUND_EXTENSION_RULES: &[(DetectedFormat, &[&str], CompoundFormat)] = &[
+    (DetectedFormat::Gzip, &[".tar.gz", ".tgz"], CompoundFormat::TarGz),
+    (
+        DetectedFormat::Bzip2,
+        &[".tar.bz2", ".tbz2", ".tbz"],
+        CompoundFormat::TarBz2,
+    ),
+    (DetectedFormat::Xz, &[".tar.xz", ".txz"], CompoundFormat::TarXz),
+    (
+        DetectedFormat::Zstd,
+        &[".tar.zst", ".tzst"],
+        CompoundFormat::TarZstd,
+    ),
+    (DetectedFormat::Lz4, &[".tar.lz4", ".tlz4"], CompoundFormat::TarLz4),
+    (
+        DetectedFormat::Brotli,
+        &[".tar.br", ".tbr"],
+        CompoundFormat::TarBrotli,
+    ),
+    (
+        DetectedFormat::Lzip,
+        &[".tar.lz", ".tlz"],
+        CompoundFormat::TarLzip,
+    ),
+    (
+        DetectedFormat::Lrzip,
+        &[".tar.lrz", ".tlrz"],
+        CompoundFormat::TarLrzip,
+    ),
+];
 
 /// Detailed result of format sniffing.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,6 +71,22 @@ impl SniffResult {
             confidence: 0,
         }
     }
+
+    fn from_signature(entry: &SignatureEntry, filename_hint: Option<&str>) -> Self {
+        let compound = deduce_compound_format(entry.format, filename_hint);
+        Self {
+            format: entry.format,
+            compound_format: compound,
+            is_sfx: false,
+            sfx_offset: 0,
+            description: entry.description,
+            mime_type: entry.format.mime_type(),
+            primary_extension: compound
+                .map(|c| c.primary_extension())
+                .unwrap_or_else(|| entry.format.primary_extension()),
+            confidence: 100,
+        }
+    }
 }
 
 /// Detects the archive format directly from an in-memory byte buffer.
@@ -58,19 +105,7 @@ pub fn detect_format_buffer(buffer: &[u8], filename_hint: Option<&str>) -> Sniff
 
         if let Some(slice) = entry.anchor.slice_buffer(buffer, entry.magic.len()) {
             if slice == entry.magic {
-                let compound = deduce_compound_format(entry.format, filename_hint);
-                return SniffResult {
-                    format: entry.format,
-                    compound_format: compound,
-                    is_sfx: false,
-                    sfx_offset: 0,
-                    description: entry.description,
-                    mime_type: entry.format.mime_type(),
-                    primary_extension: compound
-                        .map(|c| c.primary_extension())
-                        .unwrap_or_else(|| entry.format.primary_extension()),
-                    confidence: 100,
-                };
+                return SniffResult::from_signature(entry, filename_hint);
             }
         }
     }
@@ -86,6 +121,78 @@ pub fn detect_format_buffer(buffer: &[u8], filename_hint: Option<&str>) -> Sniff
     }
 
     SniffResult::unknown()
+}
+
+fn match_file_signature(
+    file: &mut File,
+    file_len: usize,
+    prefix_buf: &[u8],
+    entry: &SignatureEntry,
+    filename_hint: Option<&str>,
+) -> io::Result<Option<SniffResult>> {
+    if file_len < entry.min_total_size {
+        return Ok(None);
+    }
+
+    match entry.anchor {
+        Anchor::Head(_) | Anchor::TarOffset(_) => {
+            if entry.anchor.slice_buffer(prefix_buf, entry.magic.len()) == Some(entry.magic) {
+                return Ok(Some(SniffResult::from_signature(entry, filename_hint)));
+            }
+        }
+        Anchor::Sector(16) => {
+            let has_iso_magic = file_len >= 32768 + 2048
+                && prefix_buf.len() >= 0x8001 + 5
+                && &prefix_buf[0x8001..0x8001 + 5] == b"CD001";
+            if has_iso_magic {
+                return Ok(Some(SniffResult {
+                    format: DetectedFormat::Iso,
+                    compound_format: None,
+                    is_sfx: false,
+                    sfx_offset: 0,
+                    description: "ISO 9660 Disk Image",
+                    mime_type: DetectedFormat::Iso.mime_type(),
+                    primary_extension: "iso",
+                    confidence: 100,
+                }));
+            }
+        }
+        Anchor::Tail(512) if file_len >= 512 => {
+            let mut tail_buf = [0u8; 512];
+            file.seek(SeekFrom::End(-512))?;
+            file.read_exact(&mut tail_buf)?;
+            if &tail_buf[0..4] == b"koly" {
+                return Ok(Some(SniffResult {
+                    format: DetectedFormat::Dmg,
+                    compound_format: None,
+                    is_sfx: false,
+                    sfx_offset: 0,
+                    description: "Apple Disk Image (UDIF DMG)",
+                    mime_type: DetectedFormat::Dmg.mime_type(),
+                    primary_extension: "dmg",
+                    confidence: 100,
+                }));
+            }
+        }
+        _ => {}
+    }
+
+    Ok(None)
+}
+
+fn scan_file_trailing_eocd(
+    file: &mut File,
+    file_len: usize,
+    filename_hint: Option<&str>,
+) -> io::Result<Option<SniffResult>> {
+    if file_len < 22 {
+        return Ok(None);
+    }
+    let eocd_window = file_len.min(65557);
+    let mut eocd_buf = vec![0u8; eocd_window];
+    file.seek(SeekFrom::End(-(eocd_window as i64)))?;
+    file.read_exact(&mut eocd_buf)?;
+    Ok(scan_trailing_zip_eocd(&eocd_buf, filename_hint))
 }
 
 /// Detects archive format from a filesystem path without loading entire file into memory.
@@ -107,63 +214,10 @@ pub fn detect_format_file<P: AsRef<Path>>(path: P) -> io::Result<SniffResult> {
 
     // Check prefix against standard signatures
     for entry in PRIORITIZED_SIGNATURES {
-        if file_len < entry.min_total_size {
-            continue;
-        }
-
-        match entry.anchor {
-            Anchor::Head(_) | Anchor::TarOffset(_) => {
-                if let Some(slice) = entry.anchor.slice_buffer(&prefix_buf, entry.magic.len()) {
-                    if slice == entry.magic {
-                        let compound = deduce_compound_format(entry.format, filename_hint);
-                        return Ok(SniffResult {
-                            format: entry.format,
-                            compound_format: compound,
-                            is_sfx: false,
-                            sfx_offset: 0,
-                            description: entry.description,
-                            mime_type: entry.format.mime_type(),
-                            primary_extension: compound
-                                .map(|c| c.primary_extension())
-                                .unwrap_or_else(|| entry.format.primary_extension()),
-                            confidence: 100,
-                        });
-                    }
-                }
-            }
-            Anchor::Sector(16) => {
-                if file_len >= 32768 + 2048 && prefix_len >= 0x8001 + 5 && &prefix_buf[0x8001..0x8001 + 5] == b"CD001" {
-                    return Ok(SniffResult {
-                        format: DetectedFormat::Iso,
-                        compound_format: None,
-                        is_sfx: false,
-                        sfx_offset: 0,
-                        description: "ISO 9660 Disk Image",
-                        mime_type: DetectedFormat::Iso.mime_type(),
-                        primary_extension: "iso",
-                        confidence: 100,
-                    });
-                }
-            }
-            Anchor::Tail(512)
-                if file_len >= 512 => {
-                    let mut tail_buf = [0u8; 512];
-                    file.seek(SeekFrom::End(-512))?;
-                    file.read_exact(&mut tail_buf)?;
-                    if &tail_buf[0..4] == b"koly" {
-                        return Ok(SniffResult {
-                            format: DetectedFormat::Dmg,
-                            compound_format: None,
-                            is_sfx: false,
-                            sfx_offset: 0,
-                            description: "Apple Disk Image (UDIF DMG)",
-                            mime_type: DetectedFormat::Dmg.mime_type(),
-                            primary_extension: "dmg",
-                            confidence: 100,
-                        });
-                    }
-                }
-            _ => {}
+        if let Some(matched) =
+            match_file_signature(&mut file, file_len, &prefix_buf, entry, filename_hint)?
+        {
+            return Ok(matched);
         }
     }
 
@@ -173,14 +227,8 @@ pub fn detect_format_file<P: AsRef<Path>>(path: P) -> io::Result<SniffResult> {
     }
 
     // Fallback: check trailing ZIP EOCD
-    if file_len >= 22 {
-        let eocd_window = file_len.min(65557);
-        let mut eocd_buf = vec![0u8; eocd_window];
-        file.seek(SeekFrom::End(-(eocd_window as i64)))?;
-        file.read_exact(&mut eocd_buf)?;
-        if let Some(zip_res) = scan_trailing_zip_eocd(&eocd_buf, filename_hint) {
-            return Ok(zip_res);
-        }
+    if let Some(zip_res) = scan_file_trailing_eocd(&mut file, file_len, filename_hint)? {
+        return Ok(zip_res);
     }
 
     Ok(SniffResult::unknown())
@@ -189,17 +237,12 @@ pub fn detect_format_file<P: AsRef<Path>>(path: P) -> io::Result<SniffResult> {
 /// Deduces compound archive format from compression type and filename extension.
 fn deduce_compound_format(format: DetectedFormat, filename_hint: Option<&str>) -> Option<CompoundFormat> {
     let name = filename_hint?.to_lowercase();
-    match format {
-        DetectedFormat::Gzip if name.ends_with(".tar.gz") || name.ends_with(".tgz") => Some(CompoundFormat::TarGz),
-        DetectedFormat::Bzip2 if name.ends_with(".tar.bz2") || name.ends_with(".tbz2") || name.ends_with(".tbz") => Some(CompoundFormat::TarBz2),
-        DetectedFormat::Xz if name.ends_with(".tar.xz") || name.ends_with(".txz") => Some(CompoundFormat::TarXz),
-        DetectedFormat::Zstd if name.ends_with(".tar.zst") || name.ends_with(".tzst") => Some(CompoundFormat::TarZstd),
-        DetectedFormat::Lz4 if name.ends_with(".tar.lz4") || name.ends_with(".tlz4") => Some(CompoundFormat::TarLz4),
-        DetectedFormat::Brotli if name.ends_with(".tar.br") || name.ends_with(".tbr") => Some(CompoundFormat::TarBrotli),
-        DetectedFormat::Lzip if name.ends_with(".tar.lz") || name.ends_with(".tlz") => Some(CompoundFormat::TarLzip),
-        DetectedFormat::Lrzip if name.ends_with(".tar.lrz") || name.ends_with(".tlrz") => Some(CompoundFormat::TarLrzip),
-        _ => None,
+    for &(rule_fmt, suffixes, compound) in COMPOUND_EXTENSION_RULES {
+        if rule_fmt == format && suffixes.iter().any(|ext| name.ends_with(ext)) {
+            return Some(compound);
+        }
     }
+    None
 }
 
 /// Scans for Self-Extracting (SFX) archives embedded inside PE / MZ executables.

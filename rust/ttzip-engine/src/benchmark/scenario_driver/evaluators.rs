@@ -5,16 +5,14 @@
 
 use std::time::Instant;
 
+use super::evaluator_fixtures::{
+    compress_single_stream, create_initial_inplace_archive, decompress_and_verify_single_stream,
+    run_damaged_archive_repair_fixture, TempDirGuard,
+};
 use crate::archive::in_place_edit::InPlaceArchiveSession;
-use crate::archive::repair::{repair_damaged_tar, repair_damaged_zip};
 use crate::benchmark::container_driver::ContainerBenchmarkDriver;
 use crate::benchmark::crypto_driver::MatrixCryptoDriver;
 use crate::benchmark::scenario_driver::ScenarioBenchmarkPoint;
-use crate::codecs::brotli::{brotli_compress_to_vec, brotli_decompress_to_vec};
-use crate::codecs::bzip2::{bzip2_compress_to_vec, bzip2_decompress_to_vec};
-use crate::codecs::deflate::{gzip_compress, gzip_compress_bound, gzip_decompress};
-use crate::codecs::lzfse::{lzfse_compress_to_vec, lzfse_decompress_to_vec};
-use crate::codecs::snappy::{snappy_frame_decode_to_vec, snappy_frame_encode_to_vec};
 use crate::codecs::zstd::{
     zstd_compress_advanced, zstd_decompress, zstd_get_decompressed_size, ZstdConfig,
 };
@@ -23,29 +21,7 @@ use crate::platform::memory::{get_current_rss_bytes, get_peak_rss_bytes};
 use crate::sevenz::decoder::SevenZArchive;
 use crate::sevenz::writer::create_7z_solid_archive_bytes;
 use crate::types::{TTZipArchiveFormat, TTZipStatus};
-use crate::zip::writer::{assemble_zip_archive, ZipCompressedItem, ZipInputItem};
-
-/// RAII guard ensuring temporary benchmarking scratchpad directories are always cleaned up.
-struct TempDirGuard {
-    path: std::path::PathBuf,
-}
-
-impl TempDirGuard {
-    fn new(path: std::path::PathBuf) -> Self {
-        let _ = std::fs::create_dir_all(&path);
-        Self { path }
-    }
-
-    fn path(&self) -> &std::path::Path {
-        &self.path
-    }
-}
-
-impl Drop for TempDirGuard {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.path);
-    }
-}
+use crate::zip::writer::ZipInputItem;
 
 /// Parameters for constructing a `ScenarioBenchmarkPoint`.
 #[derive(Debug, Clone)]
@@ -90,8 +66,6 @@ pub fn build_point(params: ScenarioPointParams<'_>) -> ScenarioBenchmarkPoint {
         0.0
     };
 
-    let final_passed = params.passed_invariants;
-
     ScenarioBenchmarkPoint {
         id: params.id.to_string(),
         category: params.category.to_string(),
@@ -108,7 +82,7 @@ pub fn build_point(params: ScenarioPointParams<'_>) -> ScenarioBenchmarkPoint {
         is_encrypted: params.is_encrypted,
         is_split: params.is_split,
         is_solid: params.is_solid,
-        passed_invariants: final_passed,
+        passed_invariants: params.passed_invariants,
     }
 }
 
@@ -137,7 +111,8 @@ pub fn eval_container_scenario<D: ContainerBenchmarkDriver>(
     let rss_before = get_current_rss_bytes();
 
     let t0 = Instant::now();
-    let archive_bytes = driver.create_archive(items, params.level, params.algorithm, params.password)?;
+    let archive_bytes =
+        driver.create_archive(items, params.level, params.algorithm, params.password)?;
     let create_micros = t0.elapsed().as_micros() as u64;
 
     let t1 = Instant::now();
@@ -333,61 +308,12 @@ pub fn eval_single_stream_scenario(
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
     let rss_before = get_current_rss_bytes();
     let t0 = Instant::now();
-
-    let compressed = match format_tag {
-        "GZIP" => {
-            let max_bound = gzip_compress_bound(raw_data.len(), level);
-            let mut gz_buf = vec![0u8; max_bound];
-            let gz_len = gzip_compress(raw_data, &mut gz_buf, level)?;
-            gz_buf.truncate(gz_len);
-            gz_buf
-        }
-        "BROTLI" => brotli_compress_to_vec(raw_data, level.clamp(0, 11) as u32, 22)?,
-        "SNAPPY" => snappy_frame_encode_to_vec(raw_data)?,
-        "LZFSE" => lzfse_compress_to_vec(raw_data)?,
-        "BZIP2" => bzip2_compress_to_vec(raw_data, level)?,
-        _ => {
-            let mut zst_buf = vec![0u8; crate::codecs::zstd::zstd_compress_bound(raw_data.len())];
-            let zst_len = crate::codecs::zstd::zstd_compress(raw_data, &mut zst_buf, level)?;
-            zst_buf.truncate(zst_len);
-            zst_buf
-        }
-    };
+    let compressed = compress_single_stream(format_tag, raw_data, level)?;
     let create_micros = t0.elapsed().as_micros() as u64;
 
     let t1 = Instant::now();
-    let (decomp_len, matched) = match format_tag {
-        "GZIP" => {
-            let mut decomp_buf = vec![0u8; raw_data.len() + 1024];
-            let actual = gzip_decompress(&compressed, &mut decomp_buf)?;
-            (actual, decomp_buf[..actual] == *raw_data)
-        }
-        "BROTLI" => {
-            let decomp = brotli_decompress_to_vec(&compressed, raw_data.len() * 2 + 1024)?;
-            let len = decomp.len();
-            (len, decomp == *raw_data)
-        }
-        "SNAPPY" => {
-            let decomp = snappy_frame_decode_to_vec(&compressed, raw_data.len() * 2 + 1024)?;
-            let len = decomp.len();
-            (len, decomp == *raw_data)
-        }
-        "LZFSE" => {
-            let decomp = lzfse_decompress_to_vec(&compressed, raw_data.len())?;
-            let len = decomp.len();
-            (len, decomp == *raw_data)
-        }
-        "BZIP2" => {
-            let decomp = bzip2_decompress_to_vec(&compressed, raw_data.len() * 2 + 1024)?;
-            let len = decomp.len();
-            (len, decomp == *raw_data)
-        }
-        _ => {
-            let mut decomp = vec![0u8; raw_data.len() + 1024];
-            let actual = zstd_decompress(&compressed, &mut decomp)?;
-            (actual, decomp[..actual] == *raw_data)
-        }
-    };
+    let (decomp_len, matched) =
+        decompress_and_verify_single_stream(format_tag, &compressed, raw_data)?;
     let extract_micros = t1.elapsed().as_micros() as u64;
 
     let rss_after = get_current_rss_bytes();
@@ -422,53 +348,32 @@ pub fn eval_inplace_scenario(
     initial_items: &[ZipInputItem],
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
     let orig_bytes: usize = initial_items.iter().map(|it| it.data.len()).sum();
-    let temp_dir_guard = TempDirGuard::new(std::env::temp_dir().join(format!("ttzip_bench_inplace_{}_{}", id, std::process::id())));
+    let temp_dir_guard = TempDirGuard::new(
+        std::env::temp_dir().join(format!("ttzip_bench_inplace_{}_{}", id, std::process::id())),
+    );
     let temp_dir = temp_dir_guard.path();
 
-    let (ext, initial_bytes) = match format {
-        TTZipArchiveFormat::Zip => {
-            let driver = crate::benchmark::container_driver::ZipContainerDriver;
-            ("zip", driver.create_archive(initial_items, 1, Some("Deflate"), None)?)
-        }
-        TTZipArchiveFormat::SevenZip => {
-            let driver = crate::benchmark::container_driver::SevenZContainerDriver;
-            ("7z", driver.create_archive(initial_items, 1, None, None)?)
-        }
-        TTZipArchiveFormat::TarGz => {
-            let driver = crate::benchmark::container_driver::TarGzContainerDriver;
-            ("tar.gz", driver.create_archive(initial_items, 1, None, None)?)
-        }
-        TTZipArchiveFormat::TarZstd => {
-            let driver = crate::benchmark::container_driver::TarZstContainerDriver;
-            ("tar.zst", driver.create_archive(initial_items, 1, None, None)?)
-        }
-        _ => {
-            let driver = crate::benchmark::container_driver::TarContainerDriver;
-            ("tar", driver.create_archive(initial_items, 0, None, None)?)
-        }
-    };
+    let (ext, initial_bytes) = create_initial_inplace_archive(format, initial_items)?;
     let archive_path = temp_dir.join(format!("test_archive.{}", ext));
     std::fs::write(&archive_path, &initial_bytes).map_err(|_| TTZipStatus::ErrOpenFailed)?;
 
     let aux_doc = temp_dir.join("auxiliary_item.txt");
-    std::fs::write(&aux_doc, b"Payload for in-place transaction execution.").map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    std::fs::write(&aux_doc, b"Payload for in-place transaction execution.")
+        .map_err(|_| TTZipStatus::ErrOpenFailed)?;
 
     let rss_before = get_current_rss_bytes();
     let t0 = Instant::now();
     let mut session = InPlaceArchiveSession::begin(&archive_path, Some(format))?;
-
     match action_kind {
         "replace" => session.replace("sub_dir/item_0000.bin", &aux_doc)?,
         "delete" => session.delete("sub_dir/item_0000.bin")?,
         _ => session.append("added_document.txt", &aux_doc)?,
     }
-
     session.commit()?;
     let mutate_micros = t0.elapsed().as_micros() as u64;
 
     let modified_bytes = std::fs::read(&archive_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
     let rss_after = get_current_rss_bytes();
-
     let passed = !modified_bytes.is_empty();
 
     Ok(build_point(ScenarioPointParams {
@@ -539,57 +444,27 @@ pub fn eval_damaged_repair_scenario(
     display_name: &str,
     options_summary: &str,
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
-    let temp_dir_guard = TempDirGuard::new(std::env::temp_dir().join(format!("ttzip_repair_bench_{}_{}", id, std::process::id())));
+    let temp_dir_guard = TempDirGuard::new(
+        std::env::temp_dir().join(format!("ttzip_repair_bench_{}_{}", id, std::process::id())),
+    );
     let temp_dir = temp_dir_guard.path();
-
     let damaged_file = temp_dir.join("damaged_input.bin");
     let repaired_file = temp_dir.join("repaired_output.bin");
-
     let item_data = b"Enterprise Corrupt Archive Self-Healing Verification Payload.";
     let orig_bytes = item_data.len();
 
     let rss_before = get_current_rss_bytes();
     let t0 = Instant::now();
-    let salvaged_count = if format_tag == "ZIP" {
-        let item = ZipCompressedItem {
-            rel_path: "document.txt".to_string(),
-            uncompressed_size: orig_bytes as u64,
-            compressed_size: orig_bytes as u64,
-            crc32: 0x12345678,
-            compression_method: 0,
-            actual_method: 0,
-            aes_strength: 0,
-            payload: item_data.to_vec(),
-            mtime_epoch_secs: 1700000000,
-            mode: 0o644,
-            is_directory: false,
-            is_encrypted: false,
-        };
-        let full_zip = assemble_zip_archive(&[item])?;
-        // Truncate archive after payload to destroy Central Directory and EOCD
-        let truncated = full_zip[..30 + 12 + orig_bytes].to_vec();
-        std::fs::write(&damaged_file, &truncated).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        repair_damaged_zip(&damaged_file, &repaired_file)?
-    } else {
-        let driver = crate::benchmark::container_driver::TarContainerDriver;
-        let items = [ZipInputItem {
-            rel_path: "salvage.txt".to_string(),
-            data: item_data.to_vec(),
-            mtime_epoch_secs: 1700000000,
-            mode: 0o644,
-            is_directory: false,
-        }];
-        let tar_bytes = driver.create_archive(&items, 0, None, None)?;
-        // Cut trailing EOF zero blocks
-        let truncated = tar_bytes[..512 + 512].to_vec();
-        std::fs::write(&damaged_file, &truncated).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        repair_damaged_tar(&damaged_file, &repaired_file)?
-    };
+    let salvaged_count = run_damaged_archive_repair_fixture(
+        format_tag,
+        &damaged_file,
+        &repaired_file,
+        item_data,
+    )?;
     let repair_micros = t0.elapsed().as_micros() as u64;
 
     let repaired_bytes = std::fs::read(&repaired_file).map_err(|_| TTZipStatus::ErrOpenFailed)?;
     let rss_after = get_current_rss_bytes();
-
     let passed = salvaged_count >= 1 && !repaired_bytes.is_empty();
 
     Ok(build_point(ScenarioPointParams {
@@ -618,7 +493,9 @@ pub fn eval_apfs_scenario(
     options_summary: &str,
     size_bytes: usize,
 ) -> Result<ScenarioBenchmarkPoint, TTZipStatus> {
-    let temp_dir_guard = TempDirGuard::new(std::env::temp_dir().join(format!("ttzip_apfs_bench_{}_{}", id, std::process::id())));
+    let temp_dir_guard = TempDirGuard::new(
+        std::env::temp_dir().join(format!("ttzip_apfs_bench_{}_{}", id, std::process::id())),
+    );
     let temp_dir = temp_dir_guard.path();
 
     let src_file = temp_dir.join("source.dat");
@@ -639,7 +516,6 @@ pub fn eval_apfs_scenario(
     let prealloc_micros = t1.elapsed().as_micros() as u64;
 
     let rss_after = get_current_rss_bytes();
-
     let passed = clone_ok && prealloc_ok;
 
     Ok(build_point(ScenarioPointParams {
@@ -671,7 +547,7 @@ pub fn eval_sparse_scenario(
     let zip_driver = crate::benchmark::container_driver::ZipContainerDriver;
     let single_item = vec![ZipInputItem {
         rel_path: "sparse_image.img".to_string(),
-        data: vec![0u8; 1024 * 1024], // 1MB representative chunk
+        data: vec![0u8; 1024 * 1024],
         mtime_epoch_secs: 1700000000,
         mode: 0o644,
         is_directory: false,

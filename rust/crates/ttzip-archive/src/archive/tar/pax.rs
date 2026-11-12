@@ -29,84 +29,60 @@ pub fn parse_pax_data(data: &[u8]) -> PaxAttributes {
     let mut cursor = 0;
 
     while cursor < data.len() {
-        let remaining = &data[cursor..];
-        // Find first space character separating record length from keyword
-        let space_pos = match remaining.iter().position(|&b| b == b' ') {
-            Some(p) => p,
-            None => break,
-        };
-
-        let len_str = match std::str::from_utf8(&remaining[..space_pos]) {
-            Ok(s) => s,
-            Err(_) => break,
-        };
-
-        let record_len: usize = match len_str.parse() {
-            Ok(n) if n > space_pos => n,
-            _ => break,
-        };
-
-        if cursor + record_len > data.len() {
+        let Some((record_len, kv_opt)) = next_pax_record(&data[cursor..]) else {
             break;
-        }
-
-        let record_bytes = &data[cursor..cursor + record_len];
+        };
         cursor += record_len;
-
-        // Skip leading space after length
-        let kv_bytes = if record_bytes.ends_with(b"\n") {
-            &record_bytes[space_pos + 1..record_bytes.len() - 1]
-        } else {
-            &record_bytes[space_pos + 1..]
-        };
-
-        let eq_pos = match kv_bytes.iter().position(|&b| b == b'=') {
-            Some(p) => p,
-            None => continue,
-        };
-
-        let key = match std::str::from_utf8(&kv_bytes[..eq_pos]) {
-            Ok(k) => k.to_string(),
-            Err(_) => continue,
-        };
-
-        let val = match std::str::from_utf8(&kv_bytes[eq_pos + 1..]) {
-            Ok(v) => v.to_string(),
-            Err(_) => continue,
-        };
-
-        match key.as_str() {
-            "path" => attrs.path = Some(val.clone()),
-            "linkpath" => attrs.linkpath = Some(val.clone()),
-            "size" => {
-                if let Ok(sz) = val.parse::<u64>() {
-                    attrs.size = Some(sz);
-                }
-            }
-            "mtime" => {
-                let (secs, nanos) = parse_pax_timestamp(&val);
-                attrs.mtime_secs = Some(secs);
-                attrs.mtime_nanos = Some(nanos);
-            }
-            "uid" => {
-                if let Ok(id) = val.parse::<u64>() {
-                    attrs.uid = Some(id);
-                }
-            }
-            "gid" => {
-                if let Ok(id) = val.parse::<u64>() {
-                    attrs.gid = Some(id);
-                }
-            }
-            "uname" => attrs.uname = Some(val.clone()),
-            "gname" => attrs.gname = Some(val.clone()),
-            _ => {}
+        if let Some((key, val)) = kv_opt {
+            apply_pax_attribute(&mut attrs, key, val);
         }
-
-        attrs.raw_map.insert(key, val);
     }
 
     attrs
+}
+
+fn next_pax_record(remaining: &[u8]) -> Option<(usize, Option<(String, String)>)> {
+    let space_pos = remaining.iter().position(|&b| b == b' ')?;
+    let len_str = std::str::from_utf8(&remaining[..space_pos]).ok()?;
+    let record_len: usize = len_str.parse().ok()?;
+    if record_len <= space_pos || record_len > remaining.len() {
+        return None;
+    }
+
+    let record_bytes = &remaining[..record_len];
+    let kv_bytes = if record_bytes.ends_with(b"\n") {
+        &record_bytes[space_pos + 1..record_bytes.len() - 1]
+    } else {
+        &record_bytes[space_pos + 1..]
+    };
+
+    let kv = (|| {
+        let eq_pos = kv_bytes.iter().position(|&b| b == b'=')?;
+        let key = std::str::from_utf8(&kv_bytes[..eq_pos]).ok()?.to_string();
+        let val = std::str::from_utf8(&kv_bytes[eq_pos + 1..]).ok()?.to_string();
+        Some((key, val))
+    })();
+
+    Some((record_len, kv))
+}
+
+fn apply_pax_attribute(attrs: &mut PaxAttributes, key: String, val: String) {
+    match key.as_str() {
+        "path" => attrs.path = Some(val.clone()),
+        "linkpath" => attrs.linkpath = Some(val.clone()),
+        "size" => attrs.size = val.parse::<u64>().ok().or(attrs.size),
+        "mtime" => {
+            let (secs, nanos) = parse_pax_timestamp(&val);
+            attrs.mtime_secs = Some(secs);
+            attrs.mtime_nanos = Some(nanos);
+        }
+        "uid" => attrs.uid = val.parse::<u64>().ok().or(attrs.uid),
+        "gid" => attrs.gid = val.parse::<u64>().ok().or(attrs.gid),
+        "uname" => attrs.uname = Some(val.clone()),
+        "gname" => attrs.gname = Some(val.clone()),
+        _ => {}
+    }
+    attrs.raw_map.insert(key, val);
 }
 
 /// Parses PAX timestamp formatted as `<seconds>[.<nanoseconds>]`.

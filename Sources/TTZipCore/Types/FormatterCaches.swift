@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+@_exported import TTZipArchiveContract
+@_exported import TTZipOperationContract
 
 /// Shared byte count formatted string provider with caching.
 public final class ByteCountFormatterCache: @unchecked Sendable {
@@ -121,3 +123,10 @@ public final class DateFormatterCache: Sendable {
         return formatter
     }
 }
+
+extension ArchiveEntry {
+    public var formattedSize: String {
+        ByteCountFormatterFlyweight.shared.string(fromByteCount: uncompressedSize)
+    }
+}
+

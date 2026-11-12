@@ -40,6 +40,34 @@ pub static LOG_TABLE: [u8; 256] = {
     log
 };
 
+const fn gf_mul_const(a: u8, b: u8, exp: &[u8; 512], log: &[u8; 256]) -> u8 {
+    if a == 0 || b == 0 {
+        0
+    } else {
+        let idx = (log[a as usize] as usize) + (log[b as usize] as usize);
+        exp[idx]
+    }
+}
+
+const fn generate_gf8_nibble_tables() -> [[u8; 32]; 256] {
+    let (exp, log) = generate_gf8_tables();
+    let mut tables = [[0u8; 32]; 256];
+    let mut coeff = 0usize;
+    while coeff < 256 {
+        let mut i = 0usize;
+        while i < 16 {
+            tables[coeff][i] = gf_mul_const(coeff as u8, i as u8, &exp, &log);
+            tables[coeff][16 + i] = gf_mul_const(coeff as u8, (i << 4) as u8, &exp, &log);
+            i += 1;
+        }
+        coeff += 1;
+    }
+    tables
+}
+
+/// Precomputed static 256 x 32-byte GF(2^8) low/high nibble lookup rows.
+pub static NIBBLE_TABLES: [[u8; 32]; 256] = generate_gf8_nibble_tables();
+
 /// Addition in $\text{GF}(2^8)$ (bitwise XOR).
 #[inline(always)]
 pub const fn gf_add(a: u8, b: u8) -> u8 {
@@ -97,15 +125,14 @@ pub fn gf_pow(a: u8, exp: usize) -> u8 {
     EXP_TABLE[idx]
 }
 
-/// Precomputes 4-bit nibble split multiplication lookup tables (low and high 16 bytes).
+/// Returns the precomputed 4-bit nibble split multiplication lookup tables (low and high 16 bytes).
 #[inline(always)]
 pub fn compute_nibble_tables(coeff: u8) -> ([u8; 16], [u8; 16]) {
+    let row = &NIBBLE_TABLES[coeff as usize];
     let mut tbl_low = [0u8; 16];
     let mut tbl_high = [0u8; 16];
-    for i in 0..16 {
-        tbl_low[i] = gf_mul(coeff, i as u8);
-        tbl_high[i] = gf_mul(coeff, (i << 4) as u8);
-    }
+    tbl_low.copy_from_slice(&row[..16]);
+    tbl_high.copy_from_slice(&row[16..32]);
     (tbl_low, tbl_high)
 }
 
@@ -113,7 +140,7 @@ pub fn compute_nibble_tables(coeff: u8) -> ([u8; 16], [u8; 16]) {
 ///
 /// `dst[i] ^= coeff * src[i]`
 #[inline]
-pub fn gf8_mul_add_slice(coeff: u8, src: &[u8], dst: &mut [u8]) {
+pub fn gf8_mul_acc_slice(coeff: u8, src: &[u8], dst: &mut [u8]) {
     if coeff == 0 {
         return;
     }
@@ -133,7 +160,13 @@ pub fn gf8_mul_add_slice(coeff: u8, src: &[u8], dst: &mut [u8]) {
     }
 }
 
-/// Scalar fallback for `dst[i] ^= coeff * src[i]`.
+/// Multiplies a slice by scalar `coeff` in $\text{GF}(2^8)$ and XOR-accumulates into `dst`.
+#[inline(always)]
+pub fn gf8_mul_add_slice(coeff: u8, src: &[u8], dst: &mut [u8]) {
+    gf8_mul_acc_slice(coeff, src, dst);
+}
+
+/// Scalar fallback for `dst[i] ^= coeff * src[i]` indexing directly into `NIBBLE_TABLES`.
 #[inline]
 pub fn scalar_gf8_mul_add_raw(coeff: u8, src: &[u8], dst: &mut [u8], len: usize) {
     if coeff == 1 {
@@ -142,11 +175,52 @@ pub fn scalar_gf8_mul_add_raw(coeff: u8, src: &[u8], dst: &mut [u8], len: usize)
         }
         return;
     }
-    let (tbl_low, tbl_high) = compute_nibble_tables(coeff);
+    let row = &NIBBLE_TABLES[coeff as usize];
     for i in 0..len {
         let b = src[i];
-        let p = tbl_low[(b & 0x0F) as usize] ^ tbl_high[(b >> 4) as usize];
+        let p = row[(b & 0x0F) as usize] ^ row[16 + ((b >> 4) as usize)];
         dst[i] ^= p;
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn neon_gf8_xor_slice_raw(mut src: *const u8, mut dst: *mut u8, mut len: usize) {
+    unsafe {
+        while len >= 64 {
+            let s0 = vld1q_u8(src);
+            let s1 = vld1q_u8(src.add(16));
+            let s2 = vld1q_u8(src.add(32));
+            let s3 = vld1q_u8(src.add(48));
+
+            let d0 = vld1q_u8(dst);
+            let d1 = vld1q_u8(dst.add(16));
+            let d2 = vld1q_u8(dst.add(32));
+            let d3 = vld1q_u8(dst.add(48));
+
+            vst1q_u8(dst, veorq_u8(d0, s0));
+            vst1q_u8(dst.add(16), veorq_u8(d1, s1));
+            vst1q_u8(dst.add(32), veorq_u8(d2, s2));
+            vst1q_u8(dst.add(48), veorq_u8(d3, s3));
+
+            src = src.add(64);
+            dst = dst.add(64);
+            len -= 64;
+        }
+        while len >= 16 {
+            let s = vld1q_u8(src);
+            let d = vld1q_u8(dst);
+            vst1q_u8(dst, veorq_u8(d, s));
+            src = src.add(16);
+            dst = dst.add(16);
+            len -= 16;
+        }
+        while len > 0 {
+            *dst ^= *src;
+            src = src.add(1);
+            dst = dst.add(1);
+            len -= 1;
+        }
     }
 }
 
@@ -156,49 +230,15 @@ pub fn scalar_gf8_mul_add_raw(coeff: u8, src: &[u8], dst: &mut [u8], len: usize)
 unsafe fn neon_gf8_mul_add_raw(coeff: u8, mut src: *const u8, mut dst: *mut u8, mut len: usize) {
     unsafe {
         if coeff == 1 {
-            while len >= 64 {
-                let s0 = vld1q_u8(src);
-                let s1 = vld1q_u8(src.add(16));
-                let s2 = vld1q_u8(src.add(32));
-                let s3 = vld1q_u8(src.add(48));
-
-                let d0 = vld1q_u8(dst);
-                let d1 = vld1q_u8(dst.add(16));
-                let d2 = vld1q_u8(dst.add(32));
-                let d3 = vld1q_u8(dst.add(48));
-
-                vst1q_u8(dst, veorq_u8(d0, s0));
-                vst1q_u8(dst.add(16), veorq_u8(d1, s1));
-                vst1q_u8(dst.add(32), veorq_u8(d2, s2));
-                vst1q_u8(dst.add(48), veorq_u8(d3, s3));
-
-                src = src.add(64);
-                dst = dst.add(64);
-                len -= 64;
-            }
-            while len >= 16 {
-                let s = vld1q_u8(src);
-                let d = vld1q_u8(dst);
-                vst1q_u8(dst, veorq_u8(d, s));
-                src = src.add(16);
-                dst = dst.add(16);
-                len -= 16;
-            }
-            while len > 0 {
-                *dst ^= *src;
-                src = src.add(1);
-                dst = dst.add(1);
-                len -= 1;
-            }
+            neon_gf8_xor_slice_raw(src, dst, len);
             return;
         }
 
-        let (tbl_l, tbl_h) = compute_nibble_tables(coeff);
-        let t_low = vld1q_u8(tbl_l.as_ptr());
-        let t_high = vld1q_u8(tbl_h.as_ptr());
+        let row = &NIBBLE_TABLES[coeff as usize];
+        let t_low = vld1q_u8(row.as_ptr());
+        let t_high = vld1q_u8(row.as_ptr().add(16));
         let mask_low = vdupq_n_u8(0x0F);
 
-        // 64-byte unrolled loop
         while len >= 64 {
             let v0 = vld1q_u8(src);
             let v1 = vld1q_u8(src.add(16));
@@ -249,7 +289,7 @@ unsafe fn neon_gf8_mul_add_raw(coeff: u8, mut src: *const u8, mut dst: *mut u8, 
 
         while len > 0 {
             let b = *src;
-            let p = tbl_l[(b & 0x0F) as usize] ^ tbl_h[(b >> 4) as usize];
+            let p = row[(b & 0x0F) as usize] ^ row[16 + ((b >> 4) as usize)];
             *dst ^= p;
             src = src.add(1);
             dst = dst.add(1);

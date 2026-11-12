@@ -291,10 +291,10 @@ impl WinZipAesCtr {
             self.engine.encrypt_block(&mut block);
 
             if let Ok(chunk) = <&mut [u8; 16]>::try_from(&mut data[offset..offset + 16]) {
-                let d0 = u64::from_ne_bytes(chunk[..8].try_into().unwrap());
-                let d1 = u64::from_ne_bytes(chunk[8..].try_into().unwrap());
-                let b0 = u64::from_ne_bytes(block[..8].try_into().unwrap());
-                let b1 = u64::from_ne_bytes(block[8..].try_into().unwrap());
+                let d0 = u64::from_ne_bytes(chunk[..8].try_into().unwrap_or([0u8; 8]));
+                let d1 = u64::from_ne_bytes(chunk[8..].try_into().unwrap_or([0u8; 8]));
+                let b0 = u64::from_ne_bytes(block[..8].try_into().unwrap_or([0u8; 8]));
+                let b1 = u64::from_ne_bytes(block[8..].try_into().unwrap_or([0u8; 8]));
                 chunk[..8].copy_from_slice(&(d0 ^ b0).to_ne_bytes());
                 chunk[8..].copy_from_slice(&(d1 ^ b1).to_ne_bytes());
             } else {

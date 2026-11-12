@@ -113,10 +113,10 @@ impl TransactionalFileWriter {
     #[inline]
     #[must_use]
     pub fn temp_path(&self) -> &Path {
-        self.guard
-            .as_ref()
-            .expect("temporary path accessed after disarm")
-            .path()
+        match self.guard.as_ref() {
+            Some(guard) => guard.path(),
+            None => panic!("temporary path accessed after disarm"),
+        }
     }
 
     /// Returns a reference to the underlying file descriptor.
@@ -126,7 +126,10 @@ impl TransactionalFileWriter {
     #[inline]
     #[must_use]
     pub fn file(&self) -> &File {
-        self.file.as_ref().expect("file handle accessed after close")
+        match self.file.as_ref() {
+            Some(file) => file,
+            None => panic!("file handle accessed after close"),
+        }
     }
 
     /// Returns a mutable reference to the underlying file descriptor.
@@ -135,7 +138,10 @@ impl TransactionalFileWriter {
     /// Panics if called after commit or abort has closed the file handle.
     #[inline]
     pub fn file_mut(&mut self) -> &mut File {
-        self.file.as_mut().expect("file handle accessed after close")
+        match self.file.as_mut() {
+            Some(file) => file,
+            None => panic!("file handle accessed after close"),
+        }
     }
 
     /// Flushes user-space buffers and asks the OS to synchronize metadata and payload to disk.
@@ -458,7 +464,10 @@ impl InFlightJailFile {
     /// Returns a mutable reference to the underlying open file handle.
     #[inline]
     pub fn file_mut(&mut self) -> &mut std::fs::File {
-        self.file.as_mut().expect("in-flight file handle is open")
+        match self.file.as_mut() {
+            Some(file) => file,
+            None => panic!("in-flight file handle is open"),
+        }
     }
 
     /// Flushes the file, verifies that the parent directory path in `jail` still resolves to

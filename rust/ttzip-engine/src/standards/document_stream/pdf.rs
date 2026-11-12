@@ -101,24 +101,30 @@ fn find_subsequence(haystack: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 fn extract_page_count(data: &[u8]) -> u32 {
-    if let Some(pos) = find_subsequence(data, b"/Count") {
-        let mut idx = pos + 6;
-        while idx < data.len() && data[idx].is_ascii_whitespace() {
-            idx += 1;
-        }
-        let start = idx;
-        while idx < data.len() && data[idx].is_ascii_digit() {
-            idx += 1;
-        }
-        if idx > start {
-            if let Ok(count) = std::str::from_utf8(&data[start..idx]).unwrap_or("0").parse::<u32>() {
-                if count > 0 {
-                    return count;
-                }
-            }
-        }
+    if let Some(count) = parse_count_field(data) {
+        return count;
     }
+    count_page_type_nodes(data).max(1)
+}
 
+fn parse_count_field(data: &[u8]) -> Option<u32> {
+    let pos = find_subsequence(data, b"/Count")?;
+    let mut idx = pos + 6;
+    while idx < data.len() && data[idx].is_ascii_whitespace() {
+        idx += 1;
+    }
+    let start = idx;
+    while idx < data.len() && data[idx].is_ascii_digit() {
+        idx += 1;
+    }
+    if idx <= start {
+        return None;
+    }
+    let count = std::str::from_utf8(&data[start..idx]).ok()?.parse::<u32>().ok()?;
+    (count > 0).then_some(count)
+}
+
+fn count_page_type_nodes(data: &[u8]) -> u32 {
     let mut count = 0u32;
     let mut idx = 0;
     while let Some(pos) = find_subsequence(&data[idx..], b"/Type") {
@@ -135,8 +141,7 @@ fn extract_page_count(data: &[u8]) -> u32 {
         }
         idx = abs_pos + 5;
     }
-
-    count.max(1)
+    count
 }
 
 fn extract_pdf_field(data: &[u8], key: &[u8]) -> Option<String> {
@@ -145,68 +150,72 @@ fn extract_pdf_field(data: &[u8], key: &[u8]) -> Option<String> {
     while idx < data.len() && data[idx].is_ascii_whitespace() {
         idx += 1;
     }
-    if idx >= data.len() {
-        return None;
-    }
+    let first = *data.get(idx)?;
 
-    if data[idx] == b'(' {
-        idx += 1;
-        let mut depth = 1;
-        let mut raw_bytes = Vec::new();
-        while idx < data.len() && depth > 0 {
-            let b = data[idx];
-            if b == b'\\' && idx + 1 < data.len() {
-                idx += 1;
-                let escaped = data[idx];
-                match escaped {
-                    b'n' => raw_bytes.push(b'\n'),
-                    b'r' => raw_bytes.push(b'\r'),
-                    b't' => raw_bytes.push(b'\t'),
-                    b'b' => raw_bytes.push(0x08),
-                    b'f' => raw_bytes.push(0x0C),
-                    b'(' => raw_bytes.push(b'('),
-                    b')' => raw_bytes.push(b')'),
-                    b'\\' => raw_bytes.push(b'\\'),
-                    _ => raw_bytes.push(escaped),
-                }
-            } else if b == b'(' {
-                depth += 1;
-                raw_bytes.push(b);
-            } else if b == b')' {
-                depth -= 1;
-                if depth > 0 {
-                    raw_bytes.push(b);
-                }
-            } else {
-                raw_bytes.push(b);
-            }
-            idx += 1;
-        }
-        let s = decode_pdf_string_bytes(&raw_bytes);
-        let trimmed = s.trim();
-        if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
-    } else if data[idx] == b'<' && (idx + 1 < data.len() && data[idx + 1] != b'<') {
-        idx += 1;
-        let mut hex_str = String::new();
-        while idx < data.len() && data[idx] != b'>' {
-            if !data[idx].is_ascii_whitespace() {
-                hex_str.push(data[idx] as char);
-            }
-            idx += 1;
-        }
-        if !hex_str.len().is_multiple_of(2) {
-            hex_str.push('0');
-        }
-        if let Ok(bytes) = hex_decode_str(&hex_str) {
-            let s = decode_pdf_string_bytes(&bytes);
-            let trimmed = s.trim();
-            if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
-        } else {
-            None
-        }
+    if first == b'(' {
+        parse_literal_pdf_string(data, idx + 1)
+    } else if first == b'<' && data.get(idx + 1).copied() != Some(b'<') {
+        parse_hex_pdf_string(data, idx + 1)
     } else {
         None
     }
+}
+
+fn parse_literal_pdf_string(data: &[u8], mut idx: usize) -> Option<String> {
+    let mut depth = 1usize;
+    let mut raw_bytes = Vec::new();
+    while idx < data.len() && depth > 0 {
+        let b = data[idx];
+        if b == b'\\' && idx + 1 < data.len() {
+            idx += 1;
+            raw_bytes.push(unescape_pdf_byte(data[idx]));
+        } else if b == b'(' {
+            depth += 1;
+            raw_bytes.push(b);
+        } else if b == b')' {
+            depth -= 1;
+            if depth > 0 {
+                raw_bytes.push(b);
+            }
+        } else {
+            raw_bytes.push(b);
+        }
+        idx += 1;
+    }
+    non_empty_pdf_string(&raw_bytes)
+}
+
+#[inline]
+fn unescape_pdf_byte(escaped: u8) -> u8 {
+    match escaped {
+        b'n' => b'\n',
+        b'r' => b'\r',
+        b't' => b'\t',
+        b'b' => 0x08,
+        b'f' => 0x0C,
+        _ => escaped,
+    }
+}
+
+fn parse_hex_pdf_string(data: &[u8], mut idx: usize) -> Option<String> {
+    let mut hex_str = String::new();
+    while idx < data.len() && data[idx] != b'>' {
+        if !data[idx].is_ascii_whitespace() {
+            hex_str.push(data[idx] as char);
+        }
+        idx += 1;
+    }
+    if !hex_str.len().is_multiple_of(2) {
+        hex_str.push('0');
+    }
+    let bytes = hex_decode_str(&hex_str).ok()?;
+    non_empty_pdf_string(&bytes)
+}
+
+fn non_empty_pdf_string(bytes: &[u8]) -> Option<String> {
+    let s = decode_pdf_string_bytes(bytes);
+    let trimmed = s.trim();
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
 fn hex_decode_str(hex: &str) -> Result<Vec<u8>, ()> {
@@ -237,42 +246,45 @@ fn extract_stream_text(data: &[u8]) -> Option<String> {
     let mut collected = String::new();
     let mut idx = 0;
 
-    while idx < data.len() {
-        if let Some(pos) = find_subsequence(&data[idx..], b"Tj") {
-            let tj_pos = idx + pos;
-            let mut back = tj_pos;
-            while back > idx && data[back] != b')' {
-                back -= 1;
+    while let Some(pos) = find_subsequence(&data[idx..], b"Tj") {
+        let tj_pos = idx + pos;
+        if let Some(text) = extract_tj_string_before(data, idx, tj_pos) {
+            if !collected.is_empty() {
+                collected.push(' ');
             }
-            if data[back] == b')' {
-                let close_paren = back;
-                let mut open_paren = back;
-                let mut depth = 1;
-                while open_paren > idx && depth > 0 {
-                    open_paren -= 1;
-                    if data[open_paren] == b'(' && (open_paren == 0 || data[open_paren - 1] != b'\\') {
-                        depth -= 1;
-                    }
-                }
-                if depth == 0 && close_paren > open_paren {
-                    let text_bytes = &data[open_paren + 1..close_paren];
-                    let text = decode_pdf_string_bytes(text_bytes);
-                    if !text.is_empty() {
-                        if !collected.is_empty() {
-                            collected.push(' ');
-                        }
-                        collected.push_str(&text);
-                    }
-                }
-            }
-            idx = tj_pos + 2;
-        } else {
-            break;
+            collected.push_str(&text);
         }
+        idx = tj_pos + 2;
     }
 
     let trimmed = collected.trim();
-    if trimmed.is_empty() { None } else { Some(trimmed.to_string()) }
+    (!trimmed.is_empty()).then(|| trimmed.to_string())
+}
+
+fn extract_tj_string_before(data: &[u8], lower_bound: usize, tj_pos: usize) -> Option<String> {
+    let mut close_paren = tj_pos;
+    while close_paren > lower_bound && data[close_paren] != b')' {
+        close_paren -= 1;
+    }
+    if data[close_paren] != b')' {
+        return None;
+    }
+
+    let mut open_paren = close_paren;
+    let mut depth = 1usize;
+    while open_paren > lower_bound && depth > 0 {
+        open_paren -= 1;
+        if data[open_paren] == b'(' && (open_paren == 0 || data[open_paren - 1] != b'\\') {
+            depth -= 1;
+        }
+    }
+
+    if depth == 0 && close_paren > open_paren {
+        let text = decode_pdf_string_bytes(&data[open_paren + 1..close_paren]);
+        (!text.is_empty()).then_some(text)
+    } else {
+        None
+    }
 }
 
 fn decode_pdf_string_bytes(bytes: &[u8]) -> String {

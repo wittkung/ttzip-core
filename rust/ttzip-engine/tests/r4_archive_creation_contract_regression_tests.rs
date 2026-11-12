@@ -16,8 +16,11 @@ use std::path::Path;
 use std::process::Command;
 use tempfile::tempdir;
 
-use ttzip_engine::archive::unified::create::{create_archive, create_archive_detailed};
+use ttzip_engine::archive::unified::create::{
+    create_archive, create_archive_detailed, supports_embedded_recovery_record,
+};
 use ttzip_engine::archive::unified::inspect::inspect_archive;
+use ttzip_engine::crypto::rs_fec::{inspect_recovery_record_reader, repair_archive_file};
 use ttzip_engine::sevenz::decoder::SevenZArchive;
 use ttzip_engine::types::{
     TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
@@ -25,12 +28,15 @@ use ttzip_engine::types::{
 };
 use ttzip_engine::uniffi_api::archive::{
     create_archive_advanced, create_archive_advanced_with_options,
-    ttzip_uniffi_stage_next_create_extra_options, UniFFICreateArchiveConfig,
+    ttzip_uniffi_stage_next_create_extra_options,
+    ttzip_uniffi_stage_next_create_recovery_record, UniFFICreateArchiveConfig,
     UniFFICreateArchiveExtraOptions,
 };
+use ttzip_engine::uniffi_api::extraction::extract_archive_stream;
 use ttzip_engine::uniffi_api::types::{
     ArchiveFormat, CancellationToken, ProgressHandler, TTZipError, UniFFIEntryMetadata,
 };
+use ttzip_engine::uniffi_api::CollisionPolicy;
 use ttzip_engine::uniffi_api::vfs::load_archive_vfs_tree;
 
 fn inspect_entries_vec(path: &Path, password: Option<&str>) -> Result<Vec<UniFFIEntryMetadata>, TTZipStatus> {
@@ -100,11 +106,11 @@ fn set_file_mtime(path: &Path, epoch_secs: i64) {
     }
 }
 
-fn make_7z_cfg(src_dir: &Path, out: &Path, pwd: Option<String>, split: Option<u64>) -> UniFFICreateArchiveConfig {
+fn make_cfg(src: &[&Path], out: &Path, format: ArchiveFormat, pwd: Option<String>, split: Option<u64>) -> UniFFICreateArchiveConfig {
     UniFFICreateArchiveConfig {
-        source_paths: vec![src_dir.to_string_lossy().to_string()],
+        source_paths: src.iter().map(|p| p.to_string_lossy().to_string()).collect(),
         output_path: out.to_string_lossy().to_string(),
-        format: ArchiveFormat::SevenZip,
+        format,
         level: 6,
         password: pwd,
         split_volume_size_bytes: split,
@@ -114,6 +120,10 @@ fn make_7z_cfg(src_dir: &Path, out: &Path, pwd: Option<String>, split: Option<u6
         no_mac_metadata: true,
         thread_budget: 2,
     }
+}
+
+fn make_7z_cfg(src_dir: &Path, out: &Path, pwd: Option<String>, split: Option<u64>) -> UniFFICreateArchiveConfig {
+    make_cfg(&[src_dir], out, ArchiveFormat::SevenZip, pwd, split)
 }
 
 #[test]
@@ -277,19 +287,7 @@ fn test_r4_7z_metadata_preservation_symlinks_permissions_and_mtime() {
     set_file_mtime(&symlink_file, fixed_mtime);
 
     let out_7z = dir.path().join("meta_preserved.7z");
-    let cfg = UniFFICreateArchiveConfig {
-        source_paths: vec![src_dir.to_string_lossy().to_string()],
-        output_path: out_7z.to_string_lossy().to_string(),
-        format: ArchiveFormat::SevenZip,
-        level: 6,
-        password: None,
-        split_volume_size_bytes: None,
-        exclude_patterns: vec![],
-        include_patterns: vec![],
-        exclude_vcs: false,
-        no_mac_metadata: true,
-        thread_budget: 2,
-    };
+    let cfg = make_7z_cfg(&src_dir, &out_7z, None, None);
     create_archive_advanced(cfg, None, None).expect("7z metadata archive creation should succeed");
 
     // Verify metadata via inspect_entries_vec
@@ -385,19 +383,7 @@ fn test_r4_single_stream_vs_tar_container_contracts() {
 
     for (fmt, out_name, expected_magic) in stream_cases {
         let out_path = dir.path().join(out_name);
-        let cfg = UniFFICreateArchiveConfig {
-            source_paths: vec![file_a.to_string_lossy().to_string()],
-            output_path: out_path.to_string_lossy().to_string(),
-            format: *fmt,
-            level: 6,
-            password: None,
-            split_volume_size_bytes: None,
-            exclude_patterns: vec![],
-            include_patterns: vec![],
-            exclude_vcs: false,
-            no_mac_metadata: true,
-            thread_budget: 2,
-        };
+        let cfg = make_cfg(&[&file_a], &out_path, *fmt, None, None);
         create_archive_advanced(cfg, None, None)
             .unwrap_or_else(|e| panic!("Failed to create single stream {:?}: {:?}", fmt, e));
 
@@ -418,19 +404,7 @@ fn test_r4_single_stream_vs_tar_container_contracts() {
     let sentinel = b"DO_NOT_CORRUPT_EXISTING_GZIP_TARGET";
     fs::write(&pre_existing_gz, sentinel).unwrap();
 
-    let bad_multi_cfg = UniFFICreateArchiveConfig {
-        source_paths: vec![file_a.to_string_lossy().to_string(), file_b.to_string_lossy().to_string()],
-        output_path: pre_existing_gz.to_string_lossy().to_string(),
-        format: ArchiveFormat::Gzip,
-        level: 6,
-        password: None,
-        split_volume_size_bytes: None,
-        exclude_patterns: vec![],
-        include_patterns: vec![],
-        exclude_vcs: false,
-        no_mac_metadata: true,
-        thread_budget: 2,
-    };
+    let bad_multi_cfg = make_cfg(&[&file_a, &file_b], &pre_existing_gz, ArchiveFormat::Gzip, None, None);
     assert!(create_archive_advanced(bad_multi_cfg, None, None).is_err());
     assert_eq!(fs::read(&pre_existing_gz).unwrap().as_slice(), sentinel);
 }
@@ -560,19 +534,7 @@ fn test_r4_bounded_xar_streaming_extraction_cancellation_and_failure_cleanup() {
         threshold: 128 * 1024,
         token: token.clone(),
     });
-    let cancel_cfg = UniFFICreateArchiveConfig {
-        source_paths: vec![src_root.to_string_lossy().to_string()],
-        output_path: cancel_dest.to_string_lossy().to_string(),
-        format: ArchiveFormat::Xar,
-        level: 6,
-        password: None,
-        split_volume_size_bytes: None,
-        exclude_patterns: vec![],
-        include_patterns: vec![],
-        exclude_vcs: false,
-        no_mac_metadata: true,
-        thread_budget: 2,
-    };
+    let cancel_cfg = make_cfg(&[&src_root], &cancel_dest, ArchiveFormat::Xar, None, None);
     let cancel_res = create_archive_advanced(cancel_cfg, Some(handler), Some(token));
     assert!(matches!(cancel_res, Err(TTZipError::Cancelled)));
     assert_eq!(fs::read(&cancel_dest).unwrap(), cancel_sentinel);
@@ -583,37 +545,14 @@ fn test_r4_bounded_xar_streaming_extraction_cancellation_and_failure_cleanup() {
     assert!(!leftover_tmp, "Temporary .xar_heap file must be cleaned up on cancellation");
 
     // 2. Write / missing-source failure must preserve pre-existing destination
-    let fail_cfg = UniFFICreateArchiveConfig {
-        source_paths: vec![dir.path().join("nonexistent_input.bin").to_string_lossy().to_string()],
-        output_path: cancel_dest.to_string_lossy().to_string(),
-        format: ArchiveFormat::Xar,
-        level: 6,
-        password: None,
-        split_volume_size_bytes: None,
-        exclude_patterns: vec![],
-        include_patterns: vec![],
-        exclude_vcs: false,
-        no_mac_metadata: true,
-        thread_budget: 2,
-    };
+    let missing_input = dir.path().join("nonexistent_input.bin");
+    let fail_cfg = make_cfg(&[&missing_input], &cancel_dest, ArchiveFormat::Xar, None, None);
     assert!(create_archive_advanced(fail_cfg, None, None).is_err());
     assert_eq!(fs::read(&cancel_dest).unwrap(), cancel_sentinel);
 
     // 3. Full bounded streaming XAR creation & external `/usr/bin/xar -xf` extraction verification
     let xar_out = dir.path().join("verified_bounded.xar");
-    let ok_cfg = UniFFICreateArchiveConfig {
-        source_paths: vec![src_root.to_string_lossy().to_string()],
-        output_path: xar_out.to_string_lossy().to_string(),
-        format: ArchiveFormat::Xar,
-        level: 6,
-        password: None,
-        split_volume_size_bytes: None,
-        exclude_patterns: vec![],
-        include_patterns: vec![],
-        exclude_vcs: false,
-        no_mac_metadata: true,
-        thread_budget: 2,
-    };
+    let ok_cfg = make_cfg(&[&src_root], &xar_out, ArchiveFormat::Xar, None, None);
     let report = create_archive_advanced(ok_cfg, None, None).expect("Bounded XAR creation must succeed");
     assert!(report.uncompressed_bytes >= 2_621_440);
     assert!(Path::new("/usr/bin/xar").exists(), "/usr/bin/xar required for extraction verification");
@@ -782,4 +721,64 @@ fn test_u1_engine_uniffi_create_transaction_incomplete_and_finish_diagnostics() 
         }
         other => panic!("Expected TTZipError::CreateTransactionIncomplete, got: {other:?}"),
     }
+}
+
+#[test]
+fn test_issue_178_recovery_record_create_inspect_external_and_repair() {
+    assert!(supports_embedded_recovery_record(TTZipArchiveFormat::Zip));
+    assert!(supports_embedded_recovery_record(TTZipArchiveFormat::SevenZip));
+    assert!(supports_embedded_recovery_record(TTZipArchiveFormat::Tar));
+    assert!(!supports_embedded_recovery_record(TTZipArchiveFormat::TarGz));
+
+    let dir = tempdir().expect("tempdir");
+    let src_file = dir.path().join("recovery_payload.bin");
+    let payload: Vec<u8> = (0..12_288).map(|i: usize| ((i * 37 + 11) % 251) as u8).collect();
+    fs::write(&src_file, &payload).unwrap();
+
+    for (fmt, ext, pct) in [(ArchiveFormat::Zip, "zip", 10u8), (ArchiveFormat::SevenZip, "7z", 10), (ArchiveFormat::Tar, "tar", 10)] {
+        let out = dir.path().join(format!("protected.{ext}"));
+        ttzip_uniffi_stage_next_create_recovery_record(pct);
+        let report = create_archive_advanced(make_cfg(&[&src_file], &out, fmt, None, None), None, None).unwrap();
+        let meta = inspect_recovery_record_reader(&mut fs::File::open(&out).unwrap()).unwrap().unwrap();
+        assert!(meta.redundancy_percent >= f64::from(pct));
+        assert_eq!(report.compressed_bytes, fs::metadata(&out).unwrap().len());
+        assert_eq!(inspect_entries_vec(&out, None).unwrap().len(), 1);
+    }
+
+    let zip_path = dir.path().join("protected.zip");
+    assert!(load_archive_vfs_tree(zip_path.to_string_lossy().to_string(), None).unwrap().total_entries() >= 1);
+    let unzip_out = Command::new("/usr/bin/unzip").args(["-t", zip_path.to_str().unwrap()]).output().unwrap();
+    assert!(matches!(unzip_out.status.code(), Some(0 | 1)) && String::from_utf8_lossy(&unzip_out.stdout).contains("No errors detected"));
+    assert!(Command::new("/opt/homebrew/bin/7z").args(["t", dir.path().join("protected.7z").to_str().unwrap()]).output().unwrap().status.success());
+    assert!(Command::new("/usr/bin/tar").args(["-tf", dir.path().join("protected.tar").to_str().unwrap()]).output().unwrap().status.success());
+
+    let mut corrupted = fs::read(&zip_path).unwrap();
+    for b in &mut corrupted[64..128] { *b ^= 0xAA; }
+    fs::write(&zip_path, &corrupted).unwrap();
+    assert!(repair_archive_file(&zip_path).unwrap());
+    let ext_dir = dir.path().join("repaired_out");
+    extract_archive_stream(zip_path.to_string_lossy().to_string(), ext_dir.to_string_lossy().to_string(), CollisionPolicy::Replace, None, None, None).unwrap();
+    assert_eq!(fs::read(ext_dir.join("recovery_payload.bin")).unwrap(), payload);
+}
+
+#[test]
+fn test_issue_178_recovery_record_rejects_unsupported_and_cleans_up_on_cancel() {
+    let dir = tempdir().expect("tempdir");
+    let src_file = dir.path().join("input.bin");
+    fs::write(&src_file, vec![0x5Au8; 65_536]).unwrap();
+    let dest = dir.path().join("guarded.zip");
+    fs::write(&dest, b"SENTINEL_KEEP").unwrap();
+
+    ttzip_uniffi_stage_next_create_recovery_record(75);
+    assert!(matches!(create_archive_advanced(make_cfg(&[&src_file], &dest, ArchiveFormat::Zip, None, None), None, None), Err(TTZipError::EngineError { code }) if code == TTZipStatus::ErrInvalidParam as i32));
+    ttzip_uniffi_stage_next_create_recovery_record(10);
+    assert!(matches!(create_archive_advanced(make_cfg(&[&src_file], &dest, ArchiveFormat::TarGz, None, None), None, None), Err(TTZipError::EngineError { code }) if code == TTZipStatus::ErrUnsupportedFeature as i32));
+    ttzip_uniffi_stage_next_create_recovery_record(10);
+    assert!(matches!(create_archive_advanced(make_cfg(&[&src_file], &dest, ArchiveFormat::Zip, None, Some(8192)), None, None), Err(TTZipError::EngineError { code }) if code == TTZipStatus::ErrUnsupportedFeature as i32));
+    let token = CancellationToken::new();
+    token.cancel();
+    ttzip_uniffi_stage_next_create_recovery_record(10);
+    assert!(matches!(create_archive_advanced(make_cfg(&[&src_file], &dest, ArchiveFormat::Zip, None, None), None, Some(token)), Err(TTZipError::Cancelled)));
+    assert_eq!(fs::read(&dest).unwrap(), b"SENTINEL_KEEP");
+    assert!(!fs::read_dir(dir.path()).unwrap().filter_map(|e| e.ok()).any(|e| e.file_name().to_string_lossy().starts_with(".ttzip_create_txn_")));
 }

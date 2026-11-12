@@ -279,3 +279,48 @@ use tempfile::NamedTempFile;
         assert!(!res_slice, "Must reject slice_size > 64MB");
     }
 
+    #[test]
+    fn test_static_nibble_tables_and_reconstruct_workspace_in_place() {
+        use crate::rs_fec::repair::ReconstructWorkspace;
+
+        for coeff in [0u8, 1, 2, 17, 129, 255] {
+            let (low, high) = compute_nibble_tables(coeff);
+            assert_eq!(&NIBBLE_TABLES[coeff as usize][..16], &low);
+            assert_eq!(&NIBBLE_TABLES[coeff as usize][16..32], &high);
+        }
+
+        let k = 6;
+        let m = 4;
+        let shard_len = 16384; // m * shard_len = 65536 -> exercises parallel encode_in_place
+        let ws = ReconstructWorkspace::new(k, m).expect("workspace");
+
+        let data_shards: Vec<Vec<u8>> = (0..k)
+            .map(|i| (0..shard_len).map(|b| ((b * 13 + i * 29) & 0xFF) as u8).collect())
+            .collect();
+        let mut parity_shards = vec![vec![0u8; shard_len]; m];
+        let data_refs: Vec<&[u8]> = data_shards.iter().map(Vec::as_slice).collect();
+        let mut parity_muts: Vec<&mut [u8]> =
+            parity_shards.iter_mut().map(Vec::as_mut_slice).collect();
+        ws.engine
+            .encode_in_place(&data_refs, &mut parity_muts)
+            .expect("encode_in_place");
+
+        let mut shards: Vec<Option<Vec<u8>>> = data_shards
+            .iter()
+            .cloned()
+            .chain(parity_shards)
+            .map(Some)
+            .collect();
+        let intact_ptr_0 = shards[0].as_ref().expect("shard 0").as_ptr();
+        let intact_ptr_3 = shards[3].as_ref().expect("shard 3").as_ptr();
+
+        shards[1] = None;
+        shards[4] = None;
+        ws.decode_in_place(&mut shards).expect("decode_in_place");
+
+        assert_eq!(shards[0].as_ref().expect("shard 0").as_ptr(), intact_ptr_0);
+        assert_eq!(shards[3].as_ref().expect("shard 3").as_ptr(), intact_ptr_3);
+        assert_eq!(shards[1].as_deref(), Some(data_shards[1].as_slice()));
+        assert_eq!(shards[4].as_deref(), Some(data_shards[4].as_slice()));
+    }
+

@@ -148,8 +148,7 @@ unsafe fn configure_cabi_archive_format(
         if !opt.password.is_null() {
             archive_write_set_passphrase(a, opt.password);
             if opt.encryption == TTZipEncryptionMethod::Aes256 {
-                let enc_opt = CString::new("zip:encryption=aes256").unwrap();
-                archive_write_set_options(a, enc_opt.as_ptr());
+                archive_write_set_options(a, c"zip:encryption=aes256".as_ptr());
             }
         }
         // Match `archive_write_open_filename` / `archive_write_open_fd` regular-file behavior
@@ -490,6 +489,59 @@ fn compute_cabi_is_pure_stream(
     Ok(is_pure_stream)
 }
 
+fn dispatch_cabi_archive_creation(
+    raw_sources: &[PathBuf],
+    entries_to_write: &[(PathBuf, String)],
+    dest_p: &Path,
+    opt: &TTZipCreateOptions,
+    encrypt_file_names: Option<bool>,
+) -> TTZipStatus {
+    if opt.format == TTZipArchiveFormat::SevenZip && encrypt_file_names.is_some() {
+        return match crate::archive::unified::create::create_archive_explicit_with_files_detailed_opts(
+            entries_to_write,
+            dest_p,
+            opt,
+            0,
+            encrypt_file_names,
+        ) {
+            Ok(_) => TTZipStatus::Ok,
+            Err(e) => e.log_and_into_status(),
+        };
+    }
+
+    if matches!(
+        opt.format,
+        TTZipArchiveFormat::SevenZip
+            | TTZipArchiveFormat::Aar
+            | TTZipArchiveFormat::Xar
+            | TTZipArchiveFormat::Brotli
+            | TTZipArchiveFormat::TarBrotli
+            | TTZipArchiveFormat::Snappy
+    ) {
+        return match crate::archive::unified::create::create_archive(raw_sources, dest_p, opt, 0) {
+            Ok(()) => TTZipStatus::Ok,
+            Err(st) => st,
+        };
+    }
+
+    let is_pure_stream = match compute_cabi_is_pure_stream(dest_p, opt, entries_to_write) {
+        Ok(v) => v,
+        Err(st) => return st,
+    };
+
+    match with_staged_archive_destination_detailed_outcome(
+        dest_p,
+        CreateCommitMode::SingleFile,
+        |staged_dest, txn_ctx| unsafe {
+            run_cabi_staged_write(staged_dest, txn_ctx, entries_to_write, opt, is_pure_stream)
+        },
+        || false,
+    ) {
+        Ok(_) => TTZipStatus::Ok,
+        Err(err) => CreateStageCommitError::log_and_into_status(err),
+    }
+}
+
 /// C-ABI exported unified archive creation.
 ///
 /// Compresses `source_paths` into `destination_path` according to `options`.
@@ -524,55 +576,13 @@ pub unsafe extern "C" fn ttzip_rust_create_archive(
             Err(st) => return st,
         };
 
-        if opt.format == TTZipArchiveFormat::SevenZip && encrypt_file_names.is_some() {
-            return match crate::archive::unified::create::create_archive_explicit_with_files_detailed_opts(
-                &entries_to_write,
-                dest_p,
-                opt,
-                0,
-                encrypt_file_names,
-            ) {
-                Ok(_) => TTZipStatus::Ok,
-                Err(e) => e.log_and_into_status(),
-            };
-        }
-
-        if matches!(
-            opt.format,
-            TTZipArchiveFormat::SevenZip
-                | TTZipArchiveFormat::Aar
-                | TTZipArchiveFormat::Xar
-                | TTZipArchiveFormat::Brotli
-                | TTZipArchiveFormat::TarBrotli
-                | TTZipArchiveFormat::Snappy
-        ) {
-            return match crate::archive::unified::create::create_archive(
-                &raw_sources,
-                dest_p,
-                opt,
-                0,
-            ) {
-                Ok(()) => TTZipStatus::Ok,
-                Err(st) => st,
-            };
-        }
-
-        let is_pure_stream = match compute_cabi_is_pure_stream(dest_p, opt, &entries_to_write) {
-            Ok(v) => v,
-            Err(st) => return st,
-        };
-
-        match with_staged_archive_destination_detailed_outcome(
+        dispatch_cabi_archive_creation(
+            &raw_sources,
+            &entries_to_write,
             dest_p,
-            CreateCommitMode::SingleFile,
-            |staged_dest, txn_ctx| unsafe {
-                run_cabi_staged_write(staged_dest, txn_ctx, &entries_to_write, opt, is_pure_stream)
-            },
-            || false,
-        ) {
-            Ok(_) => TTZipStatus::Ok,
-            Err(err) => CreateStageCommitError::log_and_into_status(err),
-        }
+            opt,
+            encrypt_file_names,
+        )
     });
 
     result.unwrap_or(TTZipStatus::ErrPanicCaught)

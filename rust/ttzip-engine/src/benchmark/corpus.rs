@@ -346,7 +346,6 @@ impl BenchmarkCorpusGenerator {
         }
         let mut buf = Vec::with_capacity(size);
 
-        // 64-bit Mach-O header prefix (MH_MAGIC_64, CPU_TYPE_ARM64, etc.)
         const MACHO_HEADER: &[u8] = &[
             0xCF, 0xFA, 0xED, 0xFE, // MH_MAGIC_64
             0x0C, 0x00, 0x00, 0x01, // CPU_TYPE_ARM64
@@ -357,24 +356,7 @@ impl BenchmarkCorpusGenerator {
             0x85, 0x00, 0x20, 0x00, // flags
             0x00, 0x00, 0x00, 0x00, // reserved
         ];
-        let h_len = size.min(MACHO_HEADER.len());
-        buf.extend_from_slice(&MACHO_HEADER[..h_len]);
-
-        // Real ARM64 4-byte machine instruction words
-        const ARM_INSTRUCTIONS: &[u32] = &[
-            0xD503201F, // nop
-            0xD65F03C0, // ret
-            0x910003FD, // mov x29, sp
-            0xA9BF7BFD, // stp x29, x30, [sp, #-16]!
-            0xA8C17BFD, // ldp x29, x30, [sp], #16
-            0x58000040, // ldr x0, [pc, #8]
-            0x14000004, // b +16
-            0x94000008, // bl +32
-            0x8B010000, // add x0, x0, x1
-            0xCB010000, // sub x0, x0, x1
-            0xAA0103E0, // mov x0, x1
-            0xD2800000, // mov x0, #0
-        ];
+        buf.extend_from_slice(&MACHO_HEADER[..size.min(MACHO_HEADER.len())]);
 
         let mut rng: u32 = 0xb1a5b1a5;
         let mut dword_rec = [0u8; 24];
@@ -386,49 +368,11 @@ impl BenchmarkCorpusGenerator {
         while buf.len() < size {
             rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
             let kind = (rng >> 16) % 100;
-
             if kind < 80 {
-                // Code: 4-byte machine instructions and occasional local branch loops
-                rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-                let instr = ARM_INSTRUCTIONS[((rng >> 16) as usize) % ARM_INSTRUCTIONS.len()];
-                let bytes = instr.to_le_bytes();
-                let rem = (size - buf.len()).min(4);
-                buf.extend_from_slice(&bytes[..rem]);
-
-                if buf.len() >= size {
-                    break;
-                }
-
-                rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-                if ((rng >> 16) & 3) == 0 && buf.len() > 32 {
-                    let length = (4 + ((rng >> 20) % 16)) as usize;
-                    let maxd = buf.len().min(4096);
-                    let dist = if maxd > 8 {
-                        8 + (((rng >> 8) as usize) % (maxd - 7))
-                    } else {
-                        buf.len()
-                    };
-                    let start = buf.len().saturating_sub(dist);
-                    let copy_len = (size - buf.len()).min(length);
-                    for i in 0..copy_len {
-                        let b = buf[start + i];
-                        buf.push(b);
-                    }
-                }
+                Self::emit_macho_code_block(&mut buf, size, &mut rng);
             } else if kind < 95 {
-                // DWARF symbol table records (24-byte records with small mutations)
-                rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-                let mut mutated = dword_rec;
-                let nvary = 2 + ((rng >> 16) & 1) as usize;
-                for _ in 0..nvary {
-                    rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
-                    let idx = ((rng >> 16) as usize) % 24;
-                    mutated[idx] = (rng >> 8) as u8;
-                }
-                let rem = (size - buf.len()).min(24);
-                buf.extend_from_slice(&mutated[..rem]);
+                Self::emit_macho_dwarf_record(&mut buf, size, &dword_rec, &mut rng);
             } else {
-                // Zero-padding section (.bss / page alignment)
                 rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
                 let z_len = (32 + ((rng >> 16) % 128)) as usize;
                 let rem = (size - buf.len()).min(z_len);
@@ -436,6 +380,56 @@ impl BenchmarkCorpusGenerator {
             }
         }
         buf
+    }
+
+    fn emit_macho_code_block(buf: &mut Vec<u8>, size: usize, rng: &mut u32) {
+        const ARM_INSTRUCTIONS: &[u32] = &[
+            0xD503201F, 0xD65F03C0, 0x910003FD, 0xA9BF7BFD, 0xA8C17BFD, 0x58000040,
+            0x14000004, 0x94000008, 0x8B010000, 0xCB010000, 0xAA0103E0, 0xD2800000,
+        ];
+        *rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
+        let instr = ARM_INSTRUCTIONS[((*rng >> 16) as usize) % ARM_INSTRUCTIONS.len()];
+        let bytes = instr.to_le_bytes();
+        let rem = (size - buf.len()).min(4);
+        buf.extend_from_slice(&bytes[..rem]);
+        if buf.len() >= size {
+            return;
+        }
+
+        *rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
+        if ((*rng >> 16) & 3) == 0 && buf.len() > 32 {
+            let length = (4 + ((*rng >> 20) % 16)) as usize;
+            let maxd = buf.len().min(4096);
+            let dist = if maxd > 8 {
+                8 + (((*rng >> 8) as usize) % (maxd - 7))
+            } else {
+                buf.len()
+            };
+            let start = buf.len().saturating_sub(dist);
+            let copy_len = (size - buf.len()).min(length);
+            for i in 0..copy_len {
+                let b = buf[start + i];
+                buf.push(b);
+            }
+        }
+    }
+
+    fn emit_macho_dwarf_record(
+        buf: &mut Vec<u8>,
+        size: usize,
+        dword_rec: &[u8; 24],
+        rng: &mut u32,
+    ) {
+        *rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
+        let mut mutated = *dword_rec;
+        let nvary = 2 + ((*rng >> 16) & 1) as usize;
+        for _ in 0..nvary {
+            *rng = rng.wrapping_mul(1103515245).wrapping_add(12345);
+            let idx = ((*rng >> 16) as usize) % 24;
+            mutated[idx] = (*rng >> 8) as u8;
+        }
+        let rem = (size - buf.len()).min(24);
+        buf.extend_from_slice(&mutated[..rem]);
     }
 
     // MARK: - 7. Realistic 24-bit RGB Smooth Gradient Generator

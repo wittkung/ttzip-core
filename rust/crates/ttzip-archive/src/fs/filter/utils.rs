@@ -54,6 +54,42 @@ pub fn parse_size(raw: &str) -> Option<u64> {
     Some((val * multiplier) as u64)
 }
 
+fn split_numeric_prefix(trimmed: &str) -> (&str, &str) {
+    let mut num_end = 0;
+    for (i, c) in trimmed.char_indices() {
+        if c.is_ascii_digit() || c == '.' {
+            num_end = i + c.len_utf8();
+        } else {
+            break;
+        }
+    }
+    (&trimmed[..num_end], trimmed[num_end..].trim())
+}
+
+fn duration_unit_seconds(unit: &str) -> Option<f64> {
+    match unit {
+        "s" | "sec" => Some(1.0),
+        "m" | "min" => Some(60.0),
+        "h" | "hr" => Some(3600.0),
+        "d" | "day" | "days" => Some(86400.0),
+        "w" | "week" | "weeks" => Some(7.0 * 86400.0),
+        "mth" | "month" | "months" => Some(30.0 * 86400.0),
+        "y" | "yr" | "years" => Some(365.0 * 86400.0),
+        _ => None,
+    }
+}
+
+const fn invert_relative_date_op(default_op: ComparisonOp) -> ComparisonOp {
+    match default_op {
+        ComparisonOp::LessThan | ComparisonOp::LessThanOrEqual => ComparisonOp::GreaterThanOrEqual,
+        ComparisonOp::GreaterThan | ComparisonOp::GreaterThanOrEqual => {
+            ComparisonOp::LessThanOrEqual
+        }
+        ComparisonOp::Equals => ComparisonOp::Equals,
+        ComparisonOp::NotEquals => ComparisonOp::NotEquals,
+    }
+}
+
 /// Parses duration/date specifier into epoch timestamp and adjusted comparison operator.
 pub fn parse_date_spec(
     spec: &str,
@@ -65,48 +101,14 @@ pub fn parse_date_spec(
         return None;
     }
 
-    let mut num_end = 0;
-    for (i, c) in trimmed.char_indices() {
-        if c.is_ascii_digit() || c == '.' {
-            num_end = i + c.len_utf8();
-        } else {
-            break;
-        }
-    }
-
-    if num_end > 0 && num_end < trimmed.len() {
-        let num_str = &trimmed[..num_end];
-        let unit_str = trimmed[num_end..].trim().to_ascii_lowercase();
+    let (num_str, unit_raw) = split_numeric_prefix(trimmed);
+    if !num_str.is_empty() && !unit_raw.is_empty() {
         if let Ok(val) = num_str.parse::<f64>() {
-            let seconds: f64 = match unit_str.as_str() {
-                "s" | "sec" => val,
-                "m" | "min" => val * 60.0,
-                "h" | "hr" => val * 3600.0,
-                "d" | "day" | "days" => val * 86400.0,
-                "w" | "week" | "weeks" => val * 7.0 * 86400.0,
-                "mth" | "month" | "months" => val * 30.0 * 86400.0,
-                "y" | "yr" | "years" => val * 365.0 * 86400.0,
-                _ => return None,
-            };
-
-            let target_time = ref_epoch_secs - (seconds as i64);
-            let mapped_op = match default_op {
-                ComparisonOp::LessThan | ComparisonOp::LessThanOrEqual => {
-                    ComparisonOp::GreaterThanOrEqual
-                }
-                ComparisonOp::GreaterThan | ComparisonOp::GreaterThanOrEqual => {
-                    ComparisonOp::LessThanOrEqual
-                }
-                ComparisonOp::Equals => ComparisonOp::Equals,
-                ComparisonOp::NotEquals => ComparisonOp::NotEquals,
-            };
-            return Some((target_time, mapped_op));
+            let unit_secs = duration_unit_seconds(&unit_raw.to_ascii_lowercase())?;
+            let target_time = ref_epoch_secs - ((val * unit_secs) as i64);
+            return Some((target_time, invert_relative_date_op(default_op)));
         }
     }
 
-    if let Ok(epoch) = trimmed.parse::<i64>() {
-        return Some((epoch, default_op));
-    }
-
-    None
+    trimmed.parse::<i64>().ok().map(|epoch| (epoch, default_op))
 }

@@ -177,8 +177,8 @@ public enum PlatformMemory {
         }
         
         let fileSize = Int(statBuf.st_size)
-        if fileSize == 0 {
-            return PlatformMmapResult(pointer: UnsafeRawPointer(bitPattern: 1)!, size: 0, rawDescriptor: fd)
+        if fileSize == 0, let sentinel = UnsafeRawPointer(bitPattern: 1) {
+            return PlatformMmapResult(pointer: sentinel, size: 0, rawDescriptor: fd)
         }
         
         guard let mappedPtr = mmap(nil, fileSize, PROT_READ, MAP_FILE | MAP_SHARED, fd, 0),
@@ -339,69 +339,37 @@ public final class AppleSiliconTuner: @unchecked Sendable {
     public let autoTunedConfig: AutoTunedConfig
     
     private init() {
+        let detected = Self.detectChipTopology()
+        self.topology = detected
+        self.autoTunedConfig = Self.buildAutoTunedConfig(for: detected)
+    }
+
+    private static func detectChipTopology() -> ChipTopology {
         var chipName = "Standard Processor"
         var totalVal = PlatformHardware.capabilities.logicalCores
         var perfVal = totalVal
         var effVal = 0
         var realMem: UInt64 = 8 * 1024 * 1024 * 1024
         var pageVal = PlatformOperatingSystem.current.defaultPageAlignment
-        
+
         #if os(macOS)
-        var size = 0
-        chipName = "Apple Silicon"
-        sysctlbyname("machdep.cpu.brand_string", nil, &size, nil, 0)
-        if size > 0 {
-            var brand = [CChar](repeating: 0, count: size)
-            sysctlbyname("machdep.cpu.brand_string", &brand, &size, nil, 0)
-            let brandStr = brand.withUnsafeBufferPointer { ptr -> String in
-                guard let base = ptr.baseAddress else { return "" }
-                return String(cString: base).trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-            if !brandStr.isEmpty {
-                chipName = brandStr
-            }
-        }
-        
-        if chipName == "Apple Silicon" || chipName.contains("Apple processor") {
-            sysctlbyname("hw.model", nil, &size, nil, 0)
-            if size > 0 {
-                var model = [CChar](repeating: 0, count: size)
-                sysctlbyname("hw.model", &model, &size, nil, 0)
-                let modelStr = model.withUnsafeBufferPointer { ptr -> String in
-                    guard let base = ptr.baseAddress else { return "" }
-                    return String(cString: base).trimmingCharacters(in: .whitespacesAndNewlines)
-                }
-                if !modelStr.isEmpty {
-                    chipName = "Apple Silicon (\(modelStr))"
-                }
-            }
-        }
-        
-        var ncpu: Int32 = 0
-        var intSize = MemoryLayout<Int32>.size
-        sysctlbyname("hw.ncpu", &ncpu, &intSize, nil, 0)
-        
-        var pCores: Int32 = 0
-        sysctlbyname("hw.perflevel0.physicalcpu", &pCores, &intSize, nil, 0)
-        
-        var eCores: Int32 = 0
-        sysctlbyname("hw.perflevel1.physicalcpu", &eCores, &intSize, nil, 0)
-        
+        chipName = resolveMacChipName()
+        let ncpu = querySysctlInt32("hw.ncpu")
+        let pCores = querySysctlInt32("hw.perflevel0.physicalcpu")
+        let eCores = querySysctlInt32("hw.perflevel1.physicalcpu")
+        let pageSize = querySysctlInt32("hw.pagesize")
         var memSize: UInt64 = 0
         var memSizeLen = MemoryLayout<UInt64>.size
         sysctlbyname("hw.memsize", &memSize, &memSizeLen, nil, 0)
-        
-        var pageSize: Int32 = 0
-        sysctlbyname("hw.pagesize", &pageSize, &intSize, nil, 0)
-        
+
         totalVal = ncpu > 0 ? Int(ncpu) : PlatformHardware.capabilities.logicalCores
         perfVal = pCores > 0 ? Int(pCores) : (totalVal > 4 ? totalVal - 2 : totalVal)
         effVal = eCores > 0 ? Int(eCores) : Swift.max(1, totalVal - perfVal)
         pageVal = pageSize > 0 ? Int(pageSize) : PlatformOperatingSystem.current.defaultPageAlignment
         realMem = memSize > 0 ? memSize : 8 * 1024 * 1024 * 1024
         #endif
-        
-        self.topology = ChipTopology(
+
+        return ChipTopology(
             chipName: chipName,
             totalCores: totalVal,
             performanceCores: perfVal,
@@ -409,47 +377,77 @@ public final class AppleSiliconTuner: @unchecked Sendable {
             unifiedMemoryBytes: realMem,
             pageSizeBytes: pageVal
         )
-        
-        let memGB = Double(realMem) / (1024.0 * 1024.0 * 1024.0)
-        
-        let dictSize: Int
-        let chunkSize: Int
-        let bufSize: Int
-        let isHighMem: Bool
-        let summary: String
-        
-        if memGB >= 96.0 {
-            dictSize = 4096
-            chunkSize = 512 * 1024 * 1024
-            bufSize = 64 * 1024 * 1024
-            isHighMem = true
-            summary = "128GB Unified Memory: 4096MB dictionary + 64MB page buffer (\(chipName))"
-        } else if memGB >= 48.0 {
-            dictSize = 2048
-            chunkSize = 256 * 1024 * 1024
-            bufSize = 32 * 1024 * 1024
-            isHighMem = true
-            summary = "64GB Unified Memory: 2048MB dictionary + 32MB page buffer (\(chipName))"
-        } else if memGB >= 24.0 {
-            dictSize = 1024
-            chunkSize = 128 * 1024 * 1024
-            bufSize = 16 * 1024 * 1024
-            isHighMem = true
-            summary = "32GB Unified Memory: 1024MB dictionary + 16MB page buffer (\(chipName))"
-        } else {
-            dictSize = 64
-            chunkSize = 16 * 1024 * 1024
-            bufSize = 4 * 1024 * 1024
-            isHighMem = false
-            summary = "Standard Memory: 64MB dictionary + 4MB page buffer (\(chipName))"
+    }
+
+    #if os(macOS)
+    private static func resolveMacChipName() -> String {
+        let brand = querySysctlString("machdep.cpu.brand_string")
+        if !brand.isEmpty && !brand.contains("Apple processor") {
+            return brand
         }
-        
-        self.autoTunedConfig = AutoTunedConfig(
-            recommendedDictionarySizeMB: dictSize,
-            recommendedChunkSizeBytes: chunkSize,
-            recommendedBufferSize: bufSize,
-            isHighMemoryProfile: isHighMem,
-            profileSummary: summary
+        let model = querySysctlString("hw.model")
+        if !model.isEmpty {
+            return "Apple Silicon (\(model))"
+        }
+        return brand.isEmpty ? "Apple Silicon" : brand
+    }
+
+    private static func querySysctlString(_ key: String) -> String {
+        var size = 0
+        sysctlbyname(key, nil, &size, nil, 0)
+        guard size > 0 else { return "" }
+        var buf = [CChar](repeating: 0, count: size)
+        sysctlbyname(key, &buf, &size, nil, 0)
+        return buf.withUnsafeBufferPointer { ptr -> String in
+            guard let base = ptr.baseAddress else { return "" }
+            return String(cString: base).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+    }
+
+    private static func querySysctlInt32(_ key: String) -> Int32 {
+        var val: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        sysctlbyname(key, &val, &size, nil, 0)
+        return val
+    }
+    #endif
+
+    private static func buildAutoTunedConfig(for topology: ChipTopology) -> AutoTunedConfig {
+        let memGB = topology.unifiedMemoryGB
+        let chipName = topology.chipName
+        if memGB >= 96.0 {
+            return AutoTunedConfig(
+                recommendedDictionarySizeMB: 4096,
+                recommendedChunkSizeBytes: 512 * 1024 * 1024,
+                recommendedBufferSize: 64 * 1024 * 1024,
+                isHighMemoryProfile: true,
+                profileSummary: "128GB Unified Memory: 4096MB dictionary + 64MB page buffer (\(chipName))"
+            )
+        }
+        if memGB >= 48.0 {
+            return AutoTunedConfig(
+                recommendedDictionarySizeMB: 2048,
+                recommendedChunkSizeBytes: 256 * 1024 * 1024,
+                recommendedBufferSize: 32 * 1024 * 1024,
+                isHighMemoryProfile: true,
+                profileSummary: "64GB Unified Memory: 2048MB dictionary + 32MB page buffer (\(chipName))"
+            )
+        }
+        if memGB >= 24.0 {
+            return AutoTunedConfig(
+                recommendedDictionarySizeMB: 1024,
+                recommendedChunkSizeBytes: 128 * 1024 * 1024,
+                recommendedBufferSize: 16 * 1024 * 1024,
+                isHighMemoryProfile: true,
+                profileSummary: "32GB Unified Memory: 1024MB dictionary + 16MB page buffer (\(chipName))"
+            )
+        }
+        return AutoTunedConfig(
+            recommendedDictionarySizeMB: 64,
+            recommendedChunkSizeBytes: 16 * 1024 * 1024,
+            recommendedBufferSize: 4 * 1024 * 1024,
+            isHighMemoryProfile: false,
+            profileSummary: "Standard Memory: 64MB dictionary + 4MB page buffer (\(chipName))"
         )
     }
     

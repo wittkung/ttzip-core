@@ -466,6 +466,11 @@ fn test_sevenz_solid_extraction_throughput_and_speedup_regression_gate() {
         full_throughput_mb_s,
         baseline_mbs
     );
+    assert!(
+        speedup_ratio > 1.5,
+        "Solid selective early-exit speedup ({:.2}x) fell below 1.5x minimum threshold!",
+        speedup_ratio
+    );
 
     let regression_pct = if full_throughput_mb_s < baseline_mbs {
         ((baseline_mbs - full_throughput_mb_s) / baseline_mbs) * 100.0
@@ -533,4 +538,132 @@ fn test_sevenz_comprehensive_anti_regression_summary_gate() {
         max_regression,
         MAX_ALLOWED_REGRESSION_PCT
     );
+}
+
+fn bench_raw_fl2_compress_once(items: &[ZipInputItem], total_bytes: usize) {
+    use ttzip_engine::codecs::lzma2::{Fl2CParameter, Fl2CStream, Fl2InBuffer, Fl2OutBuffer};
+    let mut cstream = Fl2CStream::new().expect("Fl2CStream::new");
+    cstream.set_parameter(Fl2CParameter::CompressionLevel, 1).unwrap();
+    cstream.set_parameter(Fl2CParameter::DictionarySize, 1 << 20).unwrap();
+    cstream.set_parameter(Fl2CParameter::OmitProperties, 1).unwrap();
+    cstream.init(0).unwrap();
+    let mut out_chunk = vec![0u8; 1024 * 1024];
+    let mut comp_out = Vec::with_capacity(total_bytes);
+    for item in items {
+        let mut in_buf = Fl2InBuffer {
+            src: item.data.as_ptr() as *const libc::c_void,
+            size: item.data.len(),
+            pos: 0,
+        };
+        while in_buf.pos < in_buf.size {
+            let mut out_buf = Fl2OutBuffer {
+                dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
+                size: out_chunk.len(),
+                pos: 0,
+            };
+            cstream.compress_chunk(&mut in_buf, &mut out_buf).unwrap();
+            comp_out.extend_from_slice(&out_chunk[..out_buf.pos]);
+        }
+    }
+    loop {
+        let mut out_buf = Fl2OutBuffer {
+            dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
+            size: out_chunk.len(),
+            pos: 0,
+        };
+        let rem = cstream.end_stream(&mut out_buf).unwrap();
+        comp_out.extend_from_slice(&out_chunk[..out_buf.pos]);
+        if rem == 0 {
+            break;
+        }
+    }
+    black_box(comp_out);
+}
+
+fn bench_raw_fl2_decompress_once(raw_packed: &[u8], dict_prop: Option<u8>) {
+    use ttzip_engine::codecs::lzma2::{Fl2DStream, Fl2InBuffer, Fl2OutBuffer};
+    let mut dstream = Fl2DStream::new(1).unwrap();
+    dstream.init(dict_prop).unwrap();
+    let mut out_chunk = vec![0u8; 4 * 1024 * 1024];
+    let mut in_buf = Fl2InBuffer {
+        src: raw_packed.as_ptr() as *const libc::c_void,
+        size: raw_packed.len(),
+        pos: 0,
+    };
+    let mut total = 0usize;
+    loop {
+        let mut out_buf = Fl2OutBuffer {
+            dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
+            size: out_chunk.len(),
+            pos: 0,
+        };
+        let rem = dstream.decompress_stream(&mut in_buf, &mut out_buf).unwrap();
+        total += out_buf.pos;
+        if rem == 0 {
+            break;
+        }
+    }
+    black_box(total);
+}
+
+#[test]
+fn test_sevenz_lzma2_ab_throughput_vs_raw_fl2_gate() {
+    let mut governor = ThermalThrottleGovernor::with_thresholds(70_000_000, Duration::from_secs(5));
+    let items = generate_benchmark_solid_dataset(16);
+    let total_uncompressed_bytes: usize = items.iter().map(|it| it.data.len()).sum();
+
+    let archive_bytes = create_7z_solid_archive_bytes(&items, 1, 1).unwrap();
+    let archive = SevenZArchive::open_slice(&archive_bytes).unwrap();
+    let folder = &archive.info().folders[0];
+    let raw_packed = &archive_bytes[folder.packed_offset..folder.packed_offset + folder.packed_len];
+    let dict_prop = folder.coders[0].properties.first().copied();
+
+    // Warm thread-local FL2 compression/decompression streams before timed gates.
+    ttzip_engine::sevenz::decode_7z_folder_streaming(&archive_bytes, archive.info(), 0, None, 1, |_| Ok(())).unwrap();
+
+    let (raw_comp_mbs, _) = measure_adaptive_throughput(
+        || bench_raw_fl2_compress_once(&items, total_uncompressed_bytes),
+        total_uncompressed_bytes,
+        &mut governor,
+    );
+    let (sevenz_comp_mbs, _) = measure_adaptive_throughput(
+        || {
+            black_box(create_7z_solid_archive_bytes(&items, 1, 1).unwrap());
+        },
+        total_uncompressed_bytes,
+        &mut governor,
+    );
+
+    let (raw_decomp_mbs, _) = measure_adaptive_throughput(
+        || bench_raw_fl2_decompress_once(raw_packed, dict_prop),
+        total_uncompressed_bytes,
+        &mut governor,
+    );
+    let (sevenz_decomp_mbs, _) = measure_adaptive_throughput(
+        || {
+            let mut total = 0usize;
+            ttzip_engine::sevenz::decode_7z_folder_streaming(
+                &archive_bytes,
+                archive.info(),
+                0,
+                None,
+                1,
+                |chunk| {
+                    total += chunk.len();
+                    Ok(())
+                },
+            )
+            .unwrap();
+            black_box(total);
+        },
+        total_uncompressed_bytes,
+        &mut governor,
+    );
+
+    let comp_ratio = sevenz_comp_mbs / raw_comp_mbs.max(1e-9);
+    let decomp_ratio = sevenz_decomp_mbs / raw_decomp_mbs.max(1e-9);
+    println!("  7z vs Raw FL2 Comp:   {:.2} MB/s vs {:.2} MB/s ({:.2}x)", sevenz_comp_mbs, raw_comp_mbs, comp_ratio);
+    println!("  7z vs Raw FL2 Decomp: {:.2} MB/s vs {:.2} MB/s ({:.2}x)", sevenz_decomp_mbs, raw_decomp_mbs, decomp_ratio);
+    assert!(comp_ratio >= 1.0, "7z LZMA2 comp ratio ({:.2}x) < 1.0x", comp_ratio);
+    assert!(decomp_ratio >= 1.0, "7z LZMA2 decomp ratio ({:.2}x) < 1.0x", decomp_ratio);
 }

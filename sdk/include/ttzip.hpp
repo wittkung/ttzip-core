@@ -12,8 +12,10 @@
 #include <functional>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -46,9 +48,76 @@ public:
     constexpr expected(const unexpected<E>& unexp) : has_val(false), err(unexp.error()) {}
     constexpr expected(unexpected<E>&& unexp) : has_val(false), err(std::move(unexp.error())) {}
 
+    constexpr expected(const expected& other)
+        requires (std::is_copy_constructible_v<T> && std::is_copy_constructible_v<E>)
+        : has_val(other.has_val), dummy(0) {
+        if (has_val) {
+            std::construct_at(std::addressof(val), other.val);
+        } else {
+            std::construct_at(std::addressof(err), other.err);
+        }
+    }
+
+    constexpr expected(expected&& other) noexcept(
+        std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_constructible_v<E>
+    )
+        requires (std::is_move_constructible_v<T> && std::is_move_constructible_v<E>)
+        : has_val(other.has_val), dummy(0) {
+        if (has_val) {
+            std::construct_at(std::addressof(val), std::move(other.val));
+        } else {
+            std::construct_at(std::addressof(err), std::move(other.err));
+        }
+    }
+
+    constexpr expected& operator=(const expected& other)
+        requires (std::is_copy_constructible_v<T> && std::is_copy_assignable_v<T> &&
+                  std::is_copy_constructible_v<E> && std::is_copy_assignable_v<E> &&
+                  (std::is_nothrow_move_constructible_v<T> || std::is_nothrow_move_constructible_v<E>)) {
+        if (this == &other) {
+            return *this;
+        }
+        if (has_val && other.has_val) {
+            val = other.val;
+        } else if (!has_val && !other.has_val) {
+            err = other.err;
+        } else if (has_val) {
+            reinit_expected(err, val, other.err);
+            has_val = false;
+        } else {
+            reinit_expected(val, err, other.val);
+            has_val = true;
+        }
+        return *this;
+    }
+
+    constexpr expected& operator=(expected&& other) noexcept(
+        std::is_nothrow_move_constructible_v<T> && std::is_nothrow_move_assignable_v<T> &&
+        std::is_nothrow_move_constructible_v<E> && std::is_nothrow_move_assignable_v<E>
+    )
+        requires (std::is_move_constructible_v<T> && std::is_move_assignable_v<T> &&
+                  std::is_move_constructible_v<E> && std::is_move_assignable_v<E> &&
+                  (std::is_nothrow_move_constructible_v<T> || std::is_nothrow_move_constructible_v<E>)) {
+        if (this == &other) {
+            return *this;
+        }
+        if (has_val && other.has_val) {
+            val = std::move(other.val);
+        } else if (!has_val && !other.has_val) {
+            err = std::move(other.err);
+        } else if (has_val) {
+            reinit_expected(err, val, std::move(other.err));
+            has_val = false;
+        } else {
+            reinit_expected(val, err, std::move(other.val));
+            has_val = true;
+        }
+        return *this;
+    }
+
     ~expected() {
-        if (has_val) val.~T();
-        else err.~E();
+        if (has_val) std::destroy_at(std::addressof(val));
+        else std::destroy_at(std::addressof(err));
     }
 
     constexpr bool has_value() const noexcept { return has_val; }
@@ -71,8 +140,30 @@ public:
     constexpr E& error() & noexcept { return err; }
 
 private:
+    template <typename NewT, typename OldT, typename... Args>
+    static constexpr void reinit_expected(NewT& newval, OldT& oldval, Args&&... args) {
+        if constexpr (std::is_nothrow_constructible_v<NewT, Args...>) {
+            std::destroy_at(std::addressof(oldval));
+            std::construct_at(std::addressof(newval), std::forward<Args>(args)...);
+        } else if constexpr (std::is_nothrow_move_constructible_v<NewT>) {
+            NewT tmp(std::forward<Args>(args)...);
+            std::destroy_at(std::addressof(oldval));
+            std::construct_at(std::addressof(newval), std::move(tmp));
+        } else {
+            OldT tmp(std::move(oldval));
+            std::destroy_at(std::addressof(oldval));
+            try {
+                std::construct_at(std::addressof(newval), std::forward<Args>(args)...);
+            } catch (...) {
+                std::construct_at(std::addressof(oldval), std::move(tmp));
+                throw;
+            }
+        }
+    }
+
     bool has_val;
     union {
+        char dummy;
         T val;
         E err;
     };
@@ -81,12 +172,66 @@ private:
 template <typename E>
 class expected<void, E> {
 public:
-    constexpr expected() noexcept : has_val(true) {}
+    constexpr expected() noexcept : has_val(true), dummy(0) {}
     constexpr expected(const unexpected<E>& unexp) : has_val(false), err(unexp.error()) {}
     constexpr expected(unexpected<E>&& unexp) : has_val(false), err(std::move(unexp.error())) {}
 
+    constexpr expected(const expected& other)
+        requires std::is_copy_constructible_v<E>
+        : has_val(other.has_val), dummy(0) {
+        if (!has_val) {
+            std::construct_at(std::addressof(err), other.err);
+        }
+    }
+
+    constexpr expected(expected&& other) noexcept(std::is_nothrow_move_constructible_v<E>)
+        requires std::is_move_constructible_v<E>
+        : has_val(other.has_val), dummy(0) {
+        if (!has_val) {
+            std::construct_at(std::addressof(err), std::move(other.err));
+        }
+    }
+
+    constexpr expected& operator=(const expected& other)
+        requires (std::is_copy_constructible_v<E> && std::is_copy_assignable_v<E>) {
+        if (this == &other) {
+            return *this;
+        }
+        if (!has_val && !other.has_val) {
+            err = other.err;
+        } else if (has_val && !other.has_val) {
+            std::construct_at(std::addressof(err), other.err);
+            has_val = false;
+        } else if (!has_val && other.has_val) {
+            std::destroy_at(std::addressof(err));
+            dummy = 0;
+            has_val = true;
+        }
+        return *this;
+    }
+
+    constexpr expected& operator=(expected&& other) noexcept(
+        std::is_nothrow_move_constructible_v<E> && std::is_nothrow_move_assignable_v<E>
+    )
+        requires (std::is_move_constructible_v<E> && std::is_move_assignable_v<E>) {
+        if (this == &other) {
+            return *this;
+        }
+        if (!has_val && !other.has_val) {
+            err = std::move(other.err);
+        } else if (has_val && !other.has_val) {
+            std::construct_at(std::addressof(err), std::move(other.err));
+            has_val = false;
+        } else if (!has_val && other.has_val) {
+            std::destroy_at(std::addressof(err));
+            dummy = 0;
+            has_val = true;
+        }
+        return *this;
+    }
+
     ~expected() {
-        if (!has_val) err.~E();
+        if (!has_val) std::destroy_at(std::addressof(err));
     }
 
     constexpr bool has_value() const noexcept { return has_val; }

@@ -9,7 +9,7 @@ fn test_charset_detection_cjk_pipeline() {
     let utf8_bytes = "测试文件.txt".as_bytes();
     assert_eq!(detect_charset(utf8_bytes).as_deref(), Some("UTF-8"));
 
-    // 2. GB18030 / GBK bytes for "测试文件" (B2 E2 CA D4 CE C4 BC FE)
+    // 2. GB18030 / GBK bytes for CJK sample (B2 E2 CA D4 CE C4 BC FE)
     let gbk_bytes: [u8; 8] = [0xB2, 0xE2, 0xCA, 0xD4, 0xCE, 0xC4, 0xBC, 0xFE];
     let detected_gbk = detect_charset(&gbk_bytes).expect("Failed to detect GBK");
     assert!(detected_gbk.to_uppercase().contains("GB"));

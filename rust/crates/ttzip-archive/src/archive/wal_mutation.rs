@@ -260,59 +260,18 @@ pub fn append_wal_mutation(
 pub fn commit_wal_to_archive(archive_path: &Path) -> Result<WalCommitResult, TTZipStatus> {
     let start = Instant::now();
     let wal_path = wal_file_path(archive_path);
-    if !wal_path.exists() { return Err(TTZipStatus::ErrFileNotFound); }
-
-    let mut wal_file = File::open(&wal_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-    let mut magic = [0u8; 8];
-    wal_file.read_exact(&mut magic).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
-    if &magic != WAL_MAGIC { return Err(TTZipStatus::ErrCorruptHeader); }
-
-    let orig_len = fs::metadata(archive_path).map(|m| m.len()).unwrap_or(0);
-    let mut piece_tree = PieceTree::new(orig_len);
-
-    while let Ok(rec_type) = {
-        let mut b = [0u8; 1];
-        wal_file.read_exact(&mut b).map(|_| b[0])
-    } {
-        if rec_type == WAL_RECORD_MUTATION {
-            let mut meta_buf = [0u8; 30];
-            wal_file.read_exact(&mut meta_buf).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
-            let target_offset = u64::from_le_bytes(meta_buf[4..12].try_into().unwrap());
-            let target_len = u64::from_le_bytes(meta_buf[12..20].try_into().unwrap());
-            let entry_len = u16::from_le_bytes(meta_buf[20..22].try_into().unwrap()) as usize;
-            let payload_len = u64::from_le_bytes(meta_buf[22..30].try_into().unwrap());
-
-            let mut entry_name_buf = vec![0u8; entry_len];
-            wal_file.read_exact(&mut entry_name_buf).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
-
-            let wal_payload_offset = wal_file.stream_position().map_err(|_| TTZipStatus::ErrOpenFailed)?;
-            wal_file.seek(SeekFrom::Current(payload_len as i64)).map_err(|_| TTZipStatus::ErrOpenFailed)?;
-
-            piece_tree.replace_range(
-                target_offset,
-                target_len,
-                PieceSource::WalPayload { wal_offset: wal_payload_offset, len: payload_len },
-                payload_len,
-            );
-        } else if rec_type == WAL_RECORD_COMMIT { break; }
+    if !wal_path.exists() {
+        return Err(TTZipStatus::ErrFileNotFound);
     }
+
+    let mut wal_file = open_verified_wal_file(&wal_path)?;
+    let orig_len = fs::metadata(archive_path).map(|m| m.len()).unwrap_or(0);
+    let piece_tree = replay_wal_into_piece_tree(&mut wal_file, orig_len)?;
 
     let shadow_path = archive_path.with_extension(format!("{}.shadow.tmp", std::process::id()));
     let cow_cloned = apfs_cow_clone(archive_path, &shadow_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
 
-    let assemble_res = (|| -> std::io::Result<u64> {
-        let mut orig_file = File::open(archive_path)?;
-        let mut out_file = OpenOptions::new().write(true).truncate(true).open(&shadow_path)?;
-        piece_tree.assemble_to(&mut orig_file, &mut wal_file, &mut out_file)
-    })();
-
-    let bytes_written = match assemble_res {
-        Ok(bytes) => bytes,
-        Err(_) => {
-            let _ = fs::remove_file(&shadow_path);
-            return Err(TTZipStatus::ErrOpenFailed);
-        }
-    };
+    let bytes_written = assemble_shadow_archive(archive_path, &shadow_path, &piece_tree, &mut wal_file)?;
 
     if apfs_atomic_swap_or_rename(&shadow_path, archive_path).is_err() {
         let _ = fs::remove_file(&shadow_path);
@@ -320,14 +279,88 @@ pub fn commit_wal_to_archive(archive_path: &Path) -> Result<WalCommitResult, TTZ
     }
 
     let _ = fs::remove_file(&wal_path);
-    let elapsed = start.elapsed().as_millis() as u64;
-
     Ok(WalCommitResult {
         success: true,
         bytes_written,
         cow_cloned,
-        elapsed_millis: elapsed,
+        elapsed_millis: start.elapsed().as_millis() as u64,
     })
+}
+
+fn open_verified_wal_file(wal_path: &Path) -> Result<File, TTZipStatus> {
+    let mut wal_file = File::open(wal_path).map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    let mut magic = [0u8; 8];
+    wal_file.read_exact(&mut magic).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+    if &magic != WAL_MAGIC {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    Ok(wal_file)
+}
+
+fn replay_wal_into_piece_tree(wal_file: &mut File, orig_len: u64) -> Result<PieceTree, TTZipStatus> {
+    let mut piece_tree = PieceTree::new(orig_len);
+    let mut rec_type_buf = [0u8; 1];
+
+    while wal_file.read_exact(&mut rec_type_buf).is_ok() {
+        match rec_type_buf[0] {
+            WAL_RECORD_MUTATION => {
+                let (target_offset, target_len, wal_payload_offset, payload_len) =
+                    read_wal_mutation_record(wal_file)?;
+                piece_tree.replace_range(
+                    target_offset,
+                    target_len,
+                    PieceSource::WalPayload {
+                        wal_offset: wal_payload_offset,
+                        len: payload_len,
+                    },
+                    payload_len,
+                );
+            }
+            WAL_RECORD_COMMIT => break,
+            _ => break,
+        }
+    }
+    Ok(piece_tree)
+}
+
+fn read_wal_mutation_record(wal_file: &mut File) -> Result<(u64, u64, u64, u64), TTZipStatus> {
+    let mut meta_buf = [0u8; 30];
+    wal_file.read_exact(&mut meta_buf).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+    let target_offset = u64::from_le_bytes(meta_buf[4..12].try_into().map_err(|_| TTZipStatus::ErrCorruptHeader)?);
+    let target_len = u64::from_le_bytes(meta_buf[12..20].try_into().map_err(|_| TTZipStatus::ErrCorruptHeader)?);
+    let entry_len = u16::from_le_bytes(meta_buf[20..22].try_into().map_err(|_| TTZipStatus::ErrCorruptHeader)?) as usize;
+    let payload_len = u64::from_le_bytes(meta_buf[22..30].try_into().map_err(|_| TTZipStatus::ErrCorruptHeader)?);
+
+    let mut entry_name_buf = vec![0u8; entry_len];
+    wal_file.read_exact(&mut entry_name_buf).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+
+    let wal_payload_offset = wal_file.stream_position().map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    wal_file
+        .seek(SeekFrom::Current(payload_len as i64))
+        .map_err(|_| TTZipStatus::ErrOpenFailed)?;
+
+    Ok((target_offset, target_len, wal_payload_offset, payload_len))
+}
+
+fn assemble_shadow_archive(
+    archive_path: &Path,
+    shadow_path: &Path,
+    piece_tree: &PieceTree,
+    wal_file: &mut File,
+) -> Result<u64, TTZipStatus> {
+    let assemble_res = (|| -> std::io::Result<u64> {
+        let mut orig_file = File::open(archive_path)?;
+        let mut out_file = OpenOptions::new().write(true).truncate(true).open(shadow_path)?;
+        piece_tree.assemble_to(&mut orig_file, wal_file, &mut out_file)
+    })();
+
+    match assemble_res {
+        Ok(bytes) => Ok(bytes),
+        Err(_) => {
+            let _ = fs::remove_file(shadow_path);
+            Err(TTZipStatus::ErrOpenFailed)
+        }
+    }
 }
 
 pub fn rollback_wal_mutation(archive_path: &Path) -> Result<bool, TTZipStatus> {

@@ -5,6 +5,69 @@
 
 use std::cmp::Ordering;
 
+fn consume_digit_run<I: Iterator<Item = char>>(
+    chars: &mut std::iter::Peekable<I>,
+) -> (usize, [u8; 32], usize) {
+    let mut zeros = 0usize;
+    while chars.peek() == Some(&'0') {
+        zeros += 1;
+        chars.next();
+    }
+
+    let mut digits = [0u8; 32];
+    let mut len = 0usize;
+    while let Some(&c) = chars.peek() {
+        if c.is_ascii_digit() {
+            if len < 32 {
+                digits[len] = c as u8;
+            }
+            len += 1;
+            chars.next();
+        } else {
+            break;
+        }
+    }
+    (zeros, digits, len)
+}
+
+fn cmp_digit_runs<I: Iterator<Item = char>>(
+    chars_a: &mut std::iter::Peekable<I>,
+    chars_b: &mut std::iter::Peekable<I>,
+) -> Ordering {
+    let (zeros_a, digits_a, len_a) = consume_digit_run(chars_a);
+    let (zeros_b, digits_b, len_b) = consume_digit_run(chars_b);
+
+    if len_a != len_b {
+        return len_a.cmp(&len_b);
+    }
+
+    let cmp_len = len_a.min(32);
+    match digits_a[..cmp_len].cmp(&digits_b[..cmp_len]) {
+        Ordering::Equal if len_a == 0 && zeros_a != zeros_b => zeros_a.cmp(&zeros_b),
+        other => other,
+    }
+}
+
+fn cmp_char_case_insensitive(ca: char, cb: char) -> Ordering {
+    if ca.is_ascii() && cb.is_ascii() {
+        return (ca as u8).to_ascii_lowercase().cmp(&(cb as u8).to_ascii_lowercase());
+    }
+
+    let mut it_a = ca.to_lowercase();
+    let mut it_b = cb.to_lowercase();
+    loop {
+        match (it_a.next(), it_b.next()) {
+            (Some(x), Some(y)) => match x.cmp(&y) {
+                Ordering::Equal => continue,
+                ord => return ord,
+            },
+            (None, None) => return Ordering::Equal,
+            (None, Some(_)) => return Ordering::Less,
+            (Some(_), None) => return Ordering::Greater,
+        }
+    }
+}
+
 /// Compares two strings using natural sort ordering:
 /// - Contiguous digit chunks are compared as numbers rather than lexicographically.
 /// - Alphabetical characters are compared case-insensitively with case-sensitive tie breaking.
@@ -15,106 +78,14 @@ pub fn natural_cmp(a: &str, b: &str) -> Ordering {
 
     while let (Some(&ca), Some(&cb)) = (chars_a.peek(), chars_b.peek()) {
         if ca.is_ascii_digit() && cb.is_ascii_digit() {
-            let mut zeros_a = 0usize;
-            while let Some(&c) = chars_a.peek() {
-                if c == '0' {
-                    zeros_a += 1;
-                    chars_a.next();
-                } else {
-                    break;
-                }
-            }
-
-            let mut zeros_b = 0usize;
-            while let Some(&c) = chars_b.peek() {
-                if c == '0' {
-                    zeros_b += 1;
-                    chars_b.next();
-                } else {
-                    break;
-                }
-            }
-
-            let mut digits_a = [0u8; 32];
-            let mut len_a = 0usize;
-            while let Some(&c) = chars_a.peek() {
-                if c.is_ascii_digit() {
-                    if len_a < 32 {
-                        digits_a[len_a] = c as u8;
-                    }
-                    len_a += 1;
-                    chars_a.next();
-                } else {
-                    break;
-                }
-            }
-
-            let mut digits_b = [0u8; 32];
-            let mut len_b = 0usize;
-            while let Some(&c) = chars_b.peek() {
-                if c.is_ascii_digit() {
-                    if len_b < 32 {
-                        digits_b[len_b] = c as u8;
-                    }
-                    len_b += 1;
-                    chars_b.next();
-                } else {
-                    break;
-                }
-            }
-
-            if len_a != len_b {
-                return len_a.cmp(&len_b);
-            }
-
-            let cmp_len = len_a.min(32);
-            match digits_a[..cmp_len].cmp(&digits_b[..cmp_len]) {
-                Ordering::Equal => {
-                    // Equal numerical value; if both were pure zeros, compare zero counts
-                    if len_a == 0 && zeros_a != zeros_b {
-                        // Fewer leading zeros sort before more leading zeros (e.g. "0" < "00" < "000")
-                        return zeros_a.cmp(&zeros_b);
-                    }
-                }
-                other => return other,
+            let ord = cmp_digit_runs(&mut chars_a, &mut chars_b);
+            if ord != Ordering::Equal {
+                return ord;
             }
         } else {
-            if ca.is_ascii() && cb.is_ascii() {
-                let la = (ca as u8).to_ascii_lowercase();
-                let lb = (cb as u8).to_ascii_lowercase();
-                if la != lb {
-                    return la.cmp(&lb);
-                }
-                chars_a.next();
-                chars_b.next();
-                continue;
-            }
-
-            let mut it_a = ca.to_lowercase();
-            let mut it_b = cb.to_lowercase();
-            let mut diff = Ordering::Equal;
-            loop {
-                match (it_a.next(), it_b.next()) {
-                    (Some(x), Some(y)) => match x.cmp(&y) {
-                        Ordering::Equal => continue,
-                        ord => {
-                            diff = ord;
-                            break;
-                        }
-                    },
-                    (None, None) => break,
-                    (None, Some(_)) => {
-                        diff = Ordering::Less;
-                        break;
-                    }
-                    (Some(_), None) => {
-                        diff = Ordering::Greater;
-                        break;
-                    }
-                }
-            }
-            if diff != Ordering::Equal {
-                return diff;
+            let ord = cmp_char_case_insensitive(ca, cb);
+            if ord != Ordering::Equal {
+                return ord;
             }
             chars_a.next();
             chars_b.next();

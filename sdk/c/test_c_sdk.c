@@ -75,12 +75,22 @@ static void create_test_file(const char *path, const char *content) {
 static char *read_test_file(const char *path) {
     FILE *f = fopen(path, "rb");
     if (!f) return NULL;
-    fseek(f, 0, SEEK_END);
+    if (fseek(f, 0, SEEK_END) != 0) {
+        fclose(f);
+        return NULL;
+    }
     long sz = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *buf = (char *)malloc(sz + 1);
+    if (sz < 0) {
+        fclose(f);
+        return NULL;
+    }
+    if (fseek(f, 0, SEEK_SET) != 0) {
+        fclose(f);
+        return NULL;
+    }
+    char *buf = (char *)malloc((size_t)sz + 1);
     assert(buf != NULL);
-    size_t read_bytes = fread(buf, 1, sz, f);
+    size_t read_bytes = fread(buf, 1, (size_t)sz, f);
     buf[read_bytes] = '\0';
     fclose(f);
     return buf;

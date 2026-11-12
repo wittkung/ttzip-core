@@ -10,7 +10,10 @@
 //! - Password Vault NIST SP 800-38D AES-256-GCM, zeroize compiler fences, and tamper defense.
 //! - Hierarchical VFS tree aggregation, ASCII/Unicode rendering, and fuzzy search scoring.
 
-#![allow(deprecated)]
+#![allow(
+    deprecated,
+    reason = "Integration test exercises legacy C-ABI and VFS compatibility entrypoints"
+)]
 
 use std::ffi::{CStr, CString};
 

@@ -45,10 +45,6 @@ public struct ArchiveEntry: Identifiable, Sendable, Equatable {
         return String(path[...slashIndex])
     }
     
-    public var formattedSize: String {
-        ByteCountFormatterFlyweight.shared.string(fromByteCount: uncompressedSize)
-    }
-    
     public init(
         path: String,
         uncompressedSize: Int64,

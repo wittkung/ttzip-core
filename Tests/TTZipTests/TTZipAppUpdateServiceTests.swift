@@ -210,4 +210,77 @@ final class TTZipAppUpdateServiceTests: XCTestCase {
         let defaults = UserDefaults(suiteName: testSuite)
         XCTAssertEqual(defaults?.integer(forKey: "TTZipCumulativePatchesApplied"), 1)
     }
+
+    func testSdkCapabilityBoundaryAndDeterministicManifestDeltaVerification() throws {
+        XCTAssertEqual(
+            TTZipAppUpdateService.sdkCapabilityOwner,
+            "TTZipCore",
+            "Incremental update and delta engine must remain owned by the public TTZipCore SDK"
+        )
+        XCTAssertFalse(
+            TTZipAppUpdateService.handlesDesktopAppSelfUpdate,
+            "macOS Desktop App self-updates are coordinated exclusively by UpdateManager"
+        )
+
+        let rootDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ttzip_sdk_policy_\(UUID().uuidString)")
+        let baselineDir = rootDir.appendingPathComponent("baseline")
+        let replicaDir = rootDir.appendingPathComponent("replica")
+        try FileManager.default.createDirectory(
+            at: baselineDir.appendingPathComponent("nested"),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(
+            at: replicaDir.appendingPathComponent("nested"),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: rootDir) }
+
+        let basePayload = Data("TTZipCore SDK v1.0 artifact payload".utf8)
+        let targetPayload = Data("TTZipCore SDK v1.1 artifact payload with verified delta".utf8)
+
+        let baselineFile = baselineDir.appendingPathComponent("nested/artifact.bin")
+        let replicaFile = replicaDir.appendingPathComponent("nested/artifact.bin")
+        try basePayload.write(to: baselineFile)
+        try basePayload.write(to: replicaFile)
+
+        let baselineManifestHash = try service.calculateTreeHash(for: baselineDir.path)
+        let replicaManifestHash = try service.calculateTreeHash(for: replicaDir.path)
+        XCTAssertEqual(
+            baselineManifestHash,
+            replicaManifestHash,
+            "Identical relative directory trees must produce identical manifest hashes"
+        )
+
+        try targetPayload.write(to: replicaFile)
+        let updatedReplicaManifestHash = try service.calculateTreeHash(for: replicaDir.path)
+        XCTAssertNotEqual(
+            baselineManifestHash,
+            updatedReplicaManifestHash,
+            "Mutated directory tree must diverge from baseline manifest hash"
+        )
+
+        let expectedArtifactSha256 = try service.calculateTreeHash(for: replicaFile.path)
+        let patchBytes = try service.createDeltaPatch(
+            baseBytes: basePayload,
+            targetBytes: targetPayload,
+            format: .zstdCompressed
+        )
+        let patchResult = try service.applyDeltaPatchInMemory(
+            baseBytes: basePayload,
+            patchBytes: patchBytes,
+            expectedHash: expectedArtifactSha256
+        )
+        XCTAssertTrue(patchResult.success)
+        XCTAssertEqual(patchResult.targetHash, expectedArtifactSha256)
+        XCTAssertEqual(patchResult.patchedBytes, targetPayload)
+
+        try patchResult.patchedBytes.write(to: baselineFile)
+        let convergedManifestHash = try service.calculateTreeHash(for: baselineDir.path)
+        XCTAssertEqual(
+            convergedManifestHash,
+            updatedReplicaManifestHash,
+            "Applying verified delta must converge baseline directory manifest hash to replica"
+        )
+    }
 }

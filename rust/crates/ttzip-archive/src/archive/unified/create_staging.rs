@@ -514,7 +514,9 @@ where
                     .as_ref()
                     .is_some_and(|r| r.state == CreateBackupRecoveryState::RollbackIncompletePreservedInBackup) =>
         {
-            let rec = report.recovery_attempt.as_ref().unwrap();
+            let Some(rec) = report.recovery_attempt.as_ref() else {
+                return CreateStageCommitError::TransactionIncomplete(report.clone());
+            };
             let lingering_installed = report
                 .cleanup_failures
                 .iter()

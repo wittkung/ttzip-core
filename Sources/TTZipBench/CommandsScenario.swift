@@ -99,111 +99,17 @@ func executeMatrixGate(corpusSizeMB: Int, jsonOut: String?) -> Bool {
     var reportRows: [[String: Any]] = []
 
     for corpusType in SyntheticCorpusType.allCases {
-        let rawData = SyntheticCorpusGenerator.generate(type: corpusType, size: targetBytes)
-
-        var crcThroughputGBs: Double = 0.0
-        var adlerThroughputGBs: Double = 0.0
-        var deflCompMBs: Double = 0.0
-        var deflDecompMBs: Double = 0.0
-        var rowPassed = true
-
-        // Pin memory buffer via withUnsafeBytes for zero-ARC jitter measurement
-        rawData.withUnsafeBytes { rawBuffer in
-            guard let basePtr = rawBuffer.baseAddress else { return }
-
-            // 1. Hardware Checksums with Multi-Pass Differential Measurement
-            var bestCrcSec = Double.greatestFiniteMagnitude
-            for _ in 0..<2 {
-                let t0 = DispatchTime.now().uptimeNanoseconds
-                let crc = HardwareChecksumAdapter.crc32(for: rawData)
-                let t1 = DispatchTime.now().uptimeNanoseconds
-                if crc == 0 && rawData.count > 0 {
-                    rowPassed = false
-                }
-                let s = Double(max(1, t1 - t0)) / 1_000_000_000.0
-                bestCrcSec = min(bestCrcSec, s)
-            }
-            crcThroughputGBs = (sizeMB / 1024.0) / max(0.000001, bestCrcSec)
-
-            var bestAdlerSec = Double.greatestFiniteMagnitude
-            for _ in 0..<2 {
-                let t0 = DispatchTime.now().uptimeNanoseconds
-                let adler = HardwareChecksumAdapter.adler32(for: rawData)
-                let t1 = DispatchTime.now().uptimeNanoseconds
-                if adler == 0 && rawData.count > 0 {
-                    rowPassed = false
-                }
-                let s = Double(max(1, t1 - t0)) / 1_000_000_000.0
-                bestAdlerSec = min(bestAdlerSec, s)
-            }
-            adlerThroughputGBs = (sizeMB / 1024.0) / max(0.000001, bestAdlerSec)
-
-            // Suppress unused basePtr warning while pinning
-            _ = basePtr
-        }
-
-        // 2. Real Deflate Compression & Decompression
-        let tComp0 = DispatchTime.now().uptimeNanoseconds
-        guard let compressed = AppleLibcompressionAccelerator.shared.compressData(rawData, level: 6) else {
-            print(String(format: "%-32@ | %-12@ | %-12@ | %-12@ | %-12@ | ❌ FAIL", corpusType.displayName, "ERR", "ERR", "ERR", "ERR"))
-            allPassed = false
-            continue
-        }
-        let tComp1 = DispatchTime.now().uptimeNanoseconds
-        let compSec = Double(max(1, tComp1 - tComp0)) / 1_000_000_000.0
-        deflCompMBs = sizeMB / max(0.000001, compSec)
-
-        let tDecomp0 = DispatchTime.now().uptimeNanoseconds
-        guard let decompressed = AppleLibcompressionAccelerator.shared.decompressData(compressed, originalSize: rawData.count) else {
-            print(String(format: "%-32@ | %-12.2f | %-12.2f | %-12.1f | %-12@ | ❌ FAIL", corpusType.displayName, crcThroughputGBs, adlerThroughputGBs, deflCompMBs, "ERR"))
-            allPassed = false
-            continue
-        }
-        let tDecomp1 = DispatchTime.now().uptimeNanoseconds
-        let decompSec = Double(max(1, tDecomp1 - tDecomp0)) / 1_000_000_000.0
-        deflDecompMBs = sizeMB / max(0.000001, decompSec)
-
-        if decompressed != rawData {
-            rowPassed = false
-        }
-        if crcThroughputGBs < 0.5 || adlerThroughputGBs < 0.5 {
-            rowPassed = false
-        }
-
-        let minExpectedCompMBs: Double
-        switch corpusType {
-        case .dna, .literals:
-            minExpectedCompMBs = 3.0
-        case .realisticRgb:
-            minExpectedCompMBs = 8.0
-        case .machOBinary, .whiteNoise:
-            minExpectedCompMBs = 15.0
-        default:
-            minExpectedCompMBs = 30.0
-        }
-        if deflCompMBs < minExpectedCompMBs {
-            rowPassed = false
-        }
-
-        let statusStr = rowPassed ? "✅ PASS" : "⚠️ WARN"
-        print(String(format: "%-32@ | %-10.2f GB/s | %-10.2f GB/s | %-9.1f MB/s | %-9.1f MB/s | %@",
-                     corpusType.rawValue, crcThroughputGBs, adlerThroughputGBs, deflCompMBs, deflDecompMBs, statusStr))
-
+        let (rowPassed, rowDict) = evaluateMatrixCorpusRow(
+            corpusType: corpusType,
+            targetBytes: targetBytes,
+            sizeMB: sizeMB
+        )
         if !rowPassed {
             allPassed = false
         }
-
-        reportRows.append([
-            "corpus_id": corpusType.rawValue,
-            "corpus_name": corpusType.displayName,
-            "size_mb": sizeMB,
-            "crc32_gbs": crcThroughputGBs,
-            "adler32_gbs": adlerThroughputGBs,
-            "deflate_compress_mbs": deflCompMBs,
-            "deflate_decompress_mbs": deflDecompMBs,
-            "ratio": Double(compressed.count) / Double(rawData.count),
-            "passed": rowPassed
-        ])
+        if let rowDict = rowDict {
+            reportRows.append(rowDict)
+        }
     }
 
     print("------------------------------------------------------------------------------------------------------------------")
@@ -213,14 +119,110 @@ func executeMatrixGate(corpusSizeMB: Int, jsonOut: String?) -> Bool {
         print("❌ MATRIX GATE FAILED: One or more synthetic corpora failed throughput or integrity gates.")
     }
 
-    if let path = jsonOut {
-        if let data = try? JSONSerialization.data(withJSONObject: reportRows, options: .prettyPrinted) {
-            try? data.write(to: URL(fileURLWithPath: path))
-            print("\n📄 Matrix Telemetry JSON exported to: \(path)")
-        }
+    if let path = jsonOut,
+       let data = try? JSONSerialization.data(withJSONObject: reportRows, options: .prettyPrinted) {
+        try? data.write(to: URL(fileURLWithPath: path))
+        print("\n📄 Matrix Telemetry JSON exported to: \(path)")
     }
 
     return allPassed
+}
+
+private func evaluateMatrixCorpusRow(
+    corpusType: SyntheticCorpusType,
+    targetBytes: Int,
+    sizeMB: Double
+) -> (passed: Bool, row: [String: Any]?) {
+    let rawData = SyntheticCorpusGenerator.generate(type: corpusType, size: targetBytes)
+    let (crcThroughputGBs, adlerThroughputGBs, checksumOk) = measurePinnedChecksums(rawData: rawData, sizeMB: sizeMB)
+
+    let tComp0 = DispatchTime.now().uptimeNanoseconds
+    guard let compressed = AppleLibcompressionAccelerator.shared.compressData(rawData, level: 6) else {
+        print(String(format: "%-32@ | %-12@ | %-12@ | %-12@ | %-12@ | ❌ FAIL", corpusType.displayName, "ERR", "ERR", "ERR", "ERR"))
+        return (false, nil)
+    }
+    let compSec = Double(max(1, DispatchTime.now().uptimeNanoseconds - tComp0)) / 1_000_000_000.0
+    let deflCompMBs = sizeMB / max(0.000001, compSec)
+
+    let tDecomp0 = DispatchTime.now().uptimeNanoseconds
+    guard let decompressed = AppleLibcompressionAccelerator.shared.decompressData(compressed, originalSize: rawData.count) else {
+        print(String(format: "%-32@ | %-12.2f | %-12.2f | %-12.1f | %-12@ | ❌ FAIL", corpusType.displayName, crcThroughputGBs, adlerThroughputGBs, deflCompMBs, "ERR"))
+        return (false, nil)
+    }
+    let decompSec = Double(max(1, DispatchTime.now().uptimeNanoseconds - tDecomp0)) / 1_000_000_000.0
+    let deflDecompMBs = sizeMB / max(0.000001, decompSec)
+
+    let rowPassed = checksumOk
+        && decompressed == rawData
+        && crcThroughputGBs >= 0.5
+        && adlerThroughputGBs >= 0.5
+        && deflCompMBs >= minimumExpectedCompressionMBs(corpusType)
+
+    let statusStr = rowPassed ? "✅ PASS" : "⚠️ WARN"
+    print(String(
+        format: "%-32@ | %-10.2f GB/s | %-10.2f GB/s | %-9.1f MB/s | %-9.1f MB/s | %@",
+        corpusType.rawValue, crcThroughputGBs, adlerThroughputGBs, deflCompMBs, deflDecompMBs, statusStr
+    ))
+
+    let row: [String: Any] = [
+        "corpus_id": corpusType.rawValue,
+        "corpus_name": corpusType.displayName,
+        "size_mb": sizeMB,
+        "crc32_gbs": crcThroughputGBs,
+        "adler32_gbs": adlerThroughputGBs,
+        "deflate_compress_mbs": deflCompMBs,
+        "deflate_decompress_mbs": deflDecompMBs,
+        "ratio": Double(compressed.count) / Double(rawData.count),
+        "passed": rowPassed
+    ]
+    return (rowPassed, row)
+}
+
+private func measurePinnedChecksums(
+    rawData: Data,
+    sizeMB: Double
+) -> (crcGBs: Double, adlerGBs: Double, valid: Bool) {
+    var crcThroughputGBs: Double = 0.0
+    var adlerThroughputGBs: Double = 0.0
+    var valid = true
+
+    rawData.withUnsafeBytes { rawBuffer in
+        guard let basePtr = rawBuffer.baseAddress else { return }
+        var bestCrcSec = Double.greatestFiniteMagnitude
+        for _ in 0..<2 {
+            let t0 = DispatchTime.now().uptimeNanoseconds
+            let crc = HardwareChecksumAdapter.crc32(for: rawData)
+            let t1 = DispatchTime.now().uptimeNanoseconds
+            if crc == 0 && !rawData.isEmpty { valid = false }
+            bestCrcSec = min(bestCrcSec, Double(max(1, t1 - t0)) / 1_000_000_000.0)
+        }
+        crcThroughputGBs = (sizeMB / 1024.0) / max(0.000001, bestCrcSec)
+
+        var bestAdlerSec = Double.greatestFiniteMagnitude
+        for _ in 0..<2 {
+            let t0 = DispatchTime.now().uptimeNanoseconds
+            let adler = HardwareChecksumAdapter.adler32(for: rawData)
+            let t1 = DispatchTime.now().uptimeNanoseconds
+            if adler == 0 && !rawData.isEmpty { valid = false }
+            bestAdlerSec = min(bestAdlerSec, Double(max(1, t1 - t0)) / 1_000_000_000.0)
+        }
+        adlerThroughputGBs = (sizeMB / 1024.0) / max(0.000001, bestAdlerSec)
+        _ = basePtr
+    }
+    return (crcThroughputGBs, adlerThroughputGBs, valid)
+}
+
+private func minimumExpectedCompressionMBs(_ corpusType: SyntheticCorpusType) -> Double {
+    switch corpusType {
+    case .dna, .literals:
+        return 3.0
+    case .realisticRgb:
+        return 8.0
+    case .machOBinary, .whiteNoise:
+        return 15.0
+    default:
+        return 30.0
+    }
 }
 
 // MARK: - Scenario Gate (Real-World Pipeline Stress)

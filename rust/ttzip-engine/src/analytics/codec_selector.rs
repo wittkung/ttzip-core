@@ -71,81 +71,14 @@ impl CascadedCodecSelector {
     pub fn recommend(data: &[u8], scenario: Scenario) -> RecommendationResult {
         let t0 = Instant::now();
 
-        // 1. Stage 1: SIMD Shannon Entropy Probe (Up to 1MB)
         let sample_len = data.len().min(1024 * 1024);
         let sample_data = if sample_len > 0 { &data[..sample_len] } else { &[] };
         let entropy = compute_shannon_entropy(sample_data);
-
-        // 2. Stage 2: 64KB Strided Micro-Trial Compression (libdeflate Level 1)
         let trial_ratio = compute_trial_compressibility(data);
-
         let probe_duration_ms = (t0.elapsed().as_nanos() as f64) / 1_000_000.0;
 
-        // 3. Stage 3: Scenario Decision Matrix
-        let (algo, lvl, rationale, tp_mbs, space_pct) = if entropy > 7.92 && trial_ratio > 0.98 {
-            // High entropy incompressible payload (encrypted, video, compressed package)
-            (
-                "Store",
-                0,
-                format!(
-                    "检测到数据处于高熵状态 (H={:.2})，经 64KB 微试压不可压缩 (比率 {:.1}%)，直通 Store 存储可彻底节省 CPU 算力。",
-                    entropy,
-                    trial_ratio * 100.0
-                ),
-                6500.0,
-                0.0,
-            )
-        } else {
-            match scenario {
-                Scenario::InstantTransfer => {
-                    if trial_ratio < 0.50 {
-                        (
-                            "Zstandard",
-                            1,
-                            "检测到高可压缩数据，在极速分发场景下推荐 Zstandard L1，解压吞吐可突破 40 GB/s 内存极限，大幅压缩全链路耗时。".to_string(),
-                            3000.0,
-                            ((1.0 - trial_ratio) * 100.0).max(0.0),
-                        )
-                    } else {
-                        (
-                            "LZ4",
-                            1,
-                            "在高速局域网与即时分发场景下推荐 LZ4，提供极致的编解码速率 (30+ GB/s) 消除传输与计算等待。".to_string(),
-                            4000.0,
-                            ((1.0 - trial_ratio) * 100.0).max(0.0),
-                        )
-                    }
-                }
-                Scenario::BalancedDaily => {
-                    if trial_ratio < 0.40 {
-                        (
-                            "Zstandard",
-                            3,
-                            "日常存储推荐 Zstandard L3，在保持超高解压性能的同时获得优于传统 ZIP 的压缩比。".to_string(),
-                            1800.0,
-                            ((1.0 - trial_ratio * 0.9) * 100.0).max(0.0),
-                        )
-                    } else {
-                        (
-                            "ZIP-Deflate",
-                            6,
-                            "日常通用兼容归档推荐标准 ZIP-Deflate L6，全平台原生兼容且经过 Apple Silicon 硬件加速。".to_string(),
-                            1200.0,
-                            ((1.0 - trial_ratio) * 100.0).max(0.0),
-                        )
-                    }
-                }
-                Scenario::ColdStorage => {
-                    (
-                        "7Z-LZMA2",
-                        9,
-                        "冷备份与极限归档场景推荐 7Z-LZMA2 Ultra (L9)，利用最大字典匹配器压榨每一字节存储空间。".to_string(),
-                        500.0,
-                        ((1.0 - trial_ratio * 0.75) * 100.0).max(0.0),
-                    )
-                }
-            }
-        };
+        let (algo, lvl, rationale, tp_mbs, space_pct) =
+            select_codec_for_scenario(scenario, entropy, trial_ratio);
 
         RecommendationResult {
             scenario,
@@ -158,6 +91,64 @@ impl CascadedCodecSelector {
             projected_space_savings_pct: space_pct,
             probe_duration_ms,
         }
+    }
+}
+
+fn select_codec_for_scenario(
+    scenario: Scenario,
+    entropy: f64,
+    trial_ratio: f64,
+) -> (&'static str, i32, String, f64, f64) {
+    if entropy > 7.92 && trial_ratio > 0.98 {
+        return (
+            "Store",
+            0,
+            format!(
+                "检测到数据处于高熵状态 (H={:.2})，经 64KB 微试压不可压缩 (比率 {:.1}%)，直通 Store 存储可彻底节省 CPU 算力。",
+                entropy,
+                trial_ratio * 100.0
+            ),
+            6500.0,
+            0.0,
+        );
+    }
+
+    match scenario {
+        Scenario::InstantTransfer if trial_ratio < 0.50 => (
+            "Zstandard",
+            1,
+            "检测到高可压缩数据，在极速分发场景下推荐 Zstandard L1，解压吞吐可突破 40 GB/s 内存极限，大幅压缩全链路耗时。".to_string(),
+            3000.0,
+            ((1.0 - trial_ratio) * 100.0).max(0.0),
+        ),
+        Scenario::InstantTransfer => (
+            "LZ4",
+            1,
+            "在高速局域网与即时分发场景下推荐 LZ4，提供极致的编解码速率 (30+ GB/s) 消除传输与计算等待。".to_string(),
+            4000.0,
+            ((1.0 - trial_ratio) * 100.0).max(0.0),
+        ),
+        Scenario::BalancedDaily if trial_ratio < 0.40 => (
+            "Zstandard",
+            3,
+            "日常存储推荐 Zstandard L3，在保持超高解压性能的同时获得优于传统 ZIP 的压缩比。".to_string(),
+            1800.0,
+            ((1.0 - trial_ratio * 0.9) * 100.0).max(0.0),
+        ),
+        Scenario::BalancedDaily => (
+            "ZIP-Deflate",
+            6,
+            "日常通用兼容归档推荐标准 ZIP-Deflate L6，全平台原生兼容且经过 Apple Silicon 硬件加速。".to_string(),
+            1200.0,
+            ((1.0 - trial_ratio) * 100.0).max(0.0),
+        ),
+        Scenario::ColdStorage => (
+            "7Z-LZMA2",
+            9,
+            "冷备份与极限归档场景推荐 7Z-LZMA2 Ultra (L9)，利用最大字典匹配器压榨每一字节存储空间。".to_string(),
+            500.0,
+            ((1.0 - trial_ratio * 0.75) * 100.0).max(0.0),
+        ),
     }
 }
 

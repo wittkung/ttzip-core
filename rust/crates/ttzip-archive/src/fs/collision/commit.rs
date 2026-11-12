@@ -12,7 +12,7 @@ use crate::fs::collision::naming;
 use crate::fs::collision::table::ConflictTable;
 use crate::fs::collision::{
     CollisionAction, CommitPathMapping, CommittedEntryDisposition, CommittedPathEntry,
-    ConflictKind, ExtractionOutcome, FailedItem, FailureReason, ItemKind, OutcomeStatus,
+    ConflictKind, ExtractionOutcome, FailedItem, FailureReason, ItemKind, ItemMeta, OutcomeStatus,
     ResolutionSet,
 };
 
@@ -247,6 +247,60 @@ impl<'a, F: FsOps> DFSCommitWalker<'a, F> {
         }
     }
 
+    fn probe_or_place_directory(
+        &self,
+        payload_fd: RawFd,
+        dest_fd: RawFd,
+        child_name: &Path,
+        item_rel_path: &Path,
+        state: &mut CommitWalkState<'_>,
+    ) -> Option<ItemMeta> {
+        let rel_str = item_rel_path.to_str().unwrap_or_default();
+        match self.fs.fstatat_nofollow(dest_fd, child_name) {
+            Ok(None) => match self.place_exclusive(
+                payload_fd,
+                child_name,
+                dest_fd,
+                child_name,
+                ItemKind::Directory,
+            ) {
+                Ok(()) => {
+                    state.outcome.extracted += 1;
+                    state.record_committed(
+                        item_rel_path,
+                        item_rel_path,
+                        ItemKind::Directory,
+                        CommittedEntryDisposition::Extracted,
+                        true,
+                    );
+                    None
+                }
+                Err(e) if e.raw_os_error() == Some(libc::EEXIST) => {
+                    match self.fs.fstatat_nofollow(dest_fd, child_name) {
+                        Ok(Some(m)) => Some(m),
+                        Ok(None) => {
+                            self.record_io_failure(&mut state.outcome, rel_str, e);
+                            None
+                        }
+                        Err(stat_err) => {
+                            self.record_io_failure(&mut state.outcome, rel_str, stat_err);
+                            None
+                        }
+                    }
+                }
+                Err(e) => {
+                    self.record_io_failure(&mut state.outcome, rel_str, e);
+                    None
+                }
+            },
+            Ok(Some(m)) => Some(m),
+            Err(e) => {
+                self.record_io_failure(&mut state.outcome, rel_str, e);
+                None
+            }
+        }
+    }
+
     fn commit_directory(
         &self,
         payload_fd: RawFd,
@@ -255,51 +309,17 @@ impl<'a, F: FsOps> DFSCommitWalker<'a, F> {
         item_rel_path: &Path,
         state: &mut CommitWalkState<'_>,
     ) {
-        let rel_str = item_rel_path.to_str().unwrap_or_default();
-        let dest_meta = match self.fs.fstatat_nofollow(dest_fd, child_name) {
-            Ok(None) => {
-                match self.place_exclusive(payload_fd, child_name, dest_fd, child_name, ItemKind::Directory) {
-                    Ok(()) => {
-                        state.outcome.extracted += 1;
-                        state.record_committed(
-                            item_rel_path,
-                            item_rel_path,
-                            ItemKind::Directory,
-                            CommittedEntryDisposition::Extracted,
-                            true,
-                        );
-                        return;
-                    }
-                    Err(e) if e.raw_os_error() == Some(libc::EEXIST) => {
-                        match self.fs.fstatat_nofollow(dest_fd, child_name) {
-                            Ok(Some(m)) => m,
-                            Ok(None) => {
-                                self.record_io_failure(&mut state.outcome, rel_str, e);
-                                return;
-                            }
-                            Err(stat_err) => {
-                                self.record_io_failure(&mut state.outcome, rel_str, stat_err);
-                                return;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        self.record_io_failure(&mut state.outcome, rel_str, e);
-                        return;
-                    }
-                }
-            }
-            Ok(Some(m)) => m,
-            Err(e) => {
-                self.record_io_failure(&mut state.outcome, rel_str, e);
-                return;
-            }
+        let Some(dest_meta) =
+            self.probe_or_place_directory(payload_fd, dest_fd, child_name, item_rel_path, state)
+        else {
+            return;
         };
         if dest_meta.kind != ItemKind::Directory {
             self.resolve_dir_type_mismatch(payload_fd, dest_fd, child_name, item_rel_path, state);
             return;
         }
 
+        let rel_str = item_rel_path.to_str().unwrap_or_default();
         // Directory onto directory: descend and merge (FR-007)
         let sub_payload = match self.fs.openat_dir_nofollow(payload_fd, child_name) {
             Ok(fd) => fd,

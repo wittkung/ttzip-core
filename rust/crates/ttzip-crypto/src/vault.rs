@@ -220,8 +220,8 @@ impl GHash {
     pub fn mul_h_scalar(x: &[u8; 16], h: &[u8; 16]) -> [u8; 16] {
         let mut z0 = 0u64;
         let mut z1 = 0u64;
-        let mut v0 = u64::from_be_bytes(h[0..8].try_into().unwrap());
-        let mut v1 = u64::from_be_bytes(h[8..16].try_into().unwrap());
+        let mut v0 = u64::from_be_bytes(h[0..8].try_into().unwrap_or([0u8; 8]));
+        let mut v1 = u64::from_be_bytes(h[8..16].try_into().unwrap_or([0u8; 8]));
 
         for i in 0..128 {
             let byte_idx = i / 8;
@@ -257,7 +257,9 @@ impl GHash {
 
     pub fn update(&mut self, mut data: &[u8]) {
         while data.len() >= 16 {
-            let block: &[u8; 16] = data[..16].try_into().unwrap();
+            let Ok(block) = <&[u8; 16]>::try_from(&data[..16]) else {
+                break;
+            };
             self.update_block(block);
             data = &data[16..];
         }
@@ -309,26 +311,50 @@ pub fn secure_wipe_slice(slice: &mut [u8]) {
 }
 
 #[cfg(target_arch = "aarch64")]
+#[inline(always)]
+unsafe fn gcm_ctr_8blocks_aarch64(
+    rk: &[core::arch::aarch64::uint8x16_t; 15],
+    ctr_base: &[u8; 16],
+    block_idx: usize,
+    src: &[u8],
+    dst: &mut [u8],
+) {
+    unsafe {
+        use core::arch::aarch64::*;
+        let offset = block_idx * 16;
+        let counter_start = (block_idx as u32).wrapping_add(2);
+
+        let mut b: [uint8x16_t; 8] = core::array::from_fn(|lane| {
+            let mut c = *ctr_base;
+            c[12..16].copy_from_slice(&counter_start.wrapping_add(lane as u32).to_be_bytes());
+            vld1q_u8(c.as_ptr())
+        });
+
+        for &round_key in rk.iter().take(13) {
+            for lane in b.iter_mut() {
+                *lane = vaesmcq_u8(vaeseq_u8(*lane, round_key));
+            }
+        }
+        for lane in b.iter_mut() {
+            *lane = veorq_u8(vaeseq_u8(*lane, rk[13]), rk[14]);
+        }
+
+        let s_ptr = src.as_ptr().add(offset);
+        let d_ptr = dst.as_mut_ptr().add(offset);
+        for lane in 0..8 {
+            let off = lane * 16;
+            vst1q_u8(d_ptr.add(off), veorq_u8(vld1q_u8(s_ptr.add(off)), b[lane]));
+        }
+    }
+}
+
+#[cfg(target_arch = "aarch64")]
 pub fn gcm_ctr_crypt(ctx: &Aes256Context, iv: &[u8; 12], src: &[u8], dst: &mut [u8]) {
     unsafe {
         use core::arch::aarch64::*;
 
-        // Resident round key vectors loaded once
-        let rk0 = vld1q_u8(ctx.round_keys_enc[0].as_ptr());
-        let rk1 = vld1q_u8(ctx.round_keys_enc[1].as_ptr());
-        let rk2 = vld1q_u8(ctx.round_keys_enc[2].as_ptr());
-        let rk3 = vld1q_u8(ctx.round_keys_enc[3].as_ptr());
-        let rk4 = vld1q_u8(ctx.round_keys_enc[4].as_ptr());
-        let rk5 = vld1q_u8(ctx.round_keys_enc[5].as_ptr());
-        let rk6 = vld1q_u8(ctx.round_keys_enc[6].as_ptr());
-        let rk7 = vld1q_u8(ctx.round_keys_enc[7].as_ptr());
-        let rk8 = vld1q_u8(ctx.round_keys_enc[8].as_ptr());
-        let rk9 = vld1q_u8(ctx.round_keys_enc[9].as_ptr());
-        let rk10 = vld1q_u8(ctx.round_keys_enc[10].as_ptr());
-        let rk11 = vld1q_u8(ctx.round_keys_enc[11].as_ptr());
-        let rk12 = vld1q_u8(ctx.round_keys_enc[12].as_ptr());
-        let rk13 = vld1q_u8(ctx.round_keys_enc[13].as_ptr());
-        let rk14 = vld1q_u8(ctx.round_keys_enc[14].as_ptr());
+        let rk: [uint8x16_t; 15] =
+            core::array::from_fn(|r| vld1q_u8(ctx.round_keys_enc[r].as_ptr()));
 
         let mut ctr_base = [0u8; 16];
         ctr_base[..12].copy_from_slice(iv);
@@ -336,81 +362,11 @@ pub fn gcm_ctr_crypt(ctx: &Aes256Context, iv: &[u8; 12], src: &[u8], dst: &mut [
         let total_blocks = src.len().div_ceil(16);
         let mut block_idx = 0usize;
 
-        // 8-block batch pipeline (128 bytes per iteration)
         while block_idx + 8 <= total_blocks {
-            let offset = block_idx * 16;
-            let counter_start = (block_idx as u32).wrapping_add(2);
-
-            let mut c0 = ctr_base; c0[12..16].copy_from_slice(&counter_start.to_be_bytes());
-            let mut c1 = ctr_base; c1[12..16].copy_from_slice(&(counter_start.wrapping_add(1)).to_be_bytes());
-            let mut c2 = ctr_base; c2[12..16].copy_from_slice(&(counter_start.wrapping_add(2)).to_be_bytes());
-            let mut c3 = ctr_base; c3[12..16].copy_from_slice(&(counter_start.wrapping_add(3)).to_be_bytes());
-            let mut c4 = ctr_base; c4[12..16].copy_from_slice(&(counter_start.wrapping_add(4)).to_be_bytes());
-            let mut c5 = ctr_base; c5[12..16].copy_from_slice(&(counter_start.wrapping_add(5)).to_be_bytes());
-            let mut c6 = ctr_base; c6[12..16].copy_from_slice(&(counter_start.wrapping_add(6)).to_be_bytes());
-            let mut c7 = ctr_base; c7[12..16].copy_from_slice(&(counter_start.wrapping_add(7)).to_be_bytes());
-
-            let mut b0 = vld1q_u8(c0.as_ptr());
-            let mut b1 = vld1q_u8(c1.as_ptr());
-            let mut b2 = vld1q_u8(c2.as_ptr());
-            let mut b3 = vld1q_u8(c3.as_ptr());
-            let mut b4 = vld1q_u8(c4.as_ptr());
-            let mut b5 = vld1q_u8(c5.as_ptr());
-            let mut b6 = vld1q_u8(c6.as_ptr());
-            let mut b7 = vld1q_u8(c7.as_ptr());
-
-            macro_rules! aes_round {
-                ($rk:ident) => {
-                    b0 = vaesmcq_u8(vaeseq_u8(b0, $rk));
-                    b1 = vaesmcq_u8(vaeseq_u8(b1, $rk));
-                    b2 = vaesmcq_u8(vaeseq_u8(b2, $rk));
-                    b3 = vaesmcq_u8(vaeseq_u8(b3, $rk));
-                    b4 = vaesmcq_u8(vaeseq_u8(b4, $rk));
-                    b5 = vaesmcq_u8(vaeseq_u8(b5, $rk));
-                    b6 = vaesmcq_u8(vaeseq_u8(b6, $rk));
-                    b7 = vaesmcq_u8(vaeseq_u8(b7, $rk));
-                };
-            }
-
-            aes_round!(rk0);
-            aes_round!(rk1);
-            aes_round!(rk2);
-            aes_round!(rk3);
-            aes_round!(rk4);
-            aes_round!(rk5);
-            aes_round!(rk6);
-            aes_round!(rk7);
-            aes_round!(rk8);
-            aes_round!(rk9);
-            aes_round!(rk10);
-            aes_round!(rk11);
-            aes_round!(rk12);
-
-            b0 = veorq_u8(vaeseq_u8(b0, rk13), rk14);
-            b1 = veorq_u8(vaeseq_u8(b1, rk13), rk14);
-            b2 = veorq_u8(vaeseq_u8(b2, rk13), rk14);
-            b3 = veorq_u8(vaeseq_u8(b3, rk13), rk14);
-            b4 = veorq_u8(vaeseq_u8(b4, rk13), rk14);
-            b5 = veorq_u8(vaeseq_u8(b5, rk13), rk14);
-            b6 = veorq_u8(vaeseq_u8(b6, rk13), rk14);
-            b7 = veorq_u8(vaeseq_u8(b7, rk13), rk14);
-
-            let s_ptr = src.as_ptr().add(offset);
-            let d_ptr = dst.as_mut_ptr().add(offset);
-
-            vst1q_u8(d_ptr, veorq_u8(vld1q_u8(s_ptr), b0));
-            vst1q_u8(d_ptr.add(16), veorq_u8(vld1q_u8(s_ptr.add(16)), b1));
-            vst1q_u8(d_ptr.add(32), veorq_u8(vld1q_u8(s_ptr.add(32)), b2));
-            vst1q_u8(d_ptr.add(48), veorq_u8(vld1q_u8(s_ptr.add(48)), b3));
-            vst1q_u8(d_ptr.add(64), veorq_u8(vld1q_u8(s_ptr.add(64)), b4));
-            vst1q_u8(d_ptr.add(80), veorq_u8(vld1q_u8(s_ptr.add(80)), b5));
-            vst1q_u8(d_ptr.add(96), veorq_u8(vld1q_u8(s_ptr.add(96)), b6));
-            vst1q_u8(d_ptr.add(112), veorq_u8(vld1q_u8(s_ptr.add(112)), b7));
-
+            gcm_ctr_8blocks_aarch64(&rk, &ctr_base, block_idx, src, dst);
             block_idx += 8;
         }
 
-        // Tail processing: handle trailing blocks with temporary buffer and explicit zeroize
         while block_idx < total_blocks {
             let offset = block_idx * 16;
             let counter_val = (block_idx as u32).wrapping_add(2);
@@ -563,8 +519,9 @@ pub fn aes256_gcm_decrypt(
     Ok(())
 }
 
-/// Standard HMAC-SHA256 (RFC 2104 / RFC 4231).
-pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+fn init_hmac_sha256_contexts(
+    key: &[u8],
+) -> (crate::sha256::FastSha256, crate::sha256::FastSha256) {
     let mut k_pad = [0u8; 64];
     if key.len() > 64 {
         let digest = crate::sha256::FastSha256::digest(key);
@@ -580,22 +537,27 @@ pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
         k_opad[i] ^= k_pad[i];
     }
 
-    let mut inner = crate::sha256::FastSha256::new();
-    inner.update(&k_ipad);
-    inner.update(data);
-    let inner_hash = inner.finalize();
+    let mut base_inner = crate::sha256::FastSha256::new();
+    base_inner.update(&k_ipad);
 
-    let mut outer = crate::sha256::FastSha256::new();
-    outer.update(&k_opad);
-    outer.update(&inner_hash);
-    let result = outer.finalize();
+    let mut base_outer = crate::sha256::FastSha256::new();
+    base_outer.update(&k_opad);
 
     k_pad.zeroize();
     k_ipad.zeroize();
     k_opad.zeroize();
     compiler_fence(Ordering::SeqCst);
 
-    result
+    (base_inner, base_outer)
+}
+
+/// Standard HMAC-SHA256 (RFC 2104 / RFC 4231).
+pub fn hmac_sha256(key: &[u8], data: &[u8]) -> [u8; 32] {
+    let (mut inner, mut outer) = init_hmac_sha256_contexts(key);
+    inner.update(data);
+    let inner_hash = inner.finalize();
+    outer.update(&inner_hash);
+    outer.finalize()
 }
 
 /// PBKDF2-HMAC-SHA256 key derivation (RFC 2898 / RFC 6070).
@@ -605,34 +567,11 @@ pub fn pbkdf2_hmac_sha256(
     rounds: u32,
     out_key: &mut [u8],
 ) -> Result<(), TTZipStatus> {
-    if password.is_empty() && salt.is_empty() {
-        return Err(TTZipStatus::ErrInvalidParam);
-    }
-    if rounds == 0 || out_key.is_empty() {
+    if (password.is_empty() && salt.is_empty()) || rounds == 0 || out_key.is_empty() {
         return Err(TTZipStatus::ErrInvalidParam);
     }
 
-    let mut k_pad = [0u8; 64];
-    if password.len() > 64 {
-        let digest = crate::sha256::FastSha256::digest(password);
-        k_pad[..32].copy_from_slice(&digest);
-    } else {
-        k_pad[..password.len()].copy_from_slice(password);
-    }
-
-    let mut k_ipad = [0x36u8; 64];
-    let mut k_opad = [0x5cu8; 64];
-    for i in 0..64 {
-        k_ipad[i] ^= k_pad[i];
-        k_opad[i] ^= k_pad[i];
-    }
-
-    let mut base_inner = crate::sha256::FastSha256::new();
-    base_inner.update(&k_ipad);
-
-    let mut base_outer = crate::sha256::FastSha256::new();
-    base_outer.update(&k_opad);
-
+    let (base_inner, base_outer) = init_hmac_sha256_contexts(password);
     let key_len = out_key.len();
     let blocks_needed = key_len.div_ceil(32);
 
@@ -650,7 +589,6 @@ pub fn pbkdf2_hmac_sha256(
         let mut outer = base_outer.clone();
         outer.update(&inner_hash);
         u_digest = outer.finalize();
-
         t_digest.copy_from_slice(&u_digest);
 
         for _ in 1..rounds {
@@ -672,9 +610,6 @@ pub fn pbkdf2_hmac_sha256(
         out_key[offset..offset + copy_len].copy_from_slice(&t_digest[..copy_len]);
     }
 
-    k_pad.zeroize();
-    k_ipad.zeroize();
-    k_opad.zeroize();
     u_digest.zeroize();
     t_digest.zeroize();
     compiler_fence(Ordering::SeqCst);

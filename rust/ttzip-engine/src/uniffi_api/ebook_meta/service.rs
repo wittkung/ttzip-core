@@ -305,6 +305,45 @@ impl UniFFIEbookService {
 // Internal Probing Implementation
 // ============================================================================
 
+fn probe_zip_ebook_container(
+    data: &[u8],
+    file_name: Option<&str>,
+) -> Result<Option<UniFFIEbookFormat>, UniFFIEbookError> {
+    let zip = ZipArchive::open_slice(data)
+        .map_err(|e| UniFFIEbookError::corrupted(format!("{e:?}")))?;
+
+    let has_epub_container = zip.entries().iter().any(|e| {
+        let p = e.rel_path.to_lowercase();
+        p == "meta-inf/container.xml" || p.ends_with(".opf")
+    });
+    if has_epub_container {
+        return Ok(Some(UniFFIEbookFormat::Epub));
+    }
+
+    let is_cbz_ext = file_name.is_some_and(|n| n.to_lowercase().ends_with(".cbz"));
+    let has_images = zip.entries().iter().any(|e| is_image_path(&e.rel_path));
+    if is_cbz_ext || has_images {
+        return Ok(Some(UniFFIEbookFormat::Cbz));
+    }
+    Ok(None)
+}
+
+fn probe_ebook_extension(name: &str) -> UniFFIEbookFormat {
+    let l = name.to_lowercase();
+    const EXT_MAP: &[(&str, UniFFIEbookFormat)] = &[
+        (".epub", UniFFIEbookFormat::Epub),
+        (".cbz", UniFFIEbookFormat::Cbz),
+        (".fb2", UniFFIEbookFormat::Fb2),
+        (".mobi", UniFFIEbookFormat::Mobi),
+        (".azw3", UniFFIEbookFormat::Azw3),
+        (".azw", UniFFIEbookFormat::Azw3),
+    ];
+    EXT_MAP
+        .iter()
+        .find_map(|&(ext, fmt)| l.ends_with(ext).then_some(fmt))
+        .unwrap_or(UniFFIEbookFormat::Unknown)
+}
+
 fn probe_format_internal(
     data: &[u8],
     file_name: Option<&str>,
@@ -321,55 +360,19 @@ fn probe_format_internal(
     }
     if data.starts_with(b"<?xml")
         && std::str::from_utf8(&data[..data.len().min(512)])
-            .map(|s| s.contains("<FictionBook"))
-            .unwrap_or(false)
+            .is_ok_and(|s| s.contains("<FictionBook"))
     {
         return Ok(UniFFIEbookFormat::Fb2);
     }
 
-    // ZIP container inspection
     if data.starts_with(b"PK\x03\x04")
         || data.starts_with(b"PK\x05\x06")
         || data.starts_with(b"PK\x07\x08")
     {
-        let zip = ZipArchive::open_slice(data)
-            .map_err(|e| UniFFIEbookError::corrupted(format!("{e:?}")))?;
-
-        let has_epub_container = zip.entries().iter().any(|e| {
-            let p = e.rel_path.to_lowercase();
-            p == "meta-inf/container.xml" || p.ends_with(".opf")
-        });
-        if has_epub_container {
-            return Ok(UniFFIEbookFormat::Epub);
-        }
-
-        let is_cbz_ext = file_name
-            .map(|n| n.to_lowercase().ends_with(".cbz"))
-            .unwrap_or(false);
-        let has_images = zip.entries().iter().any(|e| is_image_path(&e.rel_path));
-        if is_cbz_ext || has_images {
-            return Ok(UniFFIEbookFormat::Cbz);
+        if let Some(fmt) = probe_zip_ebook_container(data, file_name)? {
+            return Ok(fmt);
         }
     }
 
-    if let Some(name) = file_name {
-        let l = name.to_lowercase();
-        if l.ends_with(".epub") {
-            return Ok(UniFFIEbookFormat::Epub);
-        }
-        if l.ends_with(".cbz") {
-            return Ok(UniFFIEbookFormat::Cbz);
-        }
-        if l.ends_with(".fb2") {
-            return Ok(UniFFIEbookFormat::Fb2);
-        }
-        if l.ends_with(".mobi") {
-            return Ok(UniFFIEbookFormat::Mobi);
-        }
-        if l.ends_with(".azw3") || l.ends_with(".azw") {
-            return Ok(UniFFIEbookFormat::Azw3);
-        }
-    }
-
-    Ok(UniFFIEbookFormat::Unknown)
+    Ok(file_name.map_or(UniFFIEbookFormat::Unknown, probe_ebook_extension))
 }

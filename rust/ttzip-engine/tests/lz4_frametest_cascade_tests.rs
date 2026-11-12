@@ -18,7 +18,7 @@ use ttzip_engine::codecs::lz4::{
 
 // MARK: - Native C LZ4 Frame FFI Bindings
 
-#[allow(dead_code)]
+#[allow(dead_code, reason = "Complete C LZ4F error code enum variants for FFI parity")]
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LZ4FErrorCode {

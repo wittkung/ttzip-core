@@ -25,9 +25,9 @@ pub fn check_xar_compliance(buffer: &[u8]) -> ComplianceReport {
 
     let size = u16::from_be_bytes([buffer[4], buffer[5]]);
     let version = u16::from_be_bytes([buffer[6], buffer[7]]);
-    let toc_comp_len = u64::from_be_bytes(buffer[8..16].try_into().unwrap());
-    let toc_uncomp_len = u64::from_be_bytes(buffer[16..24].try_into().unwrap());
-    let cksum_alg = u32::from_be_bytes(buffer[24..28].try_into().unwrap());
+    let toc_comp_len = u64::from_be_bytes(buffer[8..16].try_into().unwrap_or([0u8; 8]));
+    let toc_uncomp_len = u64::from_be_bytes(buffer[16..24].try_into().unwrap_or([0u8; 8]));
+    let cksum_alg = u32::from_be_bytes([buffer[24], buffer[25], buffer[26], buffer[27]]);
 
     if size != 28 {
         let citation = StandardCitation::new(ComplianceStandard::XarSpec, "1.2", "Header Size Field");
@@ -62,7 +62,7 @@ pub fn check_lzfse_compliance(buffer: &[u8]) -> ComplianceReport {
         return report;
     }
 
-    let n_raw_bytes = u32::from_le_bytes(buffer[4..8].try_into().unwrap());
+    let n_raw_bytes = u32::from_le_bytes([buffer[4], buffer[5], buffer[6], buffer[7]]);
     report.add_metadata("block_magic", String::from_utf8_lossy(magic).to_string());
     report.add_metadata("n_raw_bytes", n_raw_bytes.to_string());
     report
@@ -101,7 +101,7 @@ pub fn check_lz4_compliance(buffer: &[u8]) -> ComplianceReport {
         return report;
     }
 
-    let magic = u32::from_le_bytes(buffer[0..4].try_into().unwrap());
+    let magic = u32::from_le_bytes([buffer[0], buffer[1], buffer[2], buffer[3]]);
     if magic == 0x184D2204 {
         report.add_validated_header("LZ4: Frame Magic Number (0x184D2204)");
         if buffer.len() >= 7 {
@@ -274,7 +274,7 @@ pub fn check_cab_compliance(buffer: &[u8]) -> ComplianceReport {
         return report;
     }
 
-    let cb_cabinet = u32::from_le_bytes(buffer[8..12].try_into().unwrap());
+    let cb_cabinet = u32::from_le_bytes([buffer[8], buffer[9], buffer[10], buffer[11]]);
     let c_folders = u16::from_le_bytes([buffer[26], buffer[27]]);
     let c_files = u16::from_le_bytes([buffer[28], buffer[29]]);
 

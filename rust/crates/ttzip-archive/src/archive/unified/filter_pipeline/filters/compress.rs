@@ -88,91 +88,102 @@ impl<R: Read + Send> CompressFilter<R> {
         self.out_pos = 0;
 
         if !self.header_parsed {
-            let mut hdr = [0u8; 3];
-            let n = self.reader.read(&mut hdr)?;
-            if n < 3 || hdr[0] != 0x1F || hdr[1] != 0x9D {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid compress (.Z) header"));
-            }
-            self.bytes_consumed += 3;
-            self.max_bits = hdr[2] & 0x1F;
-            self.block_mode = (hdr[2] & 0x80) != 0;
-            if self.max_bits < 9 || self.max_bits > 16 {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid max_bits in compress header"));
-            }
-            self.init_table();
-
-            // First code
-            if let Some(first_code) = self.read_bits()? {
-                self.fin_char = first_code as u8;
-                self.old_code = first_code;
-                self.out_buf.push(self.fin_char);
-            } else {
-                self.eof_reached = true;
+            self.parse_header_and_first_code()?;
+            if self.eof_reached {
                 return Ok(());
             }
-            self.header_parsed = true;
         }
 
         while self.out_buf.len() < 4096 && !self.eof_reached {
-            let raw_code = match self.read_bits()? {
-                Some(c) => c,
-                None => {
-                    self.eof_reached = true;
-                    break;
-                }
+            let Some(raw_code) = self.read_bits()? else {
+                self.eof_reached = true;
+                break;
             };
 
             if raw_code == 256 && self.block_mode {
-                self.init_table();
-                match self.read_bits()? {
-                    Some(c) => {
-                        self.fin_char = c as u8;
-                        self.old_code = c;
-                        self.out_buf.push(self.fin_char);
-                        continue;
-                    }
-                    None => {
-                        self.eof_reached = true;
-                        break;
-                    }
-                }
+                self.handle_block_clear()?;
+                continue;
             }
 
-            let mut code = raw_code;
-            self.stack.clear();
-
-            if code >= self.free_code {
-                if code > self.free_code {
-                    return Err(io::Error::new(io::ErrorKind::InvalidData, "corrupted compress stream"));
-                }
-                self.stack.push(self.fin_char);
-                code = self.old_code;
-            }
-
-            while code >= 256 {
-                self.stack.push(self.table_suffix[code]);
-                code = self.table_prefix[code] as usize;
-            }
-            self.fin_char = code as u8;
-            self.stack.push(self.fin_char);
-
-            while let Some(ch) = self.stack.pop() {
-                self.out_buf.push(ch);
-            }
-
-            // Insert new code into table
-            if self.free_code < (1 << self.max_bits) {
-                self.table_prefix[self.free_code] = self.old_code as u16;
-                self.table_suffix[self.free_code] = self.fin_char;
-                self.free_code += 1;
-                if self.free_code >= (1 << self.curr_bits) && self.curr_bits < self.max_bits {
-                    self.curr_bits += 1;
-                }
-            }
-
-            self.old_code = raw_code;
+            self.decode_lzw_code(raw_code)?;
         }
 
+        Ok(())
+    }
+
+    fn parse_header_and_first_code(&mut self) -> io::Result<()> {
+        let mut hdr = [0u8; 3];
+        let n = self.reader.read(&mut hdr)?;
+        if n < 3 || hdr[0] != 0x1F || hdr[1] != 0x9D {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid compress (.Z) header"));
+        }
+        self.bytes_consumed += 3;
+        self.max_bits = hdr[2] & 0x1F;
+        self.block_mode = (hdr[2] & 0x80) != 0;
+        if self.max_bits < 9 || self.max_bits > 16 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid max_bits in compress header",
+            ));
+        }
+        self.init_table();
+
+        if let Some(first_code) = self.read_bits()? {
+            self.fin_char = first_code as u8;
+            self.old_code = first_code;
+            self.out_buf.push(self.fin_char);
+            self.header_parsed = true;
+        } else {
+            self.eof_reached = true;
+        }
+        Ok(())
+    }
+
+    fn handle_block_clear(&mut self) -> io::Result<()> {
+        self.init_table();
+        if let Some(c) = self.read_bits()? {
+            self.fin_char = c as u8;
+            self.old_code = c;
+            self.out_buf.push(self.fin_char);
+        } else {
+            self.eof_reached = true;
+        }
+        Ok(())
+    }
+
+    fn decode_lzw_code(&mut self, raw_code: usize) -> io::Result<()> {
+        let mut code = raw_code;
+        self.stack.clear();
+
+        if code >= self.free_code {
+            if code > self.free_code {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "corrupted compress stream"));
+            }
+            self.stack.push(self.fin_char);
+            code = self.old_code;
+        }
+
+        while code >= 256 {
+            self.stack.push(self.table_suffix[code]);
+            code = self.table_prefix[code] as usize;
+        }
+        self.fin_char = code as u8;
+        self.stack.push(self.fin_char);
+
+        while let Some(ch) = self.stack.pop() {
+            self.out_buf.push(ch);
+        }
+
+        if self.free_code < (1 << self.max_bits) {
+            self.table_prefix[self.free_code] = self.old_code as u16;
+            self.table_suffix[self.free_code] = self.fin_char;
+            self.free_code += 1;
+            if self.free_code >= (1 << self.curr_bits) && self.curr_bits < self.max_bits {
+                self.curr_bits += 1;
+            }
+        }
+
+        self.old_code = raw_code;
         Ok(())
     }
 }

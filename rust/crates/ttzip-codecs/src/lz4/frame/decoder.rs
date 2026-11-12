@@ -177,6 +177,443 @@ impl<R: Read> Lz4FrameDecoder<R> {
             dict.extend_from_slice(block_decompressed);
         }
     }
+
+    fn deliver_buffered_output(&mut self, buf: &mut [u8]) -> Option<usize> {
+        if self.decomp_pos < self.decomp_buf.len() {
+            let avail = self.decomp_buf.len() - self.decomp_pos;
+            let to_copy = avail.min(buf.len());
+            buf[..to_copy]
+                .copy_from_slice(&self.decomp_buf[self.decomp_pos..self.decomp_pos + to_copy]);
+            self.decomp_pos += to_copy;
+            return Some(to_copy);
+        }
+        if !self.decomp_buf.is_empty() {
+            self.decomp_buf.clear();
+            self.decomp_pos = 0;
+        }
+        None
+    }
+
+    fn step_get_frame_header(&mut self) -> io::Result<bool> {
+        self.tmp_in_target = 4;
+        self.read_tmp_in()?;
+        if self.tmp_in.is_empty() {
+            self.stream_ended = true;
+            return Ok(true);
+        }
+        if self.tmp_in.len() < 4 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated LZ4 magic number",
+            ));
+        }
+        let magic = u32::from_le_bytes([
+            self.tmp_in[0],
+            self.tmp_in[1],
+            self.tmp_in[2],
+            self.tmp_in[3],
+        ]);
+        self.tmp_in.clear();
+
+        if is_lz4_frame_magic(magic) {
+            self.stage = DStage::StoreFrameHeader;
+            self.tmp_in_target = 3;
+            Ok(false)
+        } else if is_lz4_skippable_magic(magic) {
+            self.stage = DStage::GetSFrameSize;
+            self.tmp_in_target = 4;
+            Ok(false)
+        } else if is_lz4_legacy_magic(magic) {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "legacy LZ4 format unsupported in frame decoder",
+            ))
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("invalid LZ4 frame magic: 0x{:08X}", magic),
+            ))
+        }
+    }
+
+    fn step_store_frame_header(&mut self) -> io::Result<()> {
+        if self.tmp_in.len() < 2 {
+            self.tmp_in_target = 2;
+            self.read_tmp_in()?;
+            if self.tmp_in.len() < 2 {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "truncated frame header descriptor",
+                ));
+            }
+        }
+
+        let flg = self.tmp_in[0];
+        let has_content_size = ((flg >> 3) & 0x01) != 0;
+        let has_dict_id = (flg & 0x01) != 0;
+        let mut required_len = 2usize;
+        if has_content_size {
+            required_len += 8;
+        }
+        if has_dict_id {
+            required_len += 4;
+        }
+        required_len += 1;
+
+        self.tmp_in_target = required_len;
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < required_len {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated LZ4 frame header",
+            ));
+        }
+
+        let (desc, _consumed) = FrameDescriptor::parse(&self.tmp_in).map_err(|e| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("header parse error: {:?}", e),
+            )
+        })?;
+        self.descriptor = Some(desc);
+        self.tmp_in.clear();
+        self.stage = DStage::Init;
+        Ok(())
+    }
+
+    fn step_init_frame(&mut self) -> io::Result<()> {
+        let desc = self.descriptor.as_ref().ok_or_else(|| {
+            io::Error::new(io::ErrorKind::InvalidData, "missing descriptor in init")
+        })?;
+        self.block_max_size = desc.block_max_size.max_bytes();
+        self.content_hasher = desc.content_checksum.then(Xxh32Hasher::new);
+        self.content_size_accum = 0;
+        if desc.block_independence.is_independent() {
+            self.dict_history.clear();
+        }
+        self.stage = DStage::GetBlockHeader;
+        self.tmp_in_target = 4;
+        Ok(())
+    }
+
+    fn step_store_block_header(&mut self) -> io::Result<()> {
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < 4 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated block header",
+            ));
+        }
+        let raw_header = u32::from_le_bytes([
+            self.tmp_in[0],
+            self.tmp_in[1],
+            self.tmp_in[2],
+            self.tmp_in[3],
+        ]);
+        self.tmp_in.clear();
+
+        if raw_header == 0 {
+            let desc = self.descriptor.as_ref().ok_or_else(|| {
+                io::Error::new(io::ErrorKind::InvalidData, "missing descriptor at endmark")
+            })?;
+            if let Some(expected_size) = desc.content_size {
+                if self.content_size_accum != expected_size {
+                    return Err(io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!(
+                            "content size mismatch: expected {}, actual {}",
+                            expected_size, self.content_size_accum
+                        ),
+                    ));
+                }
+            }
+            if desc.content_checksum {
+                self.stage = DStage::GetSuffix;
+                self.tmp_in_target = 4;
+            } else {
+                self.frames_decoded += 1;
+                self.descriptor = None;
+                self.stage = DStage::GetFrameHeader;
+            }
+            return Ok(());
+        }
+
+        let is_uncompressed = (raw_header & 0x8000_0000) != 0;
+        let block_size = (raw_header & 0x7FFF_FFFF) as usize;
+        if block_size > self.block_max_size {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "block size {} exceeds max block size {}",
+                    block_size, self.block_max_size
+                ),
+            ));
+        }
+        self.curr_block_size = block_size;
+        self.curr_block_uncompressed = is_uncompressed;
+        self.tmp_in_target = block_size;
+        self.stage = if is_uncompressed {
+            DStage::CopyDirect
+        } else {
+            DStage::StoreCBlock
+        };
+        Ok(())
+    }
+
+    fn step_copy_direct(&mut self) -> io::Result<()> {
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < self.curr_block_size {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated raw block payload",
+            ));
+        }
+        let desc = self
+            .descriptor
+            .as_ref()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing descriptor"))?;
+        if desc.block_checksum {
+            self.curr_block_checksum = xxh32(&self.tmp_in, 0);
+        }
+        if let Some(hasher) = &mut self.content_hasher {
+            hasher.write(&self.tmp_in);
+        }
+        self.content_size_accum = self
+            .content_size_accum
+            .saturating_add(self.tmp_in.len() as u64);
+
+        if !desc.block_independence.is_independent() {
+            Self::update_dict(&mut self.dict_history, &self.tmp_in);
+        }
+
+        self.decomp_buf.clear();
+        self.decomp_buf.extend_from_slice(&self.tmp_in);
+        self.decomp_pos = 0;
+        self.tmp_in.clear();
+
+        if desc.block_checksum {
+            self.stage = DStage::GetBlockChecksum;
+            self.tmp_in_target = 4;
+        } else {
+            self.stage = DStage::FlushOut;
+        }
+        Ok(())
+    }
+
+    fn step_decompress_cblock(&mut self) -> io::Result<()> {
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < self.curr_block_size {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated compressed block payload",
+            ));
+        }
+        let desc = self
+            .descriptor
+            .as_ref()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "missing descriptor"))?;
+        if desc.block_checksum {
+            self.curr_block_checksum = xxh32(&self.tmp_in, 0);
+        }
+
+        let mut decompressed = vec![0u8; self.block_max_size];
+        let (dict_ptr, dict_len) =
+            if desc.block_independence.is_independent() || self.dict_history.is_empty() {
+                (std::ptr::null(), 0 as libc::c_int)
+            } else {
+                (
+                    self.dict_history.as_ptr() as *const libc::c_char,
+                    self.dict_history.len() as libc::c_int,
+                )
+            };
+
+        let res = unsafe {
+            LZ4_decompress_safe_usingDict(
+                self.tmp_in.as_ptr() as *const libc::c_char,
+                decompressed.as_mut_ptr() as *mut libc::c_char,
+                self.tmp_in.len() as libc::c_int,
+                decompressed.len() as libc::c_int,
+                dict_ptr,
+                dict_len,
+            )
+        };
+        if res < 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "lz4 decompression failed: code {} (block size {}, dict len {})",
+                    res,
+                    self.tmp_in.len(),
+                    dict_len
+                ),
+            ));
+        }
+        let written = res as usize;
+        decompressed.truncate(written);
+        if let Some(hasher) = &mut self.content_hasher {
+            hasher.write(&decompressed);
+        }
+        self.content_size_accum = self.content_size_accum.saturating_add(written as u64);
+
+        if !desc.block_independence.is_independent() {
+            Self::update_dict(&mut self.dict_history, &decompressed);
+        }
+
+        self.decomp_buf = decompressed;
+        self.decomp_pos = 0;
+        self.tmp_in.clear();
+
+        if desc.block_checksum {
+            self.stage = DStage::GetBlockChecksum;
+            self.tmp_in_target = 4;
+        } else {
+            self.stage = DStage::FlushOut;
+        }
+        Ok(())
+    }
+
+    fn step_verify_block_checksum(&mut self) -> io::Result<()> {
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < 4 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated block checksum",
+            ));
+        }
+        let expected_bc = u32::from_le_bytes([
+            self.tmp_in[0],
+            self.tmp_in[1],
+            self.tmp_in[2],
+            self.tmp_in[3],
+        ]);
+        self.tmp_in.clear();
+
+        if expected_bc != self.curr_block_checksum {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "block checksum mismatch: expected 0x{:08X}, actual 0x{:08X}",
+                    expected_bc, self.curr_block_checksum
+                ),
+            ));
+        }
+        self.stage = DStage::FlushOut;
+        Ok(())
+    }
+
+    fn step_verify_content_suffix(&mut self) -> io::Result<()> {
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < 4 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated content checksum",
+            ));
+        }
+        let expected_cc = u32::from_le_bytes([
+            self.tmp_in[0],
+            self.tmp_in[1],
+            self.tmp_in[2],
+            self.tmp_in[3],
+        ]);
+        self.tmp_in.clear();
+
+        if let Some(hasher) = &self.content_hasher {
+            let actual_cc = hasher.digest();
+            if expected_cc != actual_cc {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "content checksum mismatch: expected 0x{:08X}, actual 0x{:08X}",
+                        expected_cc, actual_cc
+                    ),
+                ));
+            }
+        }
+
+        self.frames_decoded += 1;
+        self.descriptor = None;
+        self.stage = DStage::GetFrameHeader;
+        Ok(())
+    }
+
+    fn step_store_sframe_size(&mut self) -> io::Result<()> {
+        self.read_tmp_in()?;
+        if self.tmp_in.len() < 4 {
+            return Err(io::Error::new(
+                io::ErrorKind::UnexpectedEof,
+                "truncated skippable frame size",
+            ));
+        }
+        let s_size = u32::from_le_bytes([
+            self.tmp_in[0],
+            self.tmp_in[1],
+            self.tmp_in[2],
+            self.tmp_in[3],
+        ]) as usize;
+        self.tmp_in.clear();
+        self.skippable_remaining = s_size;
+        self.stage = DStage::SkipSkippable;
+        Ok(())
+    }
+
+    fn step_skip_skippable(&mut self) -> io::Result<()> {
+        let mut discard = [0u8; 4096];
+        while self.skippable_remaining > 0 {
+            let to_read = self.skippable_remaining.min(discard.len());
+            let n = self.reader.read(&mut discard[..to_read])?;
+            if n == 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::UnexpectedEof,
+                    "truncated skippable payload",
+                ));
+            }
+            self.skippable_remaining -= n;
+        }
+        self.stage = DStage::GetFrameHeader;
+        Ok(())
+    }
+
+    fn step_block_or_suffix_stage(&mut self) -> io::Result<()> {
+        match self.stage {
+            DStage::GetBlockHeader => {
+                self.tmp_in_target = 4;
+                self.tmp_in.clear();
+                self.stage = DStage::StoreBlockHeader;
+                Ok(())
+            }
+            DStage::StoreBlockHeader => self.step_store_block_header(),
+            DStage::CopyDirect => self.step_copy_direct(),
+            DStage::StoreCBlock | DStage::GetCBlock => self.step_decompress_cblock(),
+            DStage::GetBlockChecksum => self.step_verify_block_checksum(),
+            DStage::FlushOut => {
+                self.stage = DStage::GetBlockHeader;
+                Ok(())
+            }
+            DStage::GetSuffix => {
+                self.tmp_in_target = 4;
+                self.stage = DStage::StoreSuffix;
+                Ok(())
+            }
+            DStage::StoreSuffix => self.step_verify_content_suffix(),
+            _ => Ok(()),
+        }
+    }
+
+    fn step_stage(&mut self) -> io::Result<bool> {
+        match self.stage {
+            DStage::GetFrameHeader => return self.step_get_frame_header(),
+            DStage::StoreFrameHeader => self.step_store_frame_header()?,
+            DStage::Init => self.step_init_frame()?,
+            DStage::GetSFrameSize => {
+                self.tmp_in_target = 4;
+                self.stage = DStage::StoreSFrameSize;
+            }
+            DStage::StoreSFrameSize => self.step_store_sframe_size()?,
+            DStage::SkipSkippable => self.step_skip_skippable()?,
+            _ => self.step_block_or_suffix_stage()?,
+        }
+        Ok(false)
+    }
 }
 
 impl<R: Read> Read for Lz4FrameDecoder<R> {
@@ -186,425 +623,11 @@ impl<R: Read> Read for Lz4FrameDecoder<R> {
         }
 
         loop {
-            // 1. Deliver unconsumed decompressed data
-            if self.decomp_pos < self.decomp_buf.len() {
-                let avail = self.decomp_buf.len() - self.decomp_pos;
-                let to_copy = avail.min(buf.len());
-                buf[..to_copy].copy_from_slice(
-                    &self.decomp_buf[self.decomp_pos..self.decomp_pos + to_copy],
-                );
-                self.decomp_pos += to_copy;
-                return Ok(to_copy);
+            if let Some(n) = self.deliver_buffered_output(buf) {
+                return Ok(n);
             }
-
-            // Drain decomp_buf if fully consumed
-            if !self.decomp_buf.is_empty() {
-                self.decomp_buf.clear();
-                self.decomp_pos = 0;
-            }
-
-            if self.stream_ended {
+            if self.stream_ended || self.step_stage()? {
                 return Ok(0);
-            }
-
-            // Step the 15-stage state machine
-            match self.stage {
-                DStage::GetFrameHeader => {
-                    self.tmp_in_target = 4;
-                    self.read_tmp_in()?;
-                    if self.tmp_in.is_empty() {
-                        self.stream_ended = true;
-                        return Ok(0);
-                    }
-                    if self.tmp_in.len() < 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated LZ4 magic number",
-                        ));
-                    }
-                    let magic = u32::from_le_bytes([
-                        self.tmp_in[0],
-                        self.tmp_in[1],
-                        self.tmp_in[2],
-                        self.tmp_in[3],
-                    ]);
-                    self.tmp_in.clear();
-
-                    if is_lz4_frame_magic(magic) {
-                        self.stage = DStage::StoreFrameHeader;
-                        self.tmp_in_target = 3;
-                    } else if is_lz4_skippable_magic(magic) {
-                        self.stage = DStage::GetSFrameSize;
-                        self.tmp_in_target = 4;
-                    } else if is_lz4_legacy_magic(magic) {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            "legacy LZ4 format unsupported in frame decoder",
-                        ));
-                    } else {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!("invalid LZ4 frame magic: 0x{:08X}", magic),
-                        ));
-                    }
-                }
-
-                DStage::StoreFrameHeader => {
-                    if self.tmp_in.len() < 2 {
-                        self.tmp_in_target = 2;
-                        self.read_tmp_in()?;
-                        if self.tmp_in.len() < 2 {
-                            return Err(io::Error::new(
-                                io::ErrorKind::UnexpectedEof,
-                                "truncated frame header descriptor",
-                            ));
-                        }
-                    }
-
-                    let flg = self.tmp_in[0];
-                    let has_content_size = ((flg >> 3) & 0x01) != 0;
-                    let has_dict_id = (flg & 0x01) != 0;
-                    let mut required_len = 2usize;
-                    if has_content_size {
-                        required_len += 8;
-                    }
-                    if has_dict_id {
-                        required_len += 4;
-                    }
-                    required_len += 1;
-
-                    self.tmp_in_target = required_len;
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < required_len {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated LZ4 frame header",
-                        ));
-                    }
-
-                    let (desc, _consumed) = FrameDescriptor::parse(&self.tmp_in).map_err(|e| {
-                        io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!("header parse error: {:?}", e),
-                        )
-                    })?;
-                    self.descriptor = Some(desc);
-                    self.tmp_in.clear();
-                    self.stage = DStage::Init;
-                }
-
-                DStage::Init => {
-                    let desc = self.descriptor.as_ref().ok_or_else(|| {
-                        io::Error::new(io::ErrorKind::InvalidData, "missing descriptor in init")
-                    })?;
-                    self.block_max_size = desc.block_max_size.max_bytes();
-                    if desc.content_checksum {
-                        self.content_hasher = Some(Xxh32Hasher::new());
-                    } else {
-                        self.content_hasher = None;
-                    }
-                    self.content_size_accum = 0;
-                    if desc.block_independence.is_independent() {
-                        self.dict_history.clear();
-                    }
-                    self.stage = DStage::GetBlockHeader;
-                    self.tmp_in_target = 4;
-                }
-
-                DStage::GetBlockHeader => {
-                    self.tmp_in_target = 4;
-                    self.tmp_in.clear();
-                    self.stage = DStage::StoreBlockHeader;
-                }
-
-                DStage::StoreBlockHeader => {
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated block header",
-                        ));
-                    }
-                    let raw_header = u32::from_le_bytes([
-                        self.tmp_in[0],
-                        self.tmp_in[1],
-                        self.tmp_in[2],
-                        self.tmp_in[3],
-                    ]);
-                    self.tmp_in.clear();
-
-                    if raw_header == 0 {
-                        let desc = self.descriptor.as_ref().ok_or_else(|| {
-                            io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                "missing descriptor at endmark",
-                            )
-                        })?;
-                        if let Some(expected_size) = desc.content_size {
-                            if self.content_size_accum != expected_size {
-                                return Err(io::Error::new(
-                                    io::ErrorKind::InvalidData,
-                                    format!(
-                                        "content size mismatch: expected {}, actual {}",
-                                        expected_size, self.content_size_accum
-                                    ),
-                                ));
-                            }
-                        }
-                        if desc.content_checksum {
-                            self.stage = DStage::GetSuffix;
-                            self.tmp_in_target = 4;
-                        } else {
-                            self.frames_decoded += 1;
-                            self.descriptor = None;
-                            self.stage = DStage::GetFrameHeader;
-                        }
-                    } else {
-                        let is_uncompressed = (raw_header & 0x8000_0000) != 0;
-                        let block_size = (raw_header & 0x7FFF_FFFF) as usize;
-                        if block_size > self.block_max_size {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                format!(
-                                    "block size {} exceeds max block size {}",
-                                    block_size, self.block_max_size
-                                ),
-                            ));
-                        }
-                        self.curr_block_size = block_size;
-                        self.curr_block_uncompressed = is_uncompressed;
-                        self.tmp_in_target = block_size;
-
-                        if is_uncompressed {
-                            self.stage = DStage::CopyDirect;
-                        } else {
-                            self.stage = DStage::StoreCBlock;
-                        }
-                    }
-                }
-
-                DStage::CopyDirect => {
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < self.curr_block_size {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated raw block payload",
-                        ));
-                    }
-                    let desc = self.descriptor.as_ref().ok_or_else(|| {
-                        io::Error::new(io::ErrorKind::InvalidData, "missing descriptor")
-                    })?;
-                    if desc.block_checksum {
-                        self.curr_block_checksum = xxh32(&self.tmp_in, 0);
-                    }
-                    if let Some(hasher) = &mut self.content_hasher {
-                        hasher.write(&self.tmp_in);
-                    }
-                    self.content_size_accum = self
-                        .content_size_accum
-                        .saturating_add(self.tmp_in.len() as u64);
-
-                    if !desc.block_independence.is_independent() {
-                        Self::update_dict(&mut self.dict_history, &self.tmp_in);
-                    }
-
-                    self.decomp_buf.clear();
-                    self.decomp_buf.extend_from_slice(&self.tmp_in);
-                    self.decomp_pos = 0;
-                    self.tmp_in.clear();
-
-                    if desc.block_checksum {
-                        self.stage = DStage::GetBlockChecksum;
-                        self.tmp_in_target = 4;
-                    } else {
-                        self.stage = DStage::FlushOut;
-                    }
-                }
-
-                DStage::StoreCBlock | DStage::GetCBlock => {
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < self.curr_block_size {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated compressed block payload",
-                        ));
-                    }
-                    let desc = self.descriptor.as_ref().ok_or_else(|| {
-                        io::Error::new(io::ErrorKind::InvalidData, "missing descriptor")
-                    })?;
-                    if desc.block_checksum {
-                        self.curr_block_checksum = xxh32(&self.tmp_in, 0);
-                    }
-
-                    let mut decompressed = vec![0u8; self.block_max_size];
-                    let (dict_ptr, dict_len) = if desc.block_independence.is_independent()
-                        || self.dict_history.is_empty()
-                    {
-                        (std::ptr::null(), 0 as libc::c_int)
-                    } else {
-                        (
-                            self.dict_history.as_ptr() as *const libc::c_char,
-                            self.dict_history.len() as libc::c_int,
-                        )
-                    };
-
-                    let res = unsafe {
-                        LZ4_decompress_safe_usingDict(
-                            self.tmp_in.as_ptr() as *const libc::c_char,
-                            decompressed.as_mut_ptr() as *mut libc::c_char,
-                            self.tmp_in.len() as libc::c_int,
-                            decompressed.len() as libc::c_int,
-                            dict_ptr,
-                            dict_len,
-                        )
-                    };
-                    if res < 0 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!(
-                                "lz4 decompression failed: code {} (block size {}, dict len {})",
-                                res,
-                                self.tmp_in.len(),
-                                dict_len
-                            ),
-                        ));
-                    }
-                    let written = res as usize;
-
-                    decompressed.truncate(written);
-                    if let Some(hasher) = &mut self.content_hasher {
-                        hasher.write(&decompressed);
-                    }
-                    self.content_size_accum =
-                        self.content_size_accum.saturating_add(written as u64);
-
-                    if !desc.block_independence.is_independent() {
-                        Self::update_dict(&mut self.dict_history, &decompressed);
-                    }
-
-                    self.decomp_buf = decompressed;
-                    self.decomp_pos = 0;
-                    self.tmp_in.clear();
-
-                    if desc.block_checksum {
-                        self.stage = DStage::GetBlockChecksum;
-                        self.tmp_in_target = 4;
-                    } else {
-                        self.stage = DStage::FlushOut;
-                    }
-                }
-
-                DStage::GetBlockChecksum => {
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated block checksum",
-                        ));
-                    }
-                    let expected_bc = u32::from_le_bytes([
-                        self.tmp_in[0],
-                        self.tmp_in[1],
-                        self.tmp_in[2],
-                        self.tmp_in[3],
-                    ]);
-                    self.tmp_in.clear();
-
-                    if expected_bc != self.curr_block_checksum {
-                        return Err(io::Error::new(
-                            io::ErrorKind::InvalidData,
-                            format!(
-                                "block checksum mismatch: expected 0x{:08X}, actual 0x{:08X}",
-                                expected_bc, self.curr_block_checksum
-                            ),
-                        ));
-                    }
-
-                    self.stage = DStage::FlushOut;
-                }
-
-                DStage::FlushOut => {
-                    self.stage = DStage::GetBlockHeader;
-                }
-
-                DStage::GetSuffix => {
-                    self.tmp_in_target = 4;
-                    self.stage = DStage::StoreSuffix;
-                }
-
-                DStage::StoreSuffix => {
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated content checksum",
-                        ));
-                    }
-                    let expected_cc = u32::from_le_bytes([
-                        self.tmp_in[0],
-                        self.tmp_in[1],
-                        self.tmp_in[2],
-                        self.tmp_in[3],
-                    ]);
-                    self.tmp_in.clear();
-
-                    if let Some(hasher) = &self.content_hasher {
-                        let actual_cc = hasher.digest();
-                        if expected_cc != actual_cc {
-                            return Err(io::Error::new(
-                                io::ErrorKind::InvalidData,
-                                format!(
-                                    "content checksum mismatch: expected 0x{:08X}, actual 0x{:08X}",
-                                    expected_cc, actual_cc
-                                ),
-                            ));
-                        }
-                    }
-
-                    self.frames_decoded += 1;
-                    self.descriptor = None;
-                    self.stage = DStage::GetFrameHeader;
-                }
-
-                DStage::GetSFrameSize => {
-                    self.tmp_in_target = 4;
-                    self.stage = DStage::StoreSFrameSize;
-                }
-
-                DStage::StoreSFrameSize => {
-                    self.read_tmp_in()?;
-                    if self.tmp_in.len() < 4 {
-                        return Err(io::Error::new(
-                            io::ErrorKind::UnexpectedEof,
-                            "truncated skippable frame size",
-                        ));
-                    }
-                    let s_size = u32::from_le_bytes([
-                        self.tmp_in[0],
-                        self.tmp_in[1],
-                        self.tmp_in[2],
-                        self.tmp_in[3],
-                    ]) as usize;
-                    self.tmp_in.clear();
-                    self.skippable_remaining = s_size;
-                    self.stage = DStage::SkipSkippable;
-                }
-
-                DStage::SkipSkippable => {
-                    let mut discard = [0u8; 4096];
-                    while self.skippable_remaining > 0 {
-                        let to_read = self.skippable_remaining.min(discard.len());
-                        let n = self.reader.read(&mut discard[..to_read])?;
-                        if n == 0 {
-                            return Err(io::Error::new(
-                                io::ErrorKind::UnexpectedEof,
-                                "truncated skippable payload",
-                            ));
-                        }
-                        self.skippable_remaining -= n;
-                    }
-                    self.stage = DStage::GetFrameHeader;
-                }
             }
         }
     }

@@ -7,11 +7,14 @@
 //! and TOC/Spine graph construction.
 
 use std::collections::HashMap;
-use quick_xml::events::Event;
 
 use crate::ebook::mobi::EbookMobiDecoder;
-use crate::ebook::navigation::{local_name, EbookNavigationExtractor, EbookTocNode, SpineItem};
-use crate::ebook::resource::{clean_container_path, normalize_path, EbookResource, EbookResourceExtractor};
+use crate::ebook::navigation::{EbookTocNode, SpineItem};
+use crate::ebook::opf::{
+    extract_epub_toc, is_epub_container, parse_container_rootfile, parse_opf_xml,
+    resolve_cover_href, resolve_epub_spine,
+};
+use crate::ebook::resource::{EbookResource, EbookResourceExtractor};
 use crate::ebook::{EbookError, EbookResult};
 use crate::zip::ZipArchive;
 
@@ -289,7 +292,6 @@ impl<'a> TTZipEbookParser<'a> {
 
     /// Internal helper to parse full EPUB container and OPF package.
     fn parse_epub_container(raw_data: &'a [u8], zip: ZipArchive<'a>) -> EbookResult<Self> {
-        // 1. Locate and parse META-INF/container.xml
         let container_xml = EbookResourceExtractor::extract_text(&zip, "META-INF/container.xml")
             .map_err(|_| EbookError::NotFound("Missing META-INF/container.xml in EPUB".to_string()))?;
 
@@ -299,158 +301,27 @@ impl<'a> TTZipEbookParser<'a> {
             None => String::new(),
         };
 
-        // 2. Extract and parse OPF package file
         let opf_xml = EbookResourceExtractor::extract_text(&zip, &opf_path)
             .map_err(|_| EbookError::NotFound(format!("Missing OPF package file at {opf_path}")))?;
 
-        let (format, metadata, manifest, spine_raw, cover_meta_id, spine_toc_id, nav_xhtml_id) =
-            parse_opf_xml(opf_xml.as_bytes(), &opf_dir)?;
-
-        // 3. Resolve Spine items with manifest references
-        let mut spine: Vec<SpineItem> = Vec::with_capacity(spine_raw.len());
-        for (idref, linear) in spine_raw {
-            if let Some(item) = manifest.get(&idref) {
-                spine.push(SpineItem {
-                    idref: idref.clone(),
-                    href: item.href.clone(),
-                    linear,
-                    media_type: item.media_type.clone(),
-                });
-            }
-        }
-
-        // Self-heal broken or missing spine items from manifest or container entries
-        if spine.is_empty() {
-            for (id, item) in &manifest {
-                if item.media_type == "application/xhtml+xml"
-                    || item.media_type == "text/html"
-                    || item.href.ends_with(".xhtml")
-                    || item.href.ends_with(".html")
-                {
-                    spine.push(SpineItem {
-                        idref: id.clone(),
-                        href: item.href.clone(),
-                        linear: true,
-                        media_type: item.media_type.clone(),
-                    });
-                }
-            }
-            if spine.is_empty() {
-                for entry in zip.entries() {
-                    let path = &entry.rel_path;
-                    if path.ends_with(".xhtml") || path.ends_with(".html") || path.ends_with(".htm")
-                    {
-                        spine.push(SpineItem {
-                            idref: path.clone(),
-                            href: path.clone(),
-                            linear: true,
-                            media_type: "application/xhtml+xml".to_string(),
-                        });
-                    }
-                }
-            }
-            spine.sort_by(|a, b| a.href.cmp(&b.href));
-        }
-
-        // 4. Resolve Cover image href if not resolved in metadata
-        let mut resolved_metadata = metadata;
-        if resolved_metadata.cover_image_href.is_none() {
-            if let Some(cover_id) = cover_meta_id {
-                if let Some(item) = manifest.get(&cover_id) {
-                    resolved_metadata.cover_image_href = Some(item.href.clone());
-                }
-            }
-        }
-        if resolved_metadata.cover_image_href.is_none() {
-            for item in manifest.values() {
-                if let Some(ref props) = item.properties {
-                    if props.split_whitespace().any(|p| p == "cover-image") {
-                        resolved_metadata.cover_image_href = Some(item.href.clone());
-                        break;
-                    }
-                }
-            }
-        }
-
-        // 5. Parse TOC navigation hierarchy
-        let mut toc = Vec::new();
-
-        // Check for EPUB 3 Navigation Document first
-        let mut nav_href = None;
-        if let Some(nav_id) = nav_xhtml_id {
-            if let Some(item) = manifest.get(&nav_id) {
-                nav_href = Some(item.href.clone());
-            }
-        }
-        if nav_href.is_none() {
-            for item in manifest.values() {
-                if let Some(ref props) = item.properties {
-                    if props.split_whitespace().any(|p| p == "nav") {
-                        nav_href = Some(item.href.clone());
-                        break;
-                    }
-                }
-            }
-        }
-
-        if let Some(nav_path) = nav_href {
-            if let Ok(nav_bytes) =
-                EbookResourceExtractor::extract_resource(&zip, &nav_path, None)
-            {
-                let nav_dir = match nav_path.rfind('/') {
-                    Some(pos) => nav_path[..pos].to_string(),
-                    None => opf_dir.clone(),
-                };
-                if let Ok(nodes) =
-                    EbookNavigationExtractor::parse_nav_xhtml(&nav_bytes.data, &nav_dir, &spine)
-                {
-                    if !nodes.is_empty() {
-                        toc = nodes;
-                    }
-                }
-            }
-        }
-
-        // Fallback to EPUB 2 NCX TOC if Nav XHTML was not present or returned 0 nodes
-        if toc.is_empty() {
-            let mut ncx_href = None;
-            if let Some(toc_id) = spine_toc_id {
-                if let Some(item) = manifest.get(&toc_id) {
-                    ncx_href = Some(item.href.clone());
-                }
-            }
-            if ncx_href.is_none() {
-                for item in manifest.values() {
-                    if item.media_type == "application/x-dtbncx+xml" {
-                        ncx_href = Some(item.href.clone());
-                        break;
-                    }
-                }
-            }
-
-            if let Some(ncx_path) = ncx_href {
-                if let Ok(ncx_bytes) =
-                    EbookResourceExtractor::extract_resource(&zip, &ncx_path, None)
-                {
-                    let ncx_dir = match ncx_path.rfind('/') {
-                        Some(pos) => ncx_path[..pos].to_string(),
-                        None => opf_dir.clone(),
-                    };
-                    if let Ok(nodes) =
-                        EbookNavigationExtractor::parse_ncx(&ncx_bytes.data, &ncx_dir, &spine)
-                    {
-                        toc = nodes;
-                    }
-                }
-            }
-        }
+        let mut opf = parse_opf_xml(opf_xml.as_bytes(), &opf_dir)?;
+        let spine = resolve_epub_spine(opf.spine_raw, &opf.manifest, &zip);
+        resolve_cover_href(&mut opf.metadata, opf.cover_meta_id, &opf.manifest);
+        let toc = extract_epub_toc(
+            &zip,
+            &opf_dir,
+            &opf.manifest,
+            &spine,
+            opf.nav_xhtml_id,
+            opf.spine_toc_id,
+        );
 
         Ok(Self {
             raw_data,
-            format,
-            metadata: resolved_metadata,
+            format: opf.format,
+            metadata: opf.metadata,
             spine,
-            manifest,
+            manifest: opf.manifest,
             toc,
             opf_path,
             opf_dir,
@@ -458,262 +329,6 @@ impl<'a> TTZipEbookParser<'a> {
             mobi: None,
         })
     }
-}
-
-/// Checks if a ZIP archive conforms to the EPUB specification.
-fn is_epub_container(zip: &ZipArchive<'_>) -> bool {
-    let mut has_mimetype = false;
-    let mut has_container = false;
-
-    for entry in zip.entries() {
-        let clean = clean_container_path(&entry.rel_path);
-        if clean == "mimetype" {
-            has_mimetype = true;
-        } else if clean == "META-INF/container.xml" {
-            has_container = true;
-        }
-    }
-
-    has_container || has_mimetype
-}
-
-/// Parses the OPF full-path from `META-INF/container.xml`.
-fn parse_container_rootfile(xml: &[u8]) -> EbookResult<String> {
-    let mut reader = quick_xml::Reader::from_reader(xml);
-    let mut buf = Vec::with_capacity(512);
-
-    loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Start(ref e) | Event::Empty(ref e) => {
-                if local_name(e.name().into_inner()) == b"rootfile" {
-                    for attr in e.attributes().flatten() {
-                        if local_name(attr.key.into_inner()) == b"full-path" {
-                            if let Ok(v) = attr.unescape_value() {
-                                return Ok(v.to_string());
-                            }
-                        }
-                    }
-                }
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    Err(EbookError::NotFound(
-        "Missing <rootfile full-path=...> in META-INF/container.xml".to_string(),
-    ))
-}
-
-type ParsedOpfResult = (
-    EbookFormat,
-    EbookMetadata,
-    HashMap<String, EpubManifestItem>,
-    Vec<(String, bool)>,
-    Option<String>,
-    Option<String>,
-    Option<String>,
-);
-
-/// Parses an OPF package XML document into structured format, metadata, manifest, and spine tuples.
-fn parse_opf_xml(xml: &[u8], opf_dir: &str) -> EbookResult<ParsedOpfResult> {
-    let mut reader = quick_xml::Reader::from_reader(xml);
-    reader.config_mut().trim_text(true);
-
-    let mut format = EbookFormat::Epub2;
-    let mut metadata = EbookMetadata::default();
-    let mut manifest = HashMap::new();
-    let mut spine_raw = Vec::new();
-    let mut cover_meta_id = None;
-    let mut spine_toc_id = None;
-    let mut nav_xhtml_id = None;
-
-    let mut in_metadata = false;
-    let mut in_manifest = false;
-    let mut in_spine = false;
-
-    let mut current_element = Vec::new();
-    let mut text_buffer = String::new();
-    let mut buf = Vec::with_capacity(512);
-
-    loop {
-        match reader.read_event_into(&mut buf)? {
-            Event::Start(ref e) => {
-                let name = local_name(e.name().into_inner()).to_vec();
-                match name.as_slice() {
-                    b"package" => {
-                        for attr in e.attributes().flatten() {
-                            if local_name(attr.key.into_inner()) == b"version" {
-                                if let Ok(v) = attr.unescape_value() {
-                                    if v.starts_with('3') {
-                                        format = EbookFormat::Epub3;
-                                    } else {
-                                        format = EbookFormat::Epub2;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    b"metadata" => in_metadata = true,
-                    b"manifest" => in_manifest = true,
-                    b"spine" => {
-                        in_spine = true;
-                        for attr in e.attributes().flatten() {
-                            if local_name(attr.key.into_inner()) == b"toc" {
-                                if let Ok(v) = attr.unescape_value() {
-                                    spine_toc_id = Some(v.to_string());
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                current_element = name;
-                text_buffer.clear();
-            }
-            Event::Empty(ref e) => {
-                let name = local_name(e.name().into_inner());
-                if in_manifest && name == b"item" {
-                    let mut id = String::new();
-                    let mut href = String::new();
-                    let mut media_type = String::new();
-                    let mut properties = None;
-
-                    for attr in e.attributes().flatten() {
-                        let k = local_name(attr.key.into_inner());
-                        if let Ok(v) = attr.unescape_value() {
-                            match k {
-                                b"id" => id = v.to_string(),
-                                b"href" => href = v.to_string(),
-                                b"media-type" => media_type = v.to_string(),
-                                b"properties" => properties = Some(v.to_string()),
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    if !id.is_empty() {
-                        let normalized_href = normalize_path(opf_dir, &href);
-                        if let Some(ref props) = properties {
-                            if props.split_whitespace().any(|p| p == "nav") {
-                                nav_xhtml_id = Some(id.clone());
-                            }
-                        }
-                        manifest.insert(
-                            id.clone(),
-                            EpubManifestItem {
-                                id,
-                                href: normalized_href,
-                                media_type,
-                                properties,
-                            },
-                        );
-                    }
-                } else if in_spine && name == b"itemref" {
-                    let mut idref = String::new();
-                    let mut linear = true;
-
-                    for attr in e.attributes().flatten() {
-                        let k = local_name(attr.key.into_inner());
-                        if let Ok(v) = attr.unescape_value() {
-                            match k {
-                                b"idref" => idref = v.to_string(),
-                                b"linear" => linear = v != "no",
-                                _ => {}
-                            }
-                        }
-                    }
-
-                    if !idref.is_empty() {
-                        spine_raw.push((idref, linear));
-                    }
-                } else if in_metadata && name == b"meta" {
-                    let mut meta_name = String::new();
-                    let mut meta_content = String::new();
-                    for attr in e.attributes().flatten() {
-                        let k = local_name(attr.key.into_inner());
-                        if let Ok(v) = attr.unescape_value() {
-                            match k {
-                                b"name" => meta_name = v.to_string(),
-                                b"content" => meta_content = v.to_string(),
-                                _ => {}
-                            }
-                        }
-                    }
-                    if meta_name == "cover" && !meta_content.is_empty() {
-                        cover_meta_id = Some(meta_content);
-                    }
-                }
-            }
-            Event::Text(e) if in_metadata => {
-                if let Ok(s) = e.unescape() {
-                    text_buffer.push_str(&s);
-                }
-            }
-            Event::CData(e) if in_metadata => {
-                if let Ok(s) = std::str::from_utf8(e.as_ref()) {
-                    text_buffer.push_str(s);
-                }
-            }
-            Event::End(ref e) => {
-                let name = local_name(e.name().into_inner());
-                match name {
-                    b"metadata" => in_metadata = false,
-                    b"manifest" => in_manifest = false,
-                    b"spine" => in_spine = false,
-                    _ if in_metadata => {
-                        let val = text_buffer.trim().to_string();
-                        if !val.is_empty() {
-                            match current_element.as_slice() {
-                                b"title" if metadata.title.is_none() => {
-                                    metadata.title = Some(val);
-                                }
-                                b"creator" => {
-                                    metadata.authors.push(val);
-                                }
-                                b"publisher" if metadata.publisher.is_none() => {
-                                    metadata.publisher = Some(val);
-                                }
-                                b"language" if metadata.language.is_none() => {
-                                    metadata.language = Some(val);
-                                }
-                                b"description" if metadata.description.is_none() => {
-                                    metadata.description = Some(val);
-                                }
-                                b"rights" if metadata.rights.is_none() => {
-                                    metadata.rights = Some(val);
-                                }
-                                b"identifier" => {
-                                    metadata.identifiers.push(val);
-                                }
-                                b"date" if metadata.publication_date.is_none() => {
-                                    metadata.publication_date = Some(val);
-                                }
-                                _ => {}
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-                current_element.clear();
-                text_buffer.clear();
-            }
-            Event::Eof => break,
-            _ => {}
-        }
-        buf.clear();
-    }
-
-    Ok((
-        format,
-        metadata,
-        manifest,
-        spine_raw,
-        cover_meta_id,
-        spine_toc_id,
-        nav_xhtml_id,
-    ))
 }
 
 /// Strips HTML/XML tags from a markup string to extract plain text paragraphs.

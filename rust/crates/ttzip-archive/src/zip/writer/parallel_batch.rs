@@ -9,9 +9,11 @@
 //! - Parallel execution via Rayon work-stealing thread pools with graceful sequential fallback.
 //! - Filesystem scanning and plan item collection for explicit and recursive paths.
 
-use super::data_descriptor::compute_zipcrypto_check_byte;
+use super::parallel::{
+    build_directory_entry_result, build_file_lfh_header, encrypt_entry_payload,
+};
 use super::streaming_sink::*;
-use super::types::unix_to_dos_time;
+use crate::codecs::deflate::{deflate_compress, deflate_compress_bound};
 use crate::codecs::libdeflate::writer::LibdeflateWriter;
 use crate::codecs::zstd::stream::ZstdStreamWriter;
 use crate::crypto::crc32::crc32_fast;
@@ -19,8 +21,6 @@ use ttzip_types::options::ProgressAtomicSheet;
 use crate::types::{
     TTZipArchiveFormat, TTZipEncryptionMethod, TTZipStatus,
 };
-use crate::zip::extra::ZipExtraFields;
-use crate::zip::parser::MAGIC_LFH;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -84,41 +84,54 @@ where
     let mut total_bytes: u64 = 0;
 
     while let Some(peek) = iter.peek() {
-        let is_small = peek.is_directory
-            || peek.is_symlink
-            || peek.uncompressed_size < SMALL_FILE_THRESHOLD_BYTES;
-
-        let max_items = if is_small {
-            MAX_SMALL_FILE_BATCH_SIZE
-        } else {
-            DEFAULT_BATCH_SIZE
-        };
-
-        if !batch.is_empty() {
-            if batch.len() >= max_items || total_bytes.saturating_add(peek.uncompressed_size) > BATCH_BYTE_BUDGET {
-                break;
-            }
-            let batch_is_small = batch.iter().all(|i| {
-                i.is_directory || i.is_symlink || i.uncompressed_size < SMALL_FILE_THRESHOLD_BYTES
-            });
-            if batch_is_small && !is_small && batch.len() >= DEFAULT_BATCH_SIZE {
-                break;
-            }
+        let is_small = is_small_plan_item(peek);
+        if !batch.is_empty() && should_close_batch_before(&batch, total_bytes, peek, is_small) {
+            break;
         }
 
-        let item = iter.next().unwrap();
+        let Some(item) = iter.next() else {
+            break;
+        };
         total_bytes = total_bytes.saturating_add(item.uncompressed_size);
         batch.push(item);
 
-        if (!is_small && batch.len() >= DEFAULT_BATCH_SIZE)
-            || (is_small && batch.len() >= MAX_SMALL_FILE_BATCH_SIZE)
-            || total_bytes >= BATCH_BYTE_BUDGET
-        {
+        let max_items = max_batch_items_for(is_small);
+        if batch.len() >= max_items || total_bytes >= BATCH_BYTE_BUDGET {
             break;
         }
     }
 
     batch
+}
+
+#[inline]
+fn is_small_plan_item(item: &CompressionPlanItem) -> bool {
+    item.is_directory || item.is_symlink || item.uncompressed_size < SMALL_FILE_THRESHOLD_BYTES
+}
+
+#[inline]
+fn max_batch_items_for(is_small: bool) -> usize {
+    if is_small {
+        MAX_SMALL_FILE_BATCH_SIZE
+    } else {
+        DEFAULT_BATCH_SIZE
+    }
+}
+
+fn should_close_batch_before(
+    batch: &[CompressionPlanItem],
+    total_bytes: u64,
+    next_item: &CompressionPlanItem,
+    next_is_small: bool,
+) -> bool {
+    let max_items = max_batch_items_for(next_is_small);
+    if batch.len() >= max_items
+        || total_bytes.saturating_add(next_item.uncompressed_size) > BATCH_BYTE_BUDGET
+    {
+        return true;
+    }
+    let batch_is_small = batch.iter().all(is_small_plan_item);
+    batch_is_small && !next_is_small && batch.len() >= DEFAULT_BATCH_SIZE
 }
 
 // Preserve existing public paths while the executor owns scheduling responsibilities.
@@ -145,26 +158,212 @@ fn record_chunk_progress(
     }
 }
 
-fn payload_to_memory_bytes(payload: EntryPayload) -> Result<Vec<u8>, TTZipStatus> {
-    match payload {
-        EntryPayload::Memory(v) => Ok(v),
-        EntryPayload::Spill(spill) => {
-            if spill.len > MAX_IN_MEMORY_PAYLOAD as u64 {
-                return Err(TTZipStatus::ErrOutOfMemory);
-            }
-            fs::read(&spill.path).map_err(|_| TTZipStatus::ErrOpenFailed)
+fn read_in_memory_file_bytes(
+    mut file: File,
+    file_len: u64,
+    sheet: Option<&ProgressAtomicSheet>,
+    start_time: Option<std::time::Instant>,
+) -> Result<Vec<u8>, TTZipStatus> {
+    if file_len == 0 {
+        return Ok(Vec::new());
+    }
+    let mut raw_buf = Vec::with_capacity(file_len as usize + 1);
+    const IN_MEM_READ_CHUNK: u64 = 256 * 1024;
+    if file_len <= IN_MEM_READ_CHUNK {
+        if sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
+            return Err(TTZipStatus::Cancelled);
         }
-        EntryPayload::OriginalFile { path, len } => {
-            if len > MAX_IN_MEMORY_PAYLOAD as u64 {
-                return Err(TTZipStatus::ErrOutOfMemory);
+        file.read_to_end(&mut raw_buf)
+            .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        record_chunk_progress(sheet, raw_buf.len() as u64, start_time);
+    } else {
+        loop {
+            if sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
+                return Err(TTZipStatus::Cancelled);
             }
-            fs::read(path).map_err(|_| TTZipStatus::ErrOpenFailed)
+            let prev_len = raw_buf.len();
+            let n = std::io::Read::by_ref(&mut file)
+                .take(IN_MEM_READ_CHUNK)
+                .read_to_end(&mut raw_buf)
+                .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+            if n == 0 || raw_buf.len() == prev_len {
+                break;
+            }
+            record_chunk_progress(sheet, n as u64, start_time);
+        }
+    }
+    Ok(raw_buf)
+}
+
+fn compress_file_in_memory(
+    file: File,
+    file_len: u64,
+    target_method: u16,
+    level: i32,
+    sheet: Option<&ProgressAtomicSheet>,
+    start_time: Option<std::time::Instant>,
+) -> Result<(u16, u64, u32, EntryPayload), TTZipStatus> {
+    let raw_buf = read_in_memory_file_bytes(file, file_len, sheet, start_time)?;
+    let total_read = raw_buf.len() as u64;
+    let computed_crc = crc32_fast(0, &raw_buf);
+
+    if target_method == 0 || total_read == 0 {
+        return Ok((0u16, total_read, computed_crc, EntryPayload::Memory(raw_buf)));
+    }
+
+    let clamped_level = level.clamp(1, 12);
+    let bound = deflate_compress_bound(raw_buf.len(), clamped_level);
+    let mut comp_buf = vec![0u8; bound];
+    let comp_len = deflate_compress(&raw_buf, &mut comp_buf, clamped_level)?;
+    if (comp_len as u64) < total_read {
+        comp_buf.truncate(comp_len);
+        Ok((8u16, total_read, computed_crc, EntryPayload::Memory(comp_buf)))
+    } else {
+        Ok((0u16, total_read, computed_crc, EntryPayload::Memory(raw_buf)))
+    }
+}
+
+enum StreamingTargetWriter {
+    Store(BoundedSink),
+    Zstd(ZstdStreamWriter<BoundedSink>),
+    Deflate(LibdeflateWriter<BoundedSink>),
+}
+
+impl StreamingTargetWriter {
+    fn new(target_method: u16, level: i32) -> Result<Self, TTZipStatus> {
+        match target_method {
+            0 => Ok(Self::Store(BoundedSink::new())),
+            93 => Ok(Self::Zstd(ZstdStreamWriter::with_level(BoundedSink::new(), level.min(19))?)),
+            _ => Ok(Self::Deflate(LibdeflateWriter::new_raw(BoundedSink::new(), level.min(12))?)),
+        }
+    }
+
+    fn write_chunk(&mut self, chunk: &[u8], total_read: u64) -> Result<(), TTZipStatus> {
+        match self {
+            Self::Store(sink) if total_read <= MAX_IN_MEMORY_PAYLOAD as u64 => {
+                sink.write_all(chunk).map_err(|_| TTZipStatus::ErrCompressionFailed)
+            }
+            Self::Store(_) => Ok(()),
+            Self::Zstd(w) => w.write_all(chunk).map_err(|_| TTZipStatus::ErrCompressionFailed),
+            Self::Deflate(w) => w.write_all(chunk).map_err(|_| TTZipStatus::ErrCompressionFailed),
+        }
+    }
+
+    fn finalize(self, abs_path: PathBuf, total_read: u64) -> Result<(u16, EntryPayload), TTZipStatus> {
+        match self {
+            Self::Store(sink) => {
+                let payload = if total_read <= MAX_IN_MEMORY_PAYLOAD as u64 {
+                    sink.into_payload()
+                } else {
+                    EntryPayload::OriginalFile { path: abs_path, len: total_read }
+                };
+                Ok((0u16, payload))
+            }
+            Self::Zstd(w) => {
+                let sink = w.finish()?;
+                if sink.total_written < total_read {
+                    Ok((93u16, sink.into_payload()))
+                } else {
+                    Ok((0u16, EntryPayload::OriginalFile { path: abs_path, len: total_read }))
+                }
+            }
+            Self::Deflate(w) => {
+                let sink = w.finish().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+                if sink.total_written < total_read {
+                    Ok((8u16, sink.into_payload()))
+                } else {
+                    Ok((0u16, EntryPayload::OriginalFile { path: abs_path, len: total_read }))
+                }
+            }
         }
     }
 }
 
+fn compress_file_streaming(
+    mut file: File,
+    abs_path: PathBuf,
+    target_method: u16,
+    level: i32,
+    sheet: Option<&ProgressAtomicSheet>,
+    start_time: Option<std::time::Instant>,
+) -> Result<(u16, u64, u32, EntryPayload), TTZipStatus> {
+    let mut target_writer = StreamingTargetWriter::new(target_method, level)?;
+    let mut read_buf = [0u8; STREAM_CHUNK_SIZE];
+    let mut computed_crc = 0u32;
+    let mut total_read = 0u64;
+
+    loop {
+        if sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
+            return Err(TTZipStatus::Cancelled);
+        }
+        let n = file.read(&mut read_buf).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        if n == 0 {
+            break;
+        }
+        let chunk = &read_buf[..n];
+        computed_crc = crc32_fast(computed_crc, chunk);
+        total_read += n as u64;
+        target_writer.write_chunk(chunk, total_read)?;
+        record_chunk_progress(sheet, n as u64, start_time);
+    }
+
+    let (method, payload) = target_writer.finalize(abs_path, total_read)?;
+    Ok((method, total_read, computed_crc, payload))
+}
+
+fn compress_item_payload(
+    abs_path: PathBuf,
+    is_symlink: bool,
+    symlink_target: Option<String>,
+    level: i32,
+    format: TTZipArchiveFormat,
+    sheet: Option<&ProgressAtomicSheet>,
+    start_time: Option<std::time::Instant>,
+) -> Result<(u16, u64, u32, EntryPayload), TTZipStatus> {
+    if is_symlink {
+        let sym_bytes = symlink_target.unwrap_or_default().into_bytes();
+        let len = sym_bytes.len() as u64;
+        let c = crc32_fast(0, &sym_bytes);
+        record_chunk_progress(sheet, len, start_time);
+        return Ok((0u16, len, c, EntryPayload::Memory(sym_bytes)));
+    }
+
+    let file = File::open(&abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+    let meta = file.metadata().map_err(|_| TTZipStatus::ErrOpenFailed)?;
+    let file_len = meta.len();
+
+    let use_zstd = format == TTZipArchiveFormat::Zstd;
+    let target_method = if level == 0 || file_len == 0 {
+        0u16
+    } else if use_zstd {
+        93u16
+    } else {
+        8u16
+    };
+
+    if should_compress_file_in_memory(file_len, target_method, level) {
+        compress_file_in_memory(file, file_len, target_method, level, sheet, start_time)
+    } else {
+        compress_file_streaming(file, abs_path, target_method, level, sheet, start_time)
+    }
+}
+
+fn should_compress_file_in_memory(file_len: u64, target_method: u16, level: i32) -> bool {
+    if target_method == 93 || file_len > MAX_IN_MEMORY_PAYLOAD as u64 {
+        return false;
+    }
+    const MAX_IN_MEMORY_WORKER_BUDGET: usize = 8 * 1024 * 1024;
+    let raw_len = (file_len as usize).saturating_add(1);
+    let comp_bound = if target_method == 8 {
+        deflate_compress_bound(file_len as usize, level.clamp(1, 12))
+    } else {
+        0
+    };
+    raw_len.saturating_add(comp_bound) <= MAX_IN_MEMORY_WORKER_BUDGET
+}
+
 /// Compresses a single plan item into a local file header and bounded payload.
-/// Periodically polls cancellation probe and updates atomic progress sheet on each 64KB chunk.
+/// Periodically polls cancellation probe and updates atomic progress sheet.
 pub fn compress_single_item(
     item: CompressionPlanItem,
     level: i32,
@@ -174,10 +373,8 @@ pub fn compress_single_item(
     sheet: Option<&ProgressAtomicSheet>,
     start_time: Option<std::time::Instant>,
 ) -> Result<CompressedEntryResult, TTZipStatus> {
-    if let Some(s) = sheet {
-        if s.is_cancelled() {
-            return Err(TTZipStatus::Cancelled);
-        }
+    if sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
+        return Err(TTZipStatus::Cancelled);
     }
 
     let CompressionPlanItem {
@@ -192,244 +389,39 @@ pub fn compress_single_item(
     } = item;
 
     if is_directory {
-        let (dos_time, dos_date) = unix_to_dos_time(mtime_secs);
-        let name_bytes = rel_path.as_bytes();
-        let ts_extra = ZipExtraFields::build_extended_timestamp(mtime_secs);
-        let mut header = Vec::with_capacity(30 + name_bytes.len() + ts_extra.len());
-        for part in [
-            &MAGIC_LFH.to_le_bytes()[..],
-            &20u16.to_le_bytes(),
-            &0x0800u16.to_le_bytes(),
-            &0u16.to_le_bytes(),
-            &dos_time.to_le_bytes(),
-            &dos_date.to_le_bytes(),
-            &[0u8; 12],
-            &(name_bytes.len() as u16).to_le_bytes(),
-            &(ts_extra.len() as u16).to_le_bytes(),
-            name_bytes,
-            &ts_extra,
-        ] {
-            header.extend_from_slice(part);
-        }
-
-        return Ok(CompressedEntryResult {
-            rel_path,
-            uncompressed_size: 0,
-            compressed_size: 0,
-            crc32: 0,
-            compression_method: 0,
-            actual_method: 0,
-            is_encrypted: false,
-            mtime_secs,
-            mode,
-            is_directory: true,
-            header_bytes: header,
-            payload: EntryPayload::Memory(Vec::new()),
-        });
+        return Ok(build_directory_entry_result(rel_path, mtime_secs, mode));
     }
 
-    let (actual_method, uncompressed_size, crc, payload) = if is_symlink {
-        let sym_bytes = symlink_target.unwrap_or_default().into_bytes();
-        let len = sym_bytes.len() as u64;
-        let c = crc32_fast(0, &sym_bytes);
-        record_chunk_progress(sheet, len, start_time);
-        (0u16, len, c, EntryPayload::Memory(sym_bytes))
-    } else {
-        if let Some(s) = sheet {
-            if s.is_cancelled() {
-                return Err(TTZipStatus::Cancelled);
-            }
-        }
-        let mut file = File::open(&abs_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
-        let meta = file.metadata().map_err(|_| TTZipStatus::ErrOpenFailed)?;
-        let file_len = meta.len();
+    let (actual_method, uncompressed_size, crc, payload) = compress_item_payload(
+        abs_path,
+        is_symlink,
+        symlink_target,
+        level,
+        format,
+        sheet,
+        start_time,
+    )?;
 
-        let use_zstd = format == TTZipArchiveFormat::Zstd;
-        let target_method = if level == 0 || file_len == 0 {
-            0u16
-        } else if use_zstd {
-            93u16
-        } else {
-            8u16
-        };
-
-        let mut read_buf = [0u8; STREAM_CHUNK_SIZE];
-        let mut computed_crc = 0u32;
-        let mut total_read = 0u64;
-
-        enum TargetWriter {
-            Store,
-            Zstd(ZstdStreamWriter<BoundedSink>),
-            Deflate(LibdeflateWriter<BoundedSink>),
-        }
-
-        let mut target_writer = match target_method {
-            0 => TargetWriter::Store,
-            93 => TargetWriter::Zstd(ZstdStreamWriter::with_level(BoundedSink::new(), level.min(19))?),
-            _ => TargetWriter::Deflate(LibdeflateWriter::new_raw(BoundedSink::new(), level.min(12))?),
-        };
-
-        loop {
-            if let Some(s) = sheet {
-                if s.is_cancelled() {
-                    return Err(TTZipStatus::Cancelled);
-                }
-            }
-            let n = file.read(&mut read_buf).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-            if n == 0 {
-                break;
-            }
-            let chunk = &read_buf[..n];
-            computed_crc = crc32_fast(computed_crc, chunk);
-            total_read += n as u64;
-            match &mut target_writer {
-                TargetWriter::Store => {}
-                TargetWriter::Zstd(w) => {
-                    w.write_all(chunk).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                }
-                TargetWriter::Deflate(w) => {
-                    w.write_all(chunk).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                }
-            }
-            record_chunk_progress(sheet, n as u64, start_time);
-        }
-
-        match target_writer {
-            TargetWriter::Store => (
-                0u16,
-                total_read,
-                computed_crc,
-                EntryPayload::OriginalFile {
-                    path: abs_path,
-                    len: total_read,
-                },
-            ),
-            TargetWriter::Zstd(w) => {
-                let sink = w.finish()?;
-                if sink.total_written < total_read {
-                    (93u16, total_read, computed_crc, sink.into_payload())
-                } else {
-                    (
-                        0u16,
-                        total_read,
-                        computed_crc,
-                        EntryPayload::OriginalFile {
-                            path: abs_path,
-                            len: total_read,
-                        },
-                    )
-                }
-            }
-            TargetWriter::Deflate(w) => {
-                let sink = w.finish().map_err(|_| TTZipStatus::ErrCompressionFailed)?;
-                if sink.total_written < total_read {
-                    (8u16, total_read, computed_crc, sink.into_payload())
-                } else {
-                    (
-                        0u16,
-                        total_read,
-                        computed_crc,
-                        EntryPayload::OriginalFile {
-                            path: abs_path,
-                            len: total_read,
-                        },
-                    )
-                }
-            }
-        }
-    };
-
-    if let Some(s) = sheet {
-        if s.is_cancelled() {
-            return Err(TTZipStatus::Cancelled);
-        }
-    }
-
-    let (comp_method, is_encrypted, final_payload) = match encryption {
-        TTZipEncryptionMethod::Aes256 => {
-            if let Some(s) = sheet {
-                if s.is_cancelled() {
-                    return Err(TTZipStatus::Cancelled);
-                }
-            }
-            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
-            let raw_bytes = payload_to_memory_bytes(payload)?;
-            let mut salt = [0u8; 16];
-            unsafe {
-                libc::arc4random_buf(salt.as_mut_ptr() as *mut libc::c_void, 16);
-            }
-            let mut enc_payload = Vec::new();
-            crate::crypto::sha1::winzip_aes256_encrypt_and_tag(
-                pass,
-                &salt,
-                &raw_bytes,
-                &mut enc_payload,
-            )?;
-            (99u16, true, EntryPayload::Memory(enc_payload))
-        }
-        TTZipEncryptionMethod::ZipCrypto => {
-            if let Some(s) = sheet {
-                if s.is_cancelled() {
-                    return Err(TTZipStatus::Cancelled);
-                }
-            }
-            let pass = password.ok_or(TTZipStatus::ErrInvalidPassword)?;
-            let raw_bytes = payload_to_memory_bytes(payload)?;
-            let mut enc_payload = Vec::with_capacity(12 + raw_bytes.len());
-            let mut header = [0u8; 12];
-            unsafe {
-                libc::arc4random_buf(header.as_mut_ptr() as *mut libc::c_void, 11);
-            }
-            let (dos_time, _) = unix_to_dos_time(mtime_secs);
-            header[11] = compute_zipcrypto_check_byte(crc, dos_time, true);
-            let mut keys =
-                crate::crypto::zipcrypto::ZipCryptoKeys::from_password(pass.as_bytes());
-            keys.encrypt_slice(&mut header);
-            enc_payload.extend_from_slice(&header);
-            let mut body = raw_bytes;
-            keys.encrypt_slice(&mut body);
-            enc_payload.extend_from_slice(&body);
-            (actual_method, true, EntryPayload::Memory(enc_payload))
-        }
-        _ => (actual_method, false, payload),
-    };
+    let (comp_method, is_encrypted, final_payload) = encrypt_entry_payload(
+        encryption,
+        password,
+        actual_method,
+        crc,
+        mtime_secs,
+        payload,
+        sheet,
+    )?;
 
     let compressed_size = final_payload.len();
-    let (dos_time, dos_date) = unix_to_dos_time(mtime_secs);
-    let name_bytes = rel_path.as_bytes();
-
-    let is_zip64 = uncompressed_size >= 0xFFFF_FFFF || compressed_size >= 0xFFFF_FFFF;
-    let mut extra_fields = Vec::new();
-    if is_zip64 {
-        extra_fields.extend_from_slice(&ZipExtraFields::build_zip64_extra(
-            Some(uncompressed_size),
-            Some(compressed_size),
-            None,
-        ));
-    }
-    if is_encrypted && comp_method == 99 {
-        extra_fields.extend_from_slice(&ZipExtraFields::build_winzip_aes_extra(actual_method));
-    }
-    extra_fields.extend_from_slice(&ZipExtraFields::build_extended_timestamp(mtime_secs));
-
-    let flag = if is_encrypted { 0x0809u16 } else { 0x0808u16 };
-    let ver = if is_zip64 || is_encrypted { 45u16 } else { 20u16 };
-    let mut header = Vec::with_capacity(30 + name_bytes.len() + extra_fields.len());
-    for part in [
-        &MAGIC_LFH.to_le_bytes()[..],
-        &ver.to_le_bytes(),
-        &flag.to_le_bytes(),
-        &comp_method.to_le_bytes(),
-        &dos_time.to_le_bytes(),
-        &dos_date.to_le_bytes(),
-        &[0u8; 12],
-        &(name_bytes.len() as u16).to_le_bytes(),
-        &(extra_fields.len() as u16).to_le_bytes(),
-        name_bytes,
-        &extra_fields,
-    ] {
-        header.extend_from_slice(part);
-    }
+    let header = build_file_lfh_header(
+        &rel_path,
+        mtime_secs,
+        uncompressed_size,
+        compressed_size,
+        comp_method,
+        actual_method,
+        is_encrypted,
+    );
 
     Ok(CompressedEntryResult {
         rel_path,
@@ -472,42 +464,9 @@ pub fn collect_plan_items_recursive(
         let meta = fs::symlink_metadata(&current).map_err(|_| TTZipStatus::ErrFileNotFound)?;
         let is_dir = meta.is_dir();
         let is_symlink = meta.file_type().is_symlink();
-        let size = if is_dir { 0 } else { meta.len() };
-        let mtime = meta
-            .modified()
-            .ok()
-            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
-            .map(|d| d.as_secs() as u32)
-            .unwrap_or(0);
 
-        #[cfg(unix)]
-        let mode = meta.mode();
-        #[cfg(not(unix))]
-        let mode = if is_dir { 0o755 } else { 0o644 };
-
-        let rel_prefix = current.strip_prefix(base_parent).unwrap_or(&current);
-        let mut rel = rel_prefix.to_string_lossy().to_string();
-        if is_dir && !rel.ends_with('/') {
-            rel.push('/');
-        }
-
-        let symlink_target = if is_symlink {
-            fs::read_link(&current).ok().map(|p| p.to_string_lossy().to_string())
-        } else {
-            None
-        };
-
-        if !rel.is_empty() {
-            out.push(CompressionPlanItem {
-                abs_path: current.clone(),
-                rel_path: rel,
-                uncompressed_size: size,
-                mtime_secs: mtime,
-                mode: if mode != 0 { mode } else if is_dir { 0o755 } else { 0o644 },
-                is_directory: is_dir,
-                is_symlink,
-                symlink_target,
-            });
+        if let Some(item) = build_recursive_plan_item(base_parent, &current, &meta, is_dir, is_symlink) {
+            out.push(item);
         }
 
         if is_dir && !is_symlink {
@@ -521,6 +480,55 @@ pub fn collect_plan_items_recursive(
         }
     }
     Ok(())
+}
+
+fn build_recursive_plan_item(
+    base_parent: &Path,
+    current: &Path,
+    meta: &fs::Metadata,
+    is_dir: bool,
+    is_symlink: bool,
+) -> Option<CompressionPlanItem> {
+    let rel_prefix = current.strip_prefix(base_parent).unwrap_or(current);
+    let mut rel = rel_prefix.to_string_lossy().to_string();
+    if is_dir && !rel.ends_with('/') {
+        rel.push('/');
+    }
+    if rel.is_empty() {
+        return None;
+    }
+
+    let size = if is_dir { 0 } else { meta.len() };
+    let mtime = meta
+        .modified()
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as u32)
+        .unwrap_or(0);
+
+    #[cfg(unix)]
+    let raw_mode = meta.mode();
+    #[cfg(not(unix))]
+    let raw_mode = 0u32;
+    let default_mode = if is_dir { 0o755 } else { 0o644 };
+    let mode = if raw_mode != 0 { raw_mode } else { default_mode };
+
+    let symlink_target = if is_symlink {
+        fs::read_link(current).ok().map(|p| p.to_string_lossy().to_string())
+    } else {
+        None
+    };
+
+    Some(CompressionPlanItem {
+        abs_path: current.to_path_buf(),
+        rel_path: rel,
+        uncompressed_size: size,
+        mtime_secs: mtime,
+        mode,
+        is_directory: is_dir,
+        is_symlink,
+        symlink_target,
+    })
 }
 
 /// Normalizes explicit path pairs into validated compression plan items.
@@ -676,5 +684,14 @@ mod tests {
         assert_eq!(snapshot.processed_bytes, payload.len() as u64);
         assert_eq!(snapshot.total_bytes, payload.len() as u64);
         assert!(!snapshot.is_cancelled);
+    }
+
+    #[test]
+    fn test_in_memory_compression_budget_rejects_oversized_combined_buffers() {
+        // A 60 MiB or 16 MiB deflate payload would allocate raw_buf + comp_buf (~120 MiB or ~32 MiB per worker).
+        // It must not take the single-shot in-memory path.
+        assert!(!should_compress_file_in_memory(60 * 1024 * 1024, 8, 6));
+        assert!(!should_compress_file_in_memory(16 * 1024 * 1024, 8, 6));
+        assert!(should_compress_file_in_memory(1024 * 1024, 8, 6));
     }
 }

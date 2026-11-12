@@ -18,131 +18,124 @@ pub struct VolumeSegment {
 
 /// Automatically detects the entire volume chain starting from any given volume in the chain.
 pub fn detect_volume_chain(seed_path: &Path) -> io::Result<Vec<PathBuf>> {
-    let resolved_seed = if seed_path.exists() {
-        seed_path.to_path_buf()
-    } else {
-        let candidate_001 = PathBuf::from(format!("{}.001", seed_path.display()));
-        if candidate_001.exists() {
-            candidate_001
-        } else {
-            return Err(io::Error::new(
-                io::ErrorKind::NotFound,
-                format!("Seed volume not found: {}", seed_path.display()),
-            ));
-        }
-    };
+    let resolved_seed = resolve_existing_seed(seed_path)?;
 
-    let abs_seed = resolved_seed.clone();
     if let Some(desc) = super::PreFlightVolumeProber::probe(&resolved_seed) {
         return Err(io::Error::new(
             io::ErrorKind::NotFound,
             format!("Missing split volume(s): {:?}", desc.missing_filenames),
         ));
     }
-    let file_name = match resolved_seed.file_name().and_then(|n| n.to_str()) {
-        Some(name) => name,
-        None => return Ok(vec![abs_seed]),
+
+    let Some(file_name) = resolved_seed.file_name().and_then(|n| n.to_str()) else {
+        return Ok(vec![resolved_seed]);
     };
     let parent_dir = resolved_seed.parent().unwrap_or_else(|| Path::new(""));
 
-    // Case 1: Numbered extension (e.g., .001, .002, .003 or .0001)
-    if let Some(dot_pos) = file_name.rfind('.') {
-        let ext = &file_name[dot_pos + 1..];
-        if ext.len() >= 3 && ext.chars().all(|c| c.is_ascii_digit()) {
-            let prefix = &file_name[..dot_pos];
-            let width = ext.len();
-
-            let check_0 = parent_dir.join(format!("{}.{:0width$}", prefix, 0, width = width));
-
-            let start_idx = if check_0.exists() {
-                0
-            } else {
-                1
-            };
-
-            let mut chain = Vec::new();
-            for idx in start_idx.. {
-                let p = parent_dir.join(format!("{}.{:0width$}", prefix, idx, width = width));
-                if p.exists() {
-                    chain.push(p);
-                } else {
-                    break;
-                }
-            }
-
-            if !chain.is_empty() {
-                return Ok(chain);
-            }
-        }
+    if let Some(chain) = detect_numbered_chain(file_name, parent_dir) {
+        return Ok(chain);
+    }
+    if let Some(chain) = detect_pkzip_chain(file_name, parent_dir) {
+        return Ok(chain);
+    }
+    if let Some(chain) = detect_part_chain(file_name, parent_dir) {
+        return Ok(chain);
     }
 
-    // Case 2: PKZIP spanned (.z01, .z02, ... or final .zip)
-    if let Some(dot_pos) = file_name.rfind('.') {
-        let ext = &file_name[dot_pos + 1..];
-        let is_z_part = ext.starts_with('z')
-            && ext.len() >= 3
-            && ext[1..].chars().all(|c| c.is_ascii_digit());
-        let is_zip_final = ext.eq_ignore_ascii_case("zip");
+    Ok(vec![resolved_seed])
+}
 
-        if is_z_part || is_zip_final {
-            let stem = &file_name[..dot_pos];
-            let check_z01 = parent_dir.join(format!("{}.z01", stem));
+fn resolve_existing_seed(seed_path: &Path) -> io::Result<PathBuf> {
+    if seed_path.exists() {
+        return Ok(seed_path.to_path_buf());
+    }
+    let candidate_001 = PathBuf::from(format!("{}.001", seed_path.display()));
+    if candidate_001.exists() {
+        Ok(candidate_001)
+    } else {
+        Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            format!("Seed volume not found: {}", seed_path.display()),
+        ))
+    }
+}
 
-            if check_z01.exists() {
-                let mut chain = Vec::new();
-                for idx in 1.. {
-                    let zp = parent_dir.join(format!("{}.z{:02}", stem, idx));
-                    if zp.exists() {
-                        chain.push(zp);
-                    } else {
-                        break;
-                    }
-                }
-                let final_zip = parent_dir.join(format!("{}.zip", stem));
-                if final_zip.exists() {
-                    chain.push(final_zip);
-                }
-                if !chain.is_empty() {
-                    return Ok(chain);
-                }
-            }
-        }
+fn detect_numbered_chain(file_name: &str, parent_dir: &Path) -> Option<Vec<PathBuf>> {
+    let dot_pos = file_name.rfind('.')?;
+    let ext = &file_name[dot_pos + 1..];
+    if ext.len() < 3 || !ext.chars().all(|c| c.is_ascii_digit()) {
+        return None;
     }
 
-    // Case 3: partN pattern (e.g. .part1.rar, .part01.rar, .part1.7z)
-    if let Some(part_pos) = file_name.to_lowercase().find(".part") {
-        let after_part = &file_name[part_pos + 5..];
-        if let Some(dot_after) = after_part.find('.') {
-            let num_str = &after_part[..dot_after];
-            let suffix = &after_part[dot_after..];
-            if !num_str.is_empty() && num_str.chars().all(|c| c.is_ascii_digit()) {
-                let prefix = &file_name[..part_pos];
-                let width = num_str.len();
+    let prefix = &file_name[..dot_pos];
+    let width = ext.len();
+    let check_0 = parent_dir.join(format!("{}.{:0width$}", prefix, 0, width = width));
+    let start_idx = if check_0.exists() { 0 } else { 1 };
 
-                let mut chain = Vec::new();
-                for idx in 1.. {
-                    let p = parent_dir.join(format!(
-                        "{}.part{:0width$}{}",
-                        prefix,
-                        idx,
-                        suffix,
-                        width = width
-                    ));
-                    if p.exists() {
-                        chain.push(p);
-                    } else {
-                        break;
-                    }
-                }
-                if !chain.is_empty() {
-                    return Ok(chain);
-                }
-            }
+    let mut chain = Vec::new();
+    for idx in start_idx.. {
+        let p = parent_dir.join(format!("{}.{:0width$}", prefix, idx, width = width));
+        if p.exists() {
+            chain.push(p);
+        } else {
+            break;
         }
     }
+    (!chain.is_empty()).then_some(chain)
+}
 
-    // Fallback: Single file volume
-    Ok(vec![abs_seed])
+fn detect_pkzip_chain(file_name: &str, parent_dir: &Path) -> Option<Vec<PathBuf>> {
+    let dot_pos = file_name.rfind('.')?;
+    let ext = &file_name[dot_pos + 1..];
+    let is_z_part = ext.starts_with('z') && ext.len() >= 3 && ext[1..].chars().all(|c| c.is_ascii_digit());
+    let is_zip_final = ext.eq_ignore_ascii_case("zip");
+    if !is_z_part && !is_zip_final {
+        return None;
+    }
+
+    let stem = &file_name[..dot_pos];
+    if !parent_dir.join(format!("{}.z01", stem)).exists() {
+        return None;
+    }
+
+    let mut chain = Vec::new();
+    for idx in 1.. {
+        let zp = parent_dir.join(format!("{}.z{:02}", stem, idx));
+        if zp.exists() {
+            chain.push(zp);
+        } else {
+            break;
+        }
+    }
+    let final_zip = parent_dir.join(format!("{}.zip", stem));
+    if final_zip.exists() {
+        chain.push(final_zip);
+    }
+    (!chain.is_empty()).then_some(chain)
+}
+
+fn detect_part_chain(file_name: &str, parent_dir: &Path) -> Option<Vec<PathBuf>> {
+    let part_pos = file_name.to_lowercase().find(".part")?;
+    let after_part = &file_name[part_pos + 5..];
+    let dot_after = after_part.find('.')?;
+    let num_str = &after_part[..dot_after];
+    let suffix = &after_part[dot_after..];
+    if num_str.is_empty() || !num_str.chars().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+
+    let prefix = &file_name[..part_pos];
+    let width = num_str.len();
+    let mut chain = Vec::new();
+    for idx in 1.. {
+        let p = parent_dir.join(format!("{}.part{:0width$}{}", prefix, idx, suffix, width = width));
+        if p.exists() {
+            chain.push(p);
+        } else {
+            break;
+        }
+    }
+    (!chain.is_empty()).then_some(chain)
 }
 
 /// A virtual continuous stream combining multiple physical volume files into a unified linear space.
@@ -252,6 +245,28 @@ impl VirtualMultiVolumeReader {
     pub fn volume_paths(&self) -> Vec<PathBuf> {
         self.segments.iter().map(|s| s.path.clone()).collect()
     }
+
+    fn ensure_active_segment_positioned(&mut self, segment_idx: usize, intra_offset: u64) -> io::Result<&mut File> {
+        let need_open = match &self.active_file {
+            Some((idx, _)) => *idx != segment_idx,
+            None => true,
+        };
+
+        if need_open {
+            let mut file = File::open(&self.segments[segment_idx].path)?;
+            file.seek(SeekFrom::Start(intra_offset))?;
+            self.active_file = Some((segment_idx, file));
+        } else if let Some((_, ref mut file)) = self.active_file {
+            if file.stream_position()? != intra_offset {
+                file.seek(SeekFrom::Start(intra_offset))?;
+            }
+        }
+
+        self.active_file
+            .as_mut()
+            .map(|(_, file)| file)
+            .ok_or_else(|| io::Error::other("active volume handle missing"))
+    }
 }
 
 impl Read for VirtualMultiVolumeReader {
@@ -262,9 +277,8 @@ impl Read for VirtualMultiVolumeReader {
 
         let mut total_read = 0;
         while total_read < buf.len() && self.current_virtual_offset < self.total_size {
-            let segment_idx = match self.find_segment_idx(self.current_virtual_offset) {
-                Some(idx) => idx,
-                None => break,
+            let Some(segment_idx) = self.find_segment_idx(self.current_virtual_offset) else {
+                break;
             };
 
             let seg = &self.segments[segment_idx];
@@ -275,23 +289,7 @@ impl Read for VirtualMultiVolumeReader {
                 break;
             }
 
-            let need_open = match &self.active_file {
-                Some((idx, _)) => *idx != segment_idx,
-                None => true,
-            };
-
-            if need_open {
-                let mut file = File::open(&seg.path)?;
-                file.seek(SeekFrom::Start(intra_offset))?;
-                self.active_file = Some((segment_idx, file));
-            } else if let Some((_, ref mut file)) = self.active_file {
-                let cur_pos = file.stream_position()?;
-                if cur_pos != intra_offset {
-                    file.seek(SeekFrom::Start(intra_offset))?;
-                }
-            }
-
-            let (_, file) = self.active_file.as_mut().unwrap();
+            let file = self.ensure_active_segment_positioned(segment_idx, intra_offset)?;
             let bytes_read = file.read(&mut buf[total_read..total_read + to_read])?;
             if bytes_read == 0 {
                 break;

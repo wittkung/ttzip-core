@@ -128,110 +128,132 @@ impl<'a> ParsedExtraFields<'a> {
             parsed.raw_count += 1;
             match raw.tag {
                 TAG_ZIP64 => {
-                    let mut z64 = Zip64ExtraField::default();
-                    let p = raw.data;
-                    let mut cursor = 0;
-
-                    if is_cdfh {
-                        if uncomp_placeholder && cursor + 8 <= p.len() {
-                            z64.uncompressed_size = Some(u64::from_le_bytes(p[cursor..cursor + 8].try_into().unwrap()));
-                            cursor += 8;
-                        }
-                        if comp_placeholder && cursor + 8 <= p.len() {
-                            z64.compressed_size = Some(u64::from_le_bytes(p[cursor..cursor + 8].try_into().unwrap()));
-                            cursor += 8;
-                        }
-                        if offset_placeholder && cursor + 8 <= p.len() {
-                            z64.local_header_offset = Some(u64::from_le_bytes(p[cursor..cursor + 8].try_into().unwrap()));
-                            cursor += 8;
-                        }
-                        if cursor + 4 <= p.len() {
-                            z64.disk_start_number = Some(u32::from_le_bytes(p[cursor..cursor + 4].try_into().unwrap()));
-                        }
-                    } else {
-                        if cursor + 8 <= p.len() {
-                            z64.uncompressed_size = Some(u64::from_le_bytes(p[cursor..cursor + 8].try_into().unwrap()));
-                            cursor += 8;
-                        }
-                        if cursor + 8 <= p.len() {
-                            z64.compressed_size = Some(u64::from_le_bytes(p[cursor..cursor + 8].try_into().unwrap()));
-                        }
-                    }
-                    parsed.zip64 = Some(z64);
+                    parsed.zip64 = Some(parse_zip64_extra_field(
+                        raw.data,
+                        is_cdfh,
+                        uncomp_placeholder,
+                        comp_placeholder,
+                        offset_placeholder,
+                    ));
                 }
-
-                TAG_EXT_TIMESTAMP => {
-                    if !raw.data.is_empty() {
-                        let flags = raw.data[0];
-                        let mut ts = ExtendedTimestampExtraField { flags, ..Default::default() };
-                        let mut cursor = 1;
-                        if (flags & 0x01) != 0 && cursor + 4 <= raw.data.len() {
-                            ts.mod_time = Some(u32::from_le_bytes(raw.data[cursor..cursor + 4].try_into().unwrap()));
-                            cursor += 4;
-                        }
-                        if (flags & 0x02) != 0 && cursor + 4 <= raw.data.len() {
-                            ts.acc_time = Some(u32::from_le_bytes(raw.data[cursor..cursor + 4].try_into().unwrap()));
-                            cursor += 4;
-                        }
-                        if (flags & 0x04) != 0 && cursor + 4 <= raw.data.len() {
-                            ts.create_time = Some(u32::from_le_bytes(raw.data[cursor..cursor + 4].try_into().unwrap()));
-                        }
-                        parsed.timestamp = Some(ts);
-                    }
-                }
-
-                TAG_UNICODE_PATH => {
-                    if raw.data.len() >= 5 && raw.data[0] == 1 {
-                        let crc = u32::from_le_bytes(raw.data[1..5].try_into().unwrap());
-                        parsed.unicode_path = Some(UnicodePathExtraField {
-                            version: raw.data[0],
-                            name_crc32: crc,
-                            unicode_name: &raw.data[5..],
-                        });
-                    }
-                }
-
-                TAG_INFOZIP_UNIX => {
-                    if raw.data.len() >= 4 && raw.data[0] == 1 {
-                        let uid_sz = raw.data[1] as usize;
-                        let mut cursor = 2;
-                        let mut unix = InfoZipUnixExtraField { version: 1, ..Default::default() };
-
-                        if cursor + uid_sz <= raw.data.len() {
-                            unix.uid = parse_varint_le(&raw.data[cursor..cursor + uid_sz]);
-                            cursor += uid_sz;
-                        }
-                        if cursor < raw.data.len() {
-                            let gid_sz = raw.data[cursor] as usize;
-                            cursor += 1;
-                            if cursor + gid_sz <= raw.data.len() {
-                                unix.gid = parse_varint_le(&raw.data[cursor..cursor + gid_sz]);
-                            }
-                        }
-                        parsed.infozip_unix = Some(unix);
-                    }
-                }
-
-                TAG_WINZIP_AES
-                    if raw.data.len() >= 7 => {
-                        let version = u16::from_le_bytes([raw.data[0], raw.data[1]]);
-                        let vendor_id = [raw.data[2], raw.data[3]];
-                        let strength = raw.data[4];
-                        let method = u16::from_le_bytes([raw.data[5], raw.data[6]]);
-                        parsed.winzip_aes = Some(WinZipAesExtraField {
-                            version,
-                            vendor_id,
-                            strength,
-                            actual_compression_method: method,
-                        });
-                    }
-
+                TAG_EXT_TIMESTAMP => parsed.timestamp = parse_timestamp_extra_field(raw.data),
+                TAG_UNICODE_PATH => parsed.unicode_path = parse_unicode_path_extra_field(raw.data),
+                TAG_INFOZIP_UNIX => parsed.infozip_unix = parse_infozip_unix_extra_field(raw.data),
+                TAG_WINZIP_AES => parsed.winzip_aes = parse_winzip_aes_extra_field(raw.data),
                 _ => {}
             }
         }
 
         parsed
     }
+}
+
+fn parse_zip64_extra_field(
+    p: &[u8],
+    is_cdfh: bool,
+    uncomp_placeholder: bool,
+    comp_placeholder: bool,
+    offset_placeholder: bool,
+) -> Zip64ExtraField {
+    let mut z64 = Zip64ExtraField::default();
+    let mut cursor = 0;
+
+    if is_cdfh {
+        if uncomp_placeholder && cursor + 8 <= p.len() {
+            z64.uncompressed_size = Some(read_u64_le_at(p, cursor));
+            cursor += 8;
+        }
+        if comp_placeholder && cursor + 8 <= p.len() {
+            z64.compressed_size = Some(read_u64_le_at(p, cursor));
+            cursor += 8;
+        }
+        if offset_placeholder && cursor + 8 <= p.len() {
+            z64.local_header_offset = Some(read_u64_le_at(p, cursor));
+            cursor += 8;
+        }
+        if cursor + 4 <= p.len() {
+            z64.disk_start_number = Some(u32::from_le_bytes(p[cursor..cursor + 4].try_into().unwrap_or_default()));
+        }
+    } else {
+        if cursor + 8 <= p.len() {
+            z64.uncompressed_size = Some(read_u64_le_at(p, cursor));
+            cursor += 8;
+        }
+        if cursor + 8 <= p.len() {
+            z64.compressed_size = Some(read_u64_le_at(p, cursor));
+        }
+    }
+    z64
+}
+
+#[inline]
+fn read_u64_le_at(p: &[u8], cursor: usize) -> u64 {
+    u64::from_le_bytes(p[cursor..cursor + 8].try_into().unwrap_or_default())
+}
+
+fn parse_timestamp_extra_field(data: &[u8]) -> Option<ExtendedTimestampExtraField> {
+    let &flags = data.first()?;
+    let mut ts = ExtendedTimestampExtraField { flags, ..Default::default() };
+    let mut cursor = 1;
+    if (flags & 0x01) != 0 && cursor + 4 <= data.len() {
+        ts.mod_time = Some(u32::from_le_bytes(data[cursor..cursor + 4].try_into().unwrap_or_default()));
+        cursor += 4;
+    }
+    if (flags & 0x02) != 0 && cursor + 4 <= data.len() {
+        ts.acc_time = Some(u32::from_le_bytes(data[cursor..cursor + 4].try_into().unwrap_or_default()));
+        cursor += 4;
+    }
+    if (flags & 0x04) != 0 && cursor + 4 <= data.len() {
+        ts.create_time = Some(u32::from_le_bytes(data[cursor..cursor + 4].try_into().unwrap_or_default()));
+    }
+    Some(ts)
+}
+
+fn parse_unicode_path_extra_field(data: &[u8]) -> Option<UnicodePathExtraField<'_>> {
+    if data.len() >= 5 && data[0] == 1 {
+        let crc = u32::from_le_bytes(data[1..5].try_into().unwrap_or_default());
+        Some(UnicodePathExtraField {
+            version: data[0],
+            name_crc32: crc,
+            unicode_name: &data[5..],
+        })
+    } else {
+        None
+    }
+}
+
+fn parse_infozip_unix_extra_field(data: &[u8]) -> Option<InfoZipUnixExtraField> {
+    if data.len() < 4 || data[0] != 1 {
+        return None;
+    }
+    let uid_sz = data[1] as usize;
+    let mut cursor = 2;
+    let mut unix = InfoZipUnixExtraField { version: 1, ..Default::default() };
+
+    if cursor + uid_sz <= data.len() {
+        unix.uid = parse_varint_le(&data[cursor..cursor + uid_sz]);
+        cursor += uid_sz;
+    }
+    if cursor < data.len() {
+        let gid_sz = data[cursor] as usize;
+        cursor += 1;
+        if cursor + gid_sz <= data.len() {
+            unix.gid = parse_varint_le(&data[cursor..cursor + gid_sz]);
+        }
+    }
+    Some(unix)
+}
+
+fn parse_winzip_aes_extra_field(data: &[u8]) -> Option<WinZipAesExtraField> {
+    if data.len() < 7 {
+        return None;
+    }
+    Some(WinZipAesExtraField {
+        version: u16::from_le_bytes([data[0], data[1]]),
+        vendor_id: [data[2], data[3]],
+        strength: data[4],
+        actual_compression_method: u16::from_le_bytes([data[5], data[6]]),
+    })
 }
 
 /// Helper function to parse 16-bit, 32-bit, or 64-bit integer from little-endian bytes.

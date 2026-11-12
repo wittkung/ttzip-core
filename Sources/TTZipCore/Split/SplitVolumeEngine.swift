@@ -197,43 +197,52 @@ public final class NativeParallelEncryptedSplitEngine: Sendable {
         )
         
         progressHandler?(1.0)
-        
-        // 1. Direct resolution via microkernel split volume chain discovery
-        let potentialSeed: String = {
-            switch format {
-            case .sevenZip:
-                return "\(primaryOutputPath).001"
-            case .zip:
-                let stem = (primaryOutputPath as NSString).deletingPathExtension
-                let z01 = "\(stem).z01"
-                return FileManager.default.fileExists(atPath: z01) ? z01 : primaryOutputPath
-            }
-        }()
-        
+        return try resolveSplitVolumeOutputs(
+            primaryOutputPath: primaryOutputPath,
+            format: format,
+            splitVolumeSizeBytes: splitVolumeSizeBytes
+        )
+    }
+
+    private func resolveSplitVolumeOutputs(
+        primaryOutputPath: String,
+        format: SplitFormat,
+        splitVolumeSizeBytes: Int64
+    ) throws -> [String] {
+        let potentialSeed = resolveSeedVolumePath(primaryOutputPath: primaryOutputPath, format: format)
         if FileManager.default.fileExists(atPath: potentialSeed) {
             if let chain = try? detectSplitVolumeChain(seedPath: potentialSeed), !chain.isEmpty {
                 return chain
             }
             return [potentialSeed]
         }
-        
-        // 2. Direct post-slicing via microkernel sliceArchiveFile if monolithic output was emitted
-        if FileManager.default.fileExists(atPath: primaryOutputPath) {
-            let namingPattern: VolumeNamingPattern = (format == .sevenZip) ? .numberedExtension : .pkzipSpanned
-            let sliced = try sliceArchiveFile(
-                sourcePath: primaryOutputPath,
-                splitSizeBytes: UInt64(splitVolumeSizeBytes),
-                namingPattern: namingPattern.rawValue
-            )
-            if !sliced.isEmpty {
-                if !sliced.contains(primaryOutputPath) {
-                    try? FileManager.default.removeItem(atPath: primaryOutputPath)
-                }
-                return sliced
-            }
+
+        guard FileManager.default.fileExists(atPath: primaryOutputPath) else {
             return [primaryOutputPath]
         }
-        
-        return [primaryOutputPath]
+        let namingPattern: VolumeNamingPattern = (format == .sevenZip) ? .numberedExtension : .pkzipSpanned
+        let sliced = try sliceArchiveFile(
+            sourcePath: primaryOutputPath,
+            splitSizeBytes: UInt64(splitVolumeSizeBytes),
+            namingPattern: namingPattern.rawValue
+        )
+        guard !sliced.isEmpty else {
+            return [primaryOutputPath]
+        }
+        if !sliced.contains(primaryOutputPath) {
+            try? FileManager.default.removeItem(atPath: primaryOutputPath)
+        }
+        return sliced
+    }
+
+    private func resolveSeedVolumePath(primaryOutputPath: String, format: SplitFormat) -> String {
+        switch format {
+        case .sevenZip:
+            return "\(primaryOutputPath).001"
+        case .zip:
+            let stem = (primaryOutputPath as NSString).deletingPathExtension
+            let z01 = "\(stem).z01"
+            return FileManager.default.fileExists(atPath: z01) ? z01 : primaryOutputPath
+        }
     }
 }

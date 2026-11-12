@@ -74,43 +74,43 @@ public enum TTZipCompressionLevel: Sendable, Hashable {
         case .store:
             return 0
         case .fastest:
-            switch algorithm {
-            case .zstd: return 1
-            case .brotli: return 1
-            case .bzip2: return 1
-            case .fastLzma2: return 1
-            case .lzma: return 1
-            default: return 1
-            }
+            return 1
         case .normal:
-            switch algorithm {
-            case .zstd: return 3
-            case .brotli: return 6
-            case .bzip2: return 6
-            case .fastLzma2: return 3
-            case .lzma: return 5
-            default: return 6
-            }
+            return Self.normalLevel(for: algorithm)
         case .maximum:
-            switch algorithm {
-            case .zstd: return 9
-            case .brotli: return 9
-            case .bzip2: return 9
-            case .fastLzma2: return 6
-            case .lzma: return 7
-            default: return 9
-            }
+            return Self.maximumLevel(for: algorithm)
         case .ultra:
-            switch algorithm {
-            case .zstd: return 19
-            case .brotli: return 11
-            case .bzip2: return 9
-            case .fastLzma2: return 9
-            case .lzma: return 9
-            default: return 12
-            }
+            return Self.ultraLevel(for: algorithm)
         case .custom(let val):
             return val
+        }
+    }
+
+    @usableFromInline
+    internal static func normalLevel(for algorithm: TTZipCodecAlgorithm) -> Int32 {
+        switch algorithm {
+        case .zstd, .fastLzma2: return 3
+        case .lzma: return 5
+        default: return 6
+        }
+    }
+
+    @usableFromInline
+    internal static func maximumLevel(for algorithm: TTZipCodecAlgorithm) -> Int32 {
+        switch algorithm {
+        case .fastLzma2: return 6
+        case .lzma: return 7
+        default: return 9
+        }
+    }
+
+    @usableFromInline
+    internal static func ultraLevel(for algorithm: TTZipCodecAlgorithm) -> Int32 {
+        switch algorithm {
+        case .zstd: return 19
+        case .brotli: return 11
+        case .bzip2, .fastLzma2, .lzma: return 9
+        default: return 12
         }
     }
 }

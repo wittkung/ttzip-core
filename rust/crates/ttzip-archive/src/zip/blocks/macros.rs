@@ -79,7 +79,10 @@ macro_rules! to_and_from_le {
             }
 
             /// Converts all numerical fields from little-endian to host-endian.
-            #[allow(clippy::wrong_self_convention)]
+            #[allow(
+                clippy::wrong_self_convention,
+                reason = "in-place endian swap matches std integer from_le(self) convention"
+            )]
             #[inline(always)]
             pub fn from_le(self) -> Self {
                 Self {
@@ -152,7 +155,10 @@ macro_rules! to_and_from_le {
             }
 
             /// Converts all numerical fields from little-endian to host-endian.
-            #[allow(clippy::wrong_self_convention)]
+            #[allow(
+                clippy::wrong_self_convention,
+                reason = "in-place endian swap matches std integer from_le(self) convention"
+            )]
             #[inline(always)]
             pub fn from_le(self) -> Self {
                 Self {

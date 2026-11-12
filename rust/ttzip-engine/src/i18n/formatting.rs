@@ -79,52 +79,58 @@ pub fn localize_error(
     lang: AppLanguage,
 ) -> String {
     match error_code {
-        -1 => {
-            let tmpl = get_string_or_fallback("error.file_not_found", lang);
-            if let Some(p) = param1 {
-                tmpl.replace("%1$@", p).replace("%@", p)
-            } else {
-                tmpl.to_string()
-            }
-        }
-        -2 => {
-            let tmpl = get_string_or_fallback("error.read_error", lang);
-            if let Some(p) = param1 {
-                tmpl.replace("%1$@", p).replace("%@", p)
-            } else {
-                tmpl.to_string()
-            }
-        }
+        -1 => interpolate_single_param("error.file_not_found", param1, lang),
+        -2 => interpolate_single_param("error.read_error", param1, lang),
         -3 => get_string_or_fallback("error.unsupported_format", lang).to_string(),
         -4 => get_string_or_fallback("error.password_required", lang).to_string(),
         -5 => get_string_or_fallback("error.incorrect_password", lang).to_string(),
-        -6 => {
-            let tmpl = get_string_or_fallback("error.unsupported_encryption", lang);
-            let mut res = tmpl.to_string();
-            if let Some(m) = param1 {
-                res = res.replace("%1$@", m);
-            }
-            if let Some(p) = param2 {
-                res = res.replace("%2$@", p);
-            }
-            res
-        }
-        -7 => {
-            let tmpl = get_string_or_fallback("error.corrupt_data", lang);
-            if let Some(p) = param1 {
-                format!("{} ({})", tmpl, p)
-            } else {
-                tmpl.to_string()
-            }
-        }
+        -6 => interpolate_encryption_error(param1, param2, lang),
+        -7 => interpolate_corrupt_error(param1, lang),
         -8 => get_string_or_fallback("error.operation_cancelled", lang).to_string(),
-        _ => {
-            let tmpl = get_string_or_fallback("error.engine_failure", lang);
-            let mut res = tmpl.replace("%1$d", &error_code.to_string());
-            if let Some(msg) = param1 {
-                res = res.replace("%2$@", msg);
-            }
-            res
-        }
+        _ => interpolate_engine_failure(error_code, param1, lang),
     }
+}
+
+fn interpolate_single_param(key: &'static str, param1: Option<&str>, lang: AppLanguage) -> String {
+    let tmpl = get_string_or_fallback(key, lang);
+    match param1 {
+        Some(p) => tmpl.replace("%1$@", p).replace("%@", p),
+        None => tmpl.to_string(),
+    }
+}
+
+fn interpolate_encryption_error(
+    param1: Option<&str>,
+    param2: Option<&str>,
+    lang: AppLanguage,
+) -> String {
+    let mut res = get_string_or_fallback("error.unsupported_encryption", lang).to_string();
+    if let Some(m) = param1 {
+        res = res.replace("%1$@", m);
+    }
+    if let Some(p) = param2 {
+        res = res.replace("%2$@", p);
+    }
+    res
+}
+
+fn interpolate_corrupt_error(param1: Option<&str>, lang: AppLanguage) -> String {
+    let tmpl = get_string_or_fallback("error.corrupt_data", lang);
+    match param1 {
+        Some(p) => format!("{} ({})", tmpl, p),
+        None => tmpl.to_string(),
+    }
+}
+
+fn interpolate_engine_failure(
+    error_code: i32,
+    param1: Option<&str>,
+    lang: AppLanguage,
+) -> String {
+    let tmpl = get_string_or_fallback("error.engine_failure", lang);
+    let mut res = tmpl.replace("%1$d", &error_code.to_string());
+    if let Some(msg) = param1 {
+        res = res.replace("%2$@", msg);
+    }
+    res
 }

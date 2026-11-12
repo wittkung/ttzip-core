@@ -128,6 +128,194 @@ pub fn extract_archive_stream(
     Ok(compression_report(Path::new(&archive_path), run, start))
 }
 
+pub(crate) fn map_single_entry_status(
+    status: crate::types::TTZipStatus,
+    missing_path: &str,
+) -> TTZipError {
+    match status {
+        crate::types::TTZipStatus::ErrFileNotFound => TTZipError::FileNotFound {
+            path: missing_path.to_string(),
+        },
+        crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+        crate::types::TTZipStatus::ErrSolidBudgetExceeded => {
+            TTZipError::DecompressionBombDetected {
+                reason: "7z solid decompression budget exceeded".to_string(),
+            }
+        }
+        crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
+            details: "Memory allocation failed during decompression".to_string(),
+        },
+        crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
+            details: "Corrupted entry CRC or payload".to_string(),
+            offset: 0,
+        },
+        crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
+            reason: "Security policy boundary violation".to_string(),
+        },
+        _ => TTZipError::EngineError {
+            code: status as i32,
+        },
+    }
+}
+
+pub(crate) fn open_sevenz_slice_for_preview<'a>(
+    mapped: &'a [u8],
+    password: Option<&str>,
+) -> Result<crate::sevenz::decoder::SevenZArchive<'a>, TTZipError> {
+    crate::sevenz::decoder::SevenZArchive::open_slice_with_password(mapped, password).map_err(
+        |status| match status {
+            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
+            _ => TTZipError::CorruptHeader {
+                details: "Invalid 7z header".to_string(),
+                offset: 0,
+            },
+        },
+    )
+}
+
+fn resolve_7z_entry_index(
+    files: &[crate::sevenz::header::SevenZFileMeta],
+    entry_path: Option<&str>,
+    entry_index: i64,
+) -> Result<usize, TTZipError> {
+    if let Some(target) = entry_path {
+        let clean = target.trim_start_matches('/');
+        let suffix = format!("/{clean}");
+        files
+            .iter()
+            .position(|f| f.rel_path == clean || f.rel_path.ends_with(&suffix))
+            .ok_or_else(|| TTZipError::FileNotFound {
+                path: target.to_string(),
+            })
+    } else {
+        let idx = usize::try_from(entry_index).unwrap_or(usize::MAX);
+        if idx < files.len() {
+            Ok(idx)
+        } else {
+            Err(TTZipError::FileNotFound {
+                path: format!("entry #{entry_index}"),
+            })
+        }
+    }
+}
+
+pub(crate) fn enforce_7z_entry_budget(
+    loc: &crate::sevenz::header::SevenZEntryLocation,
+    budget_bytes: u64,
+) -> Result<(), TTZipError> {
+    const MAX_ENTRY_BYTES: u64 = 64 * 1024 * 1024;
+    let max_size = if budget_bytes > 0 {
+        budget_bytes.min(MAX_ENTRY_BYTES)
+    } else {
+        MAX_ENTRY_BYTES
+    };
+    if loc.uncompressed_size > max_size {
+        return Err(TTZipError::OutOfMemory {
+            details: format!(
+                "Entry uncompressed size ({} bytes) exceeds safety budget ({} bytes)",
+                loc.uncompressed_size, max_size
+            ),
+        });
+    }
+    if budget_bytes > 0 && loc.offset_in_folder > budget_bytes {
+        return Err(TTZipError::DecompressionBombDetected {
+            reason: "7z solid decompression budget exceeded".to_string(),
+        });
+    }
+    Ok(())
+}
+
+pub(crate) fn extract_single_entry_split_guarded(
+    volume_chain: &[std::path::PathBuf],
+    archive_path: &Path,
+    entry_path: Option<&str>,
+    entry_index: i64,
+    password: Option<&str>,
+    max_preceding_budget_mb: u64,
+) -> Result<Vec<u8>, TTZipError> {
+    use std::io::{Read, Seek, SeekFrom};
+    let missing_label = entry_path
+        .map(str::to_owned)
+        .unwrap_or_else(|| format!("entry #{entry_index}"));
+    let mut mv_reader =
+        crate::archive::split::VirtualMultiVolumeReader::from_volumes(volume_chain.to_vec())
+            .map_err(|e| TTZipError::IoError {
+                message: e.to_string(),
+            })?;
+    let mut magic = [0u8; 6];
+    let is_sevenz = mv_reader.read_exact(&mut magic).is_ok() && &magic == b"7z\xBC\xAF\x27\x1C";
+    let _ = mv_reader.seek(SeekFrom::Start(0));
+
+    if !is_sevenz {
+        return crate::archive::unified::extract_single::extract_single_entry_memory(
+            archive_path,
+            entry_path,
+            entry_index,
+            password,
+        )
+        .map_err(|s| map_single_entry_status(s, &missing_label));
+    }
+
+    let info = crate::sevenz::encrypted_header::EncodedHeaderDecoder::default()
+        .decode_from_reader(&mut mv_reader, password)
+        .map_err(|e| match e {
+            crate::sevenz::dag::SevenZError::BadPassword => TTZipError::InvalidPassword,
+            _ => TTZipError::CorruptHeader {
+                details: "Invalid 7z header".to_string(),
+                offset: 0,
+            },
+        })?;
+    let seek_idx = crate::sevenz::header::SevenZSeekIndex::build(&info);
+    let idx = resolve_7z_entry_index(&info.files, entry_path, entry_index)?;
+    let budget_bytes = max_preceding_budget_mb.saturating_mul(1024 * 1024);
+    if let Some(loc) = seek_idx.entries.get(idx) {
+        let is_unencrypted_copy = loc
+            .folder_index
+            .and_then(|fi| info.folders.get(fi))
+            .map(|f| crate::archive::stream_adapter::is_unencrypted_copy_folder(&info, f))
+            .unwrap_or(false);
+        let effective_budget = if is_unencrypted_copy { 0 } else { budget_bytes };
+        enforce_7z_entry_budget(loc, effective_budget)?;
+    }
+    crate::archive::stream_adapter::extract_7z_single_entry_from_reader_fast(
+        &mut mv_reader,
+        &info,
+        &seek_idx,
+        idx,
+        password,
+    )
+    .map_err(|s| map_single_entry_status(s, &missing_label))
+}
+
+fn extract_zip_entry_by_path_bounded(
+    zip_archive: &crate::zip::reader::ZipArchive<'_>,
+    clean_target: &str,
+    entry_path: &str,
+    password: Option<&str>,
+    budget_bytes: u64,
+) -> Result<Vec<u8>, TTZipError> {
+    let suffix = format!("/{clean_target}");
+    let found_idx = zip_archive
+        .entries()
+        .iter()
+        .position(|e| e.rel_path == clean_target || e.rel_path.ends_with(&suffix))
+        .ok_or_else(|| TTZipError::FileNotFound {
+            path: entry_path.to_string(),
+        })?;
+    let entry = &zip_archive.entries()[found_idx];
+    if entry.uncompressed_size > budget_bytes {
+        return Err(TTZipError::OutOfMemory {
+            details: format!(
+                "Entry uncompressed size ({} bytes) exceeds safety budget ({budget_bytes} bytes)",
+                entry.uncompressed_size
+            ),
+        });
+    }
+    zip_archive
+        .extract_entry_bytes(found_idx, password)
+        .map_err(|s| map_single_entry_status(s, entry_path))
+}
+
 /// Extracts a single entry stream preview directly by relative entry path.
 #[uniffi::export]
 pub fn extract_single_entry_by_path(
@@ -137,6 +325,20 @@ pub fn extract_single_entry_by_path(
 ) -> Result<Vec<u8>, TTZipError> {
     let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
     let p = std::path::Path::new(&archive_path);
+    let volume_chain = crate::archive::split::detect_volume_chain(p)
+        .map_err(|_| TTZipError::FileNotFound {
+            path: archive_path.clone(),
+        })?;
+    if volume_chain.len() > 1 {
+        return extract_single_entry_split_guarded(
+            &volume_chain,
+            p,
+            Some(&entry_path),
+            -1,
+            secure_pwd.as_deref(),
+            64,
+        );
+    }
     if !p.exists() {
         return Err(TTZipError::FileNotFound { path: archive_path });
     }
@@ -148,104 +350,39 @@ pub fn extract_single_entry_by_path(
     })?;
 
     let clean_target = entry_path.trim_start_matches('/');
-    const DEFAULT_EXTRACTION_BUDGET_BYTES: u64 = 64 * 1024 * 1024; // Strict 64MB limit
+    const DEFAULT_EXTRACTION_BUDGET_BYTES: u64 = 64 * 1024 * 1024;
 
     if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        let arch = crate::sevenz::decoder::SevenZArchive::open_slice(mapped)
-            .map_err(|_| TTZipError::CorruptHeader { details: "Invalid 7z header".to_string(), offset: 0 })?;
-        
-        let found_idx = arch.files().iter().position(|f| {
-            f.rel_path == clean_target || f.rel_path.ends_with(&format!("/{}", clean_target))
-        }).ok_or_else(|| TTZipError::FileNotFound { path: entry_path.clone() })?;
-
+        let arch = open_sevenz_slice_for_preview(mapped, secure_pwd.as_deref())?;
+        let found_idx = resolve_7z_entry_index(arch.files(), Some(&entry_path), -1)?;
         if let Some(loc) = arch.seek_index().entries.get(found_idx) {
-            if loc.uncompressed_size > DEFAULT_EXTRACTION_BUDGET_BYTES {
-                return Err(TTZipError::OutOfMemory {
-                    details: format!(
-                        "Entry uncompressed size ({} bytes) exceeds safety budget ({} bytes)",
-                        loc.uncompressed_size, DEFAULT_EXTRACTION_BUDGET_BYTES
-                    ),
-                });
-            }
+            enforce_7z_entry_budget(loc, DEFAULT_EXTRACTION_BUDGET_BYTES)?;
         }
-
-        let budget_bytes = DEFAULT_EXTRACTION_BUDGET_BYTES;
         crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
             mapped,
             arch.info(),
             arch.seek_index(),
             found_idx,
             secure_pwd.as_deref(),
-            budget_bytes,
-        ).map_err(|status| match status {
-            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-            crate::types::TTZipStatus::ErrSolidBudgetExceeded => TTZipError::DecompressionBombDetected {
-                reason: "7z solid decompression budget exceeded".to_string(),
-            },
-            crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
-                details: "Memory allocation failed during 7z decompression".to_string(),
-            },
-            crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
-                details: "Corrupted 7z payload or CRC mismatch".to_string(),
-                offset: 0,
-            },
-            crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
-                reason: "Security policy boundary violation".to_string(),
-            },
-            _ => TTZipError::EngineError { code: status as i32 },
-        })
+            DEFAULT_EXTRACTION_BUDGET_BYTES,
+        )
+        .map_err(|s| map_single_entry_status(s, &entry_path))
     } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
-        let found_idx = zip_archive.entries().iter().position(|e| {
-            e.rel_path == clean_target || e.rel_path.ends_with(&format!("/{}", clean_target))
-        }).ok_or_else(|| TTZipError::FileNotFound { path: entry_path.clone() })?;
-
-        let entry = &zip_archive.entries()[found_idx];
-        if entry.uncompressed_size > DEFAULT_EXTRACTION_BUDGET_BYTES {
-            return Err(TTZipError::OutOfMemory {
-                details: format!(
-                    "Entry uncompressed size ({} bytes) exceeds safety budget ({} bytes)",
-                    entry.uncompressed_size, DEFAULT_EXTRACTION_BUDGET_BYTES
-                ),
-            });
-        }
-
-        zip_archive.extract_entry_bytes(found_idx, secure_pwd.as_deref())
-            .map_err(|status| match status {
-                crate::types::TTZipStatus::ErrCorruptHeader => {
-                    TTZipError::CorruptHeader { details: "Corrupted entry CRC or payload".to_string(), offset: 0 }
-                }
-                crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-                crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
-                    details: "Memory allocation failed during ZIP decompression".to_string(),
-                },
-                crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
-                    reason: "Decompression ratio or overlap violation detected".to_string(),
-                },
-                _ => TTZipError::EngineError { code: status as i32 },
-            })
+        extract_zip_entry_by_path_bounded(
+            &zip_archive,
+            clean_target,
+            &entry_path,
+            secure_pwd.as_deref(),
+            DEFAULT_EXTRACTION_BUDGET_BYTES,
+        )
     } else {
         crate::archive::unified::extract_single::extract_single_entry_memory(
             p,
             Some(&entry_path),
             -1,
             secure_pwd.as_deref(),
-        ).map_err(|status| match status {
-            crate::types::TTZipStatus::ErrFileNotFound => TTZipError::FileNotFound {
-                path: entry_path.clone(),
-            },
-            crate::types::TTZipStatus::ErrInvalidPassword => TTZipError::InvalidPassword,
-            crate::types::TTZipStatus::ErrCorruptHeader => TTZipError::CorruptHeader {
-                details: "Corrupted entry CRC or payload".to_string(),
-                offset: 0,
-            },
-            crate::types::TTZipStatus::ErrOutOfMemory => TTZipError::OutOfMemory {
-                details: "Memory allocation failed during decompression".to_string(),
-            },
-            crate::types::TTZipStatus::ErrSecurityViolation => TTZipError::DecompressionBombDetected {
-                reason: "Decompression ratio or overlap violation detected".to_string(),
-            },
-            _ => TTZipError::EngineError { code: status as i32 },
-        })
+        )
+        .map_err(|s| map_single_entry_status(s, &entry_path))
     }
 }
 
@@ -292,3 +429,173 @@ pub fn in_place_mutate_archive(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Seek, SeekFrom, Write};
+
+    fn create_sparse_split_7z_volumes(
+        dir: & Path,
+        prefix_len: u64,
+        jpeg_bytes: &[u8],
+    ) -> std::path::PathBuf {
+        use crate::crypto::crc32::crc32_fast;
+        use crate::sevenz::format::{SevenZSignatureHeader, METHOD_COPY};
+        use crate::sevenz::writer::build_7z_metadata_header;
+        use crate::zip::writer::ZipInputItem;
+
+        let items = vec![
+            ZipInputItem {
+                rel_path: "2026.7.31 哲学在证明开始以前/通用4k.mp4".to_string(),
+                data: vec![1],
+                mtime_epoch_secs: 1_700_000_000,
+                mode: 0o100644,
+                is_directory: false,
+            },
+            ZipInputItem {
+                rel_path: "2026.7.31 哲学在证明开始以前/布劳威尔.jpeg".to_string(),
+                data: vec![1],
+                mtime_epoch_secs: 1_700_000_000,
+                mode: 0o100644,
+                is_directory: false,
+            },
+        ];
+        let stream_sizes = [prefix_len, jpeg_bytes.len() as u64];
+        let stream_crcs = [0x1234_5678, crc32_fast(0, jpeg_bytes)];
+        let total_uncompressed = prefix_len + jpeg_bytes.len() as u64;
+        let end_header = build_7z_metadata_header(
+            &items,
+            &stream_sizes,
+            &stream_crcs,
+            total_uncompressed,
+            total_uncompressed,
+            METHOD_COPY,
+            &[],
+        );
+        let sig_header = SevenZSignatureHeader {
+            major_version: 0,
+            minor_version: 4,
+            start_header_crc: 0,
+            next_header_offset: total_uncompressed,
+            next_header_size: end_header.len() as u64,
+            next_header_crc: crc32_fast(0, &end_header),
+        }
+        .serialize();
+
+        let vol_size = 5 * 1024 * 1024 * 1024u64; // 5 GiB sparse volumes
+        let vol1 = dir.join("2026.7.31 哲学在证明开始以前.7z.001");
+        let vol2 = dir.join("2026.7.31 哲学在证明开始以前.7z.002");
+        let vol3 = dir.join("2026.7.31 哲学在证明开始以前.7z.003");
+
+        let mut f1 = std::fs::File::create(&vol1).expect("create vol1");
+        f1.write_all(&sig_header).expect("write sig_header");
+        f1.set_len(vol_size).expect("set_len vol1");
+
+        let f2 = std::fs::File::create(&vol2).expect("create vol2");
+        f2.set_len(vol_size).expect("set_len vol2");
+
+        let mut f3 = std::fs::File::create(&vol3).expect("create vol3");
+        let offset_in_v3 = (32 + prefix_len) - 2 * vol_size;
+        f3.seek(SeekFrom::Start(offset_in_v3)).expect("seek vol3");
+        f3.write_all(jpeg_bytes).expect("write jpeg");
+        f3.write_all(&end_header).expect("write end_header");
+        vol1
+    }
+
+    #[test]
+    fn test_issue_304_split_7z_preview_session_and_single_entry_past_10gib() {
+        use crate::uniffi_api::extraction_session::{
+            CollisionPolicy, CommitResult, ExtractionRequest, ExtractionSession, ResolutionSet,
+        };
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let prefix_12_gib = 12 * 1024 * 1024 * 1024u64;
+        let jpeg_bytes: Vec<u8> = (0..9441).map(|i| ((i * 41 + 19) & 0xFF) as u8).collect();
+        let vol1 = create_sparse_split_7z_volumes(tmp.path(), prefix_12_gib, &jpeg_bytes);
+        let entry_rel = "2026.7.31 哲学在证明开始以前/布劳威尔.jpeg".to_string();
+
+        let mem_bytes = extract_single_entry_by_path(
+            vol1.to_string_lossy().into_owned(),
+            entry_rel.clone(),
+            None,
+        )
+        .expect("extract_single_entry_by_path on split 7z past 12 GiB must succeed");
+        assert_eq!(mem_bytes, jpeg_bytes);
+
+        let dest_dir = tmp.path().join("preview_out");
+        std::fs::create_dir_all(&dest_dir).expect("create preview_out");
+        let req = ExtractionRequest {
+            archive_path: vol1.to_string_lossy().into_owned(),
+            destination_root: dest_dir.to_string_lossy().into_owned(),
+            password: None,
+            entry_filter: Some(vec![entry_rel.clone()]),
+            root_at_common_parent: false,
+            policy: CollisionPolicy::KeepBoth,
+        };
+        let session = ExtractionSession::new(req).expect("create ExtractionSession");
+        let stage_report = session
+            .stage(None, None)
+            .expect("ExtractionSession::stage past 12 GiB split 7z prefix must not fail with -403");
+        assert_eq!(stage_report.staged_items, 1);
+        let commit_res = session
+            .commit(ResolutionSet {
+                default_action: None,
+                overrides: Vec::new(),
+            })
+            .expect("ExtractionSession::commit must succeed");
+        assert!(matches!(commit_res, CommitResult::Finished { .. }));
+        assert_eq!(
+            std::fs::read(dest_dir.join(&entry_rel)).expect("read extracted jpeg"),
+            jpeg_bytes
+        );
+        verify_split_7z_repro_if_configured();
+    }
+
+    fn verify_split_7z_repro_if_configured() {
+        use crate::crypto::crc32::crc32_fast;
+        use crate::uniffi_api::extraction_session::{
+            CollisionPolicy, CommitResult, ExtractionRequest, ExtractionSession, ResolutionSet,
+        };
+
+        let Ok(repro_path) = std::env::var("TTZIP_ISSUE_304_REPRO_ARCHIVE") else {
+            return;
+        };
+        if !Path::new(&repro_path).exists() {
+            return;
+        }
+        let target_a = "2026.7.31 哲学在证明开始以前/布劳威尔.jpeg".to_string();
+        let target_b = "2026.7.31 哲学在证明开始以前/图片/希尔伯特.jpg".to_string();
+
+        let bytes_a = extract_single_entry_by_path(repro_path.clone(), target_a.clone(), None)
+            .expect("repro extract_single_entry_by_path target_a");
+        assert_eq!(bytes_a.len(), 9441);
+        assert_eq!(crc32_fast(0, &bytes_a), 0xFE16_9E1C);
+
+        let tmp = tempfile::tempdir().expect("repro tempdir");
+        let req = ExtractionRequest {
+            archive_path: repro_path,
+            destination_root: tmp.path().to_string_lossy().into_owned(),
+            password: None,
+            entry_filter: Some(vec![target_a.clone(), target_b.clone()]),
+            root_at_common_parent: false,
+            policy: CollisionPolicy::KeepBoth,
+        };
+        let session = ExtractionSession::new(req).expect("repro ExtractionSession::new");
+        let report = session.stage(None, None).expect("repro ExtractionSession::stage");
+        assert_eq!(report.staged_items, 2);
+        let commit_res = session
+            .commit(ResolutionSet {
+                default_action: None,
+                overrides: Vec::new(),
+            })
+            .expect("repro ExtractionSession::commit");
+        assert!(matches!(commit_res, CommitResult::Finished { .. }));
+        let disk_a = std::fs::read(tmp.path().join(&target_a)).expect("read disk_a");
+        let disk_b = std::fs::read(tmp.path().join(&target_b)).expect("read disk_b");
+        assert_eq!(disk_a, bytes_a);
+        assert_eq!(disk_b.len(), 269858);
+        assert_eq!(crc32_fast(0, &disk_b), 0xB6C6_EFD9);
+    }
+}
+

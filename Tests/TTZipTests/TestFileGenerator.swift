@@ -308,65 +308,31 @@ public enum TestFileGenerator {
         let path = targetURL.path
         let fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0o644)
         guard fd >= 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            throw currentPosixError()
         }
         defer { close(fd) }
 
         let headerData = generateMachineCode(byteCount: chunkSizeBytes, arch: .arm64, seed: 0x11112222)
         let footerData = generateZipfText(byteCount: chunkSizeBytes, seed: 0x33334444)
 
-        // 1. Write Header chunk
-        try headerData.withUnsafeBytes { rawPtr in
-            guard let base = rawPtr.baseAddress else { return }
-            let written = write(fd, base, chunkSizeBytes)
-            guard written == chunkSizeBytes else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
-        }
+        try writeChunkToDescriptor(fd: fd, data: headerData)
+        let currentOffset = try writeSparseHoleCheckpoints(
+            fd: fd,
+            initialOffset: Int64(chunkSizeBytes),
+            logicalSizeBytes: logicalSizeBytes,
+            holeIntervalBytes: holeIntervalBytes,
+            chunkSizeBytes: chunkSizeBytes
+        )
 
-        // 2. Seek across sparse holes if file is large enough
-        var currentOffset: Int64 = Int64(chunkSizeBytes)
-        while currentOffset + holeIntervalBytes + Int64(chunkSizeBytes) < logicalSizeBytes {
-            currentOffset += holeIntervalBytes
-            let seekRes = lseek(fd, off_t(currentOffset), SEEK_SET)
-            guard seekRes >= 0 else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
-
-            // Write a small intermediate 4KB checkpoint
-            let checkpointData = generateZipfText(byteCount: 4096, seed: UInt64(currentOffset))
-            try checkpointData.withUnsafeBytes { rawPtr in
-                guard let base = rawPtr.baseAddress else { return }
-                let written = write(fd, base, 4096)
-                guard written == 4096 else {
-                    throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-                }
-            }
-            currentOffset += 4096
-        }
-
-        // 3. Seek to footer boundary
         let footerOffset = logicalSizeBytes - Int64(chunkSizeBytes)
         if footerOffset > currentOffset {
-            let seekRes = lseek(fd, off_t(footerOffset), SEEK_SET)
-            guard seekRes >= 0 else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
+            try seekDescriptor(fd: fd, offset: footerOffset)
         }
+        try writeChunkToDescriptor(fd: fd, data: footerData)
 
-        // 4. Write Footer chunk
-        try footerData.withUnsafeBytes { rawPtr in
-            guard let base = rawPtr.baseAddress else { return }
-            let written = write(fd, base, chunkSizeBytes)
-            guard written == chunkSizeBytes else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
-        }
-
-        // Query APFS physical allocated block size
         var statInfo = stat()
         guard stat(path, &statInfo) == 0 else {
-            throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            throw currentPosixError()
         }
 
         let physicalAllocated = Int64(statInfo.st_blocks) * 512
@@ -379,6 +345,44 @@ public enum TestFileGenerator {
             headerSignature: headerHash,
             footerSignature: footerHash
         )
+    }
+
+    private static func writeSparseHoleCheckpoints(
+        fd: Int32,
+        initialOffset: Int64,
+        logicalSizeBytes: Int64,
+        holeIntervalBytes: Int64,
+        chunkSizeBytes: Int
+    ) throws -> Int64 {
+        var currentOffset = initialOffset
+        while currentOffset + holeIntervalBytes + Int64(chunkSizeBytes) < logicalSizeBytes {
+            currentOffset += holeIntervalBytes
+            try seekDescriptor(fd: fd, offset: currentOffset)
+            let checkpointData = generateZipfText(byteCount: 4096, seed: UInt64(currentOffset))
+            try writeChunkToDescriptor(fd: fd, data: checkpointData)
+            currentOffset += 4096
+        }
+        return currentOffset
+    }
+
+    private static func seekDescriptor(fd: Int32, offset: Int64) throws {
+        guard lseek(fd, off_t(offset), SEEK_SET) >= 0 else {
+            throw currentPosixError()
+        }
+    }
+
+    private static func writeChunkToDescriptor(fd: Int32, data: Data) throws {
+        try data.withUnsafeBytes { rawPtr in
+            guard let base = rawPtr.baseAddress else { return }
+            let written = write(fd, base, data.count)
+            guard written == data.count else {
+                throw currentPosixError()
+            }
+        }
+    }
+
+    private static func currentPosixError() -> POSIXError {
+        POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
     }
 
     // MARK: - Multi-Modal Directory Tree Generation (10,000+ Files Support)

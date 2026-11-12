@@ -3,12 +3,6 @@
 
 import Foundation
 
-// MARK: - Archive Compression Level
-
-
-// MARK: - Archive Compression Level
-
-/// Compression level scale (-5 to 22).
 public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, Codable {
     case fast5 = -5, fast4 = -4, fast3 = -3, fast2 = -2, fast1 = -1
     case store = 0
@@ -17,17 +11,16 @@ public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, 
     case level11 = 11, level12 = 12, level13 = 13, level14 = 14, level15 = 15
     case level16 = 16, level17 = 17, level18 = 18, level19 = 19, level20 = 20
     case level21 = 21, level22 = 22
-    
-    // Convenience presets
+
     public static var fastest: ArchiveCompressionLevel { .level1 }
     public static var fast: ArchiveCompressionLevel { .level3 }
     public static var medium: ArchiveCompressionLevel { .level5 }
     public static var normal: ArchiveCompressionLevel { .level6 }
     public static var maximum: ArchiveCompressionLevel { .level7 }
     public static var ultra: ArchiveCompressionLevel { .level9 }
-    
+
     public var id: Int { rawValue }
-    
+
     public var title: String {
         switch self {
         case .fast5: return "⚡ Fastest (-5)"
@@ -50,11 +43,11 @@ public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, 
         case .level20, .level21, .level22: return "🔥 Ultra-Extreme (\(rawValue))"
         }
     }
-    
+
     public var isQuickPreset: Bool {
-        return self == .store || self == .level1 || self == .level6 || self == .level9
+        self == .store || self == .level1 || self == .level6 || self == .level9
     }
-    
+
     public var detailDescription: String {
         switch self {
         case .fast5, .fast4, .fast3, .fast2, .fast1: return "Ultra-high throughput streaming compression"
@@ -73,13 +66,12 @@ public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, 
         case .level20, .level21, .level22: return "Exhaustive search compression (Zstandard only)"
         }
     }
-    
+
     public init(levelInt: Int) {
         let clamped = max(-5, min(22, levelInt))
         self = ArchiveCompressionLevel(rawValue: clamped) ?? .level6
     }
-    
-    /// Maps the generic compression level transparently to the underlying Deflate engine native physical level.
+
     public var effectiveZipRawLevel: Int32 {
         switch self {
         case .fast5, .fast4, .fast3, .fast2, .fast1:
@@ -102,8 +94,7 @@ public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, 
             return 12
         }
     }
-    
-    /// Measured relative throughput percentage (100% is peak).
+
     public func relativeSpeedPercentage(for format: ArchiveCompressionFormat? = nil) -> Int {
         switch self {
         case .fast5, .fast4, .fast3, .fast2, .fast1: return 99
@@ -116,13 +107,11 @@ public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, 
         case .level13, .level14, .level15, .level16, .level17, .level18, .level19, .level20, .level21, .level22: return 10
         }
     }
-    
-    /// Speed badge label.
+
     public func speedBadge(for format: ArchiveCompressionFormat? = nil) -> String {
-        return "\(relativeSpeedPercentage(for: format))% Speed"
+        "\(relativeSpeedPercentage(for: format))% Speed"
     }
-    
-    /// Compression ratio percentage.
+
     public func compressionRatioPercent(for format: ArchiveCompressionFormat? = nil) -> Double {
         switch self {
         case .fast5, .fast4, .fast3, .fast2, .fast1: return 65.0
@@ -135,23 +124,19 @@ public enum ArchiveCompressionLevel: Int, Sendable, CaseIterable, Identifiable, 
         case .level13, .level14, .level15, .level16, .level17, .level18, .level19, .level20, .level21, .level22: return 32.0
         }
     }
-    
-    /// Ratio badge label.
+
     public func ratioBadge(for format: ArchiveCompressionFormat? = nil) -> String {
-        return String(format: "%.0f%% Ratio", compressionRatioPercent(for: format))
+        String(format: "%.0f%% Ratio", compressionRatioPercent(for: format))
     }
 }
 
-// MARK: - Format-Specific Options
-
-/// Advanced configuration options specific to ZIP format.
 public struct ZipFormatOptions: Sendable, Equatable, Codable {
-    public var zipEncryptionMethod: String // AES-256 / AES-128 / ZipCrypto
-    public var zipEncodingUTF8: Bool // UTF-8 language encoding flag
-    public var preservePosixAttributes: Bool // Preserve POSIX permissions and extended attributes
-    public var zip64Mode: String // Auto / Always / Never
-    public var enableZeroCopy: Bool // APFS physical zero-copy clone
-    
+    public var zipEncryptionMethod: String
+    public var zipEncodingUTF8: Bool
+    public var preservePosixAttributes: Bool
+    public var zip64Mode: String
+    public var enableZeroCopy: Bool
+
     public init(
         zipEncryptionMethod: String = "AES-256",
         zipEncodingUTF8: Bool = true,
@@ -167,16 +152,15 @@ public struct ZipFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-/// Advanced configuration options specific to 7Z format.
 public struct SevenZipFormatOptions: Sendable, Equatable, Codable {
-    public var algorithm: String // LZMA2 / LZMA / PPMd / BZip2
-    public var dictionarySizeMB: Int // 16MB / 32MB / 64MB / 128MB / 256MB / 512MB
-    public var enableSolidArchive: Bool // Solid archiving
-    /// When `true` and a non-empty password is provided, encrypts the 7z header (`-mhe=on`, `kEncodedHeader = 0x17`).
-    public var encryptFileNames: Bool // Encrypted headers (mhe=on)
-    public var matchFinder: String // HC4 / BT4
-    public var numFastBytes: Int // 5..273
-    
+    public var algorithm: String
+    public var dictionarySizeMB: Int
+    public var enableSolidArchive: Bool
+    /// When `true` with a non-empty password, encrypts the 7z header (`-mhe=on`, `kEncodedHeader = 0x17`).
+    public var encryptFileNames: Bool
+    public var matchFinder: String
+    public var numFastBytes: Int
+
     public init(
         algorithm: String = "LZMA2",
         dictionarySizeMB: Int = 64,
@@ -194,15 +178,14 @@ public struct SevenZipFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-/// Advanced configuration options specific to Zstandard (zst) format.
 public struct ZstdFormatOptions: Sendable, Equatable, Codable {
-    public var zstdLevel: Int // 1..22
-    public var zstdEnableLDM: Bool // Long Distance Matching
-    public var zstdJobSizeMB: Int // 1MB..512MB multi-threaded chunk size
-    public var zstdWindowLog: Int // 10..31 sliding window log2
-    public var zstdChecksum: Bool // XXHash64 frame checksum
-    public var zstdDictPath: String? // External training dictionary file path
-    
+    public var zstdLevel: Int
+    public var zstdEnableLDM: Bool
+    public var zstdJobSizeMB: Int
+    public var zstdWindowLog: Int
+    public var zstdChecksum: Bool
+    public var zstdDictPath: String?
+
     public init(
         zstdLevel: Int = 3,
         zstdEnableLDM: Bool = false,
@@ -220,12 +203,11 @@ public struct ZstdFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-/// Advanced configuration options specific to TAR family.
 public struct TarFormatOptions: Sendable, Equatable, Codable {
     public var preservePosixPermissions: Bool
     public var usePaxHeader: Bool
     public var numericOwner: Bool
-    
+
     public init(preservePosixPermissions: Bool = true, usePaxHeader: Bool = true, numericOwner: Bool = false) {
         self.preservePosixPermissions = preservePosixPermissions
         self.usePaxHeader = usePaxHeader
@@ -233,12 +215,11 @@ public struct TarFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-/// Advanced configuration options specific to Apple Archive (.aar).
 public struct AppleArchiveFormatOptions: Sendable, Equatable, Codable {
-    public var compressionAlgorithm: String // LZFSE / LZ4 / ZSTD / LZMA
+    public var compressionAlgorithm: String
     public var preserveExtendedAttributes: Bool
     public var preserveAccessControlLists: Bool
-    
+
     public init(compressionAlgorithm: String = "LZFSE", preserveExtendedAttributes: Bool = true, preserveAccessControlLists: Bool = true) {
         self.compressionAlgorithm = compressionAlgorithm
         self.preserveExtendedAttributes = preserveExtendedAttributes
@@ -246,12 +227,11 @@ public struct AppleArchiveFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-/// Advanced configuration options specific to DMG / ISO disk images.
 public struct DiskImageFormatOptions: Sendable, Equatable, Codable {
     public var volumeName: String
     public var enableJolietExtension: Bool
     public var enableRockRidgeExtension: Bool
-    
+
     public init(volumeName: String = "TTZipDiskImage", enableJolietExtension: Bool = true, enableRockRidgeExtension: Bool = true) {
         self.volumeName = volumeName
         self.enableJolietExtension = enableJolietExtension
@@ -259,12 +239,11 @@ public struct DiskImageFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-/// Advanced configuration options specific to WIM image archives.
 public struct WimFormatOptions: Sendable, Equatable, Codable {
-    public var compressionType: String // LZX / XPRESS / NONE
+    public var compressionType: String
     public var imageName: String
     public var imageDescription: String
-    
+
     public init(compressionType: String = "LZX", imageName: String = "TTZipWimImage", imageDescription: String = "Created by TTZip Native C Bridge") {
         self.compressionType = compressionType
         self.imageName = imageName
@@ -272,17 +251,9 @@ public struct WimFormatOptions: Sendable, Equatable, Codable {
     }
 }
 
-// MARK: - Advanced Options
-
-//
-//
-
-
-// MARK: - Unified Archive Advanced Options
-
-/// Unified multi-format advanced configuration options model.
 public struct ArchiveAdvancedOptions: Sendable, Equatable {
     public var cpuThreads: Int
+    public var recoveryRecordRedundancyPercent: Int
     public var zipOptions: ZipFormatOptions
     public var sevenZipOptions: SevenZipFormatOptions
     public var zstdOptions: ZstdFormatOptions
@@ -290,8 +261,7 @@ public struct ArchiveAdvancedOptions: Sendable, Equatable {
     public var appleArchiveOptions: AppleArchiveFormatOptions
     public var diskImageOptions: DiskImageFormatOptions
     public var wimOptions: WimFormatOptions
-    
-    // Convenient property accessors
+
     public var algorithm: String { get { sevenZipOptions.algorithm } set { sevenZipOptions.algorithm = newValue } }
     public var dictionarySizeMB: Int { get { sevenZipOptions.dictionarySizeMB } set { sevenZipOptions.dictionarySizeMB = newValue } }
     public var enableSolidArchive: Bool { get { sevenZipOptions.enableSolidArchive } set { sevenZipOptions.enableSolidArchive = newValue } }
@@ -303,9 +273,10 @@ public struct ArchiveAdvancedOptions: Sendable, Equatable {
     public var zstdLevel: Int { get { zstdOptions.zstdLevel } set { zstdOptions.zstdLevel = newValue } }
     public var zstdEnableLDM: Bool { get { zstdOptions.zstdEnableLDM } set { zstdOptions.zstdEnableLDM = newValue } }
     public var zstdDictPath: String? { get { zstdOptions.zstdDictPath } set { zstdOptions.zstdDictPath = newValue } }
-    
+
     public init(
         cpuThreads: Int = 0,
+        recoveryRecordRedundancyPercent: Int = 0,
         zipOptions: ZipFormatOptions = ZipFormatOptions(),
         sevenZipOptions: SevenZipFormatOptions = SevenZipFormatOptions(),
         zstdOptions: ZstdFormatOptions = ZstdFormatOptions(),
@@ -315,6 +286,7 @@ public struct ArchiveAdvancedOptions: Sendable, Equatable {
         wimOptions: WimFormatOptions = WimFormatOptions()
     ) {
         self.cpuThreads = cpuThreads
+        self.recoveryRecordRedundancyPercent = recoveryRecordRedundancyPercent
         self.zipOptions = zipOptions
         self.sevenZipOptions = sevenZipOptions
         self.zstdOptions = zstdOptions
@@ -323,7 +295,7 @@ public struct ArchiveAdvancedOptions: Sendable, Equatable {
         self.diskImageOptions = diskImageOptions
         self.wimOptions = wimOptions
     }
-    
+
     public init(
         algorithm: String = "LZMA2",
         dictionarySizeMB: Int = 64,
@@ -335,9 +307,11 @@ public struct ArchiveAdvancedOptions: Sendable, Equatable {
         zstdLevel: Int = 3,
         zstdEnableLDM: Bool = false,
         preservePosixAttributes: Bool = true,
-        zstdDictPath: String? = nil
+        zstdDictPath: String? = nil,
+        recoveryRecordRedundancyPercent: Int = 0
     ) {
         self.cpuThreads = cpuThreads
+        self.recoveryRecordRedundancyPercent = recoveryRecordRedundancyPercent
         self.sevenZipOptions = SevenZipFormatOptions(algorithm: algorithm, dictionarySizeMB: dictionarySizeMB, enableSolidArchive: enableSolidArchive, encryptFileNames: encryptFileNames)
         self.zipOptions = ZipFormatOptions(zipEncryptionMethod: zipEncryptionMethod, zipEncodingUTF8: zipEncodingUTF8, preservePosixAttributes: preservePosixAttributes)
         self.zstdOptions = ZstdFormatOptions(zstdLevel: zstdLevel, zstdEnableLDM: zstdEnableLDM, zstdDictPath: zstdDictPath)
@@ -346,29 +320,13 @@ public struct ArchiveAdvancedOptions: Sendable, Equatable {
         self.diskImageOptions = DiskImageFormatOptions()
         self.wimOptions = WimFormatOptions()
     }
-    
-    public static var defaultOptions: ArchiveAdvancedOptions {
-        let cores = AppleSiliconTuner.shared.topology.totalCores
-        return ArchiveAdvancedOptions(
-            cpuThreads: cores,
-            zipOptions: ZipFormatOptions(),
-            sevenZipOptions: SevenZipFormatOptions(),
-            zstdOptions: ZstdFormatOptions(),
-            tarOptions: TarFormatOptions(),
-            appleArchiveOptions: AppleArchiveFormatOptions(),
-            diskImageOptions: DiskImageFormatOptions(),
-            wimOptions: WimFormatOptions()
-        )
-    }
 }
 
-// MARK: - PrototypeCopyable Prototype Pattern Extension
-
 extension ArchiveAdvancedOptions: PrototypeCopyable {
-    /// Deep-copies this configuration model.
     public func clone() -> ArchiveAdvancedOptions {
-        return ArchiveAdvancedOptions(
+        ArchiveAdvancedOptions(
             cpuThreads: self.cpuThreads,
+            recoveryRecordRedundancyPercent: self.recoveryRecordRedundancyPercent,
             zipOptions: self.zipOptions,
             sevenZipOptions: self.sevenZipOptions,
             zstdOptions: self.zstdOptions,
@@ -380,13 +338,6 @@ extension ArchiveAdvancedOptions: PrototypeCopyable {
     }
 }
 
-// MARK: - Profiles
-
-//
-//
-
-
-/// Strongly-typed compression profile model for ZIP Deflate operations.
 public struct ZipCompressionProfile: Sendable, Equatable, Identifiable {
     public let id: String
     public let name: String
@@ -421,7 +372,21 @@ public struct ZipCompressionProfile: Sendable, Equatable, Identifiable {
     }
 }
 
-// MARK: - Standard Presets
+extension ZipCompressionProfile: PrototypeCopyable {
+    public func clone() -> ZipCompressionProfile {
+        ZipCompressionProfile(
+            id: self.id,
+            name: self.name,
+            level: self.level,
+            deflateLevel: self.deflateLevel,
+            zopfliIterations: self.zopfliIterations,
+            blockSplitting: self.blockSplitting,
+            maxBlockSplits: self.maxBlockSplits,
+            earlyExitThreshold: self.earlyExitThreshold,
+            targetThroughputFloorMBs: self.targetThroughputFloorMBs
+        )
+    }
+}
 
 extension ZipCompressionProfile {
     public static let store = ZipCompressionProfile(

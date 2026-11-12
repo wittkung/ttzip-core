@@ -13,6 +13,46 @@ use crate::fs::collision::probe::{probe_destination, ProbeResult};
 use crate::fs::collision::table::{ConflictTable, NewConflict};
 use crate::fs::collision::{CollisionError, ConflictKind, ItemKind, ItemMeta};
 
+fn collect_ancestors(rel_path: &Path) -> Vec<&Path> {
+    let mut ancestors = Vec::new();
+    let mut p = rel_path.parent();
+    while let Some(parent) = p {
+        if !parent.as_os_str().is_empty() {
+            ancestors.push(parent);
+        }
+        p = parent.parent();
+    }
+    ancestors.reverse();
+    ancestors
+}
+
+fn is_ancestor_pruned<F: FsOps>(
+    fs: &F,
+    dest_dirfd: RawFd,
+    rel_path: &Path,
+    absent_dirs: &mut HashSet<PathBuf>,
+    present_dirs: &mut HashSet<PathBuf>,
+) -> bool {
+    for anc in collect_ancestors(rel_path) {
+        if absent_dirs.contains(anc) {
+            return true;
+        }
+        if !present_dirs.contains(anc) {
+            match probe_destination(fs, dest_dirfd, anc) {
+                Ok(ProbeResult::Absent) => {
+                    absent_dirs.insert(anc.to_path_buf());
+                    return true;
+                }
+                Ok(ProbeResult::Item(..)) => {
+                    present_dirs.insert(anc.to_path_buf());
+                }
+                Err(_) => {}
+            }
+        }
+    }
+    false
+}
+
 pub fn preflight_detect<F: FsOps>(
     fs: &F,
     dest_dirfd: RawFd,
@@ -29,43 +69,9 @@ pub fn preflight_detect<F: FsOps>(
 
     for (rel_path, incoming_meta) in sorted_items {
         let rel_str = rel_path.to_str().unwrap_or_default();
-        if rel_str.is_empty() {
-            continue;
-        }
-
-        // Hierarchical prefix pruning: evaluate ancestors from top-level down
-        let mut ancestors = Vec::new();
-        let mut p = rel_path.parent();
-        while let Some(parent) = p {
-            if !parent.as_os_str().is_empty() {
-                ancestors.push(parent);
-            }
-            p = parent.parent();
-        }
-        ancestors.reverse();
-
-        let mut is_pruned = false;
-        for anc in ancestors {
-            if absent_dirs.contains(anc) {
-                is_pruned = true;
-                break;
-            }
-            if !present_dirs.contains(anc) {
-                match probe_destination(fs, dest_dirfd, anc) {
-                    Ok(ProbeResult::Absent) => {
-                        absent_dirs.insert(anc.to_path_buf());
-                        is_pruned = true;
-                        break;
-                    }
-                    Ok(ProbeResult::Item(..)) => {
-                        present_dirs.insert(anc.to_path_buf());
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
-
-        if is_pruned {
+        if rel_str.is_empty()
+            || is_ancestor_pruned(fs, dest_dirfd, rel_path, &mut absent_dirs, &mut present_dirs)
+        {
             continue;
         }
 

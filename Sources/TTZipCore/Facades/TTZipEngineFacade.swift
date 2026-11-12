@@ -285,51 +285,20 @@ extension TTZipEngineFacade {
         }
         
         let startTime = CFAbsoluteTimeGetCurrent()
-        let combinedProgress: ProgressSink = { p in
-            progress?(p)
-        }
-
-        let initialPolicy = handling.requestPolicy
-
-        var candidatePasswords: [String?] = []
-        if let explicitPwd = password, !explicitPwd.isEmpty {
-            candidatePasswords.append(explicitPwd)
-        } else {
-            candidatePasswords.append(nil)
-            if autoVaultUnlock {
-                let vaultCandidates = passwordVault.getEntries()
-                for entry in vaultCandidates {
-                    candidatePasswords.append(entry.password)
-                }
-            }
-        }
+        let combinedProgress: ProgressSink = { p in progress?(p) }
+        let candidatePasswords = buildCandidatePasswordList(explicitPassword: password, autoVaultUnlock: autoVaultUnlock)
 
         var lastError: Error?
         for candidate in candidatePasswords {
-            let request = ExtractionRequest(
-                archivePath: archivePath,
-                destinationRoot: destinationDir,
-                password: candidate,
-                entryFilter: nil,
-                rootAtCommonParent: false,
-                policy: initialPolicy
-            )
-
             do {
-                let outcome = try await extract(
-                    request,
+                let outcome = try await attemptCandidateExtraction(
+                    archivePath: archivePath,
+                    destinationDir: destinationDir,
+                    candidatePassword: candidate,
                     handling: handling,
                     progress: combinedProgress,
                     token: token
                 )
-                switch outcome.status {
-                case .stopped:
-                    throw ArchiveError.extractionStopped
-                case .completedWithFailures:
-                    throw ArchiveError.partialExtractionFailure(outcome: outcome)
-                case .completed:
-                    break
-                }
                 let elapsed = max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
                 if cachePasswordOnSuccess, let pwd = candidate {
                     ArchivePasswordStore.shared.setPassword(pwd, for: archivePath)
@@ -343,30 +312,7 @@ extension TTZipEngineFacade {
                     outcome: outcome
                 )
             } catch {
-                if let archiveErr = error as? ArchiveError {
-                    if archiveErr == .cancelled {
-                        throw archiveErr
-                    }
-                    if !archiveErr.isPasswordRelated {
-                        throw archiveErr
-                    }
-                    if token?.isCancelled() == true || Task.isCancelled {
-                        throw ArchiveError.cancelled
-                    }
-                    lastError = archiveErr
-                    continue
-                }
-                let archiveErr = ArchiveError.from(error: error)
-                if archiveErr == .cancelled {
-                    throw archiveErr
-                }
-                if !archiveErr.isPasswordRelated {
-                    throw archiveErr
-                }
-                if token?.isCancelled() == true || Task.isCancelled {
-                    throw ArchiveError.cancelled
-                }
-                lastError = archiveErr
+                lastError = try classifyCandidateExtractionFailure(error, token: token)
             }
         }
 
@@ -374,6 +320,65 @@ extension TTZipEngineFacade {
             throw err
         }
         throw ArchiveError.passwordRequired
+    }
+
+    private func buildCandidatePasswordList(explicitPassword: String?, autoVaultUnlock: Bool) -> [String?] {
+        if let explicitPwd = explicitPassword, !explicitPwd.isEmpty {
+            return [explicitPwd]
+        }
+        var candidates: [String?] = [nil]
+        if autoVaultUnlock {
+            for entry in passwordVault.getEntries() {
+                candidates.append(entry.password)
+            }
+        }
+        return candidates
+    }
+
+    private func attemptCandidateExtraction(
+        archivePath: String,
+        destinationDir: String,
+        candidatePassword: String?,
+        handling: CollisionHandling,
+        progress: @escaping ProgressSink,
+        token: CancellationToken?
+    ) async throws -> ExtractionOutcome {
+        let request = ExtractionRequest(
+            archivePath: archivePath,
+            destinationRoot: destinationDir,
+            password: candidatePassword,
+            entryFilter: nil,
+            rootAtCommonParent: false,
+            policy: handling.requestPolicy
+        )
+        let outcome = try await extract(
+            request,
+            handling: handling,
+            progress: progress,
+            token: token
+        )
+        switch outcome.status {
+        case .stopped:
+            throw ArchiveError.extractionStopped
+        case .completedWithFailures:
+            throw ArchiveError.partialExtractionFailure(outcome: outcome)
+        case .completed:
+            return outcome
+        }
+    }
+
+    private func classifyCandidateExtractionFailure(_ error: Error, token: CancellationToken?) throws -> ArchiveError {
+        let archiveErr = (error as? ArchiveError) ?? ArchiveError.from(error: error)
+        if archiveErr == .cancelled {
+            throw archiveErr
+        }
+        if !archiveErr.isPasswordRelated {
+            throw archiveErr
+        }
+        if token?.isCancelled() == true || Task.isCancelled {
+            throw ArchiveError.cancelled
+        }
+        return archiveErr
     }
 
     public func quickExtract(
@@ -411,93 +416,6 @@ extension TTZipEngineFacade {
             progress: progress,
             token: token
         )
-    }
-    
-    /// Extracts one entry (a directory entry includes its descendants) directly into `destinationDir`.
-    @discardableResult
-    public func extractSingleEntry(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String? = nil,
-        handling: CollisionHandling = .policy(.keepBoth)
-    ) async throws -> ExtractionOutcome {
-        let explicitPwd = password ?? ArchivePasswordStore.shared.getPassword(for: archivePath)
-        return try await extractEntries(
-            archivePath: archivePath,
-            entryPaths: [entryPath],
-            destinationDir: destinationDir,
-            password: explicitPwd,
-            handling: handling
-        )
-    }
-
-    /// Extracts the selected entries, plus every descendant of a selected directory, through the
-    /// collision-safe session loop. Entries are placed relative to their deepest common parent:
-    /// selecting `docs/report.pdf` writes `<destinationDir>/report.pdf`.
-    @discardableResult
-    public func extractEntries(
-        archivePath: String,
-        entryPaths: [String],
-        destinationDir: String,
-        password: String?,
-        handling: CollisionHandling = .policy(.keepBoth),
-        progress: ProgressSink? = nil
-    ) async throws -> ExtractionOutcome {
-        guard !archivePath.isEmpty, !destinationDir.isEmpty, FileManager.default.fileExists(atPath: archivePath) else {
-            throw ArchiveError.fileNotFound
-        }
-        guard !entryPaths.isEmpty else { return .nothingSelected }
-        try FileManager.default.createDirectory(atPath: destinationDir, withIntermediateDirectories: true)
-
-        let spotlightCreated = ArchiveExtractor.preventSpotlightIndexing(at: destinationDir)
-        defer {
-            ArchiveExtractor.removeSpotlightPrevention(at: destinationDir, wasCreated: spotlightCreated)
-        }
-
-        let request = ExtractionRequest(
-            archivePath: archivePath,
-            destinationRoot: destinationDir,
-            password: password,
-            entryFilter: entryPaths,
-            rootAtCommonParent: true,
-            policy: handling.requestPolicy
-        )
-        let outcome: ExtractionOutcome
-        do {
-            outcome = try await extract(request, handling: handling, progress: progress)
-        } catch {
-            throw ArchiveError.from(error: error)
-        }
-        ArchiveExtractor.propagateQuarantine(from: archivePath, to: destinationDir)
-        return outcome
-    }
-    
-    internal func executePipelineExtract(
-        archivePath: String,
-        destinationDir: String,
-        password: String?,
-        progress: (@Sendable (ArchiveProgress) -> Void)?,
-        token: CancellationToken? = nil
-    ) async throws -> Double {
-        let startTime = CFAbsoluteTimeGetCurrent()
-        let request = ExtractionRequest(
-            archivePath: archivePath,
-            destinationRoot: destinationDir,
-            password: password,
-            entryFilter: nil,
-            rootAtCommonParent: false,
-            policy: .keepBoth
-        )
-        let outcome = try await extract(request, handling: .policy(.keepBoth), progress: progress, token: token)
-        switch outcome.status {
-        case .stopped:
-            throw ArchiveError.extractionStopped
-        case .completedWithFailures:
-            throw ArchiveError.partialExtractionFailure(outcome: outcome)
-        case .completed:
-            return max(0.001, CFAbsoluteTimeGetCurrent() - startTime)
-        }
     }
 }
 
@@ -627,73 +545,5 @@ extension TTZipEngineFacade {
         dictionary: [String]
     ) async throws -> PasswordRecoveryResult {
         return try await recoveryEngine.recoverPassword(archivePath: archivePath, dictionary: dictionary)
-    }
-}
-
-// MARK: - Selected-Entry Extraction on Extractor Types
-
-// Defined in the TTZipCore module because the session loop (`extract(_:handling:progress:)`) and the
-// staging registry live here; `ArchiveExtractor` itself sits in the lower TTZipCoreArchive module.
-
-extension ArchiveExtractor {
-    /// Extracts a single entry (a directory entry includes its descendants) directly into `destinationDir`.
-    @discardableResult
-    public func extractSingleFile(
-        archivePath: String,
-        entryPath: String,
-        destinationDir: String,
-        password: String?,
-        handling: CollisionHandling = .policy(.keepBoth)
-    ) async throws -> ExtractionOutcome {
-        try await TTZipEngineFacade.shared.extractEntries(
-            archivePath: archivePath,
-            entryPaths: [entryPath],
-            destinationDir: destinationDir,
-            password: password,
-            handling: handling
-        )
-    }
-}
-
-extension ArchiveSelectiveExtractor {
-    /// Extracts the selected entries (a directory entry includes its descendants) into `destinationDir`,
-    /// relative to their deepest common parent.
-    @discardableResult
-    public func extractSelected(
-        archivePath: String,
-        targetEntryPaths: Set<String>,
-        destinationDir: String,
-        password: String? = nil,
-        handling: CollisionHandling = .policy(.keepBoth)
-    ) async throws -> ExtractionOutcome {
-        try await TTZipEngineFacade.shared.extractEntries(
-            archivePath: archivePath,
-            entryPaths: targetEntryPaths.sorted(),
-            destinationDir: destinationDir,
-            password: password,
-            handling: handling
-        )
-    }
-}
-
-// MARK: - Extraction Request Helpers
-
-private extension CollisionHandling {
-    /// Policy recorded in the `ExtractionRequest`; interactive sessions resolve conflicts
-    /// through the decision provider, so the request carries the non-destructive default.
-    var requestPolicy: CollisionPolicy {
-        switch self {
-        case .policy(let policy):
-            return policy
-        case .interactive:
-            return .keepBoth
-        }
-    }
-}
-
-private extension ExtractionOutcome {
-    /// Outcome of a selection that names no entries: nothing is read or written.
-    static var nothingSelected: ExtractionOutcome {
-        ExtractionOutcome(status: .completed, extracted: 0, replaced: 0, keptBoth: 0, skipped: 0, failed: [])
     }
 }

@@ -437,6 +437,22 @@ impl SafeMmapOptions {
         self
     }
 
+    fn resolve_map_length(&self, file_size: u64) -> Result<usize, TTZipStatus> {
+        if self.offset > file_size {
+            return Err(TTZipStatus::ErrInvalidOffset);
+        }
+        match self.len {
+            Some(l) => {
+                TruncationGuard::validate_bounds(self.offset, l, file_size)?;
+                Ok(l)
+            }
+            None => {
+                let remaining = file_size - self.offset;
+                usize::try_from(remaining).map_err(|_| TTZipStatus::ErrInvalidParam)
+            }
+        }
+    }
+
     /// Maps a file into virtual memory using the full 6-layer defense pipeline.
     ///
     /// # Errors
@@ -445,46 +461,23 @@ impl SafeMmapOptions {
         let metadata = file.metadata().map_err(|_| TTZipStatus::ErrOpenFailed)?;
         let file_size = metadata.len();
 
-        // 6. Zero-byte file self-healing
         if file_size == 0 {
-            if self.offset > 0 {
-                return Err(TTZipStatus::ErrInvalidOffset);
-            }
-            return Ok(SafeMmapView::empty());
+            return if self.offset > 0 {
+                Err(TTZipStatus::ErrInvalidOffset)
+            } else {
+                Ok(SafeMmapView::empty())
+            };
         }
 
-        // Extreme offset check
-        if self.offset > file_size {
-            return Err(TTZipStatus::ErrInvalidOffset);
-        }
-
-        let map_len = match self.len {
-            Some(l) => {
-                TruncationGuard::validate_bounds(self.offset, l, file_size)?;
-                l
-            }
-            None => {
-                let remaining = file_size - self.offset;
-                if remaining > usize::MAX as u64 {
-                    return Err(TTZipStatus::ErrInvalidParam);
-                }
-                remaining as usize
-            }
-        };
-
+        let map_len = self.resolve_map_length(file_size)?;
         if map_len == 0 {
             return Ok(SafeMmapView::empty());
         }
 
-        // 4. Resident memory quota guard
         let memory_guard = MmapResidentMemoryGuard::new(self.max_resident_limit);
         memory_guard.validate_budget(map_len)?;
 
-        // 2. Page boundary alignment computation
-        let page_size = system_page_size();
-        let alignment = PageBoundaryGuard::compute_alignment(self.offset, map_len, page_size)?;
-
-        // Check live file size against aligned bounds
+        let alignment = PageBoundaryGuard::compute_alignment(self.offset, map_len, system_page_size())?;
         let req_end = alignment
             .aligned_offset
             .checked_add(alignment.aligned_len as u64)
@@ -494,7 +487,6 @@ impl SafeMmapOptions {
             return Err(TTZipStatus::ErrInvalidOffset);
         }
 
-        // 3. Read-only map execution via memmap2
         let mmap = unsafe {
             memmap2::MmapOptions::new()
                 .offset(alignment.aligned_offset)
@@ -503,13 +495,11 @@ impl SafeMmapOptions {
                 .map_err(|_| TTZipStatus::ErrMmapFailed)?
         };
 
-        let tracker = ResourceTracker::new(alignment.aligned_len);
-
         Ok(SafeMmapView {
             mmap: Some(mmap),
             page_offset: alignment.page_offset,
             visible_len: map_len,
-            _tracker: tracker,
+            _tracker: ResourceTracker::new(alignment.aligned_len),
         })
     }
 

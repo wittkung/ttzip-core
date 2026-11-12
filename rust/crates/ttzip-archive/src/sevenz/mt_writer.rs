@@ -6,12 +6,134 @@
 //! Provides `prepare_block` for parallel, CPU-bound solid compression across worker threads
 //! and `SevenZArchiveWriter` for $O(1)$ lock-free sequential append and 7z metadata header finalization.
 
+use std::cell::RefCell;
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use crate::codecs::lzma2::{Fl2CParameter, Fl2CStream, Fl2InBuffer, Fl2OutBuffer};
+use crate::codecs::lzma2::{calculate_lzma2_dictionary_mb, Fl2CParameter, Fl2CStream};
 use crate::crypto::crc32::crc32_fast;
 use crate::sevenz::dag::SevenZError;
 use crate::sevenz::format::*;
+use crate::types::{TTZipCompressionLevel, TTZipStatus};
+use crate::zip::writer::ZipInputItem;
+
+pub(crate) const MAX_REUSABLE_FL2_DICT_BYTES: usize = 2 * 1024 * 1024;
+
+thread_local! {
+    static REUSABLE_FL2_CSTREAM: RefCell<Option<Fl2CStream>> = const { RefCell::new(None) };
+}
+
+fn resolve_fl2_level_and_dict(
+    level: i32,
+    expected_size: Option<u64>,
+    dict_override: Option<u32>,
+    solid_block_size_mb: u32,
+) -> (usize, usize, usize, usize) {
+    let (high_comp, eff_level, tt_level) = if level <= 1 {
+        (0usize, 1usize, TTZipCompressionLevel::Fastest)
+    } else if level <= 4 {
+        (0usize, level as usize, TTZipCompressionLevel::Fast)
+    } else if level <= 7 {
+        (0usize, level as usize, TTZipCompressionLevel::Normal)
+    } else if level <= 9 {
+        (0usize, level as usize, TTZipCompressionLevel::Maximum)
+    } else {
+        (1usize, 10usize, TTZipCompressionLevel::Ultra)
+    };
+    let default_dict = (calculate_lzma2_dictionary_mb(tt_level, 8.0) as usize) * 1024 * 1024;
+    let block_bytes = (solid_block_size_mb as usize).saturating_mul(1024 * 1024);
+    let exp_cap = expected_size
+        .map(|e| e.max(1 << 20).next_power_of_two() as usize)
+        .unwrap_or(usize::MAX);
+    let auto_dict = default_dict
+        .min(if block_bytes > 0 { block_bytes.max(1 << 20) } else { usize::MAX })
+        .min(exp_cap)
+        .max(1 << 20);
+    let dict_bytes = dict_override.map(|d| (d as usize).max(1 << 20)).unwrap_or(auto_dict);
+    let interval = if block_bytes > 0 {
+        (block_bytes / dict_bytes.max(1)).clamp(1, 16)
+    } else {
+        0
+    };
+    (high_comp, eff_level, dict_bytes, interval)
+}
+
+pub(crate) fn apply_fl2_cstream_params(
+    cstream: &mut Fl2CStream,
+    level: i32,
+    expected_size: Option<u64>,
+    dict_override: Option<u32>,
+    solid_block_size_mb: u32,
+) -> Result<usize, TTZipStatus> {
+    let (high_comp, eff_level, dict_bytes, interval) =
+        resolve_fl2_level_and_dict(level, expected_size, dict_override, solid_block_size_mb);
+    cstream.set_parameter(Fl2CParameter::HighCompression, high_comp)?;
+    cstream.set_parameter(Fl2CParameter::CompressionLevel, eff_level)?;
+    cstream.set_parameter(Fl2CParameter::DictionarySize, dict_bytes)?;
+    cstream.set_parameter(Fl2CParameter::ResetInterval, interval)?;
+    cstream.set_parameter(Fl2CParameter::OmitProperties, 1)?;
+    cstream.init(0)?;
+    Ok(dict_bytes)
+}
+
+pub(crate) fn encode_fl2_items_with_sink<F>(
+    items: &[ZipInputItem],
+    level: i32,
+    threads: u32,
+    uncompressed_len: u64,
+    mut on_out: F,
+) -> Result<u8, TTZipStatus>
+where
+    F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
+{
+    let resolved_threads = super::writer::resolve_7z_threads(threads);
+    let chunk_len = (uncompressed_len as usize).clamp(64 * 1024, 1024 * 1024);
+    let mut run_encode = |cstream: &mut Fl2CStream| -> Result<u8, TTZipStatus> {
+        super::decoder::codec_pump::with_decode_scratch_buf(chunk_len, |out_chunk| {
+            for item in items.iter().filter(|it| !it.is_directory && !it.data.is_empty()) {
+                super::writer::feed_fl2_slice(cstream, &item.data, out_chunk, &mut on_out)?;
+            }
+            super::writer::finish_fl2_stream(cstream, out_chunk, &mut on_out)
+        })
+    };
+    if resolved_threads == 1 {
+        return REUSABLE_FL2_CSTREAM.with(|cell| {
+            if let Ok(mut slot) = cell.try_borrow_mut() {
+                let cs = match slot.as_mut() {
+                    Some(cs) => cs,
+                    None => slot.insert(Fl2CStream::new()?),
+                };
+                let dict_bytes = apply_fl2_cstream_params(
+                    cs,
+                    level,
+                    Some(uncompressed_len),
+                    None,
+                    0,
+                )?;
+                let res = run_encode(cs);
+                if res.is_err() || dict_bytes > MAX_REUSABLE_FL2_DICT_BYTES {
+                    *slot = None;
+                }
+                return res;
+            }
+            let mut cs = super::writer::configure_fl2_stream(
+                level,
+                resolved_threads,
+                Some(uncompressed_len),
+                None,
+                0,
+            )?;
+            run_encode(&mut cs)
+        });
+    }
+    let mut cs = super::writer::configure_fl2_stream(
+        level,
+        resolved_threads,
+        Some(uncompressed_len),
+        None,
+        0,
+    )?;
+    run_encode(&mut cs)
+}
 
 /// Supported compression methods for 7z solid block encoding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -76,42 +198,23 @@ pub struct PreparedBlock {
     pub empty_flags: Vec<bool>,
 }
 
-/// Prepares and compresses a batch of input entries into a standalone, self-contained `PreparedBlock`.
-///
-/// This function is thread-safe and pure, designed to be executed across multiple worker threads
-/// concurrently. It calculates per-entry uncompressed CRC32s and compresses the concatenated solid
-/// stream using the specified method (LZMA2 or COPY).
-pub fn prepare_block<R: Read>(
-    entries_data: Vec<(String, u64, R)>,
-    method: SevenZEncoderMethod,
-    options: SevenZEncoderOptions,
-) -> Result<PreparedBlock, SevenZError> {
-    if entries_data.is_empty() {
-        return Ok(PreparedBlock {
-            compressed_data: Vec::new(),
-            substream_sizes: Vec::new(),
-            substream_crcs: Vec::new(),
-            block_crc: 0,
-            unpack_size: 0,
-            method,
-            coder_props: Vec::new(),
-            empty_flags: Vec::new(),
-        });
-    }
+type UncompressedBlockEntries = (Vec<u8>, Vec<u64>, Vec<u32>, Vec<bool>, u64);
+type PooledLzma2BlockResult = Option<Result<(Vec<u8>, Vec<u8>), TTZipStatus>>;
 
+fn collect_uncompressed_block_entries<R: Read>(
+    entries_data: Vec<(String, u64, R)>,
+) -> Result<UncompressedBlockEntries, SevenZError> {
     let mut substream_sizes = Vec::with_capacity(entries_data.len());
     let mut substream_crcs = Vec::with_capacity(entries_data.len());
     let mut empty_flags = Vec::with_capacity(entries_data.len());
     let mut total_unpack_size: u64 = 0;
 
-    // Buffer uncompressed input payload and compute per-stream CRC32
     let mut uncompressed_payload = Vec::new();
     const READ_CHUNK_SIZE: usize = 64 * 1024;
     let mut read_buf = vec![0u8; READ_CHUNK_SIZE];
 
     for (name, size_hint, mut reader) in entries_data {
         if name.ends_with('/') {
-            // Directory entry (empty stream)
             empty_flags.push(true);
             continue;
         }
@@ -147,78 +250,119 @@ pub fn prepare_block<R: Read>(
         debug_assert_eq!(uncompressed_payload.len() - start_offset, entry_len as usize);
     }
 
+    Ok((
+        uncompressed_payload,
+        substream_sizes,
+        substream_crcs,
+        empty_flags,
+        total_unpack_size,
+    ))
+}
+
+fn compress_solid_block_lzma2(
+    uncompressed_payload: &[u8],
+    total_unpack_size: u64,
+    options: SevenZEncoderOptions,
+) -> Result<(Vec<u8>, Vec<u8>), SevenZError> {
+    let resolved_threads = super::writer::resolve_7z_threads(options.thread_budget);
+    let chunk_len = (total_unpack_size as usize).clamp(64 * 1024, 2 * 1024 * 1024);
+    let run_block = |cstream: &mut Fl2CStream| -> Result<(Vec<u8>, Vec<u8>), TTZipStatus> {
+        let mut comp_data = Vec::new();
+        let dict_prop = super::decoder::codec_pump::with_decode_scratch_buf(chunk_len, |out_chunk| {
+            super::writer::feed_fl2_slice(cstream, uncompressed_payload, out_chunk, |chunk| {
+                comp_data.extend_from_slice(chunk);
+                Ok(())
+            })?;
+            super::writer::finish_fl2_stream(cstream, out_chunk, |chunk| {
+                comp_data.extend_from_slice(chunk);
+                Ok(())
+            })
+        })?;
+        Ok((comp_data, vec![dict_prop]))
+    };
+
+    if resolved_threads == 1 {
+        let pooled = REUSABLE_FL2_CSTREAM.with(|cell| -> PooledLzma2BlockResult {
+            let mut slot = cell.try_borrow_mut().ok()?;
+            let cs = match slot.as_mut() {
+                Some(cs) => cs,
+                None => match Fl2CStream::new() {
+                    Ok(s) => slot.insert(s),
+                    Err(e) => return Some(Err(e)),
+                },
+            };
+            let dict_bytes = match apply_fl2_cstream_params(
+                cs,
+                options.compression_level as i32,
+                Some(total_unpack_size),
+                options.dict_size,
+                0,
+            ) {
+                Ok(d) => d,
+                Err(e) => {
+                    *slot = None;
+                    return Some(Err(e));
+                }
+            };
+            let res = run_block(cs);
+            if res.is_err() || dict_bytes > MAX_REUSABLE_FL2_DICT_BYTES {
+                *slot = None;
+            }
+            Some(res)
+        });
+        if let Some(res) = pooled {
+            return res.map_err(SevenZError::from);
+        }
+    }
+
+    let mut cstream = super::writer::configure_fl2_stream(
+        options.compression_level as i32,
+        resolved_threads,
+        Some(total_unpack_size),
+        options.dict_size,
+        0,
+    )?;
+    run_block(&mut cstream).map_err(SevenZError::from)
+}
+
+/// Prepares and compresses a batch of input entries into a standalone, self-contained `PreparedBlock`.
+///
+/// This function is thread-safe and pure, designed to be executed across multiple worker threads
+/// concurrently. It calculates per-entry uncompressed CRC32s and compresses the concatenated solid
+/// stream using the specified method (LZMA2 or COPY).
+pub fn prepare_block<R: Read>(
+    entries_data: Vec<(String, u64, R)>,
+    method: SevenZEncoderMethod,
+    options: SevenZEncoderOptions,
+) -> Result<PreparedBlock, SevenZError> {
+    if entries_data.is_empty() {
+        return Ok(PreparedBlock {
+            compressed_data: Vec::new(),
+            substream_sizes: Vec::new(),
+            substream_crcs: Vec::new(),
+            block_crc: 0,
+            unpack_size: 0,
+            method,
+            coder_props: Vec::new(),
+            empty_flags: Vec::new(),
+        });
+    }
+
+    let (
+        uncompressed_payload,
+        substream_sizes,
+        substream_crcs,
+        empty_flags,
+        total_unpack_size,
+    ) = collect_uncompressed_block_entries(entries_data)?;
+
     let (compressed_data, coder_props) = if method == SevenZEncoderMethod::Copy
         || total_unpack_size == 0
         || options.compression_level == 0
     {
         (uncompressed_payload, Vec::new())
     } else {
-        let mut cstream = if options.thread_budget > 1 {
-            Fl2CStream::new_mt(options.thread_budget)?
-        } else {
-            Fl2CStream::new()?
-        };
-
-        cstream.set_parameter(
-            Fl2CParameter::CompressionLevel,
-            options.compression_level as usize,
-        )?;
-        cstream.set_parameter(Fl2CParameter::OmitProperties, 1)?;
-        if let Some(dict_sz) = options.dict_size {
-            cstream.set_parameter(Fl2CParameter::DictionarySize, dict_sz as usize)?;
-        }
-        cstream.init(0)?;
-
-        // 2MB bounded micro-buffer for chunked streaming compression pipeline
-        const OUT_CHUNK_SIZE: usize = 2 * 1024 * 1024;
-        let mut out_chunk = vec![0u8; OUT_CHUNK_SIZE];
-        let mut comp_data = Vec::new();
-
-        let mut in_offset = 0usize;
-        while in_offset < uncompressed_payload.len() {
-            let slice = &uncompressed_payload[in_offset..];
-            let mut in_buf = Fl2InBuffer {
-                src: slice.as_ptr() as *const libc::c_void,
-                size: slice.len(),
-                pos: 0,
-            };
-
-            while in_buf.pos < in_buf.size {
-                let mut out_buf = Fl2OutBuffer {
-                    dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
-                    size: out_chunk.len(),
-                    pos: 0,
-                };
-
-                let res = cstream.compress_chunk(&mut in_buf, &mut out_buf)?;
-                if out_buf.pos > 0 {
-                    comp_data.extend_from_slice(&out_chunk[..out_buf.pos]);
-                }
-                if res == 0 && in_buf.pos == 0 {
-                    break;
-                }
-            }
-            in_offset += in_buf.pos;
-        }
-
-        // Finalize stream and drain all remaining compressed blocks
-        loop {
-            let mut out_buf = Fl2OutBuffer {
-                dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
-                size: out_chunk.len(),
-                pos: 0,
-            };
-            let remaining = cstream.end_stream(&mut out_buf)?;
-            if out_buf.pos > 0 {
-                comp_data.extend_from_slice(&out_chunk[..out_buf.pos]);
-            }
-            if remaining == 0 {
-                break;
-            }
-        }
-
-        let dict_prop = cstream.dict_property();
-        (comp_data, vec![dict_prop])
+        compress_solid_block_lzma2(&uncompressed_payload, total_unpack_size, options)?
     };
 
     let block_crc = crc32_fast(0, &compressed_data);
@@ -359,116 +503,102 @@ impl<W: Write + Seek> SevenZArchiveWriter<W> {
     }
 }
 
-/// Constructs 7z binary Metadata Header bytes for multi-folder solid archives.
-fn build_multi_folder_7z_header(folders: &[FolderRecord], files: &[FileRecord]) -> Vec<u8> {
-    let mut h = Vec::new();
-    h.push(K_HEADER);
+fn write_multi_folder_pack_and_unpack_info(folders: &[FolderRecord], h: &mut Vec<u8>) {
+    h.push(K_PACK_INFO);
+    write_varint(0, h);
+    write_varint(folders.len() as u64, h);
+    h.push(K_SIZE);
+    for f in folders {
+        write_varint(f.pack_size, h);
+    }
+    h.push(K_CRC);
+    h.push(1);
+    for f in folders {
+        h.extend_from_slice(&f.block_crc.to_le_bytes());
+    }
+    h.push(K_END);
 
-    if !folders.is_empty() {
-        // 1. kMainStreamsInfo
-        h.push(K_MAIN_STREAMS_INFO);
+    h.push(K_UNPACK_INFO);
+    h.push(K_FOLDER);
+    write_varint(folders.len() as u64, h);
+    h.push(0);
 
-        // 1.1 kPackInfo
-        h.push(K_PACK_INFO);
-        write_varint(0, &mut h); // packPos = 0
-        write_varint(folders.len() as u64, &mut h); // numPackStreams
-        h.push(K_SIZE);
-        for f in folders {
-            write_varint(f.pack_size, &mut h);
+    for f in folders {
+        write_varint(1, h);
+        let mut method_bytes = Vec::new();
+        let mut temp_mid = f.method_id;
+        while temp_mid > 0 {
+            method_bytes.push((temp_mid & 0xFF) as u8);
+            temp_mid >>= 8;
         }
-        h.push(K_CRC);
-        h.push(1); // allDefined = 1
-        for f in folders {
-            h.extend_from_slice(&f.block_crc.to_le_bytes());
+        if method_bytes.is_empty() {
+            method_bytes.push(0);
         }
-        h.push(K_END); // end kPackInfo
+        method_bytes.reverse();
 
-        // 1.2 kUnpackInfo
-        h.push(K_UNPACK_INFO);
-        h.push(K_FOLDER);
-        write_varint(folders.len() as u64, &mut h); // numFolders
-        h.push(0); // external = 0
-
-        for f in folders {
-            write_varint(1, &mut h); // numCoders = 1
-            let mut method_bytes = Vec::new();
-            let mut temp_mid = f.method_id;
-            while temp_mid > 0 {
-                method_bytes.push((temp_mid & 0xFF) as u8);
-                temp_mid >>= 8;
-            }
-            if method_bytes.is_empty() {
-                method_bytes.push(0);
-            }
-            method_bytes.reverse();
-
-            let mut coder_flags = (method_bytes.len() as u8) & 0x0F;
-            if !f.coder_props.is_empty() {
-                coder_flags |= 0x20;
-            }
-            h.push(coder_flags);
-            h.extend_from_slice(&method_bytes);
-
-            if !f.coder_props.is_empty() {
-                write_varint(f.coder_props.len() as u64, &mut h);
-                h.extend_from_slice(&f.coder_props);
-            }
+        let mut coder_flags = (method_bytes.len() as u8) & 0x0F;
+        if !f.coder_props.is_empty() {
+            coder_flags |= 0x20;
         }
+        h.push(coder_flags);
+        h.extend_from_slice(&method_bytes);
 
-        // CodersUnpackSize
-        h.push(K_CODERS_UNPACK_SIZE);
-        for f in folders {
-            write_varint(f.unpack_size, &mut h);
+        if !f.coder_props.is_empty() {
+            write_varint(f.coder_props.len() as u64, h);
+            h.extend_from_slice(&f.coder_props);
         }
-        h.push(K_END);
-
-        // 1.3 kSubStreamsInfo
-        let total_substreams: usize = folders.iter().map(|f| f.substream_sizes.len()).sum();
-        let has_multi_stream_folders = folders.iter().any(|f| f.substream_sizes.len() > 1);
-
-        if total_substreams > 0 {
-            h.push(K_SUB_STREAMS_INFO);
-            h.push(K_NUM_UNPACK_STREAM);
-            for f in folders {
-                write_varint(f.substream_sizes.len() as u64, &mut h);
-            }
-
-            if has_multi_stream_folders {
-                h.push(K_SIZE);
-                for f in folders {
-                    if f.substream_sizes.len() > 1 {
-                        for &sz in &f.substream_sizes[..f.substream_sizes.len() - 1] {
-                            write_varint(sz, &mut h);
-                        }
-                    }
-                }
-            }
-
-            h.push(K_CRC);
-            h.push(1); // allDefined = 1
-            for f in folders {
-                for &c in &f.substream_crcs {
-                    h.extend_from_slice(&c.to_le_bytes());
-                }
-            }
-
-            h.push(K_END); // end kSubStreamsInfo
-        }
-
-        h.push(K_END); // end kMainStreamsInfo
     }
 
-    // 2. kFilesInfo
+    h.push(K_CODERS_UNPACK_SIZE);
+    for f in folders {
+        write_varint(f.unpack_size, h);
+    }
+    h.push(K_END);
+}
+
+fn write_multi_folder_substreams_info(folders: &[FolderRecord], h: &mut Vec<u8>) {
+    let total_substreams: usize = folders.iter().map(|f| f.substream_sizes.len()).sum();
+    if total_substreams == 0 {
+        return;
+    }
+    let has_multi_stream_folders = folders.iter().any(|f| f.substream_sizes.len() > 1);
+
+    h.push(K_SUB_STREAMS_INFO);
+    h.push(K_NUM_UNPACK_STREAM);
+    for f in folders {
+        write_varint(f.substream_sizes.len() as u64, h);
+    }
+
+    if has_multi_stream_folders {
+        h.push(K_SIZE);
+        for f in folders {
+            if f.substream_sizes.len() > 1 {
+                for &sz in &f.substream_sizes[..f.substream_sizes.len() - 1] {
+                    write_varint(sz, h);
+                }
+            }
+        }
+    }
+
+    h.push(K_CRC);
+    h.push(1);
+    for f in folders {
+        for &c in &f.substream_crcs {
+            h.extend_from_slice(&c.to_le_bytes());
+        }
+    }
+    h.push(K_END);
+}
+
+fn write_multi_folder_files_info(files: &[FileRecord], h: &mut Vec<u8>) {
     h.push(K_FILES_INFO);
-    write_varint(files.len() as u64, &mut h);
+    write_varint(files.len() as u64, h);
 
     if !files.is_empty() {
-        // 2.1 kEmptyStream
-        let has_empty = files.iter().any(|f| f.is_empty_stream);
-        if has_empty {
+        if files.iter().any(|f| f.is_empty_stream) {
             h.push(K_EMPTY_STREAM);
             let num_bytes = files.len().div_ceil(8);
-            write_varint(num_bytes as u64, &mut h);
+            write_varint(num_bytes as u64, h);
 
             for chunk in files.chunks(8) {
                 let mut byte = 0u8;
@@ -481,33 +611,94 @@ fn build_multi_folder_7z_header(folders: &[FolderRecord], files: &[FileRecord]) 
             }
         }
 
-        // 2.2 kName
         h.push(K_NAME);
         let mut names_u16_bytes = Vec::new();
         for f in files {
             for u in f.rel_path.encode_utf16() {
                 names_u16_bytes.extend_from_slice(&u.to_le_bytes());
             }
-            names_u16_bytes.extend_from_slice(&0u16.to_le_bytes()); // Null terminator
+            names_u16_bytes.extend_from_slice(&0u16.to_le_bytes());
         }
-        write_varint((1 + names_u16_bytes.len()) as u64, &mut h);
-        h.push(0); // external = 0
+        write_varint((1 + names_u16_bytes.len()) as u64, h);
+        h.push(0);
         h.extend_from_slice(&names_u16_bytes);
 
-        // 2.3 kWinAttributes
         h.push(K_WIN_ATTRIBUTES);
         let num_attr_bytes = 2 + (files.len() * 4);
-        write_varint(num_attr_bytes as u64, &mut h);
-        h.push(1); // allDefined = 1
-        h.push(0); // external = 0
+        write_varint(num_attr_bytes as u64, h);
+        h.push(1);
+        h.push(0);
         for f in files {
             let attr: u32 = if f.is_directory { 0x10 } else { 0x20 };
             h.extend_from_slice(&attr.to_le_bytes());
         }
     }
 
-    h.push(K_END); // end kFilesInfo
-    h.push(K_END); // end kHeader
+    h.push(K_END);
+}
 
+/// Constructs 7z binary Metadata Header bytes for multi-folder solid archives.
+fn build_multi_folder_7z_header(folders: &[FolderRecord], files: &[FileRecord]) -> Vec<u8> {
+    let mut h = Vec::new();
+    h.push(K_HEADER);
+
+    if !folders.is_empty() {
+        h.push(K_MAIN_STREAMS_INFO);
+        write_multi_folder_pack_and_unpack_info(folders, &mut h);
+        write_multi_folder_substreams_info(folders, &mut h);
+        h.push(K_END);
+    }
+
+    write_multi_folder_files_info(files, &mut h);
+    h.push(K_END);
     h
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_reusable_fl2_cstream_evicts_oversized_dictionary() {
+        assert_eq!(MAX_REUSABLE_FL2_DICT_BYTES, 2 * 1024 * 1024);
+        let entries = vec![(
+            "block.bin".to_string(),
+            4096u64,
+            std::io::Cursor::new(vec![0x5Au8; 4096]),
+        )];
+        let large_opts = SevenZEncoderOptions {
+            compression_level: 7,
+            thread_budget: 1,
+            dict_size: Some(16 * 1024 * 1024),
+        };
+        let block = prepare_block(entries, SevenZEncoderMethod::Lzma2, large_opts)
+            .expect("prepare 16MB dict block");
+        assert!(!block.compressed_data.is_empty());
+
+        let retained_large = REUSABLE_FL2_CSTREAM.with(|cell| cell.borrow().is_some());
+        assert!(
+            !retained_large,
+            "16 MiB dictionary CStream exceeds 64 MiB total workspace and must be evicted"
+        );
+
+        let small_entries = vec![(
+            "small.bin".to_string(),
+            4096u64,
+            std::io::Cursor::new(vec![0x5Au8; 4096]),
+        )];
+        let small_opts = SevenZEncoderOptions {
+            compression_level: 5,
+            thread_budget: 1,
+            dict_size: Some(1024 * 1024),
+        };
+        let small_block = prepare_block(small_entries, SevenZEncoderMethod::Lzma2, small_opts)
+            .expect("prepare 1MB dict block");
+        assert!(!small_block.compressed_data.is_empty());
+
+        let retained_small = REUSABLE_FL2_CSTREAM.with(|cell| cell.borrow().is_some());
+        assert!(
+            retained_small,
+            "1 MiB dictionary CStream fits within 64 MiB ceiling and must be retained"
+        );
+    }
 }

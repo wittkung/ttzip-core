@@ -51,47 +51,65 @@ fn execute_repair_internal(
     }
 
     let start_time = Instant::now();
+    let (format_name, salvaged_count) = run_repair_engine(damaged_archive, output, format_opt)?;
+    let elapsed = start_time.elapsed();
 
-    // Determine target repair engine (ZIP vs TAR)
+    if !silent {
+        print_repair_report(
+            damaged_archive,
+            output,
+            format_name,
+            salvaged_count,
+            elapsed,
+            json,
+        )?;
+    }
+
+    Ok(salvaged_count)
+}
+
+fn run_repair_engine(
+    damaged_archive: &Path,
+    output: &Path,
+    format_opt: Option<&str>,
+) -> Result<(&'static str, usize), String> {
     let is_tar = if let Some(fmt) = format_opt {
         fmt.eq_ignore_ascii_case("tar")
     } else {
-        let name_lower = damaged_archive
+        damaged_archive
             .file_name()
             .and_then(|s| s.to_str())
-            .map(|s| s.to_lowercase())
-            .unwrap_or_default();
-        name_lower.ends_with(".tar")
+            .map(|s| s.to_lowercase().ends_with(".tar"))
+            .unwrap_or(false)
     };
 
-    let (format_name, salvaged_count) = if is_tar {
+    if is_tar {
         let count = repair_damaged_tar(damaged_archive, output)
             .map_err(|e| format!("TAR repair failed: {:?}", e))?;
-        ("TAR", count)
-    } else {
-        match repair_damaged_zip(damaged_archive, output) {
-            Ok(count) => ("ZIP", count),
-            Err(e) => {
-                // If zip failed and no format was explicitly given, try tar
-                if format_opt.is_none() {
-                    if let Ok(tar_count) = repair_damaged_tar(damaged_archive, output) {
-                        ("TAR", tar_count)
-                    } else {
-                        return Err(format!("ZIP self-healing repair failed: {:?}", e));
-                    }
-                } else {
-                    return Err(format!("ZIP self-healing repair failed: {:?}", e));
-                }
-            }
-        }
-    };
-
-    let elapsed = start_time.elapsed();
-
-    if silent {
-        return Ok(salvaged_count);
+        return Ok(("TAR", count));
     }
 
+    match repair_damaged_zip(damaged_archive, output) {
+        Ok(count) => Ok(("ZIP", count)),
+        Err(e) => {
+            if format_opt.is_none() {
+                if let Ok(tar_count) = repair_damaged_tar(damaged_archive, output) {
+                    return Ok(("TAR", tar_count));
+                }
+            }
+            Err(format!("ZIP self-healing repair failed: {:?}", e))
+        }
+    }
+}
+
+fn print_repair_report(
+    damaged_archive: &Path,
+    output: &Path,
+    format_name: &str,
+    salvaged_count: usize,
+    elapsed: std::time::Duration,
+    json: bool,
+) -> Result<(), String> {
     if json {
         let dto = RepairResultDto {
             damaged_archive: damaged_archive.to_string_lossy().to_string(),
@@ -103,7 +121,7 @@ fn execute_repair_internal(
         let json_str = serde_json::to_string_pretty(&dto)
             .map_err(|e| format!("Failed to serialize repair JSON: {}", e))?;
         println!("{}", json_str);
-        return Ok(salvaged_count);
+        return Ok(());
     }
 
     println!("{:=<80}", "");
@@ -116,6 +134,5 @@ fn execute_repair_internal(
     println!("Duration:        {:.2?}", elapsed);
     println!("Status:          SUCCESS (Healthy structure restored)");
     println!("{:=<80}", "");
-
-    Ok(salvaged_count)
+    Ok(())
 }

@@ -20,6 +20,7 @@ pub mod solid_seek;
 pub mod time;
 pub mod varint;
 pub mod writer;
+pub(crate) mod writer_header;
 
 pub use dag::{build_and_sort, CoderGraph, CoderNode};
 pub use error::SevenZError;

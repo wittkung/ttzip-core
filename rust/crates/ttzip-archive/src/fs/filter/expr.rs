@@ -101,6 +101,29 @@ pub enum FilterExpr<'a> {
 }
 
 impl<'a> FilterExpr<'a> {
+    #[inline]
+    fn matches_glob(pattern: &str, matcher: &Option<GlobMatcher>, target: &FilterTarget) -> bool {
+        if let Some(m) = matcher {
+            m.is_match(target.name) || m.is_match(target.path)
+        } else {
+            contains_case_insensitive(target.name, pattern)
+                || contains_case_insensitive(target.path, pattern)
+        }
+    }
+
+    #[inline]
+    fn matches_extensions(extensions: &[&str], target: &FilterTarget) -> bool {
+        if extensions.is_empty() {
+            return true;
+        }
+        let ext = extract_extension(target.name);
+        let path_ext = extract_extension(target.path);
+        extensions.iter().any(|&e| {
+            let clean_e = e.strip_prefix('.').unwrap_or(e);
+            clean_e.eq_ignore_ascii_case(ext) || clean_e.eq_ignore_ascii_case(path_ext)
+        })
+    }
+
     /// Evaluates the expression against target metadata with ZERO heap allocations.
     #[inline]
     pub fn evaluate(&self, target: &FilterTarget) -> bool {
@@ -108,23 +131,10 @@ impl<'a> FilterExpr<'a> {
             FilterExpr::MatchAll => true,
             FilterExpr::MatchNone => false,
             FilterExpr::FilenameGlob { pattern, matcher } => {
-                if let Some(m) = matcher {
-                    m.is_match(target.name) || m.is_match(target.path)
-                } else {
-                    contains_case_insensitive(target.name, pattern)
-                        || contains_case_insensitive(target.path, pattern)
-                }
+                Self::matches_glob(pattern, matcher, target)
             }
             FilterExpr::Extension { extensions, .. } => {
-                if extensions.is_empty() {
-                    return true;
-                }
-                let ext = extract_extension(target.name);
-                let path_ext = extract_extension(target.path);
-                extensions.iter().any(|&e| {
-                    let clean_e = e.strip_prefix('.').unwrap_or(e);
-                    clean_e.eq_ignore_ascii_case(ext) || clean_e.eq_ignore_ascii_case(path_ext)
-                })
+                Self::matches_extensions(extensions, target)
             }
             FilterExpr::Size { target_bytes, op } => {
                 op.compare(&target.uncompressed_size, target_bytes)
@@ -133,12 +143,8 @@ impl<'a> FilterExpr<'a> {
                 target_epoch_secs,
                 op,
             } => op.compare(&target.mtime_epoch_secs, target_epoch_secs),
-            FilterExpr::And(left, right) => {
-                left.evaluate(target) && right.evaluate(target)
-            }
-            FilterExpr::Or(left, right) => {
-                left.evaluate(target) || right.evaluate(target)
-            }
+            FilterExpr::And(left, right) => left.evaluate(target) && right.evaluate(target),
+            FilterExpr::Or(left, right) => left.evaluate(target) || right.evaluate(target),
             FilterExpr::Not(operand) => !operand.evaluate(target),
         }
     }

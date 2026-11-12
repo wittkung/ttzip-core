@@ -3,6 +3,7 @@
 
 import Foundation
 import Observation
+import TTZipArchiveContract
 
 /// Strongly-typed character encoding metadata record.
 public struct TTZipEncodingInfo: Identifiable, Sendable, Hashable, Codable {

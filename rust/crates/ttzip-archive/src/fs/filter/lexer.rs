@@ -25,24 +25,33 @@ pub enum DslToken<'a> {
     Comma,
 }
 
+impl<'a> DslToken<'a> {
+    const fn static_symbol(&self) -> &'static str {
+        match self {
+            DslToken::Colon => ":",
+            DslToken::And => "AND",
+            DslToken::Or => "OR",
+            DslToken::Not => "NOT",
+            DslToken::LeftParen => "(",
+            DslToken::RightParen => ")",
+            DslToken::GreaterThan => ">",
+            DslToken::LessThan => "<",
+            DslToken::GreaterThanOrEqual => ">=",
+            DslToken::LessThanOrEqual => "<=",
+            DslToken::Equals => "=",
+            DslToken::Comma => ",",
+            DslToken::Identifier(_) | DslToken::StringLiteral(_) | DslToken::NumberLiteral(_) => "",
+        }
+    }
+}
+
 impl<'a> fmt::Display for DslToken<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             DslToken::Identifier(val) => write!(f, "ID({})", val),
-            DslToken::Colon => write!(f, ":"),
             DslToken::StringLiteral(str_val) => write!(f, "\"{}\"", str_val),
             DslToken::NumberLiteral(num) => write!(f, "NUM({})", num),
-            DslToken::And => write!(f, "AND"),
-            DslToken::Or => write!(f, "OR"),
-            DslToken::Not => write!(f, "NOT"),
-            DslToken::LeftParen => write!(f, "("),
-            DslToken::RightParen => write!(f, ")"),
-            DslToken::GreaterThan => write!(f, ">"),
-            DslToken::LessThan => write!(f, "<"),
-            DslToken::GreaterThanOrEqual => write!(f, ">="),
-            DslToken::LessThanOrEqual => write!(f, "<="),
-            DslToken::Equals => write!(f, "="),
-            DslToken::Comma => write!(f, ","),
+            other => f.write_str(other.static_symbol()),
         }
     }
 }
@@ -95,6 +104,98 @@ impl<'a> DslLexer<'a> {
         Self { input }
     }
 
+    fn lex_punctuation(b: u8) -> Option<DslToken<'static>> {
+        match b {
+            b'(' => Some(DslToken::LeftParen),
+            b')' => Some(DslToken::RightParen),
+            b':' => Some(DslToken::Colon),
+            b',' => Some(DslToken::Comma),
+            _ => None,
+        }
+    }
+
+    fn lex_operator(bytes: &[u8], idx: usize) -> Option<(DslToken<'static>, usize)> {
+        let b = bytes[idx];
+        let next = bytes.get(idx + 1).copied();
+        match (b, next) {
+            (b'>', Some(b'=')) => Some((DslToken::GreaterThanOrEqual, 2)),
+            (b'>', _) => Some((DslToken::GreaterThan, 1)),
+            (b'<', Some(b'=')) => Some((DslToken::LessThanOrEqual, 2)),
+            (b'<', _) => Some((DslToken::LessThan, 1)),
+            (b'=', Some(b'=')) => Some((DslToken::Equals, 2)),
+            (b'=', _) => Some((DslToken::Equals, 1)),
+            (b'!', Some(b'=')) => Some((DslToken::Identifier("!="), 2)),
+            (b'!', _) => Some((DslToken::Not, 1)),
+            (b'&', Some(b'&')) => Some((DslToken::And, 2)),
+            (b'|', Some(b'|')) => Some((DslToken::Or, 2)),
+            _ => None,
+        }
+    }
+
+    fn lex_quoted_literal(&self, start_idx: usize) -> Result<(DslToken<'a>, usize), DslParseError> {
+        let bytes = self.input.as_bytes();
+        let quote = bytes[start_idx];
+        let content_start = start_idx + 1;
+        let mut idx = content_start;
+
+        while idx < bytes.len() {
+            if bytes[idx] == quote {
+                let literal = &self.input[content_start..idx];
+                return Ok((DslToken::StringLiteral(literal), idx + 1));
+            }
+            idx += 1;
+        }
+
+        Err(DslParseError::InvalidSyntax {
+            message: "Unterminated string literal",
+            position: idx,
+        })
+    }
+
+    #[inline]
+    fn is_word_delimiter(bytes: &[u8], idx: usize) -> bool {
+        let c = bytes[idx];
+        if c.is_ascii_whitespace()
+            || matches!(
+                c,
+                b'(' | b')' | b':' | b',' | b'>' | b'<' | b'=' | b'"' | b'\''
+            )
+        {
+            return true;
+        }
+        let next = bytes.get(idx + 1).copied();
+        matches!((c, next), (b'&', Some(b'&')) | (b'|', Some(b'|')))
+    }
+
+    fn classify_word(word: &'a str) -> DslToken<'a> {
+        if word.eq_ignore_ascii_case("AND") {
+            DslToken::And
+        } else if word.eq_ignore_ascii_case("OR") {
+            DslToken::Or
+        } else if word.eq_ignore_ascii_case("NOT") {
+            DslToken::Not
+        } else if let Ok(num) = word.parse::<i64>() {
+            DslToken::NumberLiteral(num)
+        } else {
+            DslToken::Identifier(word)
+        }
+    }
+
+    fn lex_word(&self, start: usize) -> Result<(DslToken<'a>, usize), DslParseError> {
+        let bytes = self.input.as_bytes();
+        let mut idx = start;
+        while idx < bytes.len() && !Self::is_word_delimiter(bytes, idx) {
+            idx += 1;
+        }
+        if start == idx {
+            return Err(DslParseError::InvalidSyntax {
+                message: "Unexpected character",
+                position: start,
+            });
+        }
+        Ok((Self::classify_word(&self.input[start..idx]), idx))
+    }
+
     /// Tokenizes the input string into a list of borrowed tokens.
     pub fn tokenize(&self) -> Result<Vec<DslToken<'a>>, DslParseError> {
         let bytes = self.input.as_bytes();
@@ -104,161 +205,22 @@ impl<'a> DslLexer<'a> {
 
         while idx < len {
             let b = bytes[idx];
-
-            // 1. Whitespace skipping
             if b.is_ascii_whitespace() {
                 idx += 1;
-                continue;
-            }
-
-            // 2. Parentheses & punctuation
-            if b == b'(' {
-                tokens.push(DslToken::LeftParen);
+            } else if let Some(tok) = Self::lex_punctuation(b) {
+                tokens.push(tok);
                 idx += 1;
-                continue;
-            }
-            if b == b')' {
-                tokens.push(DslToken::RightParen);
-                idx += 1;
-                continue;
-            }
-            if b == b':' {
-                tokens.push(DslToken::Colon);
-                idx += 1;
-                continue;
-            }
-            if b == b',' {
-                tokens.push(DslToken::Comma);
-                idx += 1;
-                continue;
-            }
-
-            // 3. Comparison operators
-            if b == b'>' {
-                if idx + 1 < len && bytes[idx + 1] == b'=' {
-                    tokens.push(DslToken::GreaterThanOrEqual);
-                    idx += 2;
-                } else {
-                    tokens.push(DslToken::GreaterThan);
-                    idx += 1;
-                }
-                continue;
-            }
-            if b == b'<' {
-                if idx + 1 < len && bytes[idx + 1] == b'=' {
-                    tokens.push(DslToken::LessThanOrEqual);
-                    idx += 2;
-                } else {
-                    tokens.push(DslToken::LessThan);
-                    idx += 1;
-                }
-                continue;
-            }
-            if b == b'=' {
-                if idx + 1 < len && bytes[idx + 1] == b'=' {
-                    tokens.push(DslToken::Equals);
-                    idx += 2;
-                } else {
-                    tokens.push(DslToken::Equals);
-                    idx += 1;
-                }
-                continue;
-            }
-            if b == b'!' {
-                if idx + 1 < len && bytes[idx + 1] == b'=' {
-                    tokens.push(DslToken::Identifier("!="));
-                    idx += 2;
-                } else {
-                    tokens.push(DslToken::Not);
-                    idx += 1;
-                }
-                continue;
-            }
-
-            // 4. Logical operators (&& and ||)
-            if b == b'&' && idx + 1 < len && bytes[idx + 1] == b'&' {
-                tokens.push(DslToken::And);
-                idx += 2;
-                continue;
-            }
-            if b == b'|' && idx + 1 < len && bytes[idx + 1] == b'|' {
-                tokens.push(DslToken::Or);
-                idx += 2;
-                continue;
-            }
-
-            // 5. String literals (quotes)
-            if b == b'"' || b == b'\'' {
-                let quote = b;
-                let start = idx + 1;
-                idx += 1;
-                let mut closed = false;
-
-                while idx < len {
-                    if bytes[idx] == quote {
-                        closed = true;
-                        break;
-                    }
-                    idx += 1;
-                }
-
-                if !closed {
-                    return Err(DslParseError::InvalidSyntax {
-                        message: "Unterminated string literal",
-                        position: idx,
-                    });
-                }
-
-                let literal = &self.input[start..idx];
-                tokens.push(DslToken::StringLiteral(literal));
-                idx += 1;
-                continue;
-            }
-
-            // 6. Identifiers, keywords, numbers, or words
-            let start = idx;
-            while idx < len {
-                let c = bytes[idx];
-                if c.is_ascii_whitespace()
-                    || c == b'('
-                    || c == b')'
-                    || c == b':'
-                    || c == b','
-                    || c == b'>'
-                    || c == b'<'
-                    || c == b'='
-                    || c == b'"'
-                    || c == b'\''
-                {
-                    break;
-                }
-                if c == b'&' && idx + 1 < len && bytes[idx + 1] == b'&' {
-                    break;
-                }
-                if c == b'|' && idx + 1 < len && bytes[idx + 1] == b'|' {
-                    break;
-                }
-                idx += 1;
-            }
-
-            if start == idx {
-                return Err(DslParseError::InvalidSyntax {
-                    message: "Unexpected character",
-                    position: start,
-                });
-            }
-
-            let word = &self.input[start..idx];
-            if word.eq_ignore_ascii_case("AND") {
-                tokens.push(DslToken::And);
-            } else if word.eq_ignore_ascii_case("OR") {
-                tokens.push(DslToken::Or);
-            } else if word.eq_ignore_ascii_case("NOT") {
-                tokens.push(DslToken::Not);
-            } else if let Ok(num) = word.parse::<i64>() {
-                tokens.push(DslToken::NumberLiteral(num));
+            } else if let Some((tok, step)) = Self::lex_operator(bytes, idx) {
+                tokens.push(tok);
+                idx += step;
+            } else if b == b'"' || b == b'\'' {
+                let (tok, next_idx) = self.lex_quoted_literal(idx)?;
+                tokens.push(tok);
+                idx = next_idx;
             } else {
-                tokens.push(DslToken::Identifier(word));
+                let (tok, next_idx) = self.lex_word(idx)?;
+                tokens.push(tok);
+                idx = next_idx;
             }
         }
 

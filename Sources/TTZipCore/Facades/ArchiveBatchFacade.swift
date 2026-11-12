@@ -77,7 +77,7 @@ extension ArchiveBatchFacading {
 // MARK: - Archive Batch Facade Implementation
 
 /// Unified batch operations facade orchestrating parallel TaskGroups and transactional macro commands.
-public final class ArchiveBatchFacade: ArchiveBatchFacading, @unchecked Sendable {
+public final class ArchiveBatchFacade: ArchiveBatchFacading, Sendable {
     public static let shared = ArchiveBatchFacade()
     
     internal let engineFacade: TTZipEngineFacading

@@ -11,6 +11,7 @@ use crate::ui::progress::ProgressSnapshot;
 use crossbeam_channel::Sender;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use ttzip_archive::vfs::{VfsCompactArena, VfsEntry, VfsSearchResult};
 use ttzip_engine::runtime::cancellation::{CancellationReason, CancellationToken};
@@ -45,8 +46,62 @@ pub struct AppState {
     pub pareto_modal_state: Option<ParetoModalState>,
     pub split_modal_state: Option<SplitModalState>,
     pub recovered_password: Option<String>,
-    pub(crate) archive_raw_data: Vec<u8>,
+    pub(crate) archive_raw_data: Arc<Vec<u8>>,
     pub(crate) all_selected_toggle: bool,
+}
+
+fn parse_initial_vfs_entries(raw_data: &[u8]) -> (ArchiveFormat, Vec<VfsEntry>, u64) {
+    let mut entries = Vec::new();
+    let mut uncompressed_size_bytes = 0u64;
+
+    if let Ok(zip_archive) = ZipArchive::open_slice(raw_data) {
+        for e in zip_archive.entries() {
+            uncompressed_size_bytes += e.uncompressed_size;
+            entries.push(VfsEntry {
+                path: e.rel_path.clone(),
+                uncompressed_size: e.uncompressed_size,
+                compressed_size: e.compressed_size,
+                crc32: e.crc32,
+                mtime_epoch_secs: e.mtime_epoch_secs,
+                mode: e.mode,
+                is_directory: e.is_directory,
+                is_encrypted: e.is_encrypted,
+            });
+        }
+        return (ArchiveFormat::Zip, entries, uncompressed_size_bytes);
+    }
+
+    if let Ok(sevenz_archive) = SevenZArchive::open_slice(raw_data) {
+        let info = sevenz_archive.info();
+        let mut stream_idx = 0usize;
+        let stream_count = info.stream_sizes.len().max(1) as u64;
+
+        for f in &info.files {
+            let (uncomp_sz, crc) = if !f.is_directory && !f.is_empty_stream {
+                let sz = info.stream_sizes.get(stream_idx).copied().unwrap_or(0);
+                let c = info.stream_crcs.get(stream_idx).copied().unwrap_or(0);
+                stream_idx += 1;
+                (sz, c)
+            } else {
+                (0, 0)
+            };
+
+            uncompressed_size_bytes += uncomp_sz;
+            entries.push(VfsEntry {
+                path: f.rel_path.clone(),
+                uncompressed_size: uncomp_sz,
+                compressed_size: if uncomp_sz > 0 { info.payload_len as u64 / stream_count } else { 0 },
+                crc32: crc,
+                mtime_epoch_secs: f.mtime_epoch_secs.unwrap_or(0),
+                mode: f.mode,
+                is_directory: f.is_directory,
+                is_encrypted: info.is_encrypted,
+            });
+        }
+        return (ArchiveFormat::SevenZ, entries, uncompressed_size_bytes);
+    }
+
+    (ArchiveFormat::Unknown, entries, 0)
 }
 
 impl AppState {
@@ -54,56 +109,7 @@ impl AppState {
     pub fn new(archive_path: PathBuf) -> Result<Self, TTZipStatus> {
         let raw_data = fs::read(&archive_path).map_err(|_| TTZipStatus::ErrFileNotFound)?;
         let total_size_bytes = raw_data.len() as u64;
-
-        let mut format = ArchiveFormat::Unknown;
-        let mut entries = Vec::new();
-        let mut uncompressed_size_bytes = 0u64;
-
-        // Try parsing as ZIP
-        if let Ok(zip_archive) = ZipArchive::open_slice(&raw_data) {
-            format = ArchiveFormat::Zip;
-            for e in zip_archive.entries() {
-                uncompressed_size_bytes += e.uncompressed_size;
-                entries.push(VfsEntry {
-                    path: e.rel_path.clone(),
-                    uncompressed_size: e.uncompressed_size,
-                    compressed_size: e.compressed_size,
-                    crc32: e.crc32,
-                    mtime_epoch_secs: e.mtime_epoch_secs,
-                    mode: e.mode,
-                    is_directory: e.is_directory,
-                    is_encrypted: e.is_encrypted,
-                });
-            }
-        } else if let Ok(sevenz_archive) = SevenZArchive::open_slice(&raw_data) {
-            // Try parsing as 7z
-            format = ArchiveFormat::SevenZ;
-            let info = sevenz_archive.info();
-            let mut stream_idx = 0usize;
-
-            for f in &info.files {
-                let (uncomp_sz, crc) = if !f.is_directory && !f.is_empty_stream {
-                    let sz = info.stream_sizes.get(stream_idx).copied().unwrap_or(0);
-                    let c = info.stream_crcs.get(stream_idx).copied().unwrap_or(0);
-                    stream_idx += 1;
-                    (sz, c)
-                } else {
-                    (0, 0)
-                };
-
-                uncompressed_size_bytes += uncomp_sz;
-                entries.push(VfsEntry {
-                    path: f.rel_path.clone(),
-                    uncompressed_size: uncomp_sz,
-                    compressed_size: if uncomp_sz > 0 { info.payload_len as u64 / info.stream_sizes.len().max(1) as u64 } else { 0 },
-                    crc32: crc,
-                    mtime_epoch_secs: f.mtime_epoch_secs.unwrap_or(0),
-                    mode: f.mode,
-                    is_directory: f.is_directory,
-                    is_encrypted: info.is_encrypted,
-                });
-            }
-        }
+        let (format, entries, uncompressed_size_bytes) = parse_initial_vfs_entries(&raw_data);
 
         let mut repair_state = None;
         let mut current_mode = AppMode::Explorer;
@@ -144,7 +150,7 @@ impl AppState {
             pareto_modal_state: None,
             split_modal_state: None,
             recovered_password: None,
-            archive_raw_data: raw_data,
+            archive_raw_data: Arc::new(raw_data),
             all_selected_toggle: false,
         })
     }
@@ -218,62 +224,39 @@ impl AppState {
         Ok(())
     }
 
-    /// Handles incoming application event.
-    pub fn handle_event(&mut self, event: AppEvent, event_sender: Sender<AppEvent>) {
+    fn handle_recovery_completed(&mut self, res: Result<Option<String>, String>) {
+        let mut status_update = None;
+        if let Some(ref mut s) = self.recovery_modal_state {
+            s.is_running = false;
+            match res {
+                Ok(Some(pwd)) => {
+                    s.found_password = Some(pwd.clone());
+                    self.recovered_password = Some(pwd.clone());
+                    s.status_message = Some(format!("Password found: {}", pwd));
+                    status_update = Some(format!("Password recovered: \"{}\"", pwd));
+                }
+                Ok(None) => {
+                    s.status_message = Some("Password not found in dictionary".to_string());
+                }
+                Err(err) => {
+                    s.error_message = Some(err);
+                }
+            }
+        }
+        if let Some(msg) = status_update {
+            self.set_status(msg);
+        }
+    }
+
+    fn handle_modal_completion(&mut self, event: AppEvent) {
         match event {
-            AppEvent::Key(key) => self.handle_key_event(key, event_sender),
-            AppEvent::Progress(snap) => {
-                self.progress_state = Some(snap);
-            }
-            AppEvent::TaskCompleted(res) => {
-                self.current_mode = AppMode::Explorer;
-                match res {
-                    Ok(msg) => self.set_status(msg),
-                    Err(err) => self.set_status(format!("Error: {}", err)),
-                }
-            }
-            AppEvent::CancellationRequested => {
-                self.cancellation_token.cancel(CancellationReason::UserRequested);
-                self.set_status("Cancellation requested...".to_string());
-            }
-            AppEvent::RecoveryProgress { tested, total, speed, elapsed_secs, eta_secs } => {
-                if let Some(ref mut s) = self.recovery_modal_state {
-                    s.tested_keys = tested;
-                    s.total_keys = total;
-                    s.speed_keys_per_sec = speed;
-                    s.elapsed_secs = elapsed_secs;
-                    s.eta_secs = eta_secs;
-                }
-            }
-            AppEvent::RecoveryCompleted(res) => {
-                if let Some(ref mut s) = self.recovery_modal_state {
-                    s.is_running = false;
-                    match res {
-                        Ok(Some(pwd)) => {
-                            s.found_password = Some(pwd.clone());
-                            self.recovered_password = Some(pwd.clone());
-                            s.status_message = Some(format!("Password found: {}", pwd));
-                            self.set_status(format!("Password recovered: \"{}\"", pwd));
-                        }
-                        Ok(None) => {
-                            s.status_message = Some("Password not found in dictionary".to_string());
-                        }
-                        Err(err) => {
-                            s.error_message = Some(err);
-                        }
-                    }
-                }
-            }
+            AppEvent::RecoveryCompleted(res) => self.handle_recovery_completed(res),
             AppEvent::RepairCompleted(res) => {
                 if let Some(ref mut s) = self.repair_state {
-                    match res {
-                        Ok(count) => {
-                            s.status = RepairStatus::Success(count);
-                        }
-                        Err(err) => {
-                            s.status = RepairStatus::Error(err);
-                        }
-                    }
+                    s.status = match res {
+                        Ok(count) => RepairStatus::Success(count),
+                        Err(err) => RepairStatus::Error(err),
+                    };
                 }
             }
             AppEvent::ParetoBenchmarkCompleted(res) => {
@@ -304,6 +287,41 @@ impl AppState {
                     }
                 }
             }
+            _ => {}
+        }
+    }
+
+    /// Handles incoming application event.
+    pub fn handle_event(&mut self, event: AppEvent, event_sender: Sender<AppEvent>) {
+        match event {
+            AppEvent::Key(key) => self.handle_key_event(key, event_sender),
+            AppEvent::Progress(snap) => {
+                self.progress_state = Some(snap);
+            }
+            AppEvent::TaskCompleted(res) => {
+                self.current_mode = AppMode::Explorer;
+                match res {
+                    Ok(msg) => self.set_status(msg),
+                    Err(err) => self.set_status(format!("Error: {}", err)),
+                }
+            }
+            AppEvent::CancellationRequested => {
+                self.cancellation_token.cancel(CancellationReason::UserRequested);
+                self.set_status("Cancellation requested...".to_string());
+            }
+            AppEvent::RecoveryProgress { tested, total, speed, elapsed_secs, eta_secs } => {
+                if let Some(ref mut s) = self.recovery_modal_state {
+                    s.tested_keys = tested;
+                    s.total_keys = total;
+                    s.speed_keys_per_sec = speed;
+                    s.elapsed_secs = elapsed_secs;
+                    s.eta_secs = eta_secs;
+                }
+            }
+            AppEvent::RecoveryCompleted(_)
+            | AppEvent::RepairCompleted(_)
+            | AppEvent::ParetoBenchmarkCompleted(_)
+            | AppEvent::SplitCompleted(_) => self.handle_modal_completion(event),
             AppEvent::Tick => {
                 if let Some((_, instant)) = &self.status_message {
                     if instant.elapsed() > Duration::from_secs(5) {

@@ -46,8 +46,26 @@ fn test_ab_zstd_multithread_speedup_1mb() {
         enable_checksum: true,
         ..Default::default()
     };
+    let workers = std::thread::available_parallelism().map(|n| n.get() as u32).unwrap_or(4);
+    let config_mt = ZstdConfig {
+        level: 3,
+        nb_workers: workers,
+        enable_checksum: true,
+        ..Default::default()
+    };
+
+    // Warmup both single-thread and multi-thread stream paths before timing
+    for _ in 0..2 {
+        let mut w1 = ZstdStreamWriter::new(std::io::Cursor::new(Vec::with_capacity(corpus_size / 2)), &config_single).unwrap();
+        w1.write_all(&corpus).unwrap();
+        w1.finish().unwrap();
+        let mut w_mt = ZstdStreamWriter::new(std::io::Cursor::new(Vec::with_capacity(corpus_size / 2)), &config_mt).unwrap();
+        w_mt.write_all(&corpus).unwrap();
+        w_mt.finish().unwrap();
+    }
+
     let mut duration_single = Duration::from_secs(999);
-    for _ in 0..3 {
+    for _ in 0..5 {
         let single_buf = std::io::Cursor::new(Vec::with_capacity(corpus_size / 2));
         let start_single = Instant::now();
         let mut writer_single = ZstdStreamWriter::new(single_buf, &config_single).unwrap();
@@ -58,15 +76,8 @@ fn test_ab_zstd_multithread_speedup_1mb() {
     let throughput_single = (corpus_size as f64 / (1024.0 * 1024.0 * 1024.0)) / duration_single.as_secs_f64();
 
     // 2. Candidate: Multithreaded (nb_workers = available_parallelism)
-    let workers = std::thread::available_parallelism().map(|n| n.get() as u32).unwrap_or(4);
-    let config_mt = ZstdConfig {
-        level: 3,
-        nb_workers: workers,
-        enable_checksum: true,
-        ..Default::default()
-    };
     let mut duration_mt = Duration::from_secs(999);
-    for _ in 0..3 {
+    for _ in 0..5 {
         let mt_buf = std::io::Cursor::new(Vec::with_capacity(corpus_size / 2));
         let start_mt = Instant::now();
         let mut writer_mt = ZstdStreamWriter::new(mt_buf, &config_mt).unwrap();
@@ -100,6 +111,13 @@ fn test_ab_zstd_multithread_speedup_1mb() {
         throughput_single,
         min_threshold
     );
+    if !cfg!(debug_assertions) && workers > 1 {
+        assert!(
+            speedup >= 1.0,
+            "Multithreaded Zstd 1MB speedup should be >= 1.0x (got {:.2}x)",
+            speedup
+        );
+    }
 }
 
 #[test]

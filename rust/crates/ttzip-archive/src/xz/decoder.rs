@@ -196,285 +196,308 @@ impl<R: Read> XzStreamDecoder<R> {
     /// Advances the state machine by executing one structural decoding step.
     pub fn step(&mut self) -> Result<(), XzDecodeError> {
         match self.state {
-            XzDecoderState::StreamHeader => {
-                let mut header_buf = [0u8; 12];
-                let mut read_bytes = 0;
+            XzDecoderState::StreamHeader => self.step_stream_header(),
+            XzDecoderState::BlockHeader => self.step_block_header(),
+            XzDecoderState::BlockData => self.step_block_data(),
+            XzDecoderState::BlockPadding => self.step_block_padding(),
+            XzDecoderState::BlockCheck => self.step_block_check(),
+            XzDecoderState::Index => self.step_index(),
+            XzDecoderState::StreamFooter => self.step_stream_footer(),
+            XzDecoderState::StreamPadding => self.step_stream_padding(),
+            XzDecoderState::End => Ok(()),
+        }
+    }
 
-                if let Some(first) = self.pending_first_byte.take() {
-                    header_buf[0] = first;
-                    read_bytes = 1;
-                }
+    fn step_stream_header(&mut self) -> Result<(), XzDecodeError> {
+        let mut header_buf = [0u8; 12];
+        let mut read_bytes = 0;
 
-                while read_bytes < 12 {
-                    let n = self.inner.read(&mut header_buf[read_bytes..])?;
-                    if n == 0 {
-                        if read_bytes == 0 && self.total_stream_bytes_read > 0 {
-                            self.state = XzDecoderState::End;
-                            return Ok(());
-                        }
-                        return Err(XzDecodeError::TruncatedData {
-                            expected: 12,
-                            actual: read_bytes,
-                        });
-                    }
-                    read_bytes += n;
-                }
-                self.total_stream_bytes_read += 12;
+        if let Some(first) = self.pending_first_byte.take() {
+            header_buf[0] = first;
+            read_bytes = 1;
+        }
 
-                let header = XzStreamHeader::parse(&header_buf)?;
-                self.stream_flags = Some(header.flags);
-                self.cumulative_records.clear();
-                self.state = XzDecoderState::BlockHeader;
-                Ok(())
-            }
-
-            XzDecoderState::BlockHeader => {
-                let mut byte0_buf = [0u8; 1];
-                let n = self.inner.read(&mut byte0_buf)?;
-                if n == 0 {
-                    return Err(XzDecodeError::TruncatedData {
-                        expected: 1,
-                        actual: 0,
-                    });
-                }
-                self.total_stream_bytes_read += 1;
-                let b0 = byte0_buf[0];
-
-                if b0 == 0x00 {
-                    // Reconstruct stream for index parsing
-                    self.state = XzDecoderState::Index;
+        while read_bytes < 12 {
+            let n = self.inner.read(&mut header_buf[read_bytes..])?;
+            if n == 0 {
+                if read_bytes == 0 && self.total_stream_bytes_read > 0 {
+                    self.state = XzDecoderState::End;
                     return Ok(());
                 }
+                return Err(XzDecodeError::TruncatedData {
+                    expected: 12,
+                    actual: read_bytes,
+                });
+            }
+            read_bytes += n;
+        }
+        self.total_stream_bytes_read += 12;
 
-                // Block Header: size = (b0 + 1) * 4
-                let header_size = (b0 as usize + 1) * 4;
-                let mut full_header_buf = vec![0u8; header_size];
-                full_header_buf[0] = b0;
-                self.inner.read_exact(&mut full_header_buf[1..])?;
-                self.total_stream_bytes_read += (header_size - 1) as u64;
+        let header = XzStreamHeader::parse(&header_buf)?;
+        self.stream_flags = Some(header.flags);
+        self.cumulative_records.clear();
+        self.state = XzDecoderState::BlockHeader;
+        Ok(())
+    }
 
-                let flags = self
-                    .stream_flags
-                    .ok_or_else(|| XzDecodeError::CorruptedData("Missing stream flags".to_string()))?;
-                let block_header = XzBlockHeader::parse(&full_header_buf, flags.check_type)?;
-                self.current_block_header = Some(block_header);
-                self.current_block_compressed.clear();
-                self.state = XzDecoderState::BlockData;
-                Ok(())
+    fn step_block_header(&mut self) -> Result<(), XzDecodeError> {
+        let mut byte0_buf = [0u8; 1];
+        let n = self.inner.read(&mut byte0_buf)?;
+        if n == 0 {
+            return Err(XzDecodeError::TruncatedData {
+                expected: 1,
+                actual: 0,
+            });
+        }
+        self.total_stream_bytes_read += 1;
+        let b0 = byte0_buf[0];
+
+        if b0 == 0x00 {
+            self.state = XzDecoderState::Index;
+            return Ok(());
+        }
+
+        let header_size = (b0 as usize + 1) * 4;
+        let mut full_header_buf = vec![0u8; header_size];
+        full_header_buf[0] = b0;
+        self.inner.read_exact(&mut full_header_buf[1..])?;
+        self.total_stream_bytes_read += (header_size - 1) as u64;
+
+        let flags = self
+            .stream_flags
+            .ok_or_else(|| XzDecodeError::CorruptedData("Missing stream flags".to_string()))?;
+        let block_header = XzBlockHeader::parse(&full_header_buf, flags.check_type)?;
+        self.current_block_header = Some(block_header);
+        self.current_block_compressed.clear();
+        self.state = XzDecoderState::BlockData;
+        Ok(())
+    }
+
+    fn step_block_data(&mut self) -> Result<(), XzDecodeError> {
+        let block_hdr = self.current_block_header.clone().ok_or_else(|| {
+            XzDecodeError::CorruptedData("Missing active block header".to_string())
+        })?;
+
+        if let Some(comp_size) = block_hdr.compressed_size {
+            if comp_size > self.memlimit {
+                return Err(XzDecodeError::MemlimitExceeded {
+                    limit: self.memlimit,
+                    needed: comp_size,
+                });
+            }
+            let mut comp_buf = vec![0u8; comp_size as usize];
+            self.inner.read_exact(&mut comp_buf)?;
+            self.total_stream_bytes_read += comp_size;
+            self.current_block_compressed = comp_buf;
+        } else {
+            self.current_block_compressed = self.read_unbounded_lzma2_chunks()?;
+        }
+
+        self.state = XzDecoderState::BlockPadding;
+        Ok(())
+    }
+
+    fn read_unbounded_lzma2_chunks(&mut self) -> Result<Vec<u8>, XzDecodeError> {
+        let mut compressed_data = Vec::new();
+        let mut total_block_bytes = 0u64;
+        loop {
+            let mut ctrl_buf = [0u8; 1];
+            self.inner.read_exact(&mut ctrl_buf)?;
+            self.total_stream_bytes_read += 1;
+            total_block_bytes += 1;
+            let ctrl = ctrl_buf[0];
+            compressed_data.push(ctrl);
+
+            if total_block_bytes > self.memlimit {
+                return Err(XzDecodeError::MemlimitExceeded {
+                    limit: self.memlimit,
+                    needed: total_block_bytes,
+                });
             }
 
-            XzDecoderState::BlockData => {
-                let block_hdr = self.current_block_header.clone().ok_or_else(|| {
-                    XzDecodeError::CorruptedData("Missing active block header".to_string())
-                })?;
-
-                if let Some(comp_size) = block_hdr.compressed_size {
-                    if comp_size > self.memlimit {
-                        return Err(XzDecodeError::MemlimitExceeded {
-                            limit: self.memlimit,
-                            needed: comp_size,
-                        });
-                    }
-                    let mut comp_buf = vec![0u8; comp_size as usize];
-                    self.inner.read_exact(&mut comp_buf)?;
-                    self.total_stream_bytes_read += comp_size;
-                    self.current_block_compressed = comp_buf;
-                } else {
-                    let mut compressed_data = Vec::new();
-                    let mut total_block_bytes = 0u64;
-                    loop {
-                        let mut ctrl_buf = [0u8; 1];
-                        self.inner.read_exact(&mut ctrl_buf)?;
-                        self.total_stream_bytes_read += 1;
-                        total_block_bytes += 1;
-                        let ctrl = ctrl_buf[0];
-                        compressed_data.push(ctrl);
-
-                        if total_block_bytes > self.memlimit {
-                            return Err(XzDecodeError::MemlimitExceeded {
-                                limit: self.memlimit,
-                                needed: total_block_bytes,
-                            });
-                        }
-
-                        if ctrl == 0x00 {
-                            break;
-                        } else if ctrl == 0x01 || ctrl == 0x02 {
-                            let mut size_buf = [0u8; 2];
-                            self.inner.read_exact(&mut size_buf)?;
-                            self.total_stream_bytes_read += 2;
-                            total_block_bytes += 2;
-                            let unpack_size = (((size_buf[0] as usize) << 8) | (size_buf[1] as usize)) + 1;
-                            compressed_data.extend_from_slice(&size_buf);
-
-                            let mut payload = vec![0u8; unpack_size];
-                            self.inner.read_exact(&mut payload)?;
-                            self.total_stream_bytes_read += unpack_size as u64;
-                            total_block_bytes += unpack_size as u64;
-                            compressed_data.extend_from_slice(&payload);
-                        } else if ctrl >= 0x80 {
-                            let mode = (ctrl >> 5) & 0x03;
-                            let extra_hdr_len = if mode >= 2 { 5 } else { 4 };
-                            let mut hdr_tail = vec![0u8; extra_hdr_len];
-                            self.inner.read_exact(&mut hdr_tail)?;
-                            self.total_stream_bytes_read += extra_hdr_len as u64;
-                            total_block_bytes += extra_hdr_len as u64;
-
-                            let pack_size = (((hdr_tail[2] as usize) << 8) | (hdr_tail[3] as usize)) + 1;
-                            compressed_data.extend_from_slice(&hdr_tail);
-
-                            let mut payload = vec![0u8; pack_size];
-                            self.inner.read_exact(&mut payload)?;
-                            self.total_stream_bytes_read += pack_size as u64;
-                            total_block_bytes += pack_size as u64;
-                            compressed_data.extend_from_slice(&payload);
-                        } else {
-                            return Err(XzDecodeError::CorruptedData(format!(
-                                "Invalid LZMA2 control byte 0x{ctrl:02X}"
-                            )));
-                        }
-                    }
-                    self.current_block_compressed = compressed_data;
-                }
-
-                self.state = XzDecoderState::BlockPadding;
-                Ok(())
+            if ctrl == 0x00 {
+                break;
             }
+            self.read_lzma2_chunk_body(ctrl, &mut compressed_data, &mut total_block_bytes)?;
+        }
+        Ok(compressed_data)
+    }
 
-            XzDecoderState::BlockPadding => {
-                let pad_len = pad_to_4(self.current_block_compressed.len() as u64);
-                if pad_len > 0 {
-                    let mut pad_buf = vec![0u8; pad_len];
-                    self.inner.read_exact(&mut pad_buf)?;
-                    self.total_stream_bytes_read += pad_len as u64;
-                    if pad_buf.iter().any(|&b| b != 0x00) {
-                        return Err(XzDecodeError::CorruptedData(
-                            "Non-zero block padding byte detected".to_string(),
-                        ));
-                    }
-                }
-                self.state = XzDecoderState::BlockCheck;
-                Ok(())
+    fn read_lzma2_chunk_body(
+        &mut self,
+        ctrl: u8,
+        compressed_data: &mut Vec<u8>,
+        total_block_bytes: &mut u64,
+    ) -> Result<(), XzDecodeError> {
+        if ctrl == 0x01 || ctrl == 0x02 {
+            let mut size_buf = [0u8; 2];
+            self.inner.read_exact(&mut size_buf)?;
+            self.total_stream_bytes_read += 2;
+            *total_block_bytes += 2;
+            let unpack_size = (((size_buf[0] as usize) << 8) | (size_buf[1] as usize)) + 1;
+            compressed_data.extend_from_slice(&size_buf);
+            self.read_chunk_payload(unpack_size, compressed_data, total_block_bytes)
+        } else if ctrl >= 0x80 {
+            let mode = (ctrl >> 5) & 0x03;
+            let extra_hdr_len = if mode >= 2 { 5 } else { 4 };
+            let mut hdr_tail = [0u8; 5];
+            self.inner.read_exact(&mut hdr_tail[..extra_hdr_len])?;
+            self.total_stream_bytes_read += extra_hdr_len as u64;
+            *total_block_bytes += extra_hdr_len as u64;
+            let pack_size = (((hdr_tail[2] as usize) << 8) | (hdr_tail[3] as usize)) + 1;
+            compressed_data.extend_from_slice(&hdr_tail[..extra_hdr_len]);
+            self.read_chunk_payload(pack_size, compressed_data, total_block_bytes)
+        } else {
+            Err(XzDecodeError::CorruptedData(format!(
+                "Invalid LZMA2 control byte 0x{ctrl:02X}"
+            )))
+        }
+    }
+
+    fn read_chunk_payload(
+        &mut self,
+        payload_len: usize,
+        compressed_data: &mut Vec<u8>,
+        total_block_bytes: &mut u64,
+    ) -> Result<(), XzDecodeError> {
+        let start = compressed_data.len();
+        compressed_data.resize(start + payload_len, 0);
+        if let Err(e) = self.inner.read_exact(&mut compressed_data[start..]) {
+            compressed_data.truncate(start);
+            return Err(e.into());
+        }
+        self.total_stream_bytes_read += payload_len as u64;
+        *total_block_bytes += payload_len as u64;
+        Ok(())
+    }
+
+    fn step_block_padding(&mut self) -> Result<(), XzDecodeError> {
+        let pad_len = pad_to_4(self.current_block_compressed.len() as u64);
+        if pad_len > 0 {
+            let mut pad_buf = vec![0u8; pad_len];
+            self.inner.read_exact(&mut pad_buf)?;
+            self.total_stream_bytes_read += pad_len as u64;
+            if pad_buf.iter().any(|&b| b != 0x00) {
+                return Err(XzDecodeError::CorruptedData(
+                    "Non-zero block padding byte detected".to_string(),
+                ));
             }
+        }
+        self.state = XzDecoderState::BlockCheck;
+        Ok(())
+    }
 
-            XzDecoderState::BlockCheck => {
-                let block_hdr = self.current_block_header.take().ok_or_else(|| {
-                    XzDecodeError::CorruptedData("Missing active block header".to_string())
-                })?;
+    fn step_block_check(&mut self) -> Result<(), XzDecodeError> {
+        let block_hdr = self.current_block_header.take().ok_or_else(|| {
+            XzDecodeError::CorruptedData("Missing active block header".to_string())
+        })?;
 
-                let check_type = block_hdr.check_type;
-                let check_size = check_type.check_size();
-                let mut check_buf = vec![0u8; check_size];
-                if check_size > 0 {
-                    self.inner.read_exact(&mut check_buf)?;
-                    self.total_stream_bytes_read += check_size as u64;
-                }
+        let check_type = block_hdr.check_type;
+        let check_size = check_type.check_size();
+        let mut check_buf = vec![0u8; check_size];
+        if check_size > 0 {
+            self.inner.read_exact(&mut check_buf)?;
+            self.total_stream_bytes_read += check_size as u64;
+        }
 
-                let uncompressed = decompress_block_payload(
-                    &self.current_block_compressed,
-                    &block_hdr,
-                    check_type,
-                    &check_buf,
-                    self.memlimit,
-                )?;
+        let uncompressed = decompress_block_payload(
+            &self.current_block_compressed,
+            &block_hdr,
+            check_type,
+            &check_buf,
+            self.memlimit,
+        )?;
 
-                let unpadded_size =
-                    block_hdr.header_size as u64 + self.current_block_compressed.len() as u64 + check_size as u64;
-                let uncompressed_size = uncompressed.len() as u64;
+        let unpadded_size =
+            block_hdr.header_size as u64 + self.current_block_compressed.len() as u64 + check_size as u64;
+        let uncompressed_size = uncompressed.len() as u64;
 
-                self.cumulative_records
-                    .push(XzRecord::new(unpadded_size, uncompressed_size));
+        self.cumulative_records
+            .push(XzRecord::new(unpadded_size, uncompressed_size));
+        self.output_fifo.extend(uncompressed);
+        self.state = XzDecoderState::BlockHeader;
+        Ok(())
+    }
 
-                self.output_fifo.extend(uncompressed);
+    fn step_index(&mut self) -> Result<(), XzDecodeError> {
+        let mut chain = io::Cursor::new([0x00u8]).chain(&mut self.inner);
+        let (index, consumed) = XzStreamIndex::parse_stream(&mut chain)?;
+        self.total_stream_bytes_read += (consumed.saturating_sub(1)) as u64;
 
-                self.state = XzDecoderState::BlockHeader;
-                Ok(())
+        if index.records.len() != self.cumulative_records.len() {
+            return Err(XzDecodeError::InvalidIndex(format!(
+                "Index record count mismatch: expected {}, decoded {}",
+                index.records.len(),
+                self.cumulative_records.len()
+            )));
+        }
+
+        for (idx, (expected, actual)) in
+            index.records.iter().zip(self.cumulative_records.iter()).enumerate()
+        {
+            if expected != actual {
+                return Err(XzDecodeError::InvalidIndex(format!(
+                    "Index record #{idx} mismatch: expected {expected:?}, decoded {actual:?}"
+                )));
             }
+        }
 
-            XzDecoderState::Index => {
-                // Prepend the 0x00 indicator byte already read
-                let mut chain = io::Cursor::new([0x00u8]).chain(&mut self.inner);
-                let (index, consumed) = XzStreamIndex::parse_stream(&mut chain)?;
-                self.total_stream_bytes_read += (consumed.saturating_sub(1)) as u64;
+        self.state = XzDecoderState::StreamFooter;
+        Ok(())
+    }
 
-                if index.records.len() != self.cumulative_records.len() {
-                    return Err(XzDecodeError::InvalidIndex(format!(
-                        "Index record count mismatch: expected {}, decoded {}",
-                        index.records.len(),
-                        self.cumulative_records.len()
-                    )));
-                }
+    fn step_stream_footer(&mut self) -> Result<(), XzDecodeError> {
+        let mut footer_buf = [0u8; 12];
+        self.inner.read_exact(&mut footer_buf)?;
+        self.total_stream_bytes_read += 12;
 
-                for (idx, (expected, actual)) in
-                    index.records.iter().zip(self.cumulative_records.iter()).enumerate()
-                {
-                    if expected != actual {
-                        return Err(XzDecodeError::InvalidIndex(format!(
-                            "Index record #{idx} mismatch: expected {expected:?}, decoded {actual:?}"
-                        )));
-                    }
-                }
+        let flags = self
+            .stream_flags
+            .ok_or_else(|| XzDecodeError::CorruptedData("Missing stream flags".to_string()))?;
+        let footer = XzStreamFooter::parse_and_verify_header(&footer_buf, &flags)?;
 
-                self.state = XzDecoderState::StreamFooter;
-                Ok(())
+        let mut index = XzStreamIndex::with_capacity(self.cumulative_records.len());
+        for r in &self.cumulative_records {
+            index.append(r.unpadded_size, r.uncompressed_size)?;
+        }
+
+        let expected_backward_size = index.index_size()? as u64;
+        if footer.backward_size != expected_backward_size {
+            return Err(XzDecodeError::InvalidIndex(format!(
+                "Footer backward size {} does not match computed index size {}",
+                footer.backward_size, expected_backward_size
+            )));
+        }
+
+        self.state = XzDecoderState::StreamPadding;
+        Ok(())
+    }
+
+    fn step_stream_padding(&mut self) -> Result<(), XzDecodeError> {
+        let mut pad_word = [0u8; 4];
+        loop {
+            let n = self.inner.read(&mut pad_word[..1])?;
+            if n == 0 {
+                self.state = XzDecoderState::End;
+                return Ok(());
             }
-
-            XzDecoderState::StreamFooter => {
-                let mut footer_buf = [0u8; 12];
-                self.inner.read_exact(&mut footer_buf)?;
-                self.total_stream_bytes_read += 12;
-
-                let flags = self
-                    .stream_flags
-                    .ok_or_else(|| XzDecodeError::CorruptedData("Missing stream flags".to_string()))?;
-                let footer = XzStreamFooter::parse_and_verify_header(&footer_buf, &flags)?;
-
-                let mut index = XzStreamIndex::with_capacity(self.cumulative_records.len());
-                for r in &self.cumulative_records {
-                    index.append(r.unpadded_size, r.uncompressed_size)?;
+            if pad_word[0] == 0x00 {
+                self.inner.read_exact(&mut pad_word[1..4])?;
+                self.total_stream_bytes_read += 4;
+                if pad_word != [0, 0, 0, 0] {
+                    return Err(XzDecodeError::CorruptedData(
+                        "Non-zero byte detected in Stream Padding".to_string(),
+                    ));
                 }
-
-                let expected_backward_size = index.index_size()? as u64;
-                if footer.backward_size != expected_backward_size {
-                    return Err(XzDecodeError::InvalidIndex(format!(
-                        "Footer backward size {} does not match computed index size {}",
-                        footer.backward_size, expected_backward_size
-                    )));
-                }
-
-                self.state = XzDecoderState::StreamPadding;
-                Ok(())
+            } else if self.allow_multiple_streams && pad_word[0] == XZ_HEADER_MAGIC[0] {
+                self.pending_first_byte = Some(pad_word[0]);
+                self.state = XzDecoderState::StreamHeader;
+                return Ok(());
+            } else {
+                return Err(XzDecodeError::CorruptedData(
+                    "Unexpected non-padding trailing byte".to_string(),
+                ));
             }
-
-            XzDecoderState::StreamPadding => {
-                let mut pad_word = [0u8; 4];
-                loop {
-                    let n = self.inner.read(&mut pad_word[..1])?;
-                    if n == 0 {
-                        self.state = XzDecoderState::End;
-                        return Ok(());
-                    }
-                    if pad_word[0] == 0x00 {
-                        self.inner.read_exact(&mut pad_word[1..4])?;
-                        self.total_stream_bytes_read += 4;
-                        if pad_word != [0, 0, 0, 0] {
-                            return Err(XzDecodeError::CorruptedData(
-                                "Non-zero byte detected in Stream Padding".to_string(),
-                            ));
-                        }
-                    } else if self.allow_multiple_streams && pad_word[0] == XZ_HEADER_MAGIC[0] {
-                        self.pending_first_byte = Some(pad_word[0]);
-                        self.state = XzDecoderState::StreamHeader;
-                        return Ok(());
-                    } else {
-                        return Err(XzDecodeError::CorruptedData(
-                            "Unexpected non-padding trailing byte".to_string(),
-                        ));
-                    }
-                }
-            }
-
-            XzDecoderState::End => Ok(()),
         }
     }
 }
@@ -494,9 +517,14 @@ impl<R: Read> Read for XzStreamDecoder<R> {
         }
 
         let to_copy = buf.len().min(self.output_fifo.len());
-        for byte_ref in buf[..to_copy].iter_mut() {
-            *byte_ref = self.output_fifo.pop_front().unwrap();
+        let (front, back) = self.output_fifo.as_slices();
+        let front_copy = to_copy.min(front.len());
+        buf[..front_copy].copy_from_slice(&front[..front_copy]);
+        if front_copy < to_copy {
+            let back_copy = to_copy - front_copy;
+            buf[front_copy..to_copy].copy_from_slice(&back[..back_copy]);
         }
+        self.output_fifo.drain(..to_copy);
         self.total_uncompressed_bytes += to_copy as u64;
         Ok(to_copy)
     }
@@ -512,3 +540,32 @@ pub fn xz_decompress(input: &[u8]) -> Result<Vec<u8>, XzDecodeError> {
 
 /// Convenience type alias for `XzStreamDecoder`.
 pub type XzStreamReader<R> = XzStreamDecoder<R>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_xz_decoder_slice_drain_and_wraparound() {
+        let mut dec = XzStreamDecoder::new(io::Cursor::new(Vec::<u8>::new()));
+        dec.state = XzDecoderState::End;
+        dec.output_fifo = VecDeque::with_capacity(8);
+        for b in 0..6u8 {
+            dec.output_fifo.push_back(b);
+        }
+        let mut head = [0u8; 4];
+        assert_eq!(dec.read(&mut head).expect("read head"), 4);
+        assert_eq!(head, [0, 1, 2, 3]);
+        for b in 6..12u8 {
+            dec.output_fifo.push_back(b);
+        }
+        let (front, back) = dec.output_fifo.as_slices();
+        assert!(!front.is_empty() && !back.is_empty());
+
+        let mut out = [0u8; 8];
+        let n = dec.read(&mut out).expect("read wrapped");
+        assert_eq!(n, 8);
+        assert_eq!(out, [4, 5, 6, 7, 8, 9, 10, 11]);
+        assert!(dec.output_fifo.is_empty());
+    }
+}

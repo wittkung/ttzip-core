@@ -14,8 +14,8 @@ pub mod tests;
 
 pub use cauchy::{create_cauchy_matrix, invert_matrix, ReedSolomonEngine};
 pub use gf8::{
-    compute_nibble_tables, gf_add, gf_div, gf_inv, gf_mul, gf_pow, gf_sub, gf8_mul_add_slice,
-    scalar_gf8_mul_add_raw, EXP_TABLE, LOG_TABLE,
+    compute_nibble_tables, gf_add, gf_div, gf_inv, gf_mul, gf_pow, gf_sub, gf8_mul_acc_slice,
+    gf8_mul_add_slice, scalar_gf8_mul_add_raw, EXP_TABLE, LOG_TABLE, NIBBLE_TABLES,
 };
 pub use recovery_record::{
     append_recovery_record_to_file, create_recovery_record, create_recovery_record_streaming,
@@ -23,3 +23,4 @@ pub use recovery_record::{
     repair_archive_file, repair_archive_file_streaming, RecoveryRecordInfo,
     StreamingCauchyAccumulator, DEFAULT_SLICE_SIZE, MAGIC_FOOTER, MAGIC_HEADER,
 };
+pub use repair::ReconstructWorkspace;

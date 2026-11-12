@@ -11,19 +11,101 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Cell, Row, Table, TableState};
 use ratatui::Frame;
 
+fn compute_viewport_window(
+    total_count: usize,
+    viewport_height: usize,
+    selected_index: usize,
+) -> (usize, usize, usize) {
+    if total_count <= viewport_height {
+        (0, total_count, selected_index)
+    } else {
+        let half = viewport_height / 2;
+        let start = if selected_index > half {
+            (selected_index - half).min(total_count.saturating_sub(viewport_height))
+        } else {
+            0
+        };
+        let end = (start + viewport_height).min(total_count);
+        let sel = selected_index.saturating_sub(start);
+        (start, end, sel)
+    }
+}
+
+fn format_dir_or_file_bytes(is_dir: bool, size: u64) -> String {
+    if is_dir && size == 0 {
+        "-".to_string()
+    } else {
+        format_bytes(size)
+    }
+}
+
+fn build_explorer_row(
+    item: &ttzip_archive::vfs::VfsVisibleItem,
+    is_selected_cursor: bool,
+) -> Row<'static> {
+    let node = &item.node;
+    let sel_mark = if node.is_selected {
+        Span::styled(
+            " [x] ",
+            Style::default()
+                .fg(Theme::ACCENT_GOLD)
+                .add_modifier(Modifier::BOLD),
+        )
+    } else {
+        Span::styled(" [ ] ", Theme::style_muted_text())
+    };
+
+    let name_color = if node.is_dir {
+        Theme::ACCENT_BLUE
+    } else {
+        Theme::TEXT_PRIMARY
+    };
+    let name_span = Span::styled(
+        format!("{}{}{}", item.indent_prefix, node.icon(), node.name),
+        Style::default().fg(name_color),
+    );
+
+    let uncomp_str = format_dir_or_file_bytes(node.is_dir, node.uncompressed_size);
+    let comp_str = format_dir_or_file_bytes(node.is_dir, node.compressed_size);
+    let ratio_str = if !node.is_dir && node.uncompressed_size > 0 {
+        let r = (node.compressed_size as f64 / node.uncompressed_size as f64) * 100.0;
+        format!("{:.1}%", r)
+    } else {
+        "-".to_string()
+    };
+    let crc_str = if !node.is_dir && node.crc32 != 0 {
+        format!("{:08X}", node.crc32)
+    } else {
+        "-".to_string()
+    };
+    let enc_span = if node.is_encrypted {
+        Span::styled("🔒", Style::default().fg(Theme::ACCENT_ORANGE))
+    } else {
+        Span::styled("-", Theme::style_muted_text())
+    };
+
+    let cells = vec![
+        Cell::from(sel_mark),
+        Cell::from(Line::from(name_span)),
+        Cell::from(Span::styled(uncomp_str, Theme::style_secondary_text())),
+        Cell::from(Span::styled(comp_str, Theme::style_muted_text())),
+        Cell::from(Span::styled(ratio_str, Style::default().fg(Theme::ACCENT_GREEN))),
+        Cell::from(Span::styled(crc_str, Theme::style_muted_text())),
+        Cell::from(enc_span),
+    ];
+
+    let mut table_row = Row::new(cells).height(1);
+    if is_selected_cursor {
+        table_row = table_row.style(Theme::style_table_selected());
+    }
+    table_row
+}
+
 /// Renders the main file explorer directory tree table.
 pub fn render_explorer(frame: &mut Frame, area: Rect, state: &AppState) {
-    let header_cells = [
-        " ",
-        "Name",
-        "Size",
-        "Compressed",
-        "Ratio",
-        "CRC32",
-        "Enc",
-    ]
-    .into_iter()
-    .map(|h| Cell::from(Span::styled(h, Theme::style_table_header())));
+    let header_cells = [" ", "Name", "Size", "Compressed", "Ratio", "CRC32", "Enc"]
+        .into_iter()
+        .map(|h| Cell::from(Span::styled(h, Theme::style_table_header())));
 
     let header = Row::new(header_cells)
         .height(1)
@@ -33,21 +115,8 @@ pub fn render_explorer(frame: &mut Frame, area: Rect, state: &AppState) {
     let visible_items = state.vfs.flatten_visible();
     let total_count = visible_items.len();
     let viewport_height = (area.height.saturating_sub(4) as usize).max(1);
-
-    // Viewport windowing: slice around selected_index to avoid rendering thousands of off-screen rows
-    let (start_idx, end_idx, selected_in_window) = if total_count <= viewport_height {
-        (0, total_count, state.selected_index)
-    } else {
-        let half = viewport_height / 2;
-        let start = if state.selected_index > half {
-            (state.selected_index - half).min(total_count.saturating_sub(viewport_height))
-        } else {
-            0
-        };
-        let end = (start + viewport_height).min(total_count);
-        let sel = state.selected_index.saturating_sub(start);
-        (start, end, sel)
-    };
+    let (start_idx, end_idx, selected_in_window) =
+        compute_viewport_window(total_count, viewport_height, state.selected_index);
 
     let window_slice = if start_idx < end_idx && end_idx <= total_count {
         &visible_items[start_idx..end_idx]
@@ -58,94 +127,17 @@ pub fn render_explorer(frame: &mut Frame, area: Rect, state: &AppState) {
     let rows: Vec<Row> = window_slice
         .iter()
         .enumerate()
-        .map(|(local_idx, item)| {
-            let is_selected_cursor = local_idx == selected_in_window;
-            let node = &item.node;
-
-            // Selection mark column
-            let sel_mark = if node.is_selected {
-                Span::styled(" [x] ", Style::default().fg(Theme::ACCENT_GOLD).add_modifier(Modifier::BOLD))
-            } else {
-                Span::styled(" [ ] ", Theme::style_muted_text())
-            };
-
-            let name_color = if node.is_dir {
-                Theme::ACCENT_BLUE
-            } else {
-                Theme::TEXT_PRIMARY
-            };
-
-            let name_span = Span::styled(
-                format!("{}{}{}", item.indent_prefix, node.icon(), node.name),
-                Style::default().fg(name_color),
-            );
-
-            // File size formatting
-            let uncomp_str = if node.is_dir {
-                if node.uncompressed_size > 0 {
-                    format_bytes(node.uncompressed_size)
-                } else {
-                    "-".to_string()
-                }
-            } else {
-                format_bytes(node.uncompressed_size)
-            };
-
-            let comp_str = if node.is_dir {
-                if node.compressed_size > 0 {
-                    format_bytes(node.compressed_size)
-                } else {
-                    "-".to_string()
-                }
-            } else {
-                format_bytes(node.compressed_size)
-            };
-
-            let ratio_str = if !node.is_dir && node.uncompressed_size > 0 {
-                let r = (node.compressed_size as f64 / node.uncompressed_size as f64) * 100.0;
-                format!("{:.1}%", r)
-            } else {
-                "-".to_string()
-            };
-
-            let crc_str = if !node.is_dir && node.crc32 != 0 {
-                format!("{:08X}", node.crc32)
-            } else {
-                "-".to_string()
-            };
-
-            let enc_span = if node.is_encrypted {
-                Span::styled("🔒", Style::default().fg(Theme::ACCENT_ORANGE))
-            } else {
-                Span::styled("-", Theme::style_muted_text())
-            };
-
-            let cells = vec![
-                Cell::from(sel_mark),
-                Cell::from(Line::from(name_span)),
-                Cell::from(Span::styled(uncomp_str, Theme::style_secondary_text())),
-                Cell::from(Span::styled(comp_str, Theme::style_muted_text())),
-                Cell::from(Span::styled(ratio_str, Style::default().fg(Theme::ACCENT_GREEN))),
-                Cell::from(Span::styled(crc_str, Theme::style_muted_text())),
-                Cell::from(enc_span),
-            ];
-
-            let mut table_row = Row::new(cells).height(1);
-            if is_selected_cursor {
-                table_row = table_row.style(Theme::style_table_selected());
-            }
-            table_row
-        })
+        .map(|(local_idx, item)| build_explorer_row(item, local_idx == selected_in_window))
         .collect();
 
     let widths = [
-        Constraint::Length(5),          // Mark
-        Constraint::Percentage(45),     // Name
-        Constraint::Length(12),         // Size
-        Constraint::Length(12),         // Comp Size
-        Constraint::Length(8),          // Ratio
-        Constraint::Length(10),         // CRC32
-        Constraint::Length(5),          // Enc
+        Constraint::Length(5),
+        Constraint::Percentage(45),
+        Constraint::Length(12),
+        Constraint::Length(12),
+        Constraint::Length(8),
+        Constraint::Length(10),
+        Constraint::Length(5),
     ];
 
     let block = Theme::default_block(" 🗂️ Archive Hierarchy Tree ");

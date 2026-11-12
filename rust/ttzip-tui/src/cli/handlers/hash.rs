@@ -15,29 +15,69 @@ use ttzip_engine::crypto::sha256::FastSha256;
 
 const CHUNK_SIZE: usize = 128 * 1024; // 128 KB chunk buffer
 
-/// Executes headless `hash` subcommand with streaming chunked reader.
-pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), String> {
-    if !path.exists() {
-        return Err(format!("File or archive not found: {}", path.display()));
+struct RunningHashes {
+    compute_crc32: bool,
+    compute_crc64: bool,
+    compute_adler32: bool,
+    compute_sha256: bool,
+    running_crc32: u32,
+    running_crc64: u64,
+    running_adler32: u32,
+    sha256_hasher: FastSha256,
+    total_bytes: u64,
+}
+
+impl RunningHashes {
+    fn new(algorithm: &str) -> Self {
+        let algo = algorithm.to_lowercase();
+        let all = algo == "all";
+        Self {
+            compute_crc32: all || algo == "crc32",
+            compute_crc64: all || algo == "crc64",
+            compute_adler32: all || algo == "adler32",
+            compute_sha256: all || algo == "sha256",
+            running_crc32: 0,
+            running_crc64: 0,
+            running_adler32: 1,
+            sha256_hasher: FastSha256::new(),
+            total_bytes: 0,
+        }
     }
 
+    fn update(&mut self, chunk: &[u8]) {
+        self.total_bytes += chunk.len() as u64;
+        if self.compute_crc32 {
+            self.running_crc32 = crc32_fast(self.running_crc32, chunk);
+        }
+        if self.compute_crc64 {
+            self.running_crc64 = crc64(chunk, self.running_crc64);
+        }
+        if self.compute_adler32 {
+            self.running_adler32 = adler32_fast(self.running_adler32, chunk);
+        }
+        if self.compute_sha256 {
+            self.sha256_hasher.update(chunk);
+        }
+    }
+
+    fn into_dto(self, path: &Path, elapsed_ms: u64) -> HashResultDto {
+        HashResultDto {
+            target: path.to_string_lossy().to_string(),
+            size_bytes: self.total_bytes,
+            crc32: self.compute_crc32.then(|| format!("0x{:08X}", self.running_crc32)),
+            crc64: self.compute_crc64.then(|| format!("0x{:016X}", self.running_crc64)),
+            sha256: self.compute_sha256.then(|| hex_encode(&self.sha256_hasher.finalize())),
+            adler32: self.compute_adler32.then(|| format!("0x{:08X}", self.running_adler32)),
+            elapsed_ms,
+        }
+    }
+}
+
+fn compute_file_hashes(path: &Path, algorithm: &str) -> Result<HashResultDto, String> {
     let start = Instant::now();
     let mut file = File::open(path)
         .map_err(|e| format!("Failed to open target file {}: {}", path.display(), e))?;
-
-    let algo_lower = algorithm.to_lowercase();
-    let compute_all = algo_lower == "all";
-    let compute_crc32 = compute_all || algo_lower == "crc32";
-    let compute_crc64 = compute_all || algo_lower == "crc64";
-    let compute_adler32 = compute_all || algo_lower == "adler32";
-    let compute_sha256 = compute_all || algo_lower == "sha256";
-
-    let mut running_crc32: u32 = 0;
-    let mut running_crc64: u64 = 0;
-    let mut running_adler32: u32 = 1;
-    let mut sha256_hasher = FastSha256::new();
-
-    let mut total_bytes: u64 = 0;
+    let mut hashes = RunningHashes::new(algorithm);
     let mut buffer = vec![0u8; CHUNK_SIZE];
 
     loop {
@@ -47,62 +87,20 @@ pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), Stri
         if n == 0 {
             break;
         }
-
-        let chunk = &buffer[..n];
-        total_bytes += n as u64;
-
-        if compute_crc32 {
-            running_crc32 = crc32_fast(running_crc32, chunk);
-        }
-        if compute_crc64 {
-            running_crc64 = crc64(chunk, running_crc64);
-        }
-        if compute_adler32 {
-            running_adler32 = adler32_fast(running_adler32, chunk);
-        }
-        if compute_sha256 {
-            sha256_hasher.update(chunk);
-        }
+        hashes.update(&buffer[..n]);
     }
 
-    let crc32_val = if compute_crc32 {
-        Some(format!("0x{:08X}", running_crc32))
-    } else {
-        None
-    };
+    Ok(hashes.into_dto(path, start.elapsed().as_millis() as u64))
+}
 
-    let crc64_val = if compute_crc64 {
-        Some(format!("0x{:016X}", running_crc64))
-    } else {
-        None
-    };
+/// Executes headless `hash` subcommand with streaming chunked reader.
+pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), String> {
+    if !path.exists() {
+        return Err(format!("File or archive not found: {}", path.display()));
+    }
 
-    let adler32_val = if compute_adler32 {
-        Some(format!("0x{:08X}", running_adler32))
-    } else {
-        None
-    };
-
-    let sha256_val = if compute_sha256 {
-        let digest = sha256_hasher.finalize();
-        Some(hex_encode(&digest))
-    } else {
-        None
-    };
-
-    let elapsed = start.elapsed().as_millis() as u64;
-
+    let dto = compute_file_hashes(path, algorithm)?;
     if json {
-        let dto = HashResultDto {
-            target: path.to_string_lossy().to_string(),
-            size_bytes: total_bytes,
-            crc32: crc32_val,
-            crc64: crc64_val,
-            sha256: sha256_val,
-            adler32: adler32_val,
-            elapsed_ms: elapsed,
-        };
-
         let json_str = serde_json::to_string_pretty(&dto)
             .map_err(|e| format!("Failed to serialize hash JSON: {}", e))?;
         println!("{}", json_str);
@@ -112,20 +110,20 @@ pub fn execute_hash(path: &Path, algorithm: &str, json: bool) -> Result<(), Stri
     println!("{:=<60}", "");
     println!("  TTZip Checksum & Digest: {}", path.display());
     println!("{:=<60}", "");
-    println!("  File Size:  {} bytes", total_bytes);
-    if let Some(ref c32) = crc32_val {
+    println!("  File Size:  {} bytes", dto.size_bytes);
+    if let Some(ref c32) = dto.crc32 {
         println!("  CRC-32:     {}", c32);
     }
-    if let Some(ref c64) = crc64_val {
+    if let Some(ref c64) = dto.crc64 {
         println!("  CRC-64:     {}", c64);
     }
-    if let Some(ref adler) = adler32_val {
+    if let Some(ref adler) = dto.adler32 {
         println!("  Adler-32:   {}", adler);
     }
-    if let Some(ref s256) = sha256_val {
+    if let Some(ref s256) = dto.sha256 {
         println!("  SHA-256:    {}", s256);
     }
-    println!("  Elapsed:    {} ms", elapsed);
+    println!("  Elapsed:    {} ms", dto.elapsed_ms);
     println!("{:=<60}", "");
 
     Ok(())

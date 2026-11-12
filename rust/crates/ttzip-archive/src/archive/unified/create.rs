@@ -308,20 +308,30 @@ fn write_staged_source_archive_in_txn(
     )
 }
 
+/// Returns whether the resolved archive format supports an embedded `TTZR`/`TTRC` recovery record trailer.
+#[must_use]
+pub fn supports_embedded_recovery_record(resolved_format: TTZipArchiveFormat) -> bool {
+    matches!(
+        resolved_format,
+        TTZipArchiveFormat::Zip | TTZipArchiveFormat::SevenZip | TTZipArchiveFormat::Tar
+    )
+}
+
 /// Recursively compresses pre-filtered explicit entries into the destination archive path with a
-/// cancellation probe and optional 7z header encryption override, returning `CreateStagedCommitOutput`.
-pub fn create_archive_explicit_with_files_detailed_opts_outcome_with_cancel<C>(
+/// cancellation probe, optional 7z header encryption override, and optional RS-FEC recovery record.
+pub fn create_archive_explicit_with_files_detailed_full_opts_outcome_with_cancel<C>(
     entries: &[(PathBuf, String)],
     destination_path: &Path,
     options: &TTZipCreateOptions,
     split_volume_size_bytes: u64,
     encrypt_file_names: Option<bool>,
+    recovery_record_redundancy_percent: u8,
     cancel_probe: C,
 ) -> Result<CreateStagedCommitOutput, CreateStageCommitError>
 where
     C: FnOnce() -> bool,
 {
-    if entries.is_empty() {
+    if entries.is_empty() || recovery_record_redundancy_percent > 50 {
         return Err(CreateStageCommitError::Status(TTZipStatus::ErrInvalidParam));
     }
     for (src_path, _) in entries {
@@ -338,6 +348,13 @@ where
         encrypt_file_names,
         |fmt| should_use_raw_stream_explicit(entries, fmt),
     )?;
+    if recovery_record_redundancy_percent > 0
+        && (!supports_embedded_recovery_record(resolved_format) || split_volume_size_bytes > 0)
+    {
+        return Err(CreateStageCommitError::Status(
+            TTZipStatus::ErrUnsupportedFeature,
+        ));
+    }
     with_staged_archive_destination_detailed_outcome(
         destination_path,
         commit_mode,
@@ -350,8 +367,51 @@ where
                 split_volume_size_bytes,
                 encrypt_file_names,
                 Some(txn_ctx),
-            )
+            )?;
+            if recovery_record_redundancy_percent > 0 {
+                if let Err(status) = crate::crypto::rs_fec::append_recovery_record_to_file(
+                    staged_dest,
+                    f64::from(recovery_record_redundancy_percent),
+                    4096,
+                ) {
+                    if let Err(rm_err) = fs::remove_file(staged_dest)
+                        && rm_err.kind() != std::io::ErrorKind::NotFound
+                    {
+                        super::record_inner_stage_cleanup_error_with_status(
+                            "append_recovery_record_to_file",
+                            status,
+                            &rm_err,
+                        );
+                    }
+                    return Err(status);
+                }
+            }
+            Ok(())
         },
+        cancel_probe,
+    )
+}
+
+/// Recursively compresses pre-filtered explicit entries into the destination archive path with a
+/// cancellation probe and optional 7z header encryption override, returning `CreateStagedCommitOutput`.
+pub fn create_archive_explicit_with_files_detailed_opts_outcome_with_cancel<C>(
+    entries: &[(PathBuf, String)],
+    destination_path: &Path,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    encrypt_file_names: Option<bool>,
+    cancel_probe: C,
+) -> Result<CreateStagedCommitOutput, CreateStageCommitError>
+where
+    C: FnOnce() -> bool,
+{
+    create_archive_explicit_with_files_detailed_full_opts_outcome_with_cancel(
+        entries,
+        destination_path,
+        options,
+        split_volume_size_bytes,
+        encrypt_file_names,
+        0,
         cancel_probe,
     )
 }
@@ -553,3 +613,83 @@ pub fn create_archive_explicit(
     create_archive_explicit_with_files(entries, destination_path, options, split_volume_size_bytes)
         .map(|_| ())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_create_zip_with_recovery_record_keeps_eocd_within_standard_64k_window() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let src_file = dir.path().join("payload.bin");
+        // ~800 KB deterministic pseudo-random incompressible payload
+        let mut payload = vec![0u8; 800_000];
+        let mut state = 0x1234_5678u32;
+        for b in &mut payload {
+            state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            *b = (state >> 24) as u8;
+        }
+        fs::write(&src_file, &payload).expect("write payload");
+
+        let zip_path = dir.path().join("with_recovery.zip");
+        let opts = TTZipCreateOptions {
+            format: TTZipArchiveFormat::Zip,
+            level: crate::types::TTZipCompressionLevel::Store,
+            ..Default::default()
+        };
+        create_archive_explicit_with_files_detailed_full_opts_outcome_with_cancel(
+            &[(src_file, "payload.bin".to_string())],
+            &zip_path,
+            &opts,
+            0,
+            None,
+            10,
+            || false,
+        )
+        .expect("create zip with recovery");
+
+        let zip_bytes = fs::read(&zip_path).expect("read zip");
+        // Verify recovery record is present and valid
+        let info = crate::crypto::rs_fec::inspect_recovery_record(&zip_bytes)
+            .expect("inspect recovery record")
+            .expect("recovery record must exist");
+        assert!(info.parity_slices_count >= 1);
+
+        // Verify a standard ZIP reader (which only searches the last 65,557 bytes of the raw file
+        // without stripping the recovery record) finds the EOCD record.
+        let search_window = zip_bytes.len().min(65535 + 22);
+        let tail = &zip_bytes[zip_bytes.len() - search_window..];
+        let found_eocd = super::super::zip_central_directory::find_eocd_in_tail(tail);
+        assert!(
+            found_eocd.is_some(),
+            "Standard ZIP EOCD must remain within the 65,557-byte tail search window (total_len={}, protected_len={})",
+            zip_bytes.len(),
+            info.protected_payload_length
+        );
+
+        let unzip_out = std::process::Command::new("/usr/bin/unzip")
+            .args(["-t", zip_path.to_str().expect("utf8 path")])
+            .output()
+            .expect("run unzip -t");
+        assert!(
+            matches!(unzip_out.status.code(), Some(0 | 1))
+                && String::from_utf8_lossy(&unzip_out.stdout).contains("No errors detected"),
+            "External /usr/bin/unzip -t must validate large ZIP with recovery record"
+        );
+
+        let py_out = std::process::Command::new("python3")
+            .args([
+                "-c",
+                "import sys, zipfile\nwith zipfile.ZipFile(sys.argv[1], 'r') as zf:\n    assert zf.testzip() is None\n    assert zf.namelist() == ['payload.bin']\n",
+                zip_path.to_str().expect("utf8 path"),
+            ])
+            .output()
+            .expect("run python3 zipfile check");
+        assert!(
+            py_out.status.success(),
+            "Python zipfile.ZipFile must accept large ZIP with recovery record: {}",
+            String::from_utf8_lossy(&py_out.stderr)
+        );
+    }
+}
+

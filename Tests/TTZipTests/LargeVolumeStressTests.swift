@@ -322,62 +322,11 @@ final class LargeVolumeStressTests: XCTestCase {
         try await withThrowingTaskGroup(of: Int.self) { group in
             for workerId in 0..<concurrency {
                 group.addTask {
-                    let taskSubdir = workerDir.appendingPathComponent("worker_\(workerId)")
-                    try FileManager.default.createDirectory(at: taskSubdir, withIntermediateDirectories: true)
-
-                    switch workerId % 4 {
-                    case 0:
-                        // Worker type 0: Multi-modal compression stress
-                        let inputDir = taskSubdir.appendingPathComponent("input")
-                        let files = try TestFileGenerator.createMultiModalFileTree(
-                            in: inputDir,
-                            totalFiles: 100,
-                            maxDepth: 3,
-                            minFileSize: 512,
-                            maxFileSize: 2048
-                        )
-                        let outZip = taskSubdir.appendingPathComponent("compressed.zip")
-                        let taskWriter = ArchiveWriter()
-                        try await taskWriter.createArchive(
-                            outputPath: outZip.path,
-                            format: .zip,
-                            level: .fast,
-                            inputPaths: files.map(\.path)
-                        )
-                        XCTAssertTrue(FileManager.default.fileExists(atPath: outZip.path))
-                        return 1
-
-                    case 1:
-                        // Worker type 1: Concurrent archive extraction
-                        let extractDest = taskSubdir.appendingPathComponent("extracted")
-                        let taskExtractor = ArchiveExtractor()
-                        let extractedBytes = try await taskExtractor.extractArchive(
-                            archivePath: seedArchiveURL.path,
-                            destinationDir: extractDest.path
-                        )
-                        XCTAssertGreaterThan(extractedBytes, 0)
-                        return 2
-
-                    case 2:
-                        // Worker type 2: Concurrent ArchiveReader inspection and metadata queries
-                        let taskReader = ArchiveReader()
-                        let entries = try await taskReader.inspect(archivePath: seedArchiveURL.path)
-                        XCTAssertEqual(entries.count, 200)
-                        return 3
-
-                    default:
-                        // Worker type 3: Parallel stream hashing & vault password generator contention
-                        let hashCalc = HashCalculator()
-                        let hashVal = try await hashCalc.computeHash(filePath: seedArchiveURL.path, type: .sha256)
-                        XCTAssertFalse(hashVal.isEmpty)
-
-                        for _ in 0..<10 {
-                            let pwd = PasswordVaultManager.shared.generateRandomPassword(length: 32, includeSymbols: true)
-                            let evaluation = PasswordVaultManager.shared.evaluatePasswordStrength(pwd)
-                            XCTAssertGreaterThan(evaluation.score, 0)
-                        }
-                        return 4
-                    }
+                    try await Self.executeContentionWorker(
+                        workerId: workerId,
+                        workerDir: workerDir,
+                        seedArchiveURL: seedArchiveURL
+                    )
                 }
             }
 
@@ -390,5 +339,64 @@ final class LargeVolumeStressTests: XCTestCase {
 
         let elapsed = CFAbsoluteTimeGetCurrent() - startTime
         TTLogger.debug("All \(concurrency) concurrent tasks successfully executed in \(String(format: "%.3f", elapsed)) s without race conditions or deadlocks")
+    }
+
+    private static func executeContentionWorker(
+        workerId: Int,
+        workerDir: URL,
+        seedArchiveURL: URL
+    ) async throws -> Int {
+        let taskSubdir = workerDir.appendingPathComponent("worker_\(workerId)")
+        try FileManager.default.createDirectory(at: taskSubdir, withIntermediateDirectories: true)
+
+        switch workerId % 4 {
+        case 0:
+            let inputDir = taskSubdir.appendingPathComponent("input")
+            let files = try TestFileGenerator.createMultiModalFileTree(
+                in: inputDir,
+                totalFiles: 100,
+                maxDepth: 3,
+                minFileSize: 512,
+                maxFileSize: 2048
+            )
+            let outZip = taskSubdir.appendingPathComponent("compressed.zip")
+            let taskWriter = ArchiveWriter()
+            try await taskWriter.createArchive(
+                outputPath: outZip.path,
+                format: .zip,
+                level: .fast,
+                inputPaths: files.map(\.path)
+            )
+            XCTAssertTrue(FileManager.default.fileExists(atPath: outZip.path))
+            return 1
+
+        case 1:
+            let extractDest = taskSubdir.appendingPathComponent("extracted")
+            let taskExtractor = ArchiveExtractor()
+            let extractedBytes = try await taskExtractor.extractArchive(
+                archivePath: seedArchiveURL.path,
+                destinationDir: extractDest.path
+            )
+            XCTAssertGreaterThan(extractedBytes, 0)
+            return 2
+
+        case 2:
+            let taskReader = ArchiveReader()
+            let entries = try await taskReader.inspect(archivePath: seedArchiveURL.path)
+            XCTAssertEqual(entries.count, 200)
+            return 3
+
+        default:
+            let hashCalc = HashCalculator()
+            let hashVal = try await hashCalc.computeHash(filePath: seedArchiveURL.path, type: .sha256)
+            XCTAssertFalse(hashVal.isEmpty)
+
+            for _ in 0..<10 {
+                let pwd = PasswordVaultManager.shared.generateRandomPassword(length: 32, includeSymbols: true)
+                let evaluation = PasswordVaultManager.shared.evaluatePasswordStrength(pwd)
+                XCTAssertGreaterThan(evaluation.score, 0)
+            }
+            return 4
+        }
     }
 }

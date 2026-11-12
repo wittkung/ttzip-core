@@ -278,6 +278,63 @@ impl<R0, R1, R2, R3> Bcj2StreamArbitrator<R0, R1, R2, R3> {
 }
 
 impl<R0: Read, R1: Read, R2: Read, R3: Read> Bcj2StreamArbitrator<R0, R1, R2, R3> {
+    #[inline]
+    fn emit_output_byte(&mut self, output: &mut [u8], written: &mut usize, b: u8) {
+        output[*written] = b;
+        *written += 1;
+        self.produced_bytes += 1;
+        self.current_ip = self.current_ip.wrapping_add(1);
+        self.prev_byte = b;
+    }
+
+    fn flush_pending_bytes(&mut self, output: &mut [u8], written: &mut usize) {
+        while (self.pending_pos as usize) < (self.pending_len as usize)
+            && *written < output.len()
+            && self.produced_bytes < self.uncompressed_limit
+        {
+            let b = self.pending_buf[self.pending_pos as usize];
+            self.pending_pos += 1;
+            self.emit_output_byte(output, written, b);
+        }
+        if self.pending_pos >= self.pending_len {
+            self.pending_pos = 0;
+            self.pending_len = 0;
+        }
+    }
+
+    fn decode_branch_opcode(
+        &mut self,
+        output: &mut [u8],
+        written: &mut usize,
+        b: u8,
+    ) -> io::Result<()> {
+        let ctx = if b == 0xE8 {
+            self.prev_byte as usize
+        } else {
+            256
+        };
+
+        if self.rc_stream.decode_bit(ctx)? == 0 {
+            self.emit_output_byte(output, written, b);
+            return Ok(());
+        }
+
+        let target_abs = if b == 0xE8 {
+            self.call_stream.read_u32_be()?
+        } else {
+            self.jump_stream.read_u32_be()?
+        };
+
+        let next_ip = self.current_ip.wrapping_add(5);
+        let rel_le = target_abs.wrapping_sub(next_ip).to_le_bytes();
+
+        self.pending_buf[0] = b;
+        self.pending_buf[1..5].copy_from_slice(&rel_le);
+        self.pending_len = 5;
+        self.pending_pos = 0;
+        Ok(())
+    }
+
     /// Decompresses and merges a chunk of data into `output`.
     ///
     /// Returns the number of bytes written to `output`.
@@ -289,81 +346,19 @@ impl<R0: Read, R1: Read, R2: Read, R3: Read> Bcj2StreamArbitrator<R0, R1, R2, R3
         let mut written = 0usize;
 
         loop {
-            // 1. Flush any pending staged bytes from a previously split 5-byte instruction
-            while (self.pending_pos as usize) < (self.pending_len as usize)
-                && written < output.len()
-                && self.produced_bytes < self.uncompressed_limit
-            {
-                let b = self.pending_buf[self.pending_pos as usize];
-                output[written] = b;
-                written += 1;
-                self.pending_pos += 1;
-                self.produced_bytes += 1;
-                self.current_ip = self.current_ip.wrapping_add(1);
-                self.prev_byte = b;
-            }
-
+            self.flush_pending_bytes(output, &mut written);
             if written == output.len() || self.produced_bytes >= self.uncompressed_limit {
                 return Ok(written);
             }
 
-            if self.pending_pos >= self.pending_len {
-                self.pending_pos = 0;
-                self.pending_len = 0;
-            }
-
-            // 2. Fetch next byte from Main stream
-            let opt_b = self.main_stream.read_byte()?;
-            let b = match opt_b {
-                Some(byte) => byte,
-                None => return Ok(written),
+            let Some(b) = self.main_stream.read_byte()? else {
+                return Ok(written);
             };
 
-            // 3. Evaluate opcode branch condition
             if b != 0xE8 && b != 0xE9 {
-                // Non-branch literal: write directly to output
-                output[written] = b;
-                written += 1;
-                self.produced_bytes += 1;
-                self.current_ip = self.current_ip.wrapping_add(1);
-                self.prev_byte = b;
-                continue;
-            }
-
-            // Branch candidate opcode (0xE8 CALL or 0xE9 JMP)
-            let ctx = if b == 0xE8 {
-                self.prev_byte as usize
+                self.emit_output_byte(output, &mut written, b);
             } else {
-                256
-            };
-
-            let bit = self.rc_stream.decode_bit(ctx)?;
-            if bit == 0 {
-                // False branch / literal opcode
-                output[written] = b;
-                written += 1;
-                self.produced_bytes += 1;
-                self.current_ip = self.current_ip.wrapping_add(1);
-                self.prev_byte = b;
-            } else {
-                // True branch: pull 4-byte big-endian absolute address
-                let target_abs = if b == 0xE8 {
-                    self.call_stream.read_u32_be()?
-                } else {
-                    self.jump_stream.read_u32_be()?
-                };
-
-                let next_ip = self.current_ip.wrapping_add(5);
-                let offset_rel = target_abs.wrapping_sub(next_ip);
-                let rel_le = offset_rel.to_le_bytes();
-
-                self.pending_buf[0] = b;
-                self.pending_buf[1] = rel_le[0];
-                self.pending_buf[2] = rel_le[1];
-                self.pending_buf[3] = rel_le[2];
-                self.pending_buf[4] = rel_le[3];
-                self.pending_len = 5;
-                self.pending_pos = 0;
+                self.decode_branch_opcode(output, &mut written, b)?;
             }
         }
     }

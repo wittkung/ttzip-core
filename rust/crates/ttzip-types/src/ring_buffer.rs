@@ -42,8 +42,10 @@ impl SnapshotRingBuffer {
             self.buffers[inactive_idx] = Some(MachVmAllocation::allocate(aligned_size)?);
         }
 
-        // We can safely unwrap because we just ensured it exists.
-        Ok(self.buffers[inactive_idx].as_mut().unwrap().as_mut_slice())
+        Ok(self.buffers[inactive_idx]
+            .as_mut()
+            .ok_or(MachVmError::InvalidSize)?
+            .as_mut_slice())
     }
 
     /// Publishes the inactive buffer as the new active snapshot and returns a Mach port handle

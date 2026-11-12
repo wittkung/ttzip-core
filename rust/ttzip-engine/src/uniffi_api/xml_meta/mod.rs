@@ -72,21 +72,7 @@ pub(crate) fn read_file_bytes(path_str: &str) -> Result<Vec<u8>, TTZipError> {
 }
 
 pub(crate) fn find_and_extract_entry(zip: &ZipArchive, target_path: &str) -> Option<Vec<u8>> {
-    let norm = target_path.trim_start_matches('/').replace('\\', "/");
-    for (idx, entry) in zip.entries().iter().enumerate() {
-        let entry_norm = entry.rel_path.trim_start_matches('/').replace('\\', "/");
-        if entry_norm == norm {
-            return zip.extract_entry_bytes(idx, None).ok();
-        }
-    }
-    let norm_lower = norm.to_lowercase();
-    for (idx, entry) in zip.entries().iter().enumerate() {
-        let entry_norm = entry.rel_path.trim_start_matches('/').replace('\\', "/").to_lowercase();
-        if entry_norm == norm_lower {
-            return zip.extract_entry_bytes(idx, None).ok();
-        }
-    }
-    None
+    crate::ebook::container::find_and_extract_zip_entry(zip, target_path)
 }
 
 #[cfg(test)]
@@ -124,5 +110,34 @@ mod tests {
         assert_eq!(dict.minimum_os_version.as_deref(), Some("14.0"));
         assert_eq!(dict.executable_name.as_deref(), Some("ttzip_exec"));
         assert_eq!(dict.entries.get("NSHighResolutionCapable").map(|s| s.as_str()), Some("true"));
+    }
+
+    #[test]
+    fn test_consolidated_epub_and_office_xml_meta() {
+        let mut epub_meta = UniFFIEpubMetadata::default();
+        let opf_xml = br#"<?xml version="1.0" encoding="UTF-8"?>
+<package version="3.0" xmlns="http://www.idpf.org/2007/opf">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:title>Consolidated OPF Title</dc:title>
+    <dc:creator>Author A</dc:creator>
+    <dc:language>en</dc:language>
+    <meta property="dcterms:modified">2026-10-01T00:00:00Z</meta>
+  </metadata>
+</package>"#;
+        epub::parse_opf_metadata_xml(opf_xml, "", &mut epub_meta);
+        assert_eq!(epub_meta.title, "Consolidated OPF Title");
+        assert_eq!(epub_meta.authors, vec!["Author A".to_string()]);
+        assert_eq!(epub_meta.language.as_deref(), Some("en"));
+        assert_eq!(
+            epub_meta.modified_date.as_deref(),
+            Some("2026-10-01T00:00:00Z")
+        );
+
+        let mut doc_meta = UniFFIDocumentMetadata::default();
+        let core_xml = br#"<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Unified Core</dc:title><dc:creator>Creator B</dc:creator><cp:lastModifiedBy>Editor C</cp:lastModifiedBy></cp:coreProperties>"#;
+        office::parse_core_properties_xml(core_xml, &mut doc_meta);
+        assert_eq!(doc_meta.title.as_deref(), Some("Unified Core"));
+        assert_eq!(doc_meta.author.as_deref(), Some("Creator B"));
+        assert_eq!(doc_meta.last_modified_by.as_deref(), Some("Editor C"));
     }
 }

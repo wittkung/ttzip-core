@@ -53,9 +53,7 @@ struct Preflight {
 }
 
 enum CommitPlan {
-    StopBeforeCommit {
-        staging: StagingArea,
-    },
+    StopBeforeCommit { staging: StagingArea },
     Proceed {
         dest_root: PathBuf,
         table: ConflictTable,
@@ -93,7 +91,6 @@ impl SessionSlot {
         }
     }
 
-    /// Conflict table awaiting a caller decision, if any.
     fn pending_table(&self) -> Option<&ConflictTable> {
         match self {
             Self::AwaitingPreflightDecision { preflight, .. } => Some(&preflight.table),
@@ -137,20 +134,31 @@ impl ExtractionSession {
         }))
     }
 
-    /// Lists the archive and detects conflicts with the destination.
+    /// Lists the archive and detects conflicts with the destination without holding
+    /// the session state mutex across archive listing or filesystem `fstatat` probes.
     /// State: Created -> Created | AwaitingDecision.
     pub fn preflight(&self) -> Result<Option<ConflictSummary>, TTZipError> {
-        let mut slot = self.lock_slot();
-        let dest_root = match &*slot {
-            SessionSlot::Created { dest_root, .. } => dest_root.clone(),
-            SessionSlot::AwaitingPreflightDecision { preflight, .. } => {
-                return Ok(Some(preflight.table.summary(CorePhase::Preflight).into()));
+        let dest_root = {
+            let slot = self.lock_slot();
+            match &*slot {
+                SessionSlot::Created { dest_root, .. } => dest_root.clone(),
+                SessionSlot::AwaitingPreflightDecision { preflight, .. } => {
+                    return Ok(Some(preflight.table.summary(CorePhase::Preflight).into()));
+                }
+                other => return Err(invalid_state(PREFLIGHT_STATES, other)),
             }
-            other => return Err(invalid_state(PREFLIGHT_STATES, other)),
         };
         let scan = self.scan_entries()?;
         let table = detect_preflight(&dest_root, &scan.items)?;
         let preflight = Preflight { plan: scan.plan, table };
+        let mut slot = self.lock_slot();
+        match &*slot {
+            SessionSlot::Created { .. } => {}
+            SessionSlot::AwaitingPreflightDecision { preflight, .. } => {
+                return Ok(Some(preflight.table.summary(CorePhase::Preflight).into()));
+            }
+            other => return Err(invalid_state(PREFLIGHT_STATES, other)),
+        }
         if preflight.table.is_empty() {
             *slot = SessionSlot::Created { dest_root, preflight: Some(preflight) };
             return Ok(None);
@@ -168,11 +176,7 @@ impl ExtractionSession {
         };
         let limit = limit.min(1024) as usize;
         let total = table.len();
-        let records = table
-            .iter_from(offset)
-            .take(limit)
-            .map(|r| r.to_record().into())
-            .collect();
+        let records = table.iter_from(offset).take(limit).map(|r| r.to_record().into()).collect();
         Ok(ConflictPage {
             records,
             total_conflicts: u32::try_from(total).unwrap_or(u32::MAX),
@@ -207,27 +211,19 @@ impl ExtractionSession {
                         staging_path.display()
                     ),
                 })?;
-                return Ok(CommitResult::Finished {
-                    outcome: ExtractionOutcome::stopped(),
-                });
+                return Ok(CommitResult::Finished { outcome: ExtractionOutcome::stopped() });
             }
-            CommitPlan::Proceed {
-                dest_root,
-                table,
-                staging,
-                effective_resolutions,
-            } => (dest_root, table, staging, effective_resolutions),
+            CommitPlan::Proceed { dest_root, table, staging, effective_resolutions } => {
+                (dest_root, table, staging, effective_resolutions)
+            }
         };
         let result = commit_staged(&dest_root, &table, &staging, &effective_resolutions);
         match result {
             Ok(mut outcome) => {
-                let has_placed_items = (outcome.extracted
-                    + outcome.replaced
-                    + outcome.kept_both
-                    + outcome.merged_dirs)
-                    > 0;
+                let has_placed =
+                    (outcome.extracted + outcome.replaced + outcome.kept_both + outcome.merged_dirs) > 0;
                 let staging_path = staging.staging_dir.clone();
-                let cleanup_res = if outcome.status == CoreOutcomeStatus::Completed || has_placed_items {
+                let cleanup_res = if outcome.status == CoreOutcomeStatus::Completed || has_placed {
                     staging.commit_and_cleanup_checked()
                 } else {
                     staging.abort_checked()
@@ -437,10 +433,7 @@ impl ExtractionSession {
         .map_err(status_error)
     }
 
-    fn begin_commit(
-        &self,
-        resolutions: &CoreResolutionSet,
-    ) -> Result<CommitPlan, TTZipError> {
+    fn begin_commit(&self, resolutions: &CoreResolutionSet) -> Result<CommitPlan, TTZipError> {
         let mut slot = self.lock_slot();
         let all_covered = match &*slot {
             SessionSlot::Staged { table, .. } | SessionSlot::AwaitingStageDecision { table, .. } => {
@@ -454,46 +447,36 @@ impl ExtractionSession {
 
         if !all_covered {
             match self.request.policy {
-                CollisionPolicy::Stop => {
-                    match std::mem::replace(&mut *slot, SessionSlot::Aborted) {
-                        SessionSlot::Staged { staging, .. }
-                        | SessionSlot::AwaitingStageDecision { staging, .. } => {
-                            return Ok(CommitPlan::StopBeforeCommit { staging });
-                        }
-                        other => {
-                            let err = invalid_state(COMMIT_STATES, &other);
-                            *slot = other;
-                            return Err(err);
-                        }
+                CollisionPolicy::Stop => match std::mem::replace(&mut *slot, SessionSlot::Aborted) {
+                    SessionSlot::Staged { staging, .. }
+                    | SessionSlot::AwaitingStageDecision { staging, .. } => {
+                        return Ok(CommitPlan::StopBeforeCommit { staging });
                     }
-                }
+                    other => {
+                        let err = invalid_state(COMMIT_STATES, &other);
+                        *slot = other;
+                        return Err(err);
+                    }
+                },
                 CollisionPolicy::Ask => {
                     return Err(TTZipError::InvalidResolution {
                         detail: "unresolved conflicts remain without default_action or override"
                             .to_string(),
                     });
                 }
-                CollisionPolicy::KeepBoth
-                | CollisionPolicy::Replace
-                | CollisionPolicy::Skip => {}
+                CollisionPolicy::KeepBoth | CollisionPolicy::Replace | CollisionPolicy::Skip => {}
             }
         }
 
         let mut effective_resolutions = resolutions.clone();
         if effective_resolutions.default_action.is_none() {
-            effective_resolutions.default_action =
-                self.request.policy.default_action().map(Into::into);
+            effective_resolutions.default_action = self.request.policy.default_action().map(Into::into);
         }
 
         match std::mem::replace(&mut *slot, SessionSlot::Committing) {
             SessionSlot::Staged { dest_root, table, staging }
             | SessionSlot::AwaitingStageDecision { dest_root, table, staging } => {
-                Ok(CommitPlan::Proceed {
-                    dest_root,
-                    table,
-                    staging,
-                    effective_resolutions,
-                })
+                Ok(CommitPlan::Proceed { dest_root, table, staging, effective_resolutions })
             }
             other => {
                 let err = invalid_state(COMMIT_STATES, &other);
@@ -503,8 +486,6 @@ impl ExtractionSession {
         }
     }
 
-    /// Lists the archive once: destination-relative target paths, sorted
-    /// component-wise as `preflight_detect` requires, plus the staging plan.
     fn scan_entries(&self) -> Result<EntryScan, TTZipError> {
         let mut items = Vec::new();
         let mut bytes = 0u64;
@@ -526,8 +507,6 @@ impl ExtractionSession {
         Ok(EntryScan { items, plan })
     }
 
-    /// Destination-relative path of an entry, or `None` when the entry is not
-    /// selected or cannot be placed inside the destination (empty or `..`).
     fn target_path<'a>(&self, entry_path: &'a str) -> Option<&'a str> {
         let path = match &self.selection {
             Some(selection) => selection.output_path(entry_path)?,
@@ -562,9 +541,6 @@ fn item_meta(entry: &ArchiveEntryRef<'_>) -> CoreItemMeta {
     }
 }
 
-/// Canonicalizes the deepest existing ancestor of `raw` and re-appends the
-/// missing tail. The tail is created later by staging, which records that it
-/// did so and removes it again on abort.
 fn resolve_destination(raw: &str) -> Result<PathBuf, TTZipError> {
     let mut existing = PathBuf::from(raw);
     let mut missing = Vec::new();
@@ -586,14 +562,10 @@ fn resolve_destination(raw: &str) -> Result<PathBuf, TTZipError> {
     Ok(resolved)
 }
 
-fn detect_preflight(
-    dest_root: &Path,
-    items: &[(PathBuf, CoreItemMeta)],
-) -> Result<ConflictTable, TTZipError> {
+fn detect_preflight(dest_root: &Path, items: &[(PathBuf, CoreItemMeta)]) -> Result<ConflictTable, TTZipError> {
     let fs = LibcFsOps;
     let dest = match fs.openat_dir_nofollow(libc::AT_FDCWD, dest_root) {
         Ok(fd) => fd,
-        // A destination that does not exist yet cannot conflict with anything.
         Err(e) if e.raw_os_error() == Some(libc::ENOENT) => {
             return ConflictTable::builder().build().map_err(collision_error);
         }
@@ -604,9 +576,7 @@ fn detect_preflight(
 
 fn detect_post_stage(dest_root: &Path, staging: &StagingArea) -> Result<ConflictTable, TTZipError> {
     let fs = LibcFsOps;
-    let dest = fs
-        .openat_dir_nofollow(libc::AT_FDCWD, dest_root)
-        .map_err(destination_error)?;
+    let dest = fs.openat_dir_nofollow(libc::AT_FDCWD, dest_root).map_err(destination_error)?;
     post_stage_detect(&fs, dest.as_raw_fd(), &staging.payload_dir().0).map_err(collision_error)
 }
 
@@ -617,16 +587,13 @@ fn commit_staged(
     resolutions: &CoreResolutionSet,
 ) -> Result<CoreOutcome, TTZipError> {
     let fs = LibcFsOps;
-    let dest = fs
-        .openat_dir_nofollow(libc::AT_FDCWD, dest_root)
-        .map_err(destination_error)?;
+    let dest = fs.openat_dir_nofollow(libc::AT_FDCWD, dest_root).map_err(destination_error)?;
     let payload = fs
         .openat_dir_nofollow(libc::AT_FDCWD, &staging.payload_dir().0)
         .map_err(|e| TTZipError::io_error(e, "open staging payload"))?;
     let displaced = fs
         .openat_dir_nofollow(libc::AT_FDCWD, &staging.displaced_dir())
         .map_err(|e| TTZipError::io_error(e, "open staging displaced"))?;
-    // Unknown capabilities select the conservative non-atomic fallbacks.
     let caps = fs.probe_vol_caps(dest_root).unwrap_or_default();
     let payload_path = staging.payload_dir().0;
     let (mut outcome, committed_mapping) =
@@ -634,21 +601,13 @@ fn commit_staged(
             .commit_with_mapping(table, resolutions)
             .map_err(|e| TTZipError::io_error(e, "commit staged items"))?;
     ttzip_archive::fs::staged_metadata::apply_committed_metadata(
-        &payload_path,
-        dest_root,
-        &committed_mapping,
-        &mut outcome,
+        &payload_path, dest_root, &committed_mapping, &mut outcome,
     );
     Ok(outcome)
 }
 
-
-
 fn invalid_state(expected: &str, actual: &SessionSlot) -> TTZipError {
-    TTZipError::InvalidSessionState {
-        expected: expected.to_string(),
-        actual: actual.state(),
-    }
+    TTZipError::InvalidSessionState { expected: expected.to_string(), actual: actual.state() }
 }
 
 fn destination_error(err: std::io::Error) -> TTZipError {
@@ -663,7 +622,6 @@ fn collision_error(err: CollisionError) -> TTZipError {
     }
 }
 
-/// Maps a decoder status to the typed UniFFI error.
 pub(crate) fn status_error(status: TTZipStatus) -> TTZipError {
     match status {
         TTZipStatus::Cancelled => TTZipError::Cancelled,
@@ -690,16 +648,35 @@ pub fn sweep_stale_staging(destination_root: String) -> Result<u32, TTZipError> 
 #[cfg(test)]
 mod status_mapping_tests {
     use super::*;
+    use crate::zip::{assemble_zip_archive, compress_items_parallel, ZipInputItem};
 
     #[test]
     fn security_status_does_not_claim_a_specific_bomb_cause() {
-        assert!(matches!(
-            status_error(TTZipStatus::ErrSecurityViolation),
-            TTZipError::SecurityViolation { .. }
-        ));
-        assert!(matches!(
-            status_error(TTZipStatus::ErrInvalidPassword),
-            TTZipError::InvalidPassword
-        ));
+        assert!(matches!(status_error(TTZipStatus::ErrSecurityViolation), TTZipError::SecurityViolation { .. }));
+        assert!(matches!(status_error(TTZipStatus::ErrInvalidPassword), TTZipError::InvalidPassword));
+    }
+
+    #[test]
+    fn preflight_abort_is_not_overwritten_and_state_is_preserved() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let (zip_path, dest_dir) = (dir.path().join("preflight.zip"), dir.path().join("dest"));
+        std::fs::create_dir_all(&dest_dir).expect("dest");
+        let item = ZipInputItem {
+            rel_path: "hello.txt".to_string(), data: b"hello".to_vec(),
+            mtime_epoch_secs: 1700000000, mode: 0o644, is_directory: false,
+        };
+        let comp = compress_items_parallel(vec![item], 6, crate::types::TTZipEncryptionMethod::None, None, 1).expect("comp");
+        std::fs::write(&zip_path, assemble_zip_archive(&comp).expect("asm")).expect("write");
+
+        let session = ExtractionSession::new(ExtractionRequest {
+            archive_path: zip_path.to_string_lossy().into_owned(),
+            destination_root: dest_dir.to_string_lossy().into_owned(),
+            password: None, policy: CollisionPolicy::Ask, entry_filter: None, root_at_common_parent: false,
+        }).expect("session");
+        assert_eq!(session.state(), SessionState::Created);
+        assert!(session.preflight().expect("preflight").is_none());
+        session.abort().expect("abort");
+        assert_eq!(session.state(), SessionState::Aborted);
+        assert!(matches!(session.preflight(), Err(TTZipError::InvalidSessionState { actual: SessionState::Aborted, .. })));
     }
 }

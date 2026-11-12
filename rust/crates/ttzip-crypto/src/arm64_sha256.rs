@@ -9,9 +9,10 @@
 //! safe dynamic dispatch with scalar fallback, and 64-way pre-expanded batching
 //! for 7z 524,288-cycle password stretching KDF.
 
-use parking_lot::Mutex;
-use std::sync::LazyLock;
-use zeroize::{Zeroize, ZeroizeOnDrop};
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
+use crate::sevenz_kdf::{
+    compute_7z_sha256_rounds, password_to_utf16le, AesKdfCache,
+};
 
 /// Standard SHA-256 round constant table (K256).
 pub const K256: [u32; 64] = [
@@ -428,146 +429,13 @@ impl HardwareSha256 {
 }
 
 // ============================================================================
-// 5. Thread-Safe Global LRU Key Cache
+// 5. Thread-Safe Global LRU Key Cache (Unified with `AesKdfCache`)
 // ============================================================================
 
-#[derive(Clone, Zeroize, ZeroizeOnDrop)]
-struct CachedKeyEntry {
-    password: String,
-    salt: Vec<u8>,
-    num_cycles_power: u32,
-    derived_key: [u8; 32],
-}
-
-struct KeyCacheInner {
-    entries: Vec<CachedKeyEntry>,
-    capacity: usize,
-}
-
-impl KeyCacheInner {
-    fn new(capacity: usize) -> Self {
-        Self {
-            entries: Vec::with_capacity(capacity),
-            capacity,
-        }
-    }
-
-    fn get(&mut self, password: &str, salt: &[u8], num_cycles_power: u32) -> Option<[u8; 32]> {
-        if let Some(pos) = self.entries.iter().position(|e| {
-            e.num_cycles_power == num_cycles_power
-                && e.salt.as_slice() == salt
-                && e.password.as_str() == password
-        }) {
-            let entry = self.entries.remove(pos);
-            let key = entry.derived_key;
-            self.entries.insert(0, entry);
-            Some(key)
-        } else {
-            None
-        }
-    }
-
-    fn insert(&mut self, password: &str, salt: &[u8], num_cycles_power: u32, key: [u8; 32]) {
-        if let Some(pos) = self.entries.iter().position(|e| {
-            e.num_cycles_power == num_cycles_power
-                && e.salt.as_slice() == salt
-                && e.password.as_str() == password
-        }) {
-            self.entries.remove(pos);
-        } else if self.entries.len() >= self.capacity && !self.entries.is_empty() {
-            let mut evicted = self.entries.pop().unwrap();
-            evicted.zeroize();
-        }
-
-        self.entries.insert(
-            0,
-            CachedKeyEntry {
-                password: password.to_string(),
-                salt: salt.to_vec(),
-                num_cycles_power,
-                derived_key: key,
-            },
-        );
-    }
-
-    fn clear(&mut self) {
-        for entry in self.entries.iter_mut() {
-            entry.zeroize();
-        }
-        self.entries.clear();
-    }
-}
-
-/// Thread-safe LRU singleton cache for derived 7z AES encryption keys.
-pub struct SevenZKeyCache {
-    inner: Mutex<KeyCacheInner>,
-}
-
-impl SevenZKeyCache {
-    /// Default maximum cache entries.
-    pub const DEFAULT_CAPACITY: usize = 64;
-
-    /// Creates a new key cache with specified capacity.
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            inner: Mutex::new(KeyCacheInner::new(capacity)),
-        }
-    }
-
-    /// Accesses the global singleton key cache instance.
-    pub fn global() -> &'static Self {
-        static INSTANCE: LazyLock<SevenZKeyCache> =
-            LazyLock::new(|| SevenZKeyCache::new(SevenZKeyCache::DEFAULT_CAPACITY));
-        &INSTANCE
-    }
-
-    /// Queries the cache for a precomputed 32-byte key.
-    pub fn get(&self, password: &str, salt: &[u8], num_cycles_power: u32) -> Option<[u8; 32]> {
-        self.inner.lock().get(password, salt, num_cycles_power)
-    }
-
-    /// Inserts a newly computed 32-byte key into the cache.
-    pub fn insert(&self, password: &str, salt: &[u8], num_cycles_power: u32, key: [u8; 32]) {
-        self.inner.lock().insert(password, salt, num_cycles_power, key);
-    }
-
-    /// Clears and zeroizes all cached keys and credentials.
-    pub fn clear(&self) {
-        self.inner.lock().clear();
-    }
-
-    /// Returns the current number of cached entries.
-    pub fn len(&self) -> usize {
-        self.inner.lock().entries.len()
-    }
-
-    /// Checks if the key cache is empty.
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-}
-
-// ============================================================================
-// 6. 7z 524,288 Cycles KDF Key Derivation (64-way Pre-Expanded Batching)
-// ============================================================================
-
-/// Derives a 32-byte AES key for 7z archives using hardware-accelerated ARM64 SHA-256.
-///
-/// Features:
-/// - 64-way pre-expanded batch buffering to fully saturate hardware SIMD vector pipelines.
-/// - Zero heap allocation during key derivation iterations.
-/// - Full `Zeroize` erasure of sensitive plaintext and intermediate stack buffers.
-/// - Fast LRU singleton cache lookup for instant repeated access.
-pub fn derive_7z_key_arm64(password: &str, salt: &[u8], num_cycles_power: u32) -> [u8; 32] {
-    if let Some(cached) = SevenZKeyCache::global().get(password, salt, num_cycles_power) {
-        return cached;
-    }
-
-    let mut hasher = HardwareSha256::new();
-    let num_cycles = 1u64 << num_cycles_power;
-
+fn with_password_utf16le<R>(password: &str, f: impl FnOnce(&[u8]) -> R) -> R {
     let mut utf16_buf = [0u8; 1024];
     let mut utf16_len = 0;
+    let mut overflow = false;
 
     for val in password.encode_utf16() {
         if utf16_len + 2 <= utf16_buf.len() {
@@ -575,66 +443,193 @@ pub fn derive_7z_key_arm64(password: &str, salt: &[u8], num_cycles_power: u32) -
             utf16_buf[utf16_len] = bytes[0];
             utf16_buf[utf16_len + 1] = bytes[1];
             utf16_len += 2;
+        } else {
+            overflow = true;
+            break;
         }
     }
 
-    let pass_bytes = &utf16_buf[..utf16_len];
-    let prefix_len = salt.len() + pass_bytes.len();
-    let step_len = prefix_len + 8;
-
-    if step_len <= 1024 {
-        let mut iter_buf = [0u8; 1024];
-        if !salt.is_empty() {
-            iter_buf[..salt.len()].copy_from_slice(salt);
-        }
-        if !pass_bytes.is_empty() {
-            iter_buf[salt.len()..prefix_len].copy_from_slice(pass_bytes);
-        }
-
-        const BATCH_BUF_SIZE: usize = 8192;
-        let batch_count = (BATCH_BUF_SIZE / step_len).clamp(1, 64);
-        let mut batch_buf = [0u8; BATCH_BUF_SIZE];
-        let batch_total_bytes = batch_count * step_len;
-
-        for step_idx in 0..batch_count {
-            let offset = step_idx * step_len;
-            batch_buf[offset..offset + prefix_len].copy_from_slice(&iter_buf[..prefix_len]);
-        }
-
-        let mut i = 0u64;
-        while i + (batch_count as u64) <= num_cycles {
-            for step_idx in 0..batch_count {
-                let current_cycle = i + (step_idx as u64);
-                let counter_offset = step_idx * step_len + prefix_len;
-                batch_buf[counter_offset..counter_offset + 8].copy_from_slice(&current_cycle.to_le_bytes());
-            }
-            hasher.update(&batch_buf[..batch_total_bytes]);
-            i += batch_count as u64;
-        }
-
-        while i < num_cycles {
-            iter_buf[prefix_len..step_len].copy_from_slice(&i.to_le_bytes());
-            hasher.update(&iter_buf[..step_len]);
-            i += 1;
-        }
-
-        iter_buf.zeroize();
-        batch_buf.zeroize();
+    if overflow {
+        utf16_buf.zeroize();
+        let heap_utf16 = Zeroizing::new(password_to_utf16le(password));
+        f(&heap_utf16)
     } else {
-        for i in 0..num_cycles {
-            if !salt.is_empty() {
-                hasher.update(salt);
-            }
-            if !pass_bytes.is_empty() {
-                hasher.update(pass_bytes);
-            }
-            hasher.update(&i.to_le_bytes());
+        let res = f(&utf16_buf[..utf16_len]);
+        utf16_buf.zeroize();
+        res
+    }
+}
+
+/// Thread-safe LRU singleton cache for derived 7z AES encryption keys.
+pub struct SevenZKeyCache {
+    cache: AesKdfCache,
+}
+
+impl SevenZKeyCache {
+    /// Default maximum cache entries.
+    pub const DEFAULT_CAPACITY: usize = AesKdfCache::DEFAULT_CAPACITY;
+
+    /// Creates a new key cache with specified capacity.
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            cache: AesKdfCache::new(capacity),
         }
     }
 
-    utf16_buf.zeroize();
+    /// Accesses the global singleton key cache instance shared with `AesKdfCache::global()`.
+    pub fn global() -> &'static Self {
+        static INSTANCE: SevenZKeyCache = SevenZKeyCache {
+            cache: AesKdfCache::new_global(),
+        };
+        &INSTANCE
+    }
 
-    let key = hasher.finalize();
-    SevenZKeyCache::global().insert(password, salt, num_cycles_power, key);
-    key
+    /// Queries the cache for a precomputed 32-byte key.
+    pub fn get(&self, password: &str, salt: &[u8], num_cycles_power: u32) -> Option<[u8; 32]> {
+        with_password_utf16le(password, |pass_utf16le| {
+            self.cache
+                .get_zeroizing(pass_utf16le, salt, num_cycles_power)
+                .map(|k| *k)
+        })
+    }
+
+    /// Inserts a newly computed 32-byte key into the cache.
+    pub fn insert(&self, password: &str, salt: &[u8], num_cycles_power: u32, key: [u8; 32]) {
+        with_password_utf16le(password, |pass_utf16le| {
+            self.cache.insert_zeroizing(
+                pass_utf16le,
+                salt,
+                num_cycles_power,
+                Zeroizing::new(key),
+            );
+        });
+    }
+
+    /// Clears and zeroizes all cached keys and credentials.
+    pub fn clear(&self) {
+        self.cache.clear();
+    }
+
+    /// Returns the current number of cached entries.
+    pub fn len(&self) -> usize {
+        self.cache.len()
+    }
+
+    /// Checks if the key cache is empty.
+    pub fn is_empty(&self) -> bool {
+        self.cache.is_empty()
+    }
+}
+
+// ============================================================================
+// 6. 7z 524,288 Cycles KDF Key Derivation (Unified Canonical Engine)
+// ============================================================================
+
+/// Derives a 32-byte AES key for 7z archives using hardware-accelerated ARM64 SHA-256.
+///
+/// Routes through the unified canonical 7z SHA-256 KDF engine and shares the global
+/// `Zeroizing<[u8; 32]>` LRU key cache with `derive_7z_aes_key`.
+pub fn derive_7z_key_arm64(password: &str, salt: &[u8], num_cycles_power: u32) -> [u8; 32] {
+    with_password_utf16le(password, |pass_utf16le| {
+        if let Some(cached) =
+            AesKdfCache::global().get_zeroizing(pass_utf16le, salt, num_cycles_power)
+        {
+            return *cached;
+        }
+        let key = compute_7z_sha256_rounds(pass_utf16le, salt, num_cycles_power);
+        AesKdfCache::global().insert_zeroizing(pass_utf16le, salt, num_cycles_power, key.clone());
+        *key
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sevenz_kdf::{derive_7z_aes_key, password_to_utf16le, AesKdfCache};
+
+    #[test]
+    fn test_arm64_sha256_and_sevenz_kdf_unified_cache_coherency() {
+        let _guard = crate::sevenz_kdf::GLOBAL_CACHE_TEST_LOCK.lock();
+        SevenZKeyCache::global().clear();
+        assert!(SevenZKeyCache::global().is_empty());
+        assert!(AesKdfCache::global().is_empty());
+
+        let password = "Arm64UnifiedCacheKeyPassword!2026";
+        let salt = [0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF];
+        let iv = [0x11u8; 16];
+        let cycles_power = 7u32;
+
+        let key_arm64 = derive_7z_key_arm64(password, &salt, cycles_power);
+        assert_eq!(
+            SevenZKeyCache::global().get(password, &salt, cycles_power),
+            Some(key_arm64)
+        );
+
+        let pw_utf16 = password_to_utf16le(password);
+        assert_eq!(
+            AesKdfCache::global().get(&pw_utf16, &salt, cycles_power as u8),
+            Some(key_arm64)
+        );
+
+        let aes_derived =
+            derive_7z_aes_key(&pw_utf16, &salt, cycles_power as u8, &iv).expect("aes key");
+        assert_eq!(aes_derived.key, key_arm64);
+        assert_eq!(aes_derived.iv, iv);
+
+        AesKdfCache::global().clear();
+        assert!(SevenZKeyCache::global().is_empty());
+        assert_eq!(
+            SevenZKeyCache::global().get(password, &salt, cycles_power),
+            None
+        );
+    }
+
+    #[test]
+    fn test_long_password_utf16_overflow_matches_canonical_kdf() {
+        let _guard = crate::sevenz_kdf::GLOBAL_CACHE_TEST_LOCK.lock();
+        SevenZKeyCache::global().clear();
+        let long_password: String = (0..600).map(|i| char::from(b'a' + (i % 26) as u8)).collect();
+        let salt = [0x55, 0xAA, 0x33, 0xCC];
+        let cycles_power = 4u32;
+
+        let key_via_str = derive_7z_key_arm64(&long_password, &salt, cycles_power);
+        let pw_utf16 = password_to_utf16le(&long_password);
+        let key_via_aes = derive_7z_aes_key(&pw_utf16, &salt, cycles_power as u8, &[0u8; 16])
+            .expect("long password aes key");
+        assert_eq!(key_via_str, key_via_aes.key);
+        assert_eq!(
+            SevenZKeyCache::global().get(&long_password, &salt, cycles_power),
+            Some(key_via_str)
+        );
+    }
+
+    #[test]
+    fn test_local_sevenz_key_cache_lru_and_clear() {
+        let cache = SevenZKeyCache::new(2);
+        assert!(cache.is_empty());
+        let salt = [0x0A, 0x0B, 0x0C, 0x0D];
+        let k1 = [0x11u8; 32];
+        let k2 = [0x22u8; 32];
+        let k3 = [0x33u8; 32];
+
+        cache.insert("alpha", &salt, 10, k1);
+        cache.insert("beta", &salt, 10, k2);
+        assert_eq!(cache.len(), 2);
+        assert_eq!(cache.get("alpha", &salt, 10), Some(k1));
+
+        cache.insert("gamma", &salt, 10, k3);
+        assert_eq!(cache.get("alpha", &salt, 10), Some(k1));
+        assert_eq!(cache.get("beta", &salt, 10), None);
+        assert_eq!(cache.get("gamma", &salt, 10), Some(k3));
+
+        cache.clear();
+        assert!(cache.is_empty());
+        assert_eq!(cache.len(), 0);
+
+        let mut hasher = HardwareSha256::new();
+        hasher.update(b"unified-arm64-sha256-state-check");
+        assert_eq!(hasher.total_len(), 32);
+        let digest = hasher.finalize();
+        assert_eq!(digest, HardwareSha256::digest(b"unified-arm64-sha256-state-check"));
+    }
 }

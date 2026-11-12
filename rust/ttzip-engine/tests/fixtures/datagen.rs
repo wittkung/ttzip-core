@@ -57,7 +57,7 @@ impl RdgRng {
 
     /// Generates the lowest `nb_bits` pseudo-random bits ($0 \le \text{nb\_bits} \le 32$).
     #[inline]
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "PRNG bit-slicing utility retained for extended corpus test suites")]
     pub fn next_bits(&mut self, nb_bits: u32) -> u32 {
         if nb_bits == 0 {
             0
@@ -70,7 +70,7 @@ impl RdgRng {
 
     /// Generates a pseudo-random integer in the closed interval `[min, max]`.
     #[inline]
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "PRNG range utility retained for extended corpus test suites")]
     pub fn rand_range(&mut self, min_val: u32, max_val: u32) -> u32 {
         if min_val >= max_val {
             return min_val;
@@ -81,14 +81,14 @@ impl RdgRng {
 
     /// Generates a single pseudo-random byte (`u8`).
     #[inline]
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "PRNG byte utility retained for extended corpus test suites")]
     pub fn rand_byte(&mut self) -> u8 {
         (self.next_u32() & 0xFF) as u8
     }
 
     /// Evaluates a boolean flag with probability `prob` ($0.0 \le \text{prob} \le 1.0$).
     #[inline]
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "PRNG Bernoulli sampling utility retained for extended corpus test suites")]
     pub fn rand_bool_prob(&mut self, prob: f64) -> bool {
         if prob <= 0.0 {
             false
@@ -102,7 +102,7 @@ impl RdgRng {
 
     /// Returns the current raw 32-bit state.
     #[inline]
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "PRNG state accessor retained for determinism inspection tests")]
     pub const fn raw_state(&self) -> u32 {
         self.state
     }
@@ -246,7 +246,7 @@ impl DataGenLevel {
     }
 
     /// Returns human-readable description of the level.
-    #[allow(dead_code)]
+    #[allow(dead_code, reason = "Human-readable level descriptor retained for benchmark reporting")]
     pub const fn description(&self) -> &'static str {
         match self {
             Self::PureNoise => "Pure Noise (Entropy 8.0 bpb, 0% Match, Incompressible)",

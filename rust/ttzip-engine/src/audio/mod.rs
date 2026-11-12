@@ -47,6 +47,11 @@ pub fn extract_waveform_from_bytes(data: &[u8], bucket_count: usize) -> Vec<f32>
 }
 
 fn decode_wav_samples(data: &[u8]) -> Option<Vec<f32>> {
+    let (audio_format, bits_per_sample, raw) = parse_wav_chunks(data)?;
+    decode_pcm_samples(audio_format, bits_per_sample, raw)
+}
+
+fn parse_wav_chunks(data: &[u8]) -> Option<(u16, u16, &[u8])> {
     if data.len() < 12 || &data[0..4] != b"RIFF" || &data[8..12] != b"WAVE" {
         return None;
     }
@@ -75,47 +80,48 @@ fn decode_wav_samples(data: &[u8]) -> Option<Vec<f32>> {
         cursor = cursor.checked_add(chunk_size)?;
     }
 
-    let raw = data_chunk?;
-    let mut samples = Vec::with_capacity(raw.len() / (bits_per_sample.max(8) as usize / 8));
+    Some((audio_format, bits_per_sample, data_chunk?))
+}
 
+fn decode_pcm_samples(audio_format: u16, bits_per_sample: u16, raw: &[u8]) -> Option<Vec<f32>> {
     match (audio_format, bits_per_sample) {
-        (1, 8) => {
-            for &b in raw {
-                samples.push((b as f32 - 128.0) / 128.0);
-            }
-        }
+        (1, 8) => Some(raw.iter().map(|&b| (b as f32 - 128.0) / 128.0).collect()),
         (1, 16) => {
             let (pairs, _) = raw.as_chunks::<2>();
-            for chunk in pairs {
-                let val = i16::from_le_bytes([chunk[0], chunk[1]]);
-                samples.push(val as f32 / 32768.0);
-            }
+            Some(
+                pairs
+                    .iter()
+                    .map(|c| i16::from_le_bytes([c[0], c[1]]) as f32 / 32768.0)
+                    .collect(),
+            )
         }
         (1, 24) => {
             let (triples, _) = raw.as_chunks::<3>();
-            for chunk in triples {
-                let val = (chunk[0] as i32) | ((chunk[1] as i32) << 8) | (((chunk[2] as i8) as i32) << 16);
-                samples.push(val as f32 / 8388608.0);
-            }
+            Some(
+                triples
+                    .iter()
+                    .map(|c| {
+                        let val = (c[0] as i32) | ((c[1] as i32) << 8) | (((c[2] as i8) as i32) << 16);
+                        val as f32 / 8388608.0
+                    })
+                    .collect(),
+            )
         }
         (1, 32) => {
             let (quads, _) = raw.as_chunks::<4>();
-            for chunk in quads {
-                let val = i32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-                samples.push(val as f32 / 2147483648.0);
-            }
+            Some(
+                quads
+                    .iter()
+                    .map(|c| i32::from_le_bytes(*c) as f32 / 2147483648.0)
+                    .collect(),
+            )
         }
         (3, 32) => {
             let (quads, _) = raw.as_chunks::<4>();
-            for chunk in quads {
-                let val = f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-                samples.push(val);
-            }
+            Some(quads.iter().map(|c| f32::from_le_bytes(*c)).collect())
         }
-        _ => return None,
+        _ => None,
     }
-
-    Some(samples)
 }
 
 fn downsample_peaks(samples: &[f32], count: usize) -> Vec<f32> {

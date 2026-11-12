@@ -370,70 +370,15 @@ impl UniFFIPluginVerifier {
         cert: UniFFIEd25519Cert,
         current_timestamp_secs: Option<i64>,
     ) -> UniFFIAuthStatus {
-        let now = current_timestamp_secs.unwrap_or_else(|| {
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64
-        });
-
-        // 1. Temporal validity check
-        if cert.issued_at_epoch_secs > cert.expires_at_epoch_secs {
+        let now = current_timestamp_secs.unwrap_or_else(current_unix_epoch_secs);
+        if let Err(status) = validate_cert_temporal_window(&cert, now) {
+            return status;
+        }
+        let Ok((pub_bytes, tbs, sig)) = decode_certificate_material(&cert) else {
             return UniFFIAuthStatus::MalformedCert;
-        }
-        if now < cert.issued_at_epoch_secs || now > cert.expires_at_epoch_secs {
-            return UniFFIAuthStatus::Expired;
-        }
-
-        // 2. Format decoding
-        let sig_bytes = match decode_base64(cert.signature_base64.trim()) {
-            Some(b) if b.len() == SIGNATURE_LENGTH => b,
-            _ => return UniFFIAuthStatus::MalformedCert,
         };
-        let pub_bytes = match decode_base64(cert.public_key_base64.trim()) {
-            Some(b) if b.len() == PUBLIC_KEY_LENGTH => b,
-            _ => return UniFFIAuthStatus::MalformedCert,
-        };
-
-        let tbs = match cert.canonical_tbs_bytes() {
-            Ok(b) => b,
-            Err(_) => return UniFFIAuthStatus::MalformedCert,
-        };
-
-        let sig = match Signature::from_slice(&sig_bytes) {
-            Ok(s) => s,
-            Err(_) => return UniFFIAuthStatus::MalformedCert,
-        };
-
-        // 3. Verify against trusted root store
         let roots = self.trusted_roots.read();
-        if roots.is_empty() {
-            // Direct self-signed certificate fallback check
-            let vk = match VerifyingKey::from_slice(&pub_bytes) {
-                Ok(k) => k,
-                Err(_) => return UniFFIAuthStatus::MalformedCert,
-            };
-            return match vk.verify_strict(&tbs, &sig) {
-                Ok(_) => UniFFIAuthStatus::Valid,
-                Err(_) => UniFFIAuthStatus::InvalidSignature,
-            };
-        }
-
-        let mut root_matched = false;
-        for root in roots.iter() {
-            if let Ok(vk) = VerifyingKey::from_slice(root) {
-                if vk.verify_strict(&tbs, &sig).is_ok() {
-                    root_matched = true;
-                    break;
-                }
-            }
-        }
-
-        if root_matched {
-            UniFFIAuthStatus::Valid
-        } else {
-            UniFFIAuthStatus::UntrustedRoot
-        }
+        verify_tbs_against_roots(&roots, &pub_bytes, &tbs, &sig)
     }
 
     /// Verifies `.ttplugin` manifest string against a detached Base64 signature and developer public key.
@@ -494,6 +439,68 @@ impl UniFFIPluginVerifier {
             });
         }
         Ok(compute_blake3_fingerprint(&b))
+    }
+}
+
+fn current_unix_epoch_secs() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64
+}
+
+fn validate_cert_temporal_window(cert: &UniFFIEd25519Cert, now: i64) -> Result<(), UniFFIAuthStatus> {
+    if cert.issued_at_epoch_secs > cert.expires_at_epoch_secs {
+        return Err(UniFFIAuthStatus::MalformedCert);
+    }
+    if now < cert.issued_at_epoch_secs || now > cert.expires_at_epoch_secs {
+        return Err(UniFFIAuthStatus::Expired);
+    }
+    Ok(())
+}
+
+fn decode_certificate_material(
+    cert: &UniFFIEd25519Cert,
+) -> Result<(Vec<u8>, Vec<u8>, Signature), UniFFIAuthStatus> {
+    let sig_bytes = decode_base64(cert.signature_base64.trim())
+        .filter(|b| b.len() == SIGNATURE_LENGTH)
+        .ok_or(UniFFIAuthStatus::MalformedCert)?;
+    let pub_bytes = decode_base64(cert.public_key_base64.trim())
+        .filter(|b| b.len() == PUBLIC_KEY_LENGTH)
+        .ok_or(UniFFIAuthStatus::MalformedCert)?;
+    let tbs = cert
+        .canonical_tbs_bytes()
+        .map_err(|_| UniFFIAuthStatus::MalformedCert)?;
+    let sig = Signature::from_slice(&sig_bytes).map_err(|_| UniFFIAuthStatus::MalformedCert)?;
+    Ok((pub_bytes, tbs, sig))
+}
+
+fn verify_tbs_against_roots(
+    roots: &[[u8; PUBLIC_KEY_LENGTH]],
+    pub_bytes: &[u8],
+    tbs: &[u8],
+    sig: &Signature,
+) -> UniFFIAuthStatus {
+    if roots.is_empty() {
+        let Ok(vk) = VerifyingKey::from_slice(pub_bytes) else {
+            return UniFFIAuthStatus::MalformedCert;
+        };
+        return if vk.verify_strict(tbs, sig).is_ok() {
+            UniFFIAuthStatus::Valid
+        } else {
+            UniFFIAuthStatus::InvalidSignature
+        };
+    }
+
+    let matched = roots.iter().any(|root| {
+        VerifyingKey::from_slice(root)
+            .map(|vk| vk.verify_strict(tbs, sig).is_ok())
+            .unwrap_or(false)
+    });
+    if matched {
+        UniFFIAuthStatus::Valid
+    } else {
+        UniFFIAuthStatus::UntrustedRoot
     }
 }
 

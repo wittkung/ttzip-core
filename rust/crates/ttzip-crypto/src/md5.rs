@@ -66,6 +66,80 @@ fn ii(a: &mut u32, b: u32, c: u32, d: u32, x: u32, s: u32, ac: u32) {
     *a = a.rotate_left(s).wrapping_add(b);
 }
 
+#[inline(always)]
+fn md5_rounds_1_2(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32, x: &[u32; 16]) {
+    ff(a, *b, *c, *d, x[0], S11, 0xd76aa478);
+    ff(d, *a, *b, *c, x[1], S12, 0xe8c7b756);
+    ff(c, *d, *a, *b, x[2], S13, 0x242070db);
+    ff(b, *c, *d, *a, x[3], S14, 0xc1bdceee);
+    ff(a, *b, *c, *d, x[4], S11, 0xf57c0faf);
+    ff(d, *a, *b, *c, x[5], S12, 0x4787c62a);
+    ff(c, *d, *a, *b, x[6], S13, 0xa8304613);
+    ff(b, *c, *d, *a, x[7], S14, 0xfd469501);
+    ff(a, *b, *c, *d, x[8], S11, 0x698098d8);
+    ff(d, *a, *b, *c, x[9], S12, 0x8b44f7af);
+    ff(c, *d, *a, *b, x[10], S13, 0xffff5bb1);
+    ff(b, *c, *d, *a, x[11], S14, 0x895cd7be);
+    ff(a, *b, *c, *d, x[12], S11, 0x6b901122);
+    ff(d, *a, *b, *c, x[13], S12, 0xfd987193);
+    ff(c, *d, *a, *b, x[14], S13, 0xa679438e);
+    ff(b, *c, *d, *a, x[15], S14, 0x49b40821);
+
+    gg(a, *b, *c, *d, x[1], S21, 0xf61e2562);
+    gg(d, *a, *b, *c, x[6], S22, 0xc040b340);
+    gg(c, *d, *a, *b, x[11], S23, 0x265e5a51);
+    gg(b, *c, *d, *a, x[0], S24, 0xe9b6c7aa);
+    gg(a, *b, *c, *d, x[5], S21, 0xd62f105d);
+    gg(d, *a, *b, *c, x[10], S22, 0x02441453);
+    gg(c, *d, *a, *b, x[15], S23, 0xd8a1e681);
+    gg(b, *c, *d, *a, x[4], S24, 0xe7d3fbc8);
+    gg(a, *b, *c, *d, x[9], S21, 0x21e1cde6);
+    gg(d, *a, *b, *c, x[14], S22, 0xc33707d6);
+    gg(c, *d, *a, *b, x[3], S23, 0xf4d50d87);
+    gg(b, *c, *d, *a, x[8], S24, 0x455a14ed);
+    gg(a, *b, *c, *d, x[13], S21, 0xa9e3e905);
+    gg(d, *a, *b, *c, x[2], S22, 0xfcefa3f8);
+    gg(c, *d, *a, *b, x[7], S23, 0x676f02d9);
+    gg(b, *c, *d, *a, x[12], S24, 0x8d2a4c8a);
+}
+
+#[inline(always)]
+fn md5_rounds_3_4(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32, x: &[u32; 16]) {
+    hh(a, *b, *c, *d, x[5], S31, 0xfffa3942);
+    hh(d, *a, *b, *c, x[8], S32, 0x8771f681);
+    hh(c, *d, *a, *b, x[11], S33, 0x6d9d6122);
+    hh(b, *c, *d, *a, x[14], S34, 0xfde5380c);
+    hh(a, *b, *c, *d, x[1], S31, 0xa4beea44);
+    hh(d, *a, *b, *c, x[4], S32, 0x4bdecfa9);
+    hh(c, *d, *a, *b, x[7], S33, 0xf6bb4b60);
+    hh(b, *c, *d, *a, x[10], S34, 0xbebfbc70);
+    hh(a, *b, *c, *d, x[13], S31, 0x289b7ec6);
+    hh(d, *a, *b, *c, x[0], S32, 0xeaa127fa);
+    hh(c, *d, *a, *b, x[3], S33, 0xd4ef3085);
+    hh(b, *c, *d, *a, x[6], S34, 0x04881d05);
+    hh(a, *b, *c, *d, x[9], S31, 0xd9d4d039);
+    hh(d, *a, *b, *c, x[12], S32, 0xe6db99e5);
+    hh(c, *d, *a, *b, x[15], S33, 0x1fa27cf8);
+    hh(b, *c, *d, *a, x[2], S34, 0xc4ac5665);
+
+    ii(a, *b, *c, *d, x[0], S41, 0xf4292244);
+    ii(d, *a, *b, *c, x[7], S42, 0x432aff97);
+    ii(c, *d, *a, *b, x[14], S43, 0xab9423a7);
+    ii(b, *c, *d, *a, x[5], S44, 0xfc93a039);
+    ii(a, *b, *c, *d, x[12], S41, 0x655b59c3);
+    ii(d, *a, *b, *c, x[3], S42, 0x8f0ccc92);
+    ii(c, *d, *a, *b, x[10], S43, 0xffeff47d);
+    ii(b, *c, *d, *a, x[1], S44, 0x85845dd1);
+    ii(a, *b, *c, *d, x[8], S41, 0x6fa87e4f);
+    ii(d, *a, *b, *c, x[15], S42, 0xfe2ce6e0);
+    ii(c, *d, *a, *b, x[6], S43, 0xa3014314);
+    ii(b, *c, *d, *a, x[13], S44, 0x4e0811a1);
+    ii(a, *b, *c, *d, x[4], S41, 0xf7537e82);
+    ii(d, *a, *b, *c, x[11], S42, 0xbd3af235);
+    ii(c, *d, *a, *b, x[2], S43, 0x2ad7d2bb);
+    ii(b, *c, *d, *a, x[9], S44, 0xeb86d391);
+}
+
 fn md5_transform(state: &mut [u32; 4], block: &[u8; 64]) {
     let mut a = state[0];
     let mut b = state[1];
@@ -74,80 +148,16 @@ fn md5_transform(state: &mut [u32; 4], block: &[u8; 64]) {
 
     let mut x = [0u32; 16];
     for j in 0..16 {
-        x[j] = u32::from_le_bytes(block[j * 4..j * 4 + 4].try_into().unwrap());
+        x[j] = u32::from_le_bytes([
+            block[j * 4],
+            block[j * 4 + 1],
+            block[j * 4 + 2],
+            block[j * 4 + 3],
+        ]);
     }
 
-    // Round 1
-    ff(&mut a, b, c, d, x[0], S11, 0xd76aa478);
-    ff(&mut d, a, b, c, x[1], S12, 0xe8c7b756);
-    ff(&mut c, d, a, b, x[2], S13, 0x242070db);
-    ff(&mut b, c, d, a, x[3], S14, 0xc1bdceee);
-    ff(&mut a, b, c, d, x[4], S11, 0xf57c0faf);
-    ff(&mut d, a, b, c, x[5], S12, 0x4787c62a);
-    ff(&mut c, d, a, b, x[6], S13, 0xa8304613);
-    ff(&mut b, c, d, a, x[7], S14, 0xfd469501);
-    ff(&mut a, b, c, d, x[8], S11, 0x698098d8);
-    ff(&mut d, a, b, c, x[9], S12, 0x8b44f7af);
-    ff(&mut c, d, a, b, x[10], S13, 0xffff5bb1);
-    ff(&mut b, c, d, a, x[11], S14, 0x895cd7be);
-    ff(&mut a, b, c, d, x[12], S11, 0x6b901122);
-    ff(&mut d, a, b, c, x[13], S12, 0xfd987193);
-    ff(&mut c, d, a, b, x[14], S13, 0xa679438e);
-    ff(&mut b, c, d, a, x[15], S14, 0x49b40821);
-
-    // Round 2
-    gg(&mut a, b, c, d, x[1], S21, 0xf61e2562);
-    gg(&mut d, a, b, c, x[6], S22, 0xc040b340);
-    gg(&mut c, d, a, b, x[11], S23, 0x265e5a51);
-    gg(&mut b, c, d, a, x[0], S24, 0xe9b6c7aa);
-    gg(&mut a, b, c, d, x[5], S21, 0xd62f105d);
-    gg(&mut d, a, b, c, x[10], S22, 0x02441453);
-    gg(&mut c, d, a, b, x[15], S23, 0xd8a1e681);
-    gg(&mut b, c, d, a, x[4], S24, 0xe7d3fbc8);
-    gg(&mut a, b, c, d, x[9], S21, 0x21e1cde6);
-    gg(&mut d, a, b, c, x[14], S22, 0xc33707d6);
-    gg(&mut c, d, a, b, x[3], S23, 0xf4d50d87);
-    gg(&mut b, c, d, a, x[8], S24, 0x455a14ed);
-    gg(&mut a, b, c, d, x[13], S21, 0xa9e3e905);
-    gg(&mut d, a, b, c, x[2], S22, 0xfcefa3f8);
-    gg(&mut c, d, a, b, x[7], S23, 0x676f02d9);
-    gg(&mut b, c, d, a, x[12], S24, 0x8d2a4c8a);
-
-    // Round 3
-    hh(&mut a, b, c, d, x[5], S31, 0xfffa3942);
-    hh(&mut d, a, b, c, x[8], S32, 0x8771f681);
-    hh(&mut c, d, a, b, x[11], S33, 0x6d9d6122);
-    hh(&mut b, c, d, a, x[14], S34, 0xfde5380c);
-    hh(&mut a, b, c, d, x[1], S31, 0xa4beea44);
-    hh(&mut d, a, b, c, x[4], S32, 0x4bdecfa9);
-    hh(&mut c, d, a, b, x[7], S33, 0xf6bb4b60);
-    hh(&mut b, c, d, a, x[10], S34, 0xbebfbc70);
-    hh(&mut a, b, c, d, x[13], S31, 0x289b7ec6);
-    hh(&mut d, a, b, c, x[0], S32, 0xeaa127fa);
-    hh(&mut c, d, a, b, x[3], S33, 0xd4ef3085);
-    hh(&mut b, c, d, a, x[6], S34, 0x04881d05);
-    hh(&mut a, b, c, d, x[9], S31, 0xd9d4d039);
-    hh(&mut d, a, b, c, x[12], S32, 0xe6db99e5);
-    hh(&mut c, d, a, b, x[15], S33, 0x1fa27cf8);
-    hh(&mut b, c, d, a, x[2], S34, 0xc4ac5665);
-
-    // Round 4
-    ii(&mut a, b, c, d, x[0], S41, 0xf4292244);
-    ii(&mut d, a, b, c, x[7], S42, 0x432aff97);
-    ii(&mut c, d, a, b, x[14], S43, 0xab9423a7);
-    ii(&mut b, c, d, a, x[5], S44, 0xfc93a039);
-    ii(&mut a, b, c, d, x[12], S41, 0x655b59c3);
-    ii(&mut d, a, b, c, x[3], S42, 0x8f0ccc92);
-    ii(&mut c, d, a, b, x[10], S43, 0xffeff47d);
-    ii(&mut b, c, d, a, x[1], S44, 0x85845dd1);
-    ii(&mut a, b, c, d, x[8], S41, 0x6fa87e4f);
-    ii(&mut d, a, b, c, x[15], S42, 0xfe2ce6e0);
-    ii(&mut c, d, a, b, x[6], S43, 0xa3014314);
-    ii(&mut b, c, d, a, x[13], S44, 0x4e0811a1);
-    ii(&mut a, b, c, d, x[4], S41, 0xf7537e82);
-    ii(&mut d, a, b, c, x[11], S42, 0xbd3af235);
-    ii(&mut c, d, a, b, x[2], S43, 0x2ad7d2bb);
-    ii(&mut b, c, d, a, x[9], S44, 0xeb86d391);
+    md5_rounds_1_2(&mut a, &mut b, &mut c, &mut d, &x);
+    md5_rounds_3_4(&mut a, &mut b, &mut c, &mut d, &x);
 
     state[0] = state[0].wrapping_add(a);
     state[1] = state[1].wrapping_add(b);

@@ -3,6 +3,7 @@
 
 //! MCP Tools schema registry and execution dispatchers.
 
+use crate::app::preview::{extract_cat_entry_bounded, BoundedCatOutcome};
 use crate::cli::args::VfsNodeContractDto;
 use crate::cli::format::{format_bytes, parse_archive_entries, read_archive_data_auto};
 use crate::cli::handlers::extract::{pattern_matches, CliExtractParams};
@@ -12,11 +13,9 @@ use serde_json::{json, Value};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use ttzip_engine::archive::unified::extract_single_entry_memory;
 use ttzip_engine::types::TTZipStatus;
 
-/// Returns all 8 MCP tool schemas conforming to Model Context Protocol specification.
-pub fn get_tool_definitions() -> Vec<Value> {
+fn get_core_archive_tool_definitions() -> Vec<Value> {
     vec![
         json!({
             "name": "ttzip_list",
@@ -81,6 +80,11 @@ pub fn get_tool_definitions() -> Vec<Value> {
                 "required": ["archive_path"]
             }
         }),
+    ]
+}
+
+fn get_maintenance_tool_definitions() -> Vec<Value> {
+    vec![
         json!({
             "name": "ttzip_cat",
             "description": "Read content of a single archive file entry directly into context with zero temporary disk writes",
@@ -138,6 +142,13 @@ pub fn get_tool_definitions() -> Vec<Value> {
     ]
 }
 
+/// Returns all 8 MCP tool schemas conforming to Model Context Protocol specification.
+pub fn get_tool_definitions() -> Vec<Value> {
+    let mut defs = get_core_archive_tool_definitions();
+    defs.extend(get_maintenance_tool_definitions());
+    defs
+}
+
 /// Dispatches tool call execution to the matching handler.
 pub fn execute_tool_call(name: &str, arguments: Option<&Value>) -> McpToolResult {
     let args = arguments.cloned().unwrap_or(Value::Object(serde_json::Map::new()));
@@ -158,51 +169,73 @@ pub fn execute_tool_call(name: &str, arguments: Option<&Value>) -> McpToolResult
 // Tool Handlers
 // ---------------------------------------------------------------------------
 
-fn handle_list(args: Value) -> McpToolResult {
-    let archive_path_str = match args.get("archive_path").and_then(|v| v.as_str()) {
-        Some(p) => p,
-        None => return McpToolResult::err_structured("INVALID_PARAMS", "Missing required parameter: archive_path", None),
+fn extract_string_array(args: &Value, key: &str) -> Vec<String> {
+    args.get(key)
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|s| s.as_str().map(String::from)).collect())
+        .unwrap_or_default()
+}
+
+fn require_existing_archive<'a>(
+    args: &'a Value,
+    not_found_prefix: &str,
+) -> Result<(&'a str, &'a Path), McpToolResult> {
+    let Some(archive_path_str) = args.get("archive_path").and_then(|v| v.as_str()) else {
+        return Err(McpToolResult::err_structured(
+            "INVALID_PARAMS",
+            "Missing required parameter: archive_path",
+            None,
+        ));
     };
     let archive_path = Path::new(archive_path_str);
     if !archive_path.exists() {
-        return McpToolResult::err_structured(
+        return Err(McpToolResult::err_structured(
             "FILE_NOT_FOUND",
-            format!("Archive file not found: {}", archive_path.display()),
+            format!("{}: {}", not_found_prefix, archive_path.display()),
             Some(json!({ "archive_path": archive_path_str })),
-        );
+        ));
     }
+    Ok((archive_path_str, archive_path))
+}
 
-    let include: Vec<String> = args
-        .get("include")
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|s| s.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    let exclude: Vec<String> = args
-        .get("exclude")
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|s| s.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-
-    let page = args.get("page").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
-    let page_size = args.get("page_size").and_then(|v| v.as_u64()).unwrap_or(200) as usize;
-
-    let (_volumes, data) = match read_archive_data_auto(archive_path) {
-        Ok(res) => res,
-        Err(e) => return McpToolResult::err_structured(
+fn read_and_parse_archive(
+    archive_path_str: &str,
+    archive_path: &Path,
+) -> Result<(Vec<PathBuf>, crate::cli::format::ContainerFormat, Vec<crate::cli::format::ArchiveEntryInfo>), McpToolResult> {
+    let (volumes, data) = read_archive_data_auto(archive_path).map_err(|e| {
+        McpToolResult::err_structured(
             "ARCHIVE_READ_FAILED",
             format!("Failed to read archive: {}", e),
             Some(json!({ "archive_path": archive_path_str, "error": e })),
-        ),
-    };
-
-    let (format_detected, all_entries) = match parse_archive_entries(archive_path, &data) {
-        Ok(res) => res,
-        Err(e) => return McpToolResult::err_structured(
+        )
+    })?;
+    let (format_detected, all_entries) = parse_archive_entries(archive_path, &data).map_err(|e| {
+        McpToolResult::err_structured(
             "ARCHIVE_PARSE_FAILED",
             format!("Failed to parse archive: {}", e),
             Some(json!({ "archive_path": archive_path_str, "error": e })),
-        ),
-    };
+        )
+    })?;
+    Ok((volumes, format_detected, all_entries))
+}
+
+fn handle_list(args: Value) -> McpToolResult {
+    let (archive_path_str, archive_path) =
+        match require_existing_archive(&args, "Archive file not found") {
+            Ok(pair) => pair,
+            Err(err) => return err,
+        };
+
+    let include = extract_string_array(&args, "include");
+    let exclude = extract_string_array(&args, "exclude");
+    let page = args.get("page").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+    let page_size = args.get("page_size").and_then(|v| v.as_u64()).unwrap_or(200) as usize;
+
+    let (_volumes, format_detected, all_entries) =
+        match read_and_parse_archive(archive_path_str, archive_path) {
+            Ok(res) => res,
+            Err(err) => return err,
+        };
 
     let filtered: Vec<_> = all_entries
         .into_iter()
@@ -245,24 +278,28 @@ fn handle_list(args: Value) -> McpToolResult {
     McpToolResult::ok_json(&result).unwrap_or_else(McpToolResult::err)
 }
 
-fn handle_extract(args: Value) -> McpToolResult {
-    let archive_path_str = match args.get("archive_path").and_then(|v| v.as_str()) {
-        Some(p) => p,
-        None => return McpToolResult::err_structured("INVALID_PARAMS", "Missing required parameter: archive_path", None),
-    };
-    let archive_path = Path::new(archive_path_str);
-    if !archive_path.exists() {
-        return McpToolResult::err_structured(
-            "FILE_NOT_FOUND",
-            format!("Archive not found: {}", archive_path.display()),
-            Some(json!({ "archive_path": archive_path_str })),
-        );
+fn classify_extract_error(e: &str) -> &'static str {
+    let err_lower = e.to_lowercase();
+    if err_lower.contains("password") {
+        "PASSWORD_REQUIRED"
+    } else if err_lower.contains("traversal") || err_lower.contains("zip slip") {
+        "PATH_TRAVERSAL_BLOCKED"
+    } else if err_lower.contains("corrupt") {
+        "CORRUPTED_ARCHIVE"
+    } else {
+        "EXTRACTION_FAILED"
     }
+}
+
+fn handle_extract(args: Value) -> McpToolResult {
+    let (archive_path_str, archive_path) =
+        match require_existing_archive(&args, "Archive not found") {
+            Ok(pair) => pair,
+            Err(err) => return err,
+        };
 
     let dest_str = args.get("destination").and_then(|v| v.as_str());
     let dest_path = dest_str.map(PathBuf::from);
-
-    // Defensive check: ensure destination sandbox directory is valid
     if let Some(ref d) = dest_path {
         if let Err(e) = fs::create_dir_all(d) {
             return McpToolResult::err_structured(
@@ -276,17 +313,8 @@ fn handle_extract(args: Value) -> McpToolResult {
     let password = args.get("password").and_then(|v| v.as_str());
     let threads = args.get("threads").and_then(|v| v.as_u64()).unwrap_or(4) as u32;
     let dry_run = args.get("dry_run").and_then(|v| v.as_bool()).unwrap_or(false);
-
-    let include: Vec<String> = args
-        .get("include")
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|s| s.as_str().map(String::from)).collect())
-        .unwrap_or_default();
-    let exclude: Vec<String> = args
-        .get("exclude")
-        .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|s| s.as_str().map(String::from)).collect())
-        .unwrap_or_default();
+    let include = extract_string_array(&args, "include");
+    let exclude = extract_string_array(&args, "exclude");
 
     let start = Instant::now();
     let extract_res = execute_extract(CliExtractParams {
@@ -302,33 +330,20 @@ fn handle_extract(args: Value) -> McpToolResult {
 
     match extract_res {
         Ok(_) => {
-            let elapsed_ms = start.elapsed().as_millis() as u64;
             let res = json!({
                 "status": if dry_run { "simulated" } else { "completed" },
                 "archive_path": archive_path_str,
                 "destination": dest_str.unwrap_or("."),
                 "dry_run": dry_run,
-                "elapsed_ms": elapsed_ms
+                "elapsed_ms": start.elapsed().as_millis() as u64
             });
             McpToolResult::ok_json(&res).unwrap_or_else(McpToolResult::err)
         }
-        Err(e) => {
-            let err_lower = e.to_lowercase();
-            let code = if err_lower.contains("password") {
-                "PASSWORD_REQUIRED"
-            } else if err_lower.contains("traversal") || err_lower.contains("zip slip") {
-                "PATH_TRAVERSAL_BLOCKED"
-            } else if err_lower.contains("corrupt") {
-                "CORRUPTED_ARCHIVE"
-            } else {
-                "EXTRACTION_FAILED"
-            };
-            McpToolResult::err_structured(
-                code,
-                format!("Extraction error: {}", e),
-                Some(json!({ "archive_path": archive_path_str, "error": e })),
-            )
-        }
+        Err(e) => McpToolResult::err_structured(
+            classify_extract_error(&e),
+            format!("Extraction error: {}", e),
+            Some(json!({ "archive_path": archive_path_str, "error": e })),
+        ),
     }
 }
 
@@ -397,36 +412,17 @@ fn handle_create(args: Value) -> McpToolResult {
 }
 
 fn handle_inspect(args: Value) -> McpToolResult {
-    let archive_path_str = match args.get("archive_path").and_then(|v| v.as_str()) {
-        Some(p) => p,
-        None => return McpToolResult::err_structured("INVALID_PARAMS", "Missing required parameter: archive_path", None),
-    };
-    let archive_path = Path::new(archive_path_str);
-    if !archive_path.exists() {
-        return McpToolResult::err_structured(
-            "FILE_NOT_FOUND",
-            format!("Archive not found: {}", archive_path.display()),
-            Some(json!({ "archive_path": archive_path_str })),
-        );
-    }
+    let (archive_path_str, archive_path) =
+        match require_existing_archive(&args, "Archive not found") {
+            Ok(pair) => pair,
+            Err(err) => return err,
+        };
 
-    let (volumes, data) = match read_archive_data_auto(archive_path) {
-        Ok(res) => res,
-        Err(e) => return McpToolResult::err_structured(
-            "ARCHIVE_READ_FAILED",
-            format!("Failed to read archive: {}", e),
-            Some(json!({ "archive_path": archive_path_str, "error": e })),
-        ),
-    };
-
-    let (format_detected, entries) = match parse_archive_entries(archive_path, &data) {
-        Ok(res) => res,
-        Err(e) => return McpToolResult::err_structured(
-            "ARCHIVE_PARSE_FAILED",
-            format!("Failed to parse archive: {}", e),
-            Some(json!({ "archive_path": archive_path_str, "error": e })),
-        ),
-    };
+    let (volumes, format_detected, entries) =
+        match read_and_parse_archive(archive_path_str, archive_path) {
+            Ok(res) => res,
+            Err(err) => return err,
+        };
 
     let file_size = fs::metadata(archive_path).map(|m| m.len()).unwrap_or(0);
     let total_uncompressed: u64 = entries.iter().map(|e| e.uncompressed_size).sum();
@@ -460,97 +456,30 @@ fn handle_inspect(args: Value) -> McpToolResult {
     McpToolResult::ok_json(&res).unwrap_or_else(McpToolResult::err)
 }
 
-fn handle_cat(args: Value) -> McpToolResult {
-    let archive_path_str = match args.get("archive_path").and_then(|v| v.as_str()) {
-        Some(p) => p,
-        None => return McpToolResult::err_structured("INVALID_PARAMS", "Missing required parameter: archive_path", None),
-    };
-    let entry_path = match args.get("entry_path").and_then(|v| v.as_str()) {
-        Some(p) => p,
-        None => return McpToolResult::err_structured("INVALID_PARAMS", "Missing required parameter: entry_path", None),
-    };
-
-    let archive_path = Path::new(archive_path_str);
-    if !archive_path.exists() {
-        return McpToolResult::err_structured(
-            "FILE_NOT_FOUND",
-            format!("Archive not found: {}", archive_path.display()),
-            Some(json!({ "archive_path": archive_path_str })),
-        );
-    }
-
-    // Clamp max_bytes to [1, 10MB] to match schema upper bound
-    let max_bytes = (args.get("max_bytes").and_then(|v| v.as_u64()).unwrap_or(1048576) as usize).clamp(1, 10 * 1024 * 1024);
-    let password = args.get("password").and_then(|v| v.as_str());
-
-    let (_volumes, data) = match read_archive_data_auto(archive_path) {
-        Ok(res) => res,
-        Err(e) => return McpToolResult::err_structured(
-            "ARCHIVE_READ_FAILED",
-            format!("Failed to read archive: {}", e),
-            Some(json!({ "archive_path": archive_path_str, "error": e })),
-        ),
-    };
-
-    let (_fmt, entries) = match parse_archive_entries(archive_path, &data) {
-        Ok(res) => res,
-        Err(e) => return McpToolResult::err_structured(
-            "ARCHIVE_PARSE_FAILED",
-            format!("Failed to parse archive: {}", e),
-            Some(json!({ "archive_path": archive_path_str, "error": e })),
-        ),
-    };
-
-    let entry = entries.iter().find(|e| e.relative_path == entry_path || e.name == entry_path);
-    let entry = match entry {
-        Some(e) => e,
-        None => return McpToolResult::err_structured(
-            "ENTRY_NOT_FOUND",
-            format!("Entry '{}' not found in archive", entry_path),
-            Some(json!({ "archive_path": archive_path_str, "entry_path": entry_path })),
-        ),
-    };
-
-    if entry.is_directory {
-        return McpToolResult::err_structured(
-            "IS_DIRECTORY",
-            format!("Entry '{}' is a directory", entry_path),
-            Some(json!({ "archive_path": archive_path_str, "entry_path": entry_path })),
-        );
-    }
-
-    // Safety defense: prohibit decompressing unbounded entries (>64MB) into memory to prevent OOM
-    const MAX_IN_MEMORY_DECOMPRESS_BYTES: u64 = 64 * 1024 * 1024;
-    if entry.uncompressed_size > MAX_IN_MEMORY_DECOMPRESS_BYTES {
-        return McpToolResult::err_structured(
-            "PAYLOAD_TOO_LARGE",
-            format!(
-                "Entry uncompressed size ({} bytes) exceeds in-memory safety limit ({} bytes). Use ttzip_extract instead.",
-                entry.uncompressed_size, MAX_IN_MEMORY_DECOMPRESS_BYTES
-            ),
-            Some(json!({
-                "entry_path": entry_path,
-                "uncompressed_size": entry.uncompressed_size,
-                "max_allowed_bytes": MAX_IN_MEMORY_DECOMPRESS_BYTES
-            })),
-        );
-    }
-
-    // Zero-disk direct in-memory stream extraction via unified microkernel
-    match extract_single_entry_memory(archive_path, Some(&entry.relative_path), -1, password) {
-        Ok(bytes) => {
-            let truncated = bytes.len() > max_bytes;
-            let slice = if truncated { &bytes[..max_bytes] } else { &bytes };
+fn map_cat_extract_result(
+    res: Result<(Vec<u8>, usize), TTZipStatus>,
+    archive_path_str: &str,
+    entry_path: &str,
+    max_bytes: usize,
+) -> McpToolResult {
+    match res {
+        Ok((bytes, total_size)) => {
+            let truncated = total_size > max_bytes || bytes.len() > max_bytes;
+            let slice = if bytes.len() > max_bytes {
+                &bytes[..max_bytes]
+            } else {
+                &bytes
+            };
             let content_str = String::from_utf8_lossy(slice).to_string();
-            let res = json!({
+            let out = json!({
                 "archive_path": archive_path_str,
                 "entry_path": entry_path,
-                "size_bytes": bytes.len(),
+                "size_bytes": total_size.max(bytes.len()),
                 "returned_bytes": slice.len(),
                 "truncated": truncated,
                 "content": content_str
             });
-            McpToolResult::ok_json(&res).unwrap_or_else(McpToolResult::err)
+            McpToolResult::ok_json(&out).unwrap_or_else(McpToolResult::err)
         }
         Err(TTZipStatus::ErrInvalidPassword) => McpToolResult::err_structured(
             "PASSWORD_REQUIRED",
@@ -572,6 +501,77 @@ fn handle_cat(args: Value) -> McpToolResult {
             format!("Failed to decompress entry '{}': {:?}", entry_path, status),
             Some(json!({ "archive_path": archive_path_str, "entry_path": entry_path, "status_code": status.to_i32() })),
         ),
+    }
+}
+
+fn handle_cat(args: Value) -> McpToolResult {
+    let (archive_path_str, archive_path) =
+        match require_existing_archive(&args, "Archive not found") {
+            Ok(pair) => pair,
+            Err(err) => return err,
+        };
+    let Some(entry_path) = args.get("entry_path").and_then(|v| v.as_str()) else {
+        return McpToolResult::err_structured(
+            "INVALID_PARAMS",
+            "Missing required parameter: entry_path",
+            None,
+        );
+    };
+
+    let max_bytes = (args.get("max_bytes").and_then(|v| v.as_u64()).unwrap_or(1048576) as usize)
+        .clamp(1, 10 * 1024 * 1024);
+    let password = args.get("password").and_then(|v| v.as_str());
+    const MAX_IN_MEMORY_DECOMPRESS_BYTES: u64 = 64 * 1024 * 1024;
+
+    match extract_cat_entry_bounded(
+        archive_path,
+        entry_path,
+        password,
+        max_bytes,
+        MAX_IN_MEMORY_DECOMPRESS_BYTES,
+    ) {
+        BoundedCatOutcome::Extracted { bytes, total_size } => {
+            map_cat_extract_result(Ok((bytes, total_size)), archive_path_str, entry_path, max_bytes)
+        }
+        BoundedCatOutcome::Directory => McpToolResult::err_structured(
+            "IS_DIRECTORY",
+            format!("Entry '{}' is a directory", entry_path),
+            Some(json!({ "archive_path": archive_path_str, "entry_path": entry_path })),
+        ),
+        BoundedCatOutcome::TooLarge { uncompressed_size, max_allowed } => {
+            McpToolResult::err_structured(
+                "PAYLOAD_TOO_LARGE",
+                format!(
+                    "Entry uncompressed size ({} bytes) exceeds in-memory safety limit ({} bytes). Use ttzip_extract instead.",
+                    uncompressed_size, max_allowed
+                ),
+                Some(json!({
+                    "entry_path": entry_path,
+                    "uncompressed_size": uncompressed_size,
+                    "max_allowed_bytes": max_allowed
+                })),
+            )
+        }
+        BoundedCatOutcome::NotFound | BoundedCatOutcome::UnsupportedFormat => {
+            McpToolResult::err_structured(
+                "ENTRY_NOT_FOUND",
+                format!("Entry '{}' not found in archive", entry_path),
+                Some(json!({ "archive_path": archive_path_str, "entry_path": entry_path })),
+            )
+        }
+        BoundedCatOutcome::ReadFailed(e) => McpToolResult::err_structured(
+            "ARCHIVE_READ_FAILED",
+            format!("Failed to read archive: {}", e),
+            Some(json!({ "archive_path": archive_path_str, "error": e })),
+        ),
+        BoundedCatOutcome::ParseFailed(e) => McpToolResult::err_structured(
+            "ARCHIVE_PARSE_FAILED",
+            format!("Failed to parse archive: {}", e),
+            Some(json!({ "archive_path": archive_path_str, "error": e })),
+        ),
+        BoundedCatOutcome::StatusErr(st) => {
+            map_cat_extract_result(Err(st), archive_path_str, entry_path, max_bytes)
+        }
     }
 }
 

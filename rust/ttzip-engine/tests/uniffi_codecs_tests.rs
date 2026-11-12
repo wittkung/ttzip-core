@@ -7,7 +7,55 @@
 //! DeflateRaw, Zlib, Gzip, Zstd, Zstd LDM, LZ4 Fast/HC, LZFSE, LZVN, Brotli,
 //! Snappy Raw/Framed, Bzip2, PPMd, and Fast LZMA2 (FL2).
 
+use std::alloc::{GlobalAlloc, Layout, System};
+use std::cell::Cell;
 use ttzip_engine::uniffi_api::codecs::*;
+
+struct TrackingAllocator;
+
+thread_local! {
+    static LARGEST_REQUEST: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+fn record_request(size: usize) {
+    let _ = LARGEST_REQUEST.try_with(|largest| {
+        if let Some(previous) = largest.get() {
+            largest.set(Some(previous.max(size)));
+        }
+    });
+}
+
+// SAFETY: Each operation forwards the caller's layout and pointer unchanged to System.
+unsafe impl GlobalAlloc for TrackingAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        record_request(layout.size());
+        unsafe { System.alloc(layout) }
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        record_request(layout.size());
+        unsafe { System.alloc_zeroed(layout) }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        unsafe { System.dealloc(ptr, layout) }
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        record_request(new_size);
+        unsafe { System.realloc(ptr, layout, new_size) }
+    }
+}
+
+#[global_allocator]
+static ALLOCATOR: TrackingAllocator = TrackingAllocator;
+
+fn largest_request<T>(decode: impl FnOnce() -> T) -> (T, usize) {
+    LARGEST_REQUEST.with(|largest| largest.set(Some(0)));
+    let result = decode();
+    let largest = LARGEST_REQUEST.with(|largest| largest.replace(None).expect("tracking enabled"));
+    (result, largest)
+}
 
 const TEST_PAYLOAD: &[u8] = b"Mozilla UniFFI 0.28 Codec Verification Test Payload for TTZip Engine 2026. ABCDEFGHIJKLMNOPQRSTUVWXYZ 1234567890.";
 
@@ -155,3 +203,58 @@ fn test_fl2_and_zstd_train_roundtrip() {
         assert!(!d.is_empty() && d.len() <= 4096);
     }
 }
+
+#[test]
+fn test_snappy_raw_rejects_oversized_varint_header() {
+    let valid_compressed =
+        uniffi_snappy_compress(TEST_PAYLOAD.to_vec()).expect("snappy raw compress");
+    let valid_decompressed =
+        uniffi_snappy_decompress(valid_compressed.clone()).expect("snappy raw decompress");
+    assert_eq!(valid_decompressed.as_slice(), TEST_PAYLOAD);
+
+    let unified_decompressed = uniffi_decompress_buffer(
+        UniFFICompressionCodec::SnappyRaw,
+        valid_compressed,
+        None,
+        None,
+    )
+    .expect("unified snappy raw decompress");
+    assert_eq!(unified_decompressed.as_slice(), TEST_PAYLOAD);
+
+    let malformed_64k = vec![0x80, 0x80, 0x04, 0x00, 0x01, 0x02];
+    let malformed_64k_unified = malformed_64k.clone();
+    let (res_direct_64k, largest_direct_64k) =
+        largest_request(|| uniffi_snappy_decompress(malformed_64k));
+    assert!(res_direct_64k.is_err());
+    assert_eq!(largest_direct_64k, 0);
+
+    let (res_unified_64k, largest_unified_64k) = largest_request(|| {
+        uniffi_decompress_buffer(
+            UniFFICompressionCodec::SnappyRaw,
+            malformed_64k_unified,
+            None,
+            None,
+        )
+    });
+    assert!(res_unified_64k.is_err());
+    assert_eq!(largest_unified_64k, 0);
+
+    let malformed_4g = vec![0xFF, 0xFF, 0xFF, 0xFF, 0x0F, b'A'];
+    let malformed_4g_unified = malformed_4g.clone();
+    let (res_direct_4g, largest_direct_4g) =
+        largest_request(|| uniffi_snappy_decompress(malformed_4g));
+    assert!(res_direct_4g.is_err());
+    assert_eq!(largest_direct_4g, 0);
+
+    let (res_unified_4g, largest_unified_4g) = largest_request(|| {
+        uniffi_decompress_buffer(
+            UniFFICompressionCodec::SnappyRaw,
+            malformed_4g_unified,
+            None,
+            None,
+        )
+    });
+    assert!(res_unified_4g.is_err());
+    assert_eq!(largest_unified_4g, 0);
+}
+

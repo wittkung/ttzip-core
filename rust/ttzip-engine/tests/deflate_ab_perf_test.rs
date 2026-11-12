@@ -5,15 +5,20 @@
 //! Parallel ZIP Streaming Engine, and 0..=12 Compression Level Pareto Frontier.
 
 use std::fs;
-use std::time::Instant;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::{Duration, Instant};
 use tempfile::tempdir;
+use ttzip_engine::archive::unified::UnifiedArchiveOrchestrator;
 use ttzip_engine::codecs::deflate::{
     deflate_compress, deflate_compress_bound, deflate_decompress,
 };
+use ttzip_engine::crypto::crc32::crc32_fast;
 use ttzip_engine::types::{
     TTZipArchiveFormat, TTZipCompressionLevel, TTZipCreateOptions, TTZipEncryptionMethod,
+    TTZipExtractOptions,
 };
-use ttzip_engine::archive::unified::UnifiedArchiveOrchestrator;
+use ttzip_engine::zip::reader::ZipArchive;
+use ttzip_engine::zip::writer::streaming_parallel::create_zip_streaming_parallel;
 
 /// Generates synthetic text/JSON-like corpus with high redundancy.
 fn generate_text_corpus(size: usize) -> Vec<u8> {
@@ -176,4 +181,211 @@ fn test_ab_parallel_zip_streaming_1mb() {
     println!("=======================================================");
 
     assert!(throughput_mt >= 0.05, "Parallel ZIP throughput should be reasonable (got {:.2} GB/s)", throughput_mt);
+}
+
+unsafe extern "C" fn track_extract_progress(
+    processed: u64,
+    _total: u64,
+    _current_file: *const libc::c_char,
+    user_data: *mut libc::c_void,
+) -> bool {
+    let counter = unsafe { &*(user_data as *const AtomicU64) };
+    counter.store(processed, Ordering::Relaxed);
+    true
+}
+
+fn measure_median_indexed<F: FnMut(usize)>(runs: usize, mut op: F) -> Duration {
+    op(0);
+    let mut samples = Vec::with_capacity(runs);
+    for idx in 1..=runs {
+        let start = Instant::now();
+        op(idx);
+        samples.push(start.elapsed());
+    }
+    samples.sort_unstable();
+    samples[samples.len() / 2]
+}
+
+fn raw_libdeflate_disk_create_1t(
+    input_paths: &[std::path::PathBuf],
+    out_path: &std::path::Path,
+    lvl: i32,
+) {
+    let plan_items =
+        ttzip_engine::zip::writer::parallel_batch::collect_source_plan_items(input_paths).unwrap();
+    let total_uncomp: u64 = plan_items.iter().map(|i| i.uncompressed_size).sum();
+    let mut sink =
+        ttzip_engine::zip::writer::streaming_sink::ZipOutputSink::open(out_path, 0, total_uncomp)
+            .unwrap();
+    for item in plan_items {
+        if !item.is_directory {
+            let raw = fs::read(&item.abs_path).unwrap();
+            let _crc = crc32_fast(0, &raw);
+            let mut dst = vec![0u8; deflate_compress_bound(raw.len(), lvl)];
+            let n = deflate_compress(&raw, &mut dst, lvl).unwrap();
+            sink.write_bytes(&dst[..n]).unwrap();
+        }
+    }
+    sink.commit().unwrap();
+}
+
+fn raw_libdeflate_disk_extract_1t(
+    archive: &ZipArchive<'_>,
+    l0_deflate_blobs: &[Vec<u8>],
+    out_dir: &std::path::Path,
+    lvl: i32,
+) {
+    let jail = ttzip_engine::fs::safe_extract::DirJail::open(out_dir).unwrap();
+    let mut engine = ttzip_engine::fs::safe_extract::SafeExtractEngine::for_root(out_dir);
+    for (idx, entry) in archive.entries().iter().enumerate() {
+        let safe_path =
+            ttzip_engine::fs::safe_extract::sanitize_and_validate_path(out_dir, &entry.rel_path)
+                .unwrap();
+        engine.register_entry_typed(
+            safe_path,
+            entry.mode & 0o7777,
+            entry.mtime_epoch_secs,
+            0,
+            entry.is_directory,
+            false,
+        );
+        if entry.is_directory {
+            jail.create_dir_all_in_jail(&entry.rel_path).unwrap();
+            continue;
+        }
+        let mut inflight =
+            ttzip_engine::fs::abort_guard::InFlightJailFile::open(&jail, &entry.rel_path, true)
+                .unwrap();
+        if lvl == 0 {
+            let mut out = vec![0u8; entry.uncompressed_size as usize];
+            let n = deflate_decompress(&l0_deflate_blobs[idx], &mut out).unwrap();
+            let _crc = crc32_fast(0, &out[..n]);
+            std::io::Write::write_all(inflight.file_mut(), &out[..n]).unwrap();
+        } else {
+            archive
+                .extract_entry_to_sink(idx, None, inflight.file_mut())
+                .unwrap();
+        }
+        inflight.commit(&jail).unwrap();
+    }
+    engine.apply_deferred_metadata(false).unwrap();
+}
+
+#[test]
+fn test_ab_zip_pipeline_vs_raw_libdeflate_across_all_levels() {
+    let dir = tempdir().unwrap();
+    let file_count = 16;
+    let file_size = 128 * 1024; // 16 x 128KB = 2 MB
+    let total_mb = (file_count * file_size) as f64 / (1024.0 * 1024.0);
+    let mut input_paths = Vec::new();
+    let mut l0_deflate_blobs = Vec::new();
+    for i in 0..file_count {
+        let sub = dir.path().join(format!("src_{}", i % 4));
+        fs::create_dir_all(&sub).unwrap();
+        let p = sub.join(format!("item_{:02}.json", i));
+        let data = generate_text_corpus(file_size);
+        let mut dst = vec![0u8; deflate_compress_bound(data.len(), 0)];
+        let n = deflate_compress(&data, &mut dst, 0).unwrap();
+        dst.truncate(n);
+        l0_deflate_blobs.push(dst);
+        fs::write(&p, data).unwrap();
+        input_paths.push(p);
+    }
+
+    let level_specs = [
+        (0, TTZipCompressionLevel::Store),
+        (1, TTZipCompressionLevel::Fastest),
+        (3, TTZipCompressionLevel::Fast),
+        (6, TTZipCompressionLevel::Normal),
+        (9, TTZipCompressionLevel::Maximum),
+        (12, TTZipCompressionLevel::Ultra),
+    ];
+
+    println!("\n=========================================================================================");
+    println!("  TTZip Disk ZIP Pipeline vs 1T Raw libdeflate A/B Matrix (16 x 128KB = 2MB Corpus)");
+    println!("=========================================================================================");
+    println!("  Lvl | TTZip Create | Raw 1T Create | Create A/B | TTZip Extract | Raw 1T Extract | Extract A/B");
+    println!("  ---------------------------------------------------------------------------------------");
+
+    for (lvl_num, lvl_enum) in level_specs {
+        let zip_runs: Vec<_> = (0..=5)
+            .map(|r| dir.path().join(format!("ttzip_l{lvl_num}_{r}.zip")))
+            .collect();
+        let raw_runs: Vec<_> = (0..=5)
+            .map(|r| dir.path().join(format!("raw_l{lvl_num}_{r}.bin")))
+            .collect();
+        let opts = TTZipCreateOptions {
+            level: lvl_enum,
+            thread_budget: 0,
+            ..Default::default()
+        };
+
+        let ttzip_create_dur = measure_median_indexed(5, |r| {
+            create_zip_streaming_parallel(&zip_runs[r], &input_paths, &opts).unwrap();
+        });
+        let raw_create_dur = measure_median_indexed(5, |r| {
+            raw_libdeflate_disk_create_1t(&input_paths, &raw_runs[r], lvl_num);
+        });
+
+        let zip_bytes = fs::read(&zip_runs[0]).unwrap();
+        let archive = ZipArchive::open_slice(&zip_bytes).unwrap();
+        let ext_runs: Vec<_> = (0..=5)
+            .map(|r| {
+                let d = dir.path().join(format!("ext_l{lvl_num}_{r}"));
+                fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .collect();
+        let raw_ext_runs: Vec<_> = (0..=5)
+            .map(|r| {
+                let d = dir.path().join(format!("raw_ext_l{lvl_num}_{r}"));
+                fs::create_dir_all(&d).unwrap();
+                d
+            })
+            .collect();
+
+        let progress_counter = AtomicU64::new(0);
+        let ext_opts = TTZipExtractOptions {
+            thread_budget: 0,
+            progress_callback: Some(track_extract_progress),
+            user_data: (&progress_counter as *const AtomicU64) as *mut libc::c_void,
+            ..Default::default()
+        };
+
+        let ttzip_ext_dur = measure_median_indexed(5, |r| {
+            progress_counter.store(0, Ordering::Relaxed);
+            archive.extract_all(&ext_runs[r], &ext_opts).unwrap();
+        });
+        let raw_ext_dur = measure_median_indexed(5, |r| {
+            raw_libdeflate_disk_extract_1t(&archive, &l0_deflate_blobs, &raw_ext_runs[r], lvl_num);
+        });
+
+        assert_eq!(
+            progress_counter.load(Ordering::Relaxed),
+            (file_count * file_size) as u64
+        );
+
+        let ttzip_c_mbs = total_mb / ttzip_create_dur.as_secs_f64();
+        let raw_c_mbs = total_mb / raw_create_dur.as_secs_f64();
+        let create_ab = ttzip_c_mbs / raw_c_mbs;
+
+        let ttzip_e_mbs = total_mb / ttzip_ext_dur.as_secs_f64();
+        let raw_e_mbs = total_mb / raw_ext_dur.as_secs_f64();
+        let extract_ab = ttzip_e_mbs / raw_e_mbs;
+
+        println!(
+            "  {:2}  | {:8.1} MB/s | {:9.1} MB/s | {:9.2}x | {:9.1} MB/s | {:10.1} MB/s | {:9.2}x",
+            lvl_num, ttzip_c_mbs, raw_c_mbs, create_ab, ttzip_e_mbs, raw_e_mbs, extract_ab
+        );
+
+        assert!(
+            create_ab >= 1.0,
+            "Level {lvl_num} TTZip create A/B ratio ({create_ab:.2}x) must be >= 1.0x of 1T raw libdeflate"
+        );
+        assert!(
+            extract_ab >= 1.0,
+            "Level {lvl_num} TTZip extract A/B ratio ({extract_ab:.2}x) must be >= 1.0x of 1T raw libdeflate"
+        );
+    }
+    println!("=========================================================================================");
 }
