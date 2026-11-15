@@ -140,12 +140,14 @@ swift build -c release
 ### 4. 编译 Rust 安全微内核 (`ttzip-engine`)
 
 ```bash
-# 自动编译 Universal 静态库并部署至 Vendor XCFramework
-./scripts/build_rust.sh
+# 构建本地调试用 XCFramework
+./scripts/build_rust.sh --debug
 
 # 或通过 Cargo 直接构建
 cargo build --manifest-path rust/Cargo.toml --release
 ```
+
+构建发布版或通用 XCFramework 时，请[准备编解码库](docs/standalone-build.md#3-generating-ttzipvendorxcframework--uniffi-swift-bindings)。
 
 ### 5. 运行本地自动化 CI 门禁（0 云端配额消耗）
 

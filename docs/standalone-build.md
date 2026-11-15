@@ -49,8 +49,15 @@ Before running `swift build` or `swift test`, build the static library (`libTTZi
 bash scripts/build_rust.sh --debug
 
 # Or optimized release slice (or --universal for arm64 + x86_64)
-bash scripts/build_rust.sh --release
+TTZIP_SYS_LIB_DIR=/absolute/path/to/codec-stage bash scripts/build_rust.sh --release
 ```
+
+Release framework builds require static `libdeflate.a`, `liblz4.a`, and
+`libzstd.a` compiled for macOS 14.0 or earlier. Include gzip in libdeflate and
+base, HC, and frame support in LZ4. Use matching slices for the build target.
+For `--universal`, put the thin archives under `arm64/` and `x86_64/` within
+the same codec stage. Release packaging validates each archive member before
+compilation.
 
 Also build the `ttzip` CLI binary if running `CLICommandE2ETests`:
 

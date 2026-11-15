@@ -19,7 +19,7 @@ FORCE_REBUILD=0
 usage() {
     echo "Usage: $0 [OPTIONS]"
     echo "Options:"
-    echo "  --release        Build in release mode with ThinLTO and -O3 (default)"
+    echo "  --release        Build in release mode with the pinned rustup toolchain (default)"
     echo "  --debug          Build in debug mode"
     echo "  --target <TRGT>  Build specific target (e.g. aarch64-apple-darwin)"
     echo "  --universal      Build universal fat binary (arm64 + x86_64)"
@@ -112,7 +112,34 @@ else
     fi
 fi
 
+if [ "${BUILD_MODE}" = release ]; then
+    source "${SCRIPT_DIR}/release_codec_stage.sh"
+    prepare_release_codec_stages "${TARGETS[@]}"
+fi
+
 SLICE_DIR="${XCFRAMEWORK_DIR}/${SLICE_IDENTIFIER}"
+
+CARGO=(cargo)
+if [ "${BUILD_MODE}" = "release" ]; then
+    # Use the rustup sysroot with a macOS 14-compatible floor and macOS 27 strip support.
+    RUST_VERSION="1.99.1"
+    RUSTUP="$(command -v rustup || printf '%s\n' "${CARGO_HOME:-${HOME}/.cargo}/bin/rustup")"
+    if ! RUSTC="$("${RUSTUP}" which --toolchain "${RUST_VERSION}" rustc)"; then
+        echo "error: install the release Rust toolchain with: rustup toolchain install ${RUST_VERSION}" >&2
+        exit 1
+    fi
+    export RUSTC RUSTC_WRAPPER="" RUSTC_WORKSPACE_WRAPPER=""
+    CARGO=("${RUSTUP}" run "${RUST_VERSION}" cargo)
+    "${RUSTC}" --version
+    for target in "${TARGETS[@]}"; do
+        target_libdir="$("${RUSTC}" --print target-libdir --target "${target}")"
+        if [ ! -d "${target_libdir}" ]; then
+            echo "error: install the release target with: rustup target add --toolchain ${RUST_VERSION} ${target}" >&2
+            exit 1
+        fi
+        echo "--> Rust target libraries: ${target_libdir}"
+    done
+fi
 
 # Clean obsolete slices to prevent stale slices or mismatched metadata
 if [ -d "${XCFRAMEWORK_DIR}" ]; then
@@ -143,9 +170,14 @@ mkdir -p "${SLICE_DIR}/Headers" "${REPO_ROOT}/Sources/TTZipEngineFFI/include" "$
 echo "--> Target architectures: ${TARGETS[*]}"
 
 BUILT_LIBS=()
-for target in "${TARGETS[@]}"; do
+for index in "${!TARGETS[@]}"; do
+    target="${TARGETS[index]}"
+    release_stage=""
+    if [ "${BUILD_MODE}" = release ]; then
+        release_stage="${RELEASE_CODEC_STAGES[index]}"
+    fi
     echo "--> [INFO] Building ttzip-engine for ${target} (${BUILD_MODE})..."
-    cargo build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --features full --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    TTZIP_RELEASE_CODEC_STAGE="${release_stage}" "${CARGO[@]}" build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --features full --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
@@ -196,7 +228,8 @@ echo "--> [INFO] Packaging static library into ${SLICE_DIR}/libTTZipVendor.a..."
 mkdir -p "${SLICE_DIR}"
 
 PER_TARGET_MERGED=()
-for target in "${TARGETS[@]}"; do
+for index in "${!TARGETS[@]}"; do
+    target="${TARGETS[index]}"
     TARGET_PARTS=()
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
@@ -211,40 +244,46 @@ for target in "${TARGETS[@]}"; do
         TARGET_PARTS+=("${CODEC_LIB}")
     fi
 
-    # Resolve library directory dynamically without hardcoded host paths
-    CANDIDATE_LIB_DIRS=()
-    if [ -n "${TTZIP_SYS_LIB_DIR:-}" ] && [ -d "${TTZIP_SYS_LIB_DIR}" ]; then
-        CANDIDATE_LIB_DIRS+=("${TTZIP_SYS_LIB_DIR}")
-    fi
-    if command -v brew >/dev/null 2>&1; then
-        BREW_PREFIX="$(brew --prefix 2>/dev/null || true)"
-        if [ -n "${BREW_PREFIX}" ] && [ -d "${BREW_PREFIX}/lib" ]; then
-            CANDIDATE_LIB_DIRS+=("${BREW_PREFIX}/lib")
+    if [ "${BUILD_MODE}" = release ]; then
+        for libname in "${RELEASE_CODEC_ARCHIVES[@]}"; do
+            TARGET_PARTS+=("${RELEASE_CODEC_STAGES[index]}/${libname}")
+        done
+    else
+        # Resolve library directory dynamically without hardcoded host paths
+        CANDIDATE_LIB_DIRS=()
+        if [ -n "${TTZIP_SYS_LIB_DIR:-}" ] && [ -d "${TTZIP_SYS_LIB_DIR}" ]; then
+            CANDIDATE_LIB_DIRS+=("${TTZIP_SYS_LIB_DIR}")
         fi
-    fi
-
-    for libname in libdeflate.a liblz4.a libzstd.a; do
-        FOUND_LIB=""
-        pkg_base="${libname#lib}"
-        pkg_base="${pkg_base%.a}"
-        if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists "${pkg_base}" 2>/dev/null; then
-            PKG_LIB_DIR="$(pkg-config --variable=libdir "${pkg_base}" 2>/dev/null || true)"
-            if [ -n "${PKG_LIB_DIR}" ] && [ -f "${PKG_LIB_DIR}/${libname}" ]; then
-                FOUND_LIB="${PKG_LIB_DIR}/${libname}"
+        if command -v brew >/dev/null 2>&1; then
+            BREW_PREFIX="$(brew --prefix 2>/dev/null || true)"
+            if [ -n "${BREW_PREFIX}" ] && [ -d "${BREW_PREFIX}/lib" ]; then
+                CANDIDATE_LIB_DIRS+=("${BREW_PREFIX}/lib")
             fi
         fi
-        if [ -z "${FOUND_LIB}" ]; then
-            for candidate in "${CANDIDATE_LIB_DIRS[@]}"; do
-                if [ -f "${candidate}/${libname}" ]; then
-                    FOUND_LIB="${candidate}/${libname}"
-                    break
+
+        for libname in libdeflate.a liblz4.a libzstd.a; do
+            FOUND_LIB=""
+            pkg_base="${libname#lib}"
+            pkg_base="${pkg_base%.a}"
+            if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists "${pkg_base}" 2>/dev/null; then
+                PKG_LIB_DIR="$(pkg-config --variable=libdir "${pkg_base}" 2>/dev/null || true)"
+                if [ -n "${PKG_LIB_DIR}" ] && [ -f "${PKG_LIB_DIR}/${libname}" ]; then
+                    FOUND_LIB="${PKG_LIB_DIR}/${libname}"
                 fi
-            done
-        fi
-        if [ -n "${FOUND_LIB}" ]; then
-            TARGET_PARTS+=("${FOUND_LIB}")
-        fi
-    done
+            fi
+            if [ -z "${FOUND_LIB}" ]; then
+                for candidate in "${CANDIDATE_LIB_DIRS[@]}"; do
+                    if [ -f "${candidate}/${libname}" ]; then
+                        FOUND_LIB="${candidate}/${libname}"
+                        break
+                    fi
+                done
+            fi
+            if [ -n "${FOUND_LIB}" ]; then
+                TARGET_PARTS+=("${FOUND_LIB}")
+            fi
+        done
+    fi
 
     PER_TARGET_OUT="$(mktemp /tmp/ttzip_part_${target}_XXXXXX.a)"
     if [ ${#TARGET_PARTS[@]} -gt 1 ]; then
@@ -326,7 +365,7 @@ if [ -f "${FIRST_DYLIB}" ]; then
 
     (
         cd "${RUST_DIR}"
-        cargo run ${OFFLINE_FLAG} --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen -- generate \
+        "${CARGO[@]}" run ${OFFLINE_FLAG} --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen -- generate \
             --library "${FIRST_DYLIB}" \
             --language swift \
             --out-dir "${TMP_UNIFFI_DIR}" \

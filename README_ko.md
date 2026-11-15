@@ -131,12 +131,14 @@ swift build -c release
 ### 4. Rust 코어 마이크로커널 (`ttzip-glue`) 빌드
 
 ```bash
-# Universal 정적 라이브러리 자동 빌드 및 Vendor XCFramework 배포
-./scripts/build_rust.sh
+# 로컬 개발용 디버그 XCFramework 빌드
+./scripts/build_rust.sh --debug
 
 # 또는 Cargo를 통해 직접 빌드
 cargo build --manifest-path rust/Cargo.toml --release
 ```
+
+릴리스 또는 Universal XCFramework를 빌드하려면 [코덱 라이브러리를 준비하세요](docs/standalone-build.md#3-generating-ttzipvendorxcframework--uniffi-swift-bindings).
 
 ### 5. 로컬 자동화 CI 파이프라인 실행 (클라우드 쿼터 0 소모)
 

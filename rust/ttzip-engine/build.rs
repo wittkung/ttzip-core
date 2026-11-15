@@ -184,7 +184,24 @@ fn configure_vendor_static_libraries(repo_root: &Path) {
     }
 }
 
-fn configure_macos_system_libraries() {
+fn configure_macos_codec_search(release_stage: Option<&Path>) {
+    println!("cargo:rerun-if-env-changed=TTZIP_RELEASE_CODEC_STAGE");
+    println!("cargo:rerun-if-env-changed=TTZIP_SYS_LIB_DIR");
+    if let Some(dir) = release_stage {
+        println!("cargo:rustc-link-search=native={}", dir.display());
+        for name in ["deflate", "zstd", "lz4"] {
+            let archive = dir.join(format!("lib{name}.a"));
+            assert!(
+                archive.is_file(),
+                "missing release codec archive: {}",
+                archive.display()
+            );
+            println!("cargo:rerun-if-changed={}", archive.display());
+            println!("cargo:rustc-link-lib=static:-bundle={name}");
+        }
+        return;
+    }
+
     if let Ok(lib_dir) = env::var("TTZIP_SYS_LIB_DIR") {
         println!("cargo:rustc-link-search=native={lib_dir}");
     }
@@ -214,10 +231,13 @@ fn configure_macos_system_libraries() {
             }
         }
     }
+    for lib in ["deflate", "zstd", "lz4"] {
+        println!("cargo:rustc-link-lib={lib}");
+    }
+}
+
+fn configure_macos_system_libraries() {
     for lib in [
-        "deflate",
-        "zstd",
-        "lz4",
         "archive",
         "bz2",
         "lzma",
@@ -250,11 +270,20 @@ fn main() {
         .map(PathBuf::from)
         .unwrap_or_else(|| manifest_dir.clone());
 
-    configure_vendor_static_libraries(&repo_root);
+    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
+    let release_stage = env::var_os("TTZIP_RELEASE_CODEC_STAGE").filter(|value| !value.is_empty());
+    let release_stage = if target_os == "macos" {
+        release_stage.as_deref().map(Path::new)
+    } else {
+        None
+    };
+    if release_stage.is_none() {
+        configure_vendor_static_libraries(&repo_root);
+    }
     compile_native_codecs(&repo_root);
 
-    let target_os = env::var("CARGO_CFG_TARGET_OS").unwrap_or_default();
     if target_os == "macos" {
+        configure_macos_codec_search(release_stage);
         configure_macos_system_libraries();
     }
 

@@ -131,12 +131,14 @@ swift build -c release
 ### 4. Rust コア・マイクロカーネル (`ttzip-glue`) のビルド
 
 ```bash
-# Universal 静的ライブラリを自動ビルドし Vendor XCFramework に配置
-./scripts/build_rust.sh
+# ローカル開発用のデバッグ XCFramework をビルド
+./scripts/build_rust.sh --debug
 
 # または Cargo から直接ビルド
 cargo build --manifest-path rust/Cargo.toml --release
 ```
+
+リリース版や Universal XCFramework を作る場合は、[コーデックライブラリを準備してください](docs/standalone-build.md#3-generating-ttzipvendorxcframework--uniffi-swift-bindings)。
 
 ### 5. ローカル CI 統合テストの実行（クラウドクォータ消費 0）
 

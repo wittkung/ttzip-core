@@ -140,12 +140,14 @@ swift build -c release
 ### 4. Build Rust Core Microkernel (`ttzip-engine`)
 
 ```bash
-# Automatically compile universal static library & deploy to Vendor XCFramework
-./scripts/build_rust.sh
+# Build the local debug XCFramework
+./scripts/build_rust.sh --debug
 
 # Or build directly via Cargo
 cargo build --manifest-path rust/Cargo.toml --release
 ```
+
+For release or universal XCFrameworks, [prepare the codec stage](docs/standalone-build.md#3-generating-ttzipvendorxcframework--uniffi-swift-bindings).
 
 ### 5. Run 100% Local Automated CI Verification (0 Cloud Quota)
 

@@ -73,7 +73,7 @@ git clone https://github.com/wittkung/ttzip-core.git
 cd ttzip/core
 
 # 2. Build Rust Microkernel & Generate UniFFI Bindings
-./scripts/build_rust.sh
+./scripts/build_rust.sh --debug
 
 # 3. Build Swift Core (Debug & Release)
 swift build
