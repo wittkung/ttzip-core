@@ -3,11 +3,11 @@
 
 //! Comprehensive unit test suite for TTZip E-book Microkernel.
 
-use crate::crypto::crc32::crc32_fast;
-use crate::ebook::mobi::{decompress_palmdoc_record, EbookMobiDecoder};
-use crate::ebook::navigation::{EbookNavigationExtractor, SpineItem};
-use crate::ebook::parser::{EbookFormat, TTZipEbookParser};
-use crate::ebook::resource::{clean_container_path, normalize_path, strip_fragment};
+use ttzip_crypto::crc32::crc32_fast;
+use crate::mobi::{decompress_palmdoc_record, EbookMobiDecoder};
+use crate::navigation::{EbookNavigationExtractor, SpineItem};
+use crate::parser::{EbookFormat, TTZipEbookParser};
+use crate::resource::{clean_container_path, normalize_path, strip_fragment};
 
 /// Helper to build an in-memory uncompressed (Stored) ZIP archive for testing.
 fn create_test_zip(files: &[(&str, &[u8])]) -> Vec<u8> {
@@ -573,8 +573,8 @@ fn test_direct_navigation_and_resource_extractors() {
     assert_eq!(nodes[0].target_index, Some(0));
 
     let zip_bytes = create_test_zip(&[("OEBPS/text/prologue.xhtml", b"<html><body>Hello</body></html>")]);
-    let zip = crate::zip::ZipArchive::open_slice(&zip_bytes).expect("open zip");
-    let text = crate::ebook::resource::EbookResourceExtractor::extract_text(&zip, "OEBPS/text/prologue.xhtml").expect("extract text");
+    let zip = ttzip_archive::zip::ZipArchive::open_slice(&zip_bytes).expect("open zip");
+    let text = crate::resource::EbookResourceExtractor::extract_text(&zip, "OEBPS/text/prologue.xhtml").expect("extract text");
     assert_eq!(text, "<html><body>Hello</body></html>");
 }
 

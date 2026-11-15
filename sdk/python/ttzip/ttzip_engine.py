@@ -536,6 +536,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() != 48102:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_extract_solid_lzma2_preview() != 8204:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 48048:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory() != 45521:
@@ -2806,6 +2808,13 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded.argty
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_extract_single_entry_stream_guarded.restype = _UniffiRustBuffer
+_UniffiLib.uniffi_ttzip_engine_fn_func_extract_solid_lzma2_preview.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_extract_solid_lzma2_preview.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_generate_synthetic_benchmark_dataset.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_uint64,
@@ -4082,6 +4091,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream.restype
 _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_extract_solid_lzma2_preview.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_extract_solid_lzma2_preview.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset.restype = ctypes.c_uint16
@@ -18328,6 +18340,126 @@ class _UniffiConverterTypeSessionState(_UniffiConverterRustBuffer):
 
 
 
+# SolidLzma2PreviewError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class SolidLzma2PreviewError(Exception):
+    pass
+
+_UniffiTempSolidLzma2PreviewError = SolidLzma2PreviewError
+
+class SolidLzma2PreviewError:  # type: ignore
+    class Cancelled(_UniffiTempSolidLzma2PreviewError):
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "SolidLzma2PreviewError.Cancelled({})".format(str(self))
+    _UniffiTempSolidLzma2PreviewError.Cancelled = Cancelled # type: ignore
+    class BudgetExceeded(_UniffiTempSolidLzma2PreviewError):
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "SolidLzma2PreviewError.BudgetExceeded({})".format(str(self))
+    _UniffiTempSolidLzma2PreviewError.BudgetExceeded = BudgetExceeded # type: ignore
+    class ResourceLimit(_UniffiTempSolidLzma2PreviewError):
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "SolidLzma2PreviewError.ResourceLimit({})".format(str(self))
+    _UniffiTempSolidLzma2PreviewError.ResourceLimit = ResourceLimit # type: ignore
+    class Unsupported(_UniffiTempSolidLzma2PreviewError):
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "SolidLzma2PreviewError.Unsupported({})".format(str(self))
+    _UniffiTempSolidLzma2PreviewError.Unsupported = Unsupported # type: ignore
+    class Corrupt(_UniffiTempSolidLzma2PreviewError):
+        def __init__(self):
+            pass
+
+        def __repr__(self):
+            return "SolidLzma2PreviewError.Corrupt({})".format(str(self))
+    _UniffiTempSolidLzma2PreviewError.Corrupt = Corrupt # type: ignore
+    class Failed(_UniffiTempSolidLzma2PreviewError):
+        def __init__(self, message):
+            super().__init__(", ".join([
+                "message={!r}".format(message),
+            ]))
+            self.message = message
+
+        def __repr__(self):
+            return "SolidLzma2PreviewError.Failed({})".format(str(self))
+    _UniffiTempSolidLzma2PreviewError.Failed = Failed # type: ignore
+
+SolidLzma2PreviewError = _UniffiTempSolidLzma2PreviewError # type: ignore
+del _UniffiTempSolidLzma2PreviewError
+
+
+class _UniffiConverterTypeSolidLzma2PreviewError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return SolidLzma2PreviewError.Cancelled(
+            )
+        if variant == 2:
+            return SolidLzma2PreviewError.BudgetExceeded(
+            )
+        if variant == 3:
+            return SolidLzma2PreviewError.ResourceLimit(
+            )
+        if variant == 4:
+            return SolidLzma2PreviewError.Unsupported(
+            )
+        if variant == 5:
+            return SolidLzma2PreviewError.Corrupt(
+            )
+        if variant == 6:
+            return SolidLzma2PreviewError.Failed(
+                _UniffiConverterString.read(buf),
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, SolidLzma2PreviewError.Cancelled):
+            return
+        if isinstance(value, SolidLzma2PreviewError.BudgetExceeded):
+            return
+        if isinstance(value, SolidLzma2PreviewError.ResourceLimit):
+            return
+        if isinstance(value, SolidLzma2PreviewError.Unsupported):
+            return
+        if isinstance(value, SolidLzma2PreviewError.Corrupt):
+            return
+        if isinstance(value, SolidLzma2PreviewError.Failed):
+            _UniffiConverterString.check_lower(value.message)
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, SolidLzma2PreviewError.Cancelled):
+            buf.write_i32(1)
+        if isinstance(value, SolidLzma2PreviewError.BudgetExceeded):
+            buf.write_i32(2)
+        if isinstance(value, SolidLzma2PreviewError.ResourceLimit):
+            buf.write_i32(3)
+        if isinstance(value, SolidLzma2PreviewError.Unsupported):
+            buf.write_i32(4)
+        if isinstance(value, SolidLzma2PreviewError.Corrupt):
+            buf.write_i32(5)
+        if isinstance(value, SolidLzma2PreviewError.Failed):
+            buf.write_i32(6)
+            _UniffiConverterString.write(value.message, buf)
+
+
 
 
 
@@ -23395,6 +23527,23 @@ def extract_single_entry_stream_guarded(archive_path: "str",entry_index: "int",p
         _UniffiConverterUInt32.lower(max_preceding_budget_mb)))
 
 
+def extract_solid_lzma2_preview(archive_path: "str",entry_path: "str",token: "CancellationToken") -> "bytes":
+    """
+    Opts into a single bounded read of a CRC-protected plaintext LZMA2 entry.
+    """
+
+    _UniffiConverterString.check_lower(archive_path)
+
+    _UniffiConverterString.check_lower(entry_path)
+
+    _UniffiConverterTypeCancellationToken.check_lower(token)
+
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeSolidLzma2PreviewError,_UniffiLib.uniffi_ttzip_engine_fn_func_extract_solid_lzma2_preview,
+        _UniffiConverterString.lower(archive_path),
+        _UniffiConverterString.lower(entry_path),
+        _UniffiConverterTypeCancellationToken.lower(token)))
+
+
 def generate_synthetic_benchmark_dataset(target_path: "str",target_bytes: "int",profile_name: "str") -> None:
     """
     Generates a synthetic benchmark dataset file using mathematical generators.
@@ -25536,6 +25685,7 @@ __all__ = [
     "ItemKind",
     "OutcomeStatus",
     "SessionState",
+    "SolidLzma2PreviewError",
     "ThumbnailSamplingFilter",
     "TtZipError",
     "UniFfiArchiveCleanupDisposition",
@@ -25697,6 +25847,7 @@ __all__ = [
     "extract_single_entry_by_path",
     "extract_single_entry_stream",
     "extract_single_entry_stream_guarded",
+    "extract_solid_lzma2_preview",
     "generate_synthetic_benchmark_dataset",
     "generate_thumbnail_from_memory",
     "get_format_capabilities",

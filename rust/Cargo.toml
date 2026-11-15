@@ -9,6 +9,8 @@ members = [
     "crates/ttzip-crypto",
     "crates/ttzip-codecs",
     "crates/ttzip-archive",
+    "crates/ttzip-ebook",
+    "crates/ttzip-epub",
     "crates/ttzip-semantic",
 ]
 resolver = "3"

@@ -471,6 +471,30 @@ public final class ArchiveSelectiveExtractor: Sendable {
     
     private init() {}
     
+    /// Performs one opt-in bounded read of a plaintext solid LZMA2 entry. Any failure is terminal.
+    public func extractSolidLzma2PreviewData(
+        archivePath: String,
+        entryPath: String,
+        token: CancellationToken? = nil
+    ) async throws -> Data {
+        do {
+            let data = try await NativeComputeDispatcher.shared.dispatchCompute(
+                cancellationHandle: token.map { TaskExecutionHandle(token: $0) },
+                cancellationPolicy: .waitForWorkerCompletion
+            ) { (workerToken: CancellationToken) in
+                try extractSolidLzma2Preview(
+                    archivePath: archivePath,
+                    entryPath: entryPath,
+                    token: workerToken
+                )
+            }
+            try Task.checkCancellation()
+            return data
+        } catch is CancellationError {
+            throw SolidLzma2PreviewError.Cancelled
+        }
+    }
+
     /// Extracts a single entry directly into memory for instant Space-bar Quick Look or Drag-and-Drop.
     /// Memory preview limit strictly defaults to 64MB aligning with microkernel bounds.
     public func extractSingleEntryData(

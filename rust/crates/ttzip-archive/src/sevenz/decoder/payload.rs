@@ -182,7 +182,7 @@ where
                     out_chunk,
                     true,
                     total_decompressed,
-                    expected_unpack_size,
+                    super::codec_pump::Lzma2Work::Archive(expected_unpack_size),
                     sink,
                 )
             })

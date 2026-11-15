@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 import Foundation
+import TTZipArchiveContract
 #if canImport(WebKit)
 import WebKit
 #endif
@@ -29,7 +30,7 @@ public protocol TTZipVfsResourceProvider: Sendable {
 /// - Full HTTP 206 Partial Content Range support for large images, audio, and video seek operations.
 @MainActor
 public final class TTZipVfsSchemeHandler: NSObject, WKURLSchemeHandler {
-    public nonisolated static let scheme = "ttzip-vfs"
+    public nonisolated static let scheme = ArchiveVfs.scheme
 
     private let provider: TTZipVfsResourceProvider
     private var activeTasks: [ObjectIdentifier: Task<Void, Never>] = [:]

@@ -42,7 +42,7 @@ TTZIP_REQUIRE_REAL_GGUF=1 cargo test --manifest-path rust/Cargo.toml -p ttzip-se
 
 ## 3. Generating `TTZipVendor.xcframework` & UniFFI Swift Bindings
 
-Before running `swift build` or `swift test`, build the static library (`libTTZipVendor.a`), `TTZipVendor.xcframework`, and Mozilla UniFFI Swift bindings using `scripts/build_rust.sh`:
+Before running `swift build` or `swift test`, use `scripts/build_rust.sh` to build `TTZipVendor.xcframework`, `TTZipEpubVendor.xcframework`, and their UniFFI Swift bindings.
 
 ```bash
 # Fast debug slice for local development and testing
@@ -67,9 +67,15 @@ cargo build --manifest-path rust/Cargo.toml -p ttzip-tui --bin ttzip
 
 ## 4. Building and Testing the Swift Package (`TTZipCore`)
 
-Once `Frameworks/TTZipVendor.xcframework` is generated:
+With both frameworks under `Frameworks/`, run the package build and tests.
 
 ```bash
 swift build
 swift test
 ```
+
+
+macOS clients that only decode EPUB previews can depend on the `TTZipEpub`
+product. Use `inspectEpubFile` or `inspectEpubBytes` for the book outline and
+`readEpubResource` for bytes at a container-relative path. The file entry point
+also returns the ordered HTML fallback when the book has no usable spine.

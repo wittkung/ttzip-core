@@ -14,7 +14,7 @@ CONTRACT_DIR = Path(__file__).resolve().parent.parent
 BUILD_FILE = CONTRACT_DIR / "BUILD.bazel"
 SOURCES_DIR = CONTRACT_DIR / "Sources" / "TTZipArchiveContract"
 
-EXPECTED_SOURCES = {"ArchiveEntry.swift", "ArchiveMimeMapper.swift"}
+EXPECTED_SOURCES = {"ArchiveEntry.swift", "ArchiveMimeMapper.swift", "ArchiveVfs.swift"}
 FORBIDDEN_TOKENS = (
     "FormatterCaches",
     "ByteCountFormatter",
@@ -90,6 +90,7 @@ def check_build_file(build_file: Path = BUILD_FILE) -> list[str]:
                     expected_srcs = [
                         "Sources/TTZipArchiveContract/ArchiveEntry.swift",
                         "Sources/TTZipArchiveContract/ArchiveMimeMapper.swift",
+                        "Sources/TTZipArchiveContract/ArchiveVfs.swift",
                     ]
                     if srcs_val != expected_srcs:
                         errors.append(f"TTZipArchiveContract.srcs must be {expected_srcs}, got {srcs_val}")
@@ -117,8 +118,13 @@ def verify_negative_fixtures() -> list[str]:
             "import Foundation\npublic enum ArchiveMimeMapper {}\n",
             encoding="utf-8",
         )
+        (bad_srcs / "ArchiveVfs.swift").write_text(
+            "import Foundation\nimport WebKit\npublic enum ArchiveVfs {}\n",
+            encoding="utf-8",
+        )
         src_errs = check_sources(bad_srcs)
-        if not any("forbidden import" in e for e in src_errs) or not any("Hashable" in e for e in src_errs):
+        expected_failures = ("import TTZipCoreBindings", "import WebKit", "Hashable conformance")
+        if not all(any(failure in error for error in src_errs) for failure in expected_failures):
             return [f"Negative source fixture failed to trigger expected errors: {src_errs}"]
 
         bad_build = tmp_dir / "BUILD.bazel"

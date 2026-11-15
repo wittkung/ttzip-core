@@ -206,6 +206,146 @@ pub fn extract_single_entry_bounded(
     Ok(result_vec)
 }
 
+/// Explicit work policy for a single plaintext LZMA2 preview experiment.
+pub struct SolidLzma2Preview<'a> {
+    pub max_packed_bytes: usize,
+    pub max_decoded_bytes: u64,
+    pub cancellation: &'a dyn Fn() -> bool,
+}
+
+fn bounded_lzma2_payload<'a>(
+    mapped: &'a [u8],
+    info: &SevenZHeaderInfo,
+    loc: &SevenZEntryLocation,
+    end: u64,
+) -> Result<(&'a [u8], u8), TTZipStatus> {
+    let folder = loc.folder_index.and_then(|index| info.folders.get(index))
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let [coder] = folder.coders.as_slice() else {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    };
+    if info.is_encrypted || !folder.bind_pairs.is_empty() || !folder.packed_streams.is_empty()
+        || coder.method_id != crate::sevenz::format::METHOD_LZMA2
+        || coder.num_in_streams != 1 || coder.num_out_streams != 1
+    {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    }
+    let [prop] = coder.properties.as_slice() else {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    };
+    let dictionary = super::codec_pump::lzma2_dict_size_from_prop(*prop)
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    if dictionary > 1024 * 1024 {
+        return Err(TTZipStatus::ErrOutOfMemory);
+    }
+    let [folder_size] = folder.unpack_sizes.as_slice() else {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    };
+    if end > *folder_size {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    Ok((lzma2_packed_payload(mapped, folder)?, *prop))
+}
+
+fn lzma2_packed_payload<'a>(
+    mapped: &'a [u8],
+    folder: &crate::sevenz::header::SevenZFolder,
+) -> Result<&'a [u8], TTZipStatus> {
+    let sig = crate::sevenz::format::SevenZSignatureHeader::parse(mapped)?;
+    let metadata_start = usize::try_from(sig.next_header_offset).ok()
+        .and_then(|offset| offset.checked_add(32))
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let packed_end = folder.packed_offset.checked_add(folder.packed_len)
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    if folder.packed_offset < 32 || packed_end > metadata_start {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    mapped.get(folder.packed_offset..packed_end)
+        .ok_or(TTZipStatus::ErrCorruptHeader)
+}
+
+fn pump_preview_entry<F>(
+    packed: &[u8],
+    prop: u8,
+    cap: usize,
+    work: &mut super::codec_pump::PreviewWork<'_>,
+    mut sink: F,
+) -> Result<(), TTZipStatus>
+where
+    F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
+{
+    const STEP_BYTES: usize = 64 * 1024;
+    let mut decoder = crate::codecs::lzma2::Fl2DStream::new(1)?;
+    decoder.init(Some(prop))?;
+    let mut scratch = vec![0; STEP_BYTES];
+    let mut decoded = 0;
+    let input = &packed[..packed.len().min(cap)];
+    let chunks = input.chunks(STEP_BYTES);
+    let count = chunks.len();
+    for (index, chunk) in chunks.enumerate() {
+        let final_input = index + 1 == count && input.len() == packed.len();
+        let result = super::codec_pump::pump_lzma2_stream(
+            &mut decoder,
+            chunk,
+            &mut scratch,
+            final_input,
+            &mut decoded,
+            super::codec_pump::Lzma2Work::Preview(work),
+            &mut sink,
+        );
+        match result {
+            Err(TTZipStatus::Eof) => return Ok(()),
+            Ok(true) => return Err(TTZipStatus::ErrCorruptHeader),
+            Ok(false) => {}
+            Err(status) => return Err(status),
+        }
+    }
+    if input.len() < packed.len() {
+        return Err(TTZipStatus::ErrSolidBudgetExceeded);
+    }
+    Err(TTZipStatus::ErrCorruptHeader)
+}
+
+/// Reads one CRC-protected entry using an explicit synchronous LZMA2 work budget.
+pub fn extract_solid_lzma2_preview(
+    mapped: &[u8],
+    info: &SevenZHeaderInfo,
+    seek_index: &SevenZSeekIndex,
+    entry_idx: usize,
+    policy: SolidLzma2Preview<'_>,
+) -> Result<Vec<u8>, TTZipStatus> {
+    let loc = seek_index.get_by_index(entry_idx).ok_or(TTZipStatus::ErrInvalidOffset)?;
+    if loc.crc.is_none() {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    }
+    let (start, len) = resolve_seek_entry_bounds(info, loc);
+    let end = start.checked_add(len).ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let mut work = super::codec_pump::PreviewWork {
+        end,
+        accepted: 0,
+        cancellation: policy.cancellation,
+    };
+    work.check_cancelled()?;
+    if len == 0 || loc.is_directory || loc.is_empty_stream {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    }
+    if len > 8 * 1024 * 1024 {
+        return Err(TTZipStatus::ErrOutOfMemory);
+    }
+    if end > policy.max_decoded_bytes {
+        return Err(TTZipStatus::ErrSolidBudgetExceeded);
+    }
+    let (packed, prop) = bounded_lzma2_payload(mapped, info, loc, end)?;
+    let mut bytes = Vec::with_capacity(len as usize);
+    let mut offset = 0;
+    pump_preview_entry(packed, prop, policy.max_packed_bytes, &mut work, |chunk| {
+        append_entry_window_chunk(chunk, &mut offset, start, end, &mut bytes)
+    })?;
+    verify_extracted_entry_bytes(&bytes, len, loc.crc, false)?;
+    work.check_cancelled()?;
+    Ok(bytes)
+}
+
 /// Backwards-compatible alias for bounded stream extraction.
 pub use extract_single_entry_bounded as extract_entry_bytes_stream_bounded;
 

@@ -24,7 +24,7 @@ pub use ttzip_archive::charset;
 pub mod checksum;
 pub use ttzip_codecs as codecs;
 pub use ttzip_crypto as crypto;
-pub mod ebook;
+pub use ttzip_ebook as ebook;
 pub mod ffi;
 pub use ttzip_archive::fs;
 pub mod i18n;

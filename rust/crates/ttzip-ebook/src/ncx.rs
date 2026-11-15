@@ -8,11 +8,14 @@ use std::path::Path;
 
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 
-use crate::ebook::container::{find_and_extract_zip_entry, opf_parent_dir, strip_utf8_bom};
-use crate::ebook::navigation::{local_name, resolve_spine_index, EbookTocNode, SpineItem};
-use crate::ebook::resource::{normalize_path, strip_fragment};
-use crate::ebook::EbookResult;
-use crate::zip::ZipArchive;
+use crate::container::{find_and_extract_zip_entry, opf_parent_dir, strip_utf8_bom};
+use crate::navigation::{local_name, resolve_spine_index, EbookTocNode, SpineItem};
+use crate::resource::{normalize_path, strip_fragment};
+use crate::{EbookError, EbookResult};
+use ttzip_archive::zip::ZipArchive;
+
+// Rust projections, destruction and UniFFI lifting all recurse through this tree.
+const MAX_TOC_DEPTH: usize = 64;
 
 /// Parses an EPUB 2 NCX XML (`toc.ncx`) into a structured TOC hierarchy.
 pub fn parse_ncx(
@@ -28,7 +31,7 @@ pub fn parse_ncx(
 
     loop {
         match reader.read_event_into(&mut buf)? {
-            Event::Start(ref e) => state.on_start(e, base_dir, spine_items),
+            Event::Start(ref e) => state.on_start(e, base_dir, spine_items)?,
             Event::Empty(ref e) => state.on_empty(e, base_dir, spine_items),
             Event::Text(e) if state.in_text => {
                 if let Ok(s) = e.unescape() {
@@ -63,14 +66,15 @@ pub fn parse_nav_xhtml(
     let mut buf = Vec::with_capacity(512);
 
     loop {
+        let reading_anchor = state.in_toc_nav && state.in_a;
         match reader.read_event_into(&mut buf)? {
-            Event::Start(ref e) => state.on_start(e),
-            Event::Text(e) if state.in_toc_nav && state.in_a => {
+            Event::Start(ref e) => state.on_start(e)?,
+            Event::Text(e) if reading_anchor => {
                 if let Ok(s) = e.unescape() {
                     state.append_text(&s);
                 }
             }
-            Event::CData(e) if state.in_toc_nav && state.in_a => {
+            Event::CData(e) if reading_anchor => {
                 if let Ok(s) = std::str::from_utf8(e.as_ref()) {
                     state.append_text(s);
                 }
@@ -212,14 +216,10 @@ struct NcxParserState {
 }
 
 impl NcxParserState {
-    fn on_start(&mut self, e: &BytesStart<'_>, base_dir: &str, spine_items: &[SpineItem]) {
+    fn on_start(&mut self, e: &BytesStart<'_>, base_dir: &str, spine_items: &[SpineItem]) -> EbookResult<()> {
         let tag = local_name(e.name().into_inner());
         if tag.eq_ignore_ascii_case(b"navPoint") {
-            let node_id = extract_attr_by_name(e, b"id").unwrap_or_default();
-            self.stack.push(EbookTocNode {
-                id: node_id,
-                ..EbookTocNode::default()
-            });
+            push_toc_node(&mut self.stack, e)?;
         } else if tag.eq_ignore_ascii_case(b"navLabel") {
             self.in_nav_label = true;
             self.label_text.clear();
@@ -228,6 +228,7 @@ impl NcxParserState {
         } else if tag.eq_ignore_ascii_case(b"content") {
             self.apply_content_src(e, base_dir, spine_items);
         }
+        Ok(())
     }
 
     fn on_empty(&mut self, e: &BytesStart<'_>, base_dir: &str, spine_items: &[SpineItem]) {
@@ -277,20 +278,14 @@ struct NavXhtmlParserState {
 }
 
 impl NavXhtmlParserState {
-    fn on_start(&mut self, e: &BytesStart<'_>) {
+    fn on_start(&mut self, e: &BytesStart<'_>) -> EbookResult<()> {
         match local_name(e.name().into_inner()) {
             b"nav" => {
                 if is_toc_nav_tag(e) || !self.in_toc_nav {
                     self.in_toc_nav = true;
                 }
             }
-            b"li" if self.in_toc_nav => {
-                let node_id = extract_attr_by_name(e, b"id").unwrap_or_default();
-                self.stack.push(EbookTocNode {
-                    id: node_id,
-                    ..EbookTocNode::default()
-                });
-            }
+            b"li" if self.in_toc_nav => push_toc_node(&mut self.stack, e)?,
             b"a" if self.in_toc_nav => {
                 self.in_a = true;
                 self.text_buf.clear();
@@ -299,6 +294,7 @@ impl NavXhtmlParserState {
             }
             _ => {}
         }
+        Ok(())
     }
 
     fn append_text(&mut self, s: &str) {
@@ -365,12 +361,59 @@ fn is_toc_nav_tag(e: &BytesStart<'_>) -> bool {
     false
 }
 
+fn push_toc_node(stack: &mut Vec<EbookTocNode>, element: &BytesStart<'_>) -> EbookResult<()> {
+    if stack.len() >= MAX_TOC_DEPTH {
+        return Err(EbookError::Corrupt(format!(
+            "EPUB navigation exceeds {MAX_TOC_DEPTH} nested entries"
+        )));
+    }
+    stack.push(EbookTocNode {
+        id: extract_attr_by_name(element, b"id").unwrap_or_default(),
+        ..EbookTocNode::default()
+    });
+    Ok(())
+}
+
 fn pop_node_to_parent(stack: &mut Vec<EbookTocNode>, root_nodes: &mut Vec<EbookTocNode>) {
     if let Some(node) = stack.pop() {
         if let Some(parent) = stack.last_mut() {
             parent.children.push(node);
         } else {
             root_nodes.push(node);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn navigation_depth_is_bounded_before_building_a_recursive_tree() {
+        let nested_ncx = |depth| {
+            format!("<ncx>{}{}</ncx>", "<navPoint>".repeat(depth), "</navPoint>".repeat(depth))
+        };
+        let nested_nav = |depth| {
+            format!("<nav>{}{}</nav>", "<li>".repeat(depth), "</li>".repeat(depth))
+        };
+        for (accepted, rejected) in [
+            (
+                parse_ncx(nested_ncx(MAX_TOC_DEPTH).as_bytes(), "", &[]),
+                parse_ncx(nested_ncx(MAX_TOC_DEPTH + 1).as_bytes(), "", &[]),
+            ),
+            (
+                parse_nav_xhtml(nested_nav(MAX_TOC_DEPTH).as_bytes(), "", &[]),
+                parse_nav_xhtml(nested_nav(MAX_TOC_DEPTH + 1).as_bytes(), "", &[]),
+            ),
+        ] {
+            let tree = accepted.expect("a TOC at the depth limit remains readable");
+            let mut entries = tree.as_slice();
+            for _ in 0..MAX_TOC_DEPTH {
+                assert_eq!(entries.len(), 1);
+                entries = &entries[0].children;
+            }
+            assert!(entries.is_empty());
+            assert!(matches!(rejected, Err(EbookError::Corrupt(_))));
         }
     }
 }

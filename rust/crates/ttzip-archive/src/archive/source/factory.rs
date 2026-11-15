@@ -24,24 +24,69 @@ pub fn detect_storage_medium(path: &Path) -> StorageMedium {
             if let Ok(c_path) = CString::new(path_str) {
                 let mut sfs: libc::statfs = unsafe { std::mem::zeroed() };
                 if unsafe { libc::statfs(c_path.as_ptr(), &mut sfs) } == 0 {
-                    let is_local = (sfs.f_flags & (libc::MNT_LOCAL as u32)) != 0;
-                    if !is_local {
-                        return StorageMedium::RemoteNetwork;
-                    }
-
-                    let fstype_bytes = unsafe {
-                        std::ffi::CStr::from_ptr(sfs.f_fstypename.as_ptr()).to_bytes()
-                    };
-                    if fstype_bytes == b"apfs" {
-                        return StorageMedium::LocalFastApfs;
-                    } else {
-                        return StorageMedium::LocalStandard;
-                    }
+                    return classify_storage_medium(&sfs);
                 }
             }
         }
     }
     StorageMedium::LocalStandard
+}
+
+#[cfg(unix)]
+fn classify_storage_medium(stat: &libc::statfs) -> StorageMedium {
+    if (stat.f_flags & (libc::MNT_LOCAL as u32)) == 0 {
+        return StorageMedium::RemoteNetwork;
+    }
+    // Successful statfs and fstatfs fill the NUL-terminated filesystem name.
+    let fs_type = unsafe { std::ffi::CStr::from_ptr(stat.f_fstypename.as_ptr()) }.to_bytes();
+    if fs_type == b"apfs" {
+        StorageMedium::LocalFastApfs
+    } else {
+        StorageMedium::LocalStandard
+    }
+}
+
+/// Opens one regular file on a local volume for a bounded preview.
+#[cfg(unix)]
+pub fn open_local_regular_archive_mmap(path: &Path) -> Result<MmapSource, TTZipStatus> {
+    use std::fs::OpenOptions;
+    use std::io::ErrorKind;
+    use std::os::{fd::AsRawFd, unix::fs::OpenOptionsExt};
+
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NONBLOCK | libc::O_NOCTTY)
+        .open(path)
+        .map_err(|error| match error.kind() {
+            ErrorKind::NotFound => TTZipStatus::ErrFileNotFound,
+            _ => TTZipStatus::ErrOpenFailed,
+        })?;
+    if !file
+        .metadata()
+        .map_err(|_| TTZipStatus::ErrOpenFailed)?
+        .is_file()
+    {
+        return Err(TTZipStatus::ErrUnsupportedFeature);
+    }
+    let mut stat = std::mem::MaybeUninit::<libc::statfs>::uninit();
+    // The owned descriptor stays live and fstatfs initializes stat only on success.
+    if unsafe { libc::fstatfs(file.as_raw_fd(), stat.as_mut_ptr()) } != 0 {
+        return Err(TTZipStatus::ErrOpenFailed);
+    }
+    let medium = classify_storage_medium(&unsafe { stat.assume_init() });
+    match medium {
+        StorageMedium::LocalFastApfs | StorageMedium::LocalStandard => {
+            MmapSource::from_file(&file, medium)
+        }
+        StorageMedium::RemoteNetwork | StorageMedium::VirtualFilesystem => {
+            Err(TTZipStatus::ErrUnsupportedFeature)
+        }
+    }
+}
+
+#[cfg(not(unix))]
+pub fn open_local_regular_archive_mmap(_path: &Path) -> Result<MmapSource, TTZipStatus> {
+    Err(TTZipStatus::ErrUnsupportedFeature)
 }
 
 /// Opens an optimal ArchiveSource instance dynamically matching the underlying filesystem.

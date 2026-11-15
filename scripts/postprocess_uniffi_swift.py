@@ -543,8 +543,10 @@ def verify_invariants(content: str, verbose: bool = False) -> Tuple[bool, List[s
     return (len(violations) == 0, violations)
 
 
-def _apply_patch_descriptors(patched: str, verbose: bool) -> str:
-    for desc in PATCH_DESCRIPTORS:
+def _apply_patch_descriptors(
+    patched: str, verbose: bool, descriptors: List[PatchDescriptor] = PATCH_DESCRIPTORS
+) -> str:
+    for desc in descriptors:
         patched, count = desc.pattern.subn(desc.replacement, patched)
         if verbose:
             print(f"  [PATCH] {desc.name:36s} -> {count} match(es) (min: {desc.min_matches})")
@@ -617,6 +619,29 @@ def postprocess_content(
         print("  [PASS] Swift lexical syntax validation passed (balanced delimiters & tokens).")
 
     return patched, True
+
+
+def postprocess_epub(content: str) -> str:
+    patch_names = {
+        "strict_concurrency_initialization_result",
+        "uniffi_handle_map_sendable",
+        "defer_rustbuffer_deallocate_in_lift",
+        "cancellation_error_throw",
+        "guard_data_init",
+        "guard_rustbuffer_deallocate",
+    }
+    descriptors = [desc for desc in PATCH_DESCRIPTORS if desc.name in patch_names]
+    content, _ = apply_proprietary_header(content)
+    content = _apply_patch_descriptors(content, False, descriptors)
+    for desc in descriptors:
+        if desc.forbidden_pattern and desc.forbidden_pattern.search(content):
+            raise RuntimeError(f"Forbidden pattern lingered for '{desc.name}'")
+    for record in ("EpubChapter", "EpubOutline", "EpubTocNode"):
+        extension = f"extension {record}: Sendable {{}}"
+        if extension not in content:
+            content = content.rstrip() + f"\n{extension}\n"
+    validate_swift_syntax(content)
+    return content
 
 
 def postprocess_file(

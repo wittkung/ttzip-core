@@ -1,0 +1,4 @@
+module ttzip_epubFFI {
+    header "ttzip_epubFFI.h"
+    export *
+}

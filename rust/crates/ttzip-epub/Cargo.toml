@@ -1,0 +1,27 @@
+# Copyright 2026 MetastudyLine. All rights reserved.
+# SPDX-License-Identifier: BSD-3-Clause
+
+[package]
+name = "ttzip-epub"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "TTZip EPUB preview UniFFI library"
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+ttzip-archive = { path = "../ttzip-archive" }
+ttzip-ebook = { path = "../ttzip-ebook" }
+thiserror = "2.0"
+uniffi = "0.28.3"
+
+[lints]
+workspace = true

@@ -5,10 +5,10 @@
 
 use quick_xml::events::Event;
 
-use crate::ebook::navigation::local_name;
-use crate::ebook::resource::clean_container_path;
-use crate::ebook::{EbookError, EbookResult};
-use crate::zip::ZipArchive;
+use crate::navigation::local_name;
+use crate::resource::clean_container_path;
+use crate::{EbookError, EbookResult};
+use ttzip_archive::zip::ZipArchive;
 
 /// Strips an optional UTF-8 byte order mark (`0xEF, 0xBB, 0xBF`) from the beginning of a slice.
 #[inline]

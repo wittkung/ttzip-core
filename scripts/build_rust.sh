@@ -8,6 +8,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUST_DIR="${REPO_ROOT}/rust"
 FRAMEWORKS_DIR="${REPO_ROOT}/Frameworks"
 XCFRAMEWORK_DIR="${FRAMEWORKS_DIR}/TTZipVendor.xcframework"
+EPUB_XCFRAMEWORK_DIR="${FRAMEWORKS_DIR}/TTZipEpubVendor.xcframework"
 
 BUILD_MODE="release"
 CARGO_FLAGS="--release"
@@ -176,8 +177,8 @@ for index in "${!TARGETS[@]}"; do
     if [ "${BUILD_MODE}" = release ]; then
         release_stage="${RELEASE_CODEC_STAGES[index]}"
     fi
-    echo "--> [INFO] Building ttzip-engine for ${target} (${BUILD_MODE})..."
-    TTZIP_RELEASE_CODEC_STAGE="${release_stage}" "${CARGO[@]}" build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --features full --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
+    echo "--> [INFO] Building ttzip-engine and ttzip-epub for ${target} (${BUILD_MODE})..."
+    TTZIP_RELEASE_CODEC_STAGE="${release_stage}" "${CARGO[@]}" build --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-engine --package ttzip-epub --features ttzip-engine/full --target "${target}" ${CARGO_FLAGS} ${OFFLINE_FLAG}
     
     TARGET_LIB="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_engine.a"
     if [ -f "${TARGET_LIB}" ]; then
@@ -228,6 +229,7 @@ echo "--> [INFO] Packaging static library into ${SLICE_DIR}/libTTZipVendor.a..."
 mkdir -p "${SLICE_DIR}"
 
 PER_TARGET_MERGED=()
+PER_TARGET_EPUB=()
 for index in "${!TARGETS[@]}"; do
     target="${TARGETS[index]}"
     TARGET_PARTS=()
@@ -292,6 +294,11 @@ for index in "${!TARGETS[@]}"; do
         cp "${TARGET_PARTS[0]}" "${PER_TARGET_OUT}"
     fi
     PER_TARGET_MERGED+=("${PER_TARGET_OUT}")
+
+    EPUB_TARGET="${EFFECTIVE_TARGET_DIR}/${target}/${BUILD_MODE}/libttzip_epub.a"
+    EPUB_TARGET_OUT="$(mktemp /tmp/ttzip_epub_${target}_XXXXXX.a)"
+    libtool -static -no_warning_for_no_symbols -o "${EPUB_TARGET_OUT}" "${EPUB_TARGET}" "${TARGET_PARTS[@]:1}"
+    PER_TARGET_EPUB+=("${EPUB_TARGET_OUT}")
 done
 
 TMP_LIB="$(mktemp /tmp/libTTZipVendor_XXXXXX)"
@@ -318,8 +325,15 @@ for arch in "${ARCHS[@]}"; do
 "
 done
 
-TMP_PLIST="$(mktemp /tmp/ttzip_plist_XXXXXX)"
-cat > "${TMP_PLIST}" << EOF
+write_xcframework_plist() {
+    local output="$1" library="$2" headers="${3:-}" header_entries="" tmp_plist
+    if [ -n "${headers}" ]; then
+        header_entries="			<key>HeadersPath</key>
+			<string>${headers}</string>
+"
+    fi
+    tmp_plist="$(mktemp /tmp/ttzip_plist_XXXXXX)"
+    cat > "${tmp_plist}" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -327,12 +341,10 @@ cat > "${TMP_PLIST}" << EOF
 	<key>AvailableLibraries</key>
 	<array>
 		<dict>
-			<key>HeadersPath</key>
-			<string>Headers</string>
-			<key>LibraryIdentifier</key>
+${header_entries}			<key>LibraryIdentifier</key>
 			<string>${SLICE_IDENTIFIER}</string>
 			<key>LibraryPath</key>
-			<string>libTTZipVendor.a</string>
+			<string>${library}</string>
 			<key>SupportedArchitectures</key>
 			<array>
 ${ARCHS_PLIST_ENTRIES}			</array>
@@ -347,8 +359,11 @@ ${ARCHS_PLIST_ENTRIES}			</array>
 </dict>
 </plist>
 EOF
-copy_if_changed "${TMP_PLIST}" "${XCFRAMEWORK_DIR}/Info.plist"
-rm -f "${TMP_PLIST}"
+    copy_if_changed "${tmp_plist}" "${output}"
+    rm -f "${tmp_plist}"
+}
+
+write_xcframework_plist "${XCFRAMEWORK_DIR}/Info.plist" "libTTZipVendor.a" "Headers"
 
 # ------------------------------------------------------------------------------
 # 5. 在临时沙盒中生成 Mozilla UniFFI Swift 绑定并幂等同步
@@ -398,8 +413,30 @@ if [ -f "${FIRST_DYLIB}" ]; then
     rm -rf "${TMP_UNIFFI_DIR}"
 fi
 
+EPUB_STAGE="$(mktemp -d)"
+trap 'rm -rf "${EPUB_STAGE}" "${PER_TARGET_EPUB[@]}"' EXIT
+EPUB_STAGED_FRAMEWORK="${EPUB_STAGE}/TTZipEpubVendor.xcframework"
+EPUB_SLICE_DIR="${EPUB_STAGED_FRAMEWORK}/${SLICE_IDENTIFIER}"
+mkdir -p "${EPUB_SLICE_DIR}"
+EPUB_STATIC_LIB="${EPUB_SLICE_DIR}/libTTZipEpubVendor.a"
+if [ ${#PER_TARGET_EPUB[@]} -gt 1 ]; then
+    lipo -create "${PER_TARGET_EPUB[@]}" -output "${EPUB_STATIC_LIB}"
+else
+    cp "${PER_TARGET_EPUB[0]}" "${EPUB_STATIC_LIB}"
+fi
+strip_embedded_bitcode "${EPUB_STATIC_LIB}"
+deduplicate_archive "${EPUB_STATIC_LIB}"
+write_xcframework_plist "${EPUB_STAGED_FRAMEWORK}/Info.plist" "libTTZipEpubVendor.a"
+rm -rf "${EPUB_XCFRAMEWORK_DIR}"
+mv "${EPUB_STAGED_FRAMEWORK}" "${EPUB_XCFRAMEWORK_DIR}"
+
+"${CARGO[@]}" build ${OFFLINE_FLAG} --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen
+bash "${SCRIPT_DIR}/generate_epub_uniffi.sh" \
+    "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
+    "${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/libttzip_epub.dylib"
+
 echo "=========================================="
-echo "✅ [SUCCESS] Pure UniFFI engine & universal library generated successfully."
+echo "✅ [SUCCESS] UniFFI engine and EPUB libraries generated successfully."
 echo "=========================================="
 
 

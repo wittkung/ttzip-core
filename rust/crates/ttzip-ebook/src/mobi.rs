@@ -7,7 +7,7 @@
 //! length sliding-window LZ77 stream decompression.
 
 use std::collections::HashMap;
-use crate::ebook::{EbookError, EbookResult};
+use crate::{EbookError, EbookResult};
 
 /// Palm Database record descriptor.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

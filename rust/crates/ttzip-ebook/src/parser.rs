@@ -8,15 +8,15 @@
 
 use std::collections::HashMap;
 
-use crate::ebook::mobi::EbookMobiDecoder;
-use crate::ebook::navigation::{EbookTocNode, SpineItem};
-use crate::ebook::opf::{
+use crate::mobi::EbookMobiDecoder;
+use crate::navigation::{EbookTocNode, SpineItem};
+use crate::opf::{
     extract_epub_toc, is_epub_container, parse_container_rootfile, parse_opf_xml,
     resolve_cover_href, resolve_epub_spine,
 };
-use crate::ebook::resource::{EbookResource, EbookResourceExtractor};
-use crate::ebook::{EbookError, EbookResult};
-use crate::zip::ZipArchive;
+use crate::resource::{EbookResource, EbookResourceExtractor};
+use crate::{EbookError, EbookResult};
+use ttzip_archive::zip::ZipArchive;
 
 /// Recognized electronic book container formats.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

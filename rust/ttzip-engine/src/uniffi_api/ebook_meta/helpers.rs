@@ -34,11 +34,8 @@ pub(crate) fn extract_resource_from_zip(
     data: &[u8],
     href: &str,
 ) -> Result<UniFFIEbookResource, UniFFIEbookError> {
-    let zip = ZipArchive::open_slice(data)
-        .map_err(|e| UniFFIEbookError::corrupted(format!("{e:?}")))?;
     let clean = href.split('#').next().unwrap_or(href);
-    let bytes = find_and_extract_entry(&zip, clean)
-        .ok_or_else(|| UniFFIEbookError::not_found(clean))?;
+    let bytes = crate::ebook::preview::resource(data, href)?;
 
     let media_type = guess_mime_type(clean);
     let size_bytes = bytes.len() as u64;

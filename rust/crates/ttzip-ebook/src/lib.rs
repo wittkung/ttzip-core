@@ -12,6 +12,7 @@ pub mod navigation;
 pub mod ncx;
 pub mod opf;
 pub mod parser;
+pub mod preview;
 pub mod resource;
 
 #[cfg(test)]
@@ -32,7 +33,7 @@ pub type EbookResult<T> = Result<T, EbookError>;
 pub enum EbookError {
     /// Failure from underlying ZIP archive container.
     #[error("ZIP container error: {0:?}")]
-    Zip(#[from] crate::types::TTZipStatus),
+    Zip(#[from] ttzip_types::TTZipStatus),
 
     /// XML tokenization or parsing error.
     #[error("XML parsing error: {0}")]

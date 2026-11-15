@@ -216,7 +216,7 @@ where
             out_chunk,
             is_final_input,
             total_out,
-            expected_unpack_size,
+            super::codec_pump::Lzma2Work::Archive(expected_unpack_size),
             sink,
         ),
         FolderStreamDecoder::Lzma1 {

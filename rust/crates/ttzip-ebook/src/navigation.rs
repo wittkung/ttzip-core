@@ -6,7 +6,7 @@
 //! Provides unified Table of Contents (TOC) hierarchy tree construction and linear reading
 //! spine item resolution.
 
-use crate::ebook::EbookResult;
+use crate::EbookResult;
 
 /// An item in the sequential reading order (spine) of an e-book.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -46,7 +46,7 @@ impl EbookNavigationExtractor {
         base_dir: &str,
         spine_items: &[SpineItem],
     ) -> EbookResult<Vec<EbookTocNode>> {
-        crate::ebook::ncx::parse_ncx(ncx_xml, base_dir, spine_items)
+        crate::ncx::parse_ncx(ncx_xml, base_dir, spine_items)
     }
 
     /// Parses an EPUB 3 Navigation Document (`nav.xhtml`) into a structured TOC hierarchy.
@@ -55,7 +55,7 @@ impl EbookNavigationExtractor {
         base_dir: &str,
         spine_items: &[SpineItem],
     ) -> EbookResult<Vec<EbookTocNode>> {
-        crate::ebook::ncx::parse_nav_xhtml(nav_xhtml, base_dir, spine_items)
+        crate::ncx::parse_nav_xhtml(nav_xhtml, base_dir, spine_items)
     }
 }
 

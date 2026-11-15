@@ -74,6 +74,7 @@ uniffi_checksum_table! {
     uniffi_ttzip_engine_checksum_func_extract_single_entry_by_path,
     uniffi_ttzip_engine_checksum_func_extract_single_entry_stream,
     uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded,
+    uniffi_ttzip_engine_checksum_func_extract_solid_lzma2_preview,
     uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset,
     uniffi_ttzip_engine_checksum_func_generate_thumbnail_from_memory,
     uniffi_ttzip_engine_checksum_func_get_format_capabilities,

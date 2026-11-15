@@ -71,12 +71,12 @@ curve25519-dalek = { version = "4.1", default-features = false, features = ["all
 subtle = { version = "2.6", default-features = false }
 ed25519-dalek = { version = "2.1", default-features = false, features = ["fast"] }
 quick-xml = "0.36"
-roxmltree = "0.20"
 image-webp = "0.2"
 ttzip-types = { path = "../crates/ttzip-types" }
 ttzip-crypto = { path = "../crates/ttzip-crypto" }
 ttzip-codecs = { path = "../crates/ttzip-codecs" }
 ttzip-archive = { path = "../crates/ttzip-archive" }
+ttzip-ebook = { path = "../crates/ttzip-ebook" }
 ttzip-semantic = { path = "../crates/ttzip-semantic" }
 
 

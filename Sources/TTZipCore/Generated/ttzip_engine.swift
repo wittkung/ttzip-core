@@ -17793,6 +17793,91 @@ extension SessionState: Equatable, Hashable {}
 
 
 
+public enum SolidLzma2PreviewError {
+
+
+
+    case Cancelled
+    case BudgetExceeded
+    case ResourceLimit
+    case Unsupported
+    case Corrupt
+    case Failed(message: String
+    )
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeSolidLzma2PreviewError: FfiConverterRustBuffer {
+    typealias SwiftType = SolidLzma2PreviewError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> SolidLzma2PreviewError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .Cancelled
+        case 2: return .BudgetExceeded
+        case 3: return .ResourceLimit
+        case 4: return .Unsupported
+        case 5: return .Corrupt
+        case 6: return .Failed(
+            message: try FfiConverterString.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: SolidLzma2PreviewError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case .Cancelled:
+            writeInt(&buf, Int32(1))
+
+
+        case .BudgetExceeded:
+            writeInt(&buf, Int32(2))
+
+
+        case .ResourceLimit:
+            writeInt(&buf, Int32(3))
+
+
+        case .Unsupported:
+            writeInt(&buf, Int32(4))
+
+
+        case .Corrupt:
+            writeInt(&buf, Int32(5))
+
+
+        case let .Failed(message):
+            writeInt(&buf, Int32(6))
+            FfiConverterString.write(message, into: &buf)
+
+        }
+    }
+}
+
+
+extension SolidLzma2PreviewError: Equatable, Hashable {}
+
+extension SolidLzma2PreviewError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
+
 /**
  * Typed error enum mapped directly to Swift `throws TTZipError`.
  */
@@ -22591,6 +22676,18 @@ public func extractSingleEntryStreamGuarded(archivePath: String, entryIndex: UIn
 })
 }
 /**
+ * Opts into a single bounded read of a CRC-protected plaintext LZMA2 entry.
+ */
+public func extractSolidLzma2Preview(archivePath: String, entryPath: String, token: CancellationToken)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeSolidLzma2PreviewError.lift) {
+    uniffi_ttzip_engine_fn_func_extract_solid_lzma2_preview(
+        FfiConverterString.lower(archivePath),
+        FfiConverterString.lower(entryPath),
+        FfiConverterTypeCancellationToken.lower(token),$0
+    )
+})
+}
+/**
  * Generates a synthetic benchmark dataset file using mathematical generators.
  */
 public func generateSyntheticBenchmarkDataset(targetPath: String, targetBytes: UInt64, profileName: String)throws  {try rustCallWithError(FfiConverterTypeTTZipError.lift) {
@@ -24365,6 +24462,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_extract_single_entry_stream_guarded() != 48102) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_extract_solid_lzma2_preview() != 8204) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_generate_synthetic_benchmark_dataset() != 48048) {

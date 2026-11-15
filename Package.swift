@@ -12,6 +12,16 @@ let coreSwiftSettings: [SwiftSetting] = [
     .enableUpcomingFeature("StrictConcurrency")
 ]
 
+let archiveLinkerSettings: [LinkerSetting] = [
+    .linkedLibrary("archive"),
+    .linkedLibrary("bz2"),
+    .linkedLibrary("lzma"),
+    .linkedLibrary("iconv", .when(platforms: [.macOS, .iOS])),
+    .linkedLibrary("c++", .when(platforms: [.macOS, .iOS])),
+    .linkedLibrary("compression", .when(platforms: [.macOS, .iOS])),
+    .linkedFramework("Security", .when(platforms: [.macOS, .iOS]))
+]
+
 let package = Package(
     name: "TTZipCore",
     platforms: [
@@ -32,6 +42,11 @@ let package = Package(
             type: .dynamic,
             targets: ["TTZipCore"]
         ),
+        .library(
+            name: "TTZipEpub",
+            type: .dynamic,
+            targets: ["TTZipEpub"]
+        ),
         .executable(
             name: "ttzip-bench",
             targets: ["TTZipBench"]
@@ -44,6 +59,22 @@ let package = Package(
         .binaryTarget(
             name: "TTZipVendor",
             path: "Frameworks/TTZipVendor.xcframework"
+        ),
+        .binaryTarget(
+            name: "TTZipEpubVendor",
+            path: "Frameworks/TTZipEpubVendor.xcframework"
+        ),
+        .target(
+            name: "CTTZipEpubBridge",
+            dependencies: ["TTZipEpubVendor"],
+            path: "Sources/CTTZipEpubBridge",
+            linkerSettings: archiveLinkerSettings
+        ),
+        .target(
+            name: "TTZipEpub",
+            dependencies: ["CTTZipEpubBridge"],
+            path: "Sources/TTZipEpub",
+            swiftSettings: coreSwiftSettings
         ),
         .target(
             name: "TTZipArchiveContract",
@@ -78,15 +109,7 @@ let package = Package(
             path: "Sources/TTZipCore",
             exclude: ["Generated"],
             swiftSettings: coreSwiftSettings,
-            linkerSettings: [
-                .linkedLibrary("archive"),
-                .linkedLibrary("bz2"),
-                .linkedLibrary("lzma"),
-                .linkedLibrary("iconv", .when(platforms: [.macOS, .iOS])),
-                .linkedLibrary("c++", .when(platforms: [.macOS, .iOS])),
-                .linkedLibrary("compression", .when(platforms: [.macOS, .iOS])),
-                .linkedFramework("Security", .when(platforms: [.macOS, .iOS]))
-            ]
+            linkerSettings: archiveLinkerSettings
         ),
         .executableTarget(
             name: "TTZipBench",

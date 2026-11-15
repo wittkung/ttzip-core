@@ -2240,6 +2240,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ttzip-ebook"
+version = "0.1.0"
+dependencies = [
+ "encoding_rs",
+ "quick-xml",
+ "roxmltree",
+ "thiserror 2.0.20",
+ "ttzip-archive",
+ "ttzip-crypto",
+ "ttzip-types",
+]
+
+[[package]]
 name = "ttzip-engine"
 version = "0.1.0"
 dependencies = [
@@ -2269,7 +2282,6 @@ dependencies = [
  "proptest",
  "quick-xml",
  "rayon",
- "roxmltree",
  "serde",
  "serde_json",
  "sha2",
@@ -2283,11 +2295,22 @@ dependencies = [
  "ttzip-archive",
  "ttzip-codecs",
  "ttzip-crypto",
+ "ttzip-ebook",
  "ttzip-semantic",
  "ttzip-types",
  "unicode-normalization",
  "uniffi",
  "zeroize",
+]
+
+[[package]]
+name = "ttzip-epub"
+version = "0.1.0"
+dependencies = [
+ "thiserror 2.0.20",
+ "ttzip-archive",
+ "ttzip-ebook",
+ "uniffi",
 ]
 
 [[package]]

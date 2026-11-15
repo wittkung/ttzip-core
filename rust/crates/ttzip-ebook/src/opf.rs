@@ -6,14 +6,14 @@
 use std::collections::HashMap;
 use quick_xml::events::{BytesEnd, BytesStart, Event};
 
-pub use crate::ebook::container::{is_epub_container, parse_container_rootfile};
-use crate::ebook::container::strip_utf8_bom;
-use crate::ebook::navigation::{local_name, EbookTocNode, SpineItem};
-use crate::ebook::ncx::{parse_nav_xhtml, parse_ncx};
-use crate::ebook::parser::{EbookFormat, EbookMetadata, EpubManifestItem};
-use crate::ebook::resource::{normalize_path, EbookResourceExtractor};
-use crate::ebook::EbookResult;
-use crate::zip::ZipArchive;
+pub use crate::container::{is_epub_container, parse_container_rootfile};
+use crate::container::strip_utf8_bom;
+use crate::navigation::{local_name, EbookTocNode, SpineItem};
+use crate::ncx::{parse_nav_xhtml, parse_ncx};
+use crate::parser::{EbookFormat, EbookMetadata, EpubManifestItem};
+use crate::resource::{normalize_path, EbookResourceExtractor};
+use crate::EbookResult;
+use ttzip_archive::zip::ZipArchive;
 
 /// Structured OPF package representation shared across all EPUB metadata, TOC, and stream parsers.
 pub struct ParsedOpfPackage {

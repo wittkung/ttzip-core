@@ -6,8 +6,8 @@
 //! Provides targeted on-demand extraction of chapter XHTML/HTML markup, CSS stylesheets,
 //! embedded images, and covers with relative path canonicalization and MIME detection.
 
-use crate::ebook::{EbookError, EbookResult};
-use crate::zip::ZipArchive;
+use crate::{EbookError, EbookResult};
+use ttzip_archive::zip::ZipArchive;
 
 /// Extracted e-book resource payload with metadata.
 #[derive(Debug, Clone, PartialEq, Eq)]

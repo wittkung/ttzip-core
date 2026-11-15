@@ -10,6 +10,12 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
+use crate::sevenz::header::SevenZFolder;
+use crate::types::TTZipStatus;
+
+mod solid_preview;
+
+pub use self::solid_preview::{SolidLzma2PreviewError, extract_solid_lzma2_preview};
 use super::extraction_observer::{OneShotStageObserver, StageObserver};
 use super::extraction_session::{
     CollisionPolicy, CommitResult, ExtractionOutcome, ExtractionRequest, ExtractionSession,
@@ -316,6 +322,72 @@ fn extract_zip_entry_by_path_bounded(
         .map_err(|s| map_single_entry_status(s, entry_path))
 }
 
+fn read_stored_7z_preview(
+    mapped: &[u8],
+    archive: &crate::sevenz::decoder::SevenZArchive<'_>,
+    folder: &SevenZFolder,
+    index: usize,
+) -> Result<Vec<u8>, TTZipStatus> {
+    let signature = crate::sevenz::format::SevenZSignatureHeader::parse(mapped)?;
+    let end_of_payload = usize::try_from(signature.next_header_offset)
+        .ok()
+        .and_then(|offset| offset.checked_add(32))
+        .and_then(|end| mapped.get(..end))
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let packed_end = folder
+        .packed_offset
+        .checked_add(folder.packed_len)
+        .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    if folder.packed_offset < 32
+        || packed_end > end_of_payload.len()
+        || folder.unpack_sizes.as_slice() != [folder.packed_len as u64]
+    {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    crate::archive::stream_adapter::extract_7z_single_entry_from_reader_fast(
+        &mut std::io::Cursor::new(end_of_payload),
+        archive.info(),
+        archive.seek_index(),
+        index,
+        None,
+    )
+}
+
+fn extract_7z_entry_by_path_bounded(
+    mapped: &[u8],
+    entry_path: &str,
+    password: Option<&str>,
+    budget_bytes: u64,
+) -> Result<Vec<u8>, TTZipError> {
+    let archive = open_sevenz_slice_for_preview(mapped, password)?;
+    let index = resolve_7z_entry_index(archive.files(), Some(entry_path), -1)?;
+    let info = archive.info();
+    let seek_index = archive.seek_index();
+    if let Some(loc) = seek_index.get_by_index(index) {
+        let stored_folder = loc
+            .folder_index
+            .and_then(|folder| info.folders.get(folder))
+            .filter(|folder| {
+                loc.offset_in_folder > budget_bytes
+                    && crate::archive::stream_adapter::is_unencrypted_copy_folder(info, folder)
+                    && matches!(folder.coders.as_slice(), [coder]
+                        if coder.num_in_streams == 1
+                            && coder.num_out_streams == 1
+                            && coder.properties.is_empty())
+            });
+        if let Some(folder) = stored_folder {
+            enforce_7z_entry_budget(loc, 0)?;
+            return read_stored_7z_preview(mapped, &archive, folder, index)
+                .map_err(|s| map_single_entry_status(s, entry_path));
+        }
+        enforce_7z_entry_budget(loc, budget_bytes)?;
+    }
+    crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
+        mapped, info, seek_index, index, password, budget_bytes,
+    )
+    .map_err(|s| map_single_entry_status(s, entry_path))
+}
+
 /// Extracts a single entry stream preview directly by relative entry path.
 #[uniffi::export]
 pub fn extract_single_entry_by_path(
@@ -353,20 +425,12 @@ pub fn extract_single_entry_by_path(
     const DEFAULT_EXTRACTION_BUDGET_BYTES: u64 = 64 * 1024 * 1024;
 
     if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        let arch = open_sevenz_slice_for_preview(mapped, secure_pwd.as_deref())?;
-        let found_idx = resolve_7z_entry_index(arch.files(), Some(&entry_path), -1)?;
-        if let Some(loc) = arch.seek_index().entries.get(found_idx) {
-            enforce_7z_entry_budget(loc, DEFAULT_EXTRACTION_BUDGET_BYTES)?;
-        }
-        crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
+        extract_7z_entry_by_path_bounded(
             mapped,
-            arch.info(),
-            arch.seek_index(),
-            found_idx,
+            &entry_path,
             secure_pwd.as_deref(),
             DEFAULT_EXTRACTION_BUDGET_BYTES,
         )
-        .map_err(|s| map_single_entry_status(s, &entry_path))
     } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
         extract_zip_entry_by_path_bounded(
             &zip_archive,
@@ -431,9 +495,106 @@ pub fn in_place_mutate_archive(
 }
 
 #[cfg(test)]
+mod solid_preview_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use std::io::{Seek, SeekFrom, Write};
+
+    const STORED_PREFIX_BYTES: u64 = 65 * 1024 * 1024;
+    const STORED_TARGET: &[u8] = b"stored preview";
+
+    fn write_stored_preview_archive(path: &Path, target_crc: u32, packed_len: u64) {
+        use crate::crypto::crc32::crc32_fast;
+        use crate::sevenz::format::{SevenZSignatureHeader, METHOD_COPY};
+        use crate::sevenz::writer::build_7z_metadata_header;
+        use crate::zip::writer::ZipInputItem;
+
+        let items = ["prefix.bin", "target.txt"].map(|rel_path| ZipInputItem {
+            rel_path: rel_path.to_string(),
+            data: vec![1],
+            mtime_epoch_secs: 0,
+            mode: 0o100644,
+            is_directory: false,
+        });
+        let zeros = vec![0; 1024 * 1024];
+        let prefix_crc = (0..65).fold(0, |crc, _| crc32_fast(crc, &zeros));
+        let unpacked_len = STORED_PREFIX_BYTES + STORED_TARGET.len() as u64;
+        let header = build_7z_metadata_header(
+            &items,
+            &[STORED_PREFIX_BYTES, STORED_TARGET.len() as u64],
+            &[prefix_crc, target_crc],
+            packed_len,
+            unpacked_len,
+            METHOD_COPY,
+            &[],
+        );
+        let signature = SevenZSignatureHeader {
+            major_version: 0,
+            minor_version: 4,
+            start_header_crc: 0,
+            next_header_offset: unpacked_len,
+            next_header_size: header.len() as u64,
+            next_header_crc: crc32_fast(0, &header),
+        };
+        let mut file = std::fs::File::create(path).expect("create archive");
+        file.write_all(&signature.serialize()).expect("write signature");
+        file.seek(SeekFrom::Start(32 + STORED_PREFIX_BYTES))
+            .expect("seek to target");
+        file.write_all(STORED_TARGET).expect("write target");
+        file.write_all(&header).expect("write header");
+    }
+
+    #[test]
+    fn single_volume_stored_preview_seeks_past_budget() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let archive = temp.path().join("stored.7z");
+        let target_crc = crate::crypto::crc32::crc32_fast(0, STORED_TARGET);
+        write_stored_preview_archive(
+            &archive,
+            target_crc,
+            STORED_PREFIX_BYTES + STORED_TARGET.len() as u64,
+        );
+        let path = archive.to_string_lossy().into_owned();
+        let bytes = extract_single_entry_by_path(path.clone(), "target.txt".to_string(), None)
+            .expect("stored preview can seek beyond the decompression budget");
+        assert_eq!(bytes, STORED_TARGET);
+        assert!(matches!(
+            extract_single_entry_by_path(path, "prefix.bin".to_string(), None),
+            Err(TTZipError::OutOfMemory { .. })
+        ));
+    }
+
+    #[test]
+    fn single_volume_stored_preview_rejects_invalid_bytes() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let archive = temp.path().join("stored.7z");
+        let target_crc = crate::crypto::crc32::crc32_fast(0, STORED_TARGET);
+        let pack_len = STORED_PREFIX_BYTES + STORED_TARGET.len() as u64;
+        let extract = || {
+            extract_single_entry_by_path(
+                archive.to_string_lossy().into_owned(),
+                "target.txt".to_string(),
+                None,
+            )
+        };
+
+        write_stored_preview_archive(&archive, target_crc ^ 1, pack_len);
+        assert!(matches!(extract(), Err(TTZipError::CorruptHeader { .. })));
+
+        write_stored_preview_archive(&archive, target_crc, pack_len + 1);
+        assert!(matches!(extract(), Err(TTZipError::CorruptHeader { .. })));
+
+        write_stored_preview_archive(&archive, target_crc, pack_len);
+        let file = std::fs::OpenOptions::new()
+            .write(true)
+            .open(&archive)
+            .expect("open archive for truncation");
+        file.set_len(file.metadata().expect("original length").len() - 1)
+            .expect("truncate archive");
+        assert!(matches!(extract(), Err(TTZipError::CorruptHeader { .. })));
+    }
 
     fn create_sparse_split_7z_volumes(
         dir: & Path,

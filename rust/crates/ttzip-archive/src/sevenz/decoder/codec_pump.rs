@@ -61,7 +61,7 @@ where
     })
 }
 
-fn lzma2_dict_size_from_prop(prop: u8) -> Option<u64> {
+pub(crate) fn lzma2_dict_size_from_prop(prop: u8) -> Option<u64> {
     if prop > 40 {
         return None;
     }
@@ -148,6 +148,74 @@ where
     sink(chunk)
 }
 
+pub(crate) enum Lzma2Work<'a, 'token> {
+    Archive(u64),
+    Preview(&'a mut PreviewWork<'token>),
+}
+
+pub(crate) struct PreviewWork<'a> {
+    pub(crate) end: u64,
+    pub(crate) accepted: u64,
+    pub(crate) cancellation: &'a dyn Fn() -> bool,
+}
+
+impl PreviewWork<'_> {
+    pub(crate) fn check_cancelled(&self) -> Result<(), TTZipStatus> {
+        if (self.cancellation)() {
+            return Err(TTZipStatus::Cancelled);
+        }
+        Ok(())
+    }
+
+    fn after_step(&mut self, accepted: usize, decoded: u64) -> Result<(), TTZipStatus> {
+        self.check_cancelled()?;
+        self.accepted = self.accepted.checked_add(accepted as u64)
+            .ok_or(TTZipStatus::ErrCorruptHeader)?;
+        // Fast-LZMA2 may report up to 40 bytes retained in its overlap buffer as consumed.
+        let consumed = self.accepted.saturating_sub(40);
+        if decoded > (1024 * 1024).max(consumed.saturating_mul(64)) {
+            return Err(TTZipStatus::ErrSolidBudgetExceeded);
+        }
+        Ok(())
+    }
+}
+
+impl Lzma2Work<'_, '_> {
+    fn output_cap(&self, proposed: usize, decoded: u64) -> Result<usize, TTZipStatus> {
+        match self {
+            Self::Archive(_) => Ok(proposed),
+            Self::Preview(preview) => {
+                preview.check_cancelled()?;
+                let remaining = preview.end.saturating_sub(decoded);
+                Ok(proposed.min(remaining as usize))
+            }
+        }
+    }
+
+    fn after_step(&mut self, consumed: usize, produced: usize, decoded: u64) -> Result<(), TTZipStatus> {
+        if let Self::Preview(preview) = self {
+            let decoded = decoded.checked_add(produced as u64)
+                .ok_or(TTZipStatus::ErrCorruptHeader)?;
+            preview.after_step(consumed, decoded)?;
+        }
+        Ok(())
+    }
+}
+
+fn lzma2_needs_input(
+    input: &crate::codecs::lzma2::Fl2InBuffer,
+    consumed: usize,
+    is_final_input: bool,
+) -> Result<bool, TTZipStatus> {
+    if input.pos >= input.size && !is_final_input {
+        return Ok(true);
+    }
+    if consumed == 0 || is_final_input {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    Ok(false)
+}
+
 /// Pumps an LZMA2 `Fl2DStream`, continuing to drain internal dictionary/MT buffers even after
 /// `plain_slice` is fully consumed. Returns `Ok(true)` when `CHUNK_FINAL` (`remaining == 0`) is
 /// reached, or `Ok(false)` when more compressed input is required from the caller.
@@ -157,12 +225,16 @@ pub(crate) fn pump_lzma2_stream<F>(
     out_chunk: &mut [u8],
     is_final_input: bool,
     total_decompressed: &mut u64,
-    expected_unpack_size: u64,
+    mut work: Lzma2Work<'_, '_>,
     sink: &mut F,
 ) -> Result<bool, TTZipStatus>
 where
     F: FnMut(&[u8]) -> Result<(), TTZipStatus>,
 {
+    let expected_unpack_size = match &work {
+        Lzma2Work::Archive(size) => *size,
+        Lzma2Work::Preview(preview) => preview.end,
+    };
     let mut in_buf = crate::codecs::lzma2::Fl2InBuffer {
         src: plain_slice.as_ptr() as *const libc::c_void,
         size: plain_slice.len(),
@@ -182,7 +254,8 @@ where
         } else {
             out_chunk.len()
         };
-        let cur_cap = step_cap.min(rem_cap).min(out_chunk.len());
+        let proposed_cap = step_cap.min(rem_cap).min(out_chunk.len());
+        let cur_cap = work.output_cap(proposed_cap, *total_decompressed)?;
         step_cap = step_cap.saturating_mul(2).min(out_chunk.len());
         let mut out_buf = crate::codecs::lzma2::Fl2OutBuffer {
             dst: out_chunk.as_mut_ptr() as *mut libc::c_void,
@@ -194,6 +267,8 @@ where
             .decompress_stream(&mut in_buf, &mut out_buf)
             .map_err(map_codec_bitstream_err)?;
         let produced = out_buf.pos;
+        let consumed = in_buf.pos.saturating_sub(prev_in_pos);
+        work.after_step(consumed, produced, *total_decompressed)?;
         if produced > 0 {
             emit_checked_chunk(
                 &out_chunk[..produced],
@@ -207,14 +282,8 @@ where
             return Ok(true);
         }
 
-        let consumed = in_buf.pos.saturating_sub(prev_in_pos);
-        if produced == 0 {
-            if in_buf.pos >= in_buf.size && !is_final_input {
-                return Ok(false);
-            }
-            if consumed == 0 || is_final_input {
-                return Err(TTZipStatus::ErrCorruptHeader);
-            }
+        if produced == 0 && lzma2_needs_input(&in_buf, consumed, is_final_input)? {
+            return Ok(false);
         }
     }
 }

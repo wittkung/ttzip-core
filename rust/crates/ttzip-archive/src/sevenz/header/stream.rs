@@ -3,7 +3,11 @@
 
 //! 7-Zip Header and EncodedHeader Zero-Copy Binary Metadata Stream Parser.
 
-use super::models::{SevenZCoder, SevenZFileMeta, SevenZFolder, SevenZHeaderInfo};
+mod files_info;
+
+use super::models::{SevenZCoder, SevenZFolder, SevenZHeaderInfo};
+use super::preview::HeaderAdmission;
+use files_info::parse_files_info_section;
 use crate::sevenz::format::*;
 use crate::types::TTZipStatus;
 
@@ -57,32 +61,41 @@ fn read_pack_sizes(
     Ok(())
 }
 
-fn parse_pack_info_section(
+fn read_pack_location(
     hp: &[u8],
     hpos: &mut usize,
     out_info: &mut SevenZHeaderInfo,
-) -> Result<(), TTZipStatus> {
-    let hlen = hp.len();
+    admission: HeaderAdmission,
+) -> Result<u64, TTZipStatus> {
     let pack_pos = next_varint(hp, hpos)?;
     let num_pack_streams = next_varint(hp, hpos)?;
-    if (num_pack_streams as usize) > hlen {
+    admission.count(num_pack_streams, 1)?;
+    if (num_pack_streams as usize) > hp.len() {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
     let pack_pos_usize = usize::try_from(pack_pos).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
     out_info.payload_offset = 32usize.checked_add(pack_pos_usize).ok_or(TTZipStatus::ErrCorruptHeader)?;
+    Ok(num_pack_streams)
+}
+
+fn parse_pack_info_section(
+    hp: &[u8],
+    hpos: &mut usize,
+    out_info: &mut SevenZHeaderInfo,
+    admission: HeaderAdmission,
+) -> Result<(), TTZipStatus> {
+    let hlen = hp.len();
+    let num_pack_streams = read_pack_location(hp, hpos, out_info, admission)?;
     let mut total_pack_size = 0u64;
 
+    let mut tags = 0;
     while *hpos < hlen {
-        let ptag = hp[*hpos];
-        *hpos += 1;
-        if ptag == K_END {
-            break;
-        } else if ptag == K_SIZE {
-            read_pack_sizes(hp, hpos, num_pack_streams, &mut out_info.pack_sizes, &mut total_pack_size)?;
-        } else if ptag == K_CRC {
-            skip_pack_crcs(hp, hpos, num_pack_streams)?;
-        } else {
-            skip_unknown_property(hp, hpos)?;
+        let ptag = admission.next_tag(hp, hpos, &mut tags)?;
+        match ptag {
+            K_END => break,
+            K_SIZE => read_pack_sizes(hp, hpos, num_pack_streams, &mut out_info.pack_sizes, &mut total_pack_size)?,
+            K_CRC => skip_pack_crcs(hp, hpos, num_pack_streams)?,
+            _ => skip_unknown_property(hp, hpos)?,
         }
     }
     out_info.payload_len = usize::try_from(total_pack_size).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
@@ -260,30 +273,45 @@ fn parse_unpack_folders(
     hp: &[u8],
     hpos: &mut usize,
     out_info: &mut SevenZHeaderInfo,
+    admission: HeaderAdmission,
 ) -> Result<(), TTZipStatus> {
     let hlen = hp.len();
     let num_folders = next_varint(hp, hpos)?;
+    admission.count(num_folders, 1)?;
     if (num_folders as usize) > hlen || *hpos >= hlen {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
     let external = hp[*hpos];
     *hpos += 1;
     if external != 0 {
+        admission.unsupported()?;
         return Ok(());
     }
     for _ in 0..num_folders {
-        let mut folder = SevenZFolder::default();
-        let num_coders = next_varint(hp, hpos)?;
-        if num_coders == 0 || num_coders > 256 || (num_coders as usize) > hlen {
-            return Err(TTZipStatus::ErrCorruptHeader);
-        }
-        for _ in 0..num_coders {
-            folder.coders.push(parse_single_coder(hp, hpos, out_info)?);
-        }
-        parse_folder_bind_pairs_and_packs(hp, hpos, &mut folder)?;
+        let folder = parse_unpack_folder(hp, hpos, out_info, admission)?;
         out_info.folders.push(folder);
     }
     Ok(())
+}
+
+fn parse_unpack_folder(
+    hp: &[u8],
+    hpos: &mut usize,
+    out_info: &mut SevenZHeaderInfo,
+    admission: HeaderAdmission,
+) -> Result<SevenZFolder, TTZipStatus> {
+    let mut folder = SevenZFolder::default();
+    let num_coders = next_varint(hp, hpos)?;
+    admission.count(num_coders, 1)?;
+    if num_coders == 0 || num_coders > 256 || (num_coders as usize) > hp.len() {
+        return Err(TTZipStatus::ErrCorruptHeader);
+    }
+    for _ in 0..num_coders {
+        admission.coder(hp.get(*hpos..hpos.saturating_add(4)))?;
+        folder.coders.push(parse_single_coder(hp, hpos, out_info)?);
+    }
+    parse_folder_bind_pairs_and_packs(hp, hpos, &mut folder)?;
+    Ok(folder)
 }
 
 const MAX_SUBSTREAMS_COUNT: usize = 1_048_576;
@@ -334,35 +362,42 @@ fn parse_unpack_info_section(
     hp: &[u8],
     hpos: &mut usize,
     out_info: &mut SevenZHeaderInfo,
+    admission: HeaderAdmission,
 ) -> Result<(), TTZipStatus> {
     let hlen = hp.len();
+    let mut tags = 0;
     while *hpos < hlen {
-        let utag = hp[*hpos];
-        *hpos += 1;
-        if utag == K_END {
-            break;
-        }
-        if utag == K_FOLDER {
-            parse_unpack_folders(hp, hpos, out_info)?;
-        } else if utag == K_CODERS_UNPACK_SIZE {
-            for folder in &mut out_info.folders {
-                let num_out: usize = folder.coders.iter().map(|c| c.num_out_streams as usize).sum::<usize>().max(1);
-                for _ in 0..num_out {
-                    if *hpos >= hlen {
-                        break;
+        let utag = admission.next_tag(hp, hpos, &mut tags)?;
+        match utag {
+            K_END => break,
+            K_FOLDER => parse_unpack_folders(hp, hpos, out_info, admission)?,
+            K_CODERS_UNPACK_SIZE => read_folder_unpack_sizes(hp, hpos, &mut out_info.folders)?,
+            K_CRC => {
+                let crcs = read_optional_crc_list(hp, hpos, out_info.folders.len())?;
+                for (folder, crc) in out_info.folders.iter_mut().zip(crcs) {
+                    if crc.is_some() {
+                        folder.crc = crc;
                     }
-                    folder.unpack_sizes.push(next_varint(hp, hpos)?);
                 }
             }
-        } else if utag == K_CRC {
-            let crcs = read_optional_crc_list(hp, hpos, out_info.folders.len())?;
-            for (folder, crc) in out_info.folders.iter_mut().zip(crcs) {
-                if crc.is_some() {
-                    folder.crc = crc;
-                }
+            _ => skip_unknown_property(hp, hpos)?,
+        }
+    }
+    Ok(())
+}
+
+fn read_folder_unpack_sizes(
+    hp: &[u8],
+    hpos: &mut usize,
+    folders: &mut [SevenZFolder],
+) -> Result<(), TTZipStatus> {
+    for folder in folders {
+        let num_out = folder.coders.iter().map(|coder| coder.num_out_streams as usize).sum::<usize>().max(1);
+        for _ in 0..num_out {
+            if *hpos >= hp.len() {
+                break;
             }
-        } else {
-            skip_unknown_property(hp, hpos)?;
+            folder.unpack_sizes.push(next_varint(hp, hpos)?);
         }
     }
     Ok(())
@@ -428,6 +463,7 @@ fn parse_num_unpack_streams_per_folder(
     hpos: &mut usize,
     folders_count: usize,
     num_unpack_streams_per_folder: &mut Vec<usize>,
+    admission: HeaderAdmission,
 ) -> Result<(), TTZipStatus> {
     num_unpack_streams_per_folder.resize(folders_count, 1);
     let mut total_unpack = 0usize;
@@ -437,6 +473,7 @@ fn parse_num_unpack_streams_per_folder(
         total_unpack = total_unpack
             .checked_add(n)
             .ok_or(TTZipStatus::ErrCorruptHeader)?;
+        admission.count(total_unpack as u64, 1024)?;
         if total_unpack > MAX_SUBSTREAMS_COUNT {
             return Err(TTZipStatus::ErrCorruptHeader);
         }
@@ -449,6 +486,7 @@ fn parse_substreams_info_section(
     hp: &[u8],
     hpos: &mut usize,
     out_info: &mut SevenZHeaderInfo,
+    admission: HeaderAdmission,
 ) -> Result<(), TTZipStatus> {
     let hlen = hp.len();
     let folders_count = out_info.folders.len().max(1);
@@ -456,9 +494,9 @@ fn parse_substreams_info_section(
     let mut stream_sizes_per_folder: Vec<Vec<u64>> = vec![Vec::new(); folders_count];
     let mut size_tag_seen = false;
 
+    let mut tags = 0;
     while *hpos < hlen {
-        let stag = hp[*hpos];
-        *hpos += 1;
+        let stag = admission.next_tag(hp, hpos, &mut tags)?;
         match stag {
             K_END => break,
             K_NUM_UNPACK_STREAM => {
@@ -467,6 +505,7 @@ fn parse_substreams_info_section(
                     hpos,
                     folders_count,
                     &mut num_unpack_streams_per_folder,
+                    admission,
                 )?;
             }
             K_SIZE => {
@@ -486,11 +525,9 @@ fn parse_substreams_info_section(
                     .try_fold(0usize, |acc, &n| acc.checked_add(n))
                     .filter(|&sum| sum <= MAX_SUBSTREAMS_COUNT)
                     .ok_or(TTZipStatus::ErrCorruptHeader)?;
-                out_info.stream_crcs.extend(
-                    read_optional_crc_list(hp, hpos, total_streams)?
-                        .into_iter()
-                        .flatten(),
-                );
+                let crcs = read_optional_crc_list(hp, hpos, total_streams)?;
+                admission.require_complete_substream_crcs(&crcs)?;
+                out_info.stream_crcs.extend(crcs.into_iter().flatten());
             }
             _ => skip_unknown_property(hp, hpos)?,
         }
@@ -502,192 +539,6 @@ fn parse_substreams_info_section(
         stream_sizes_per_folder,
         size_tag_seen,
     );
-    Ok(())
-}
-
-fn read_defined_bitmask(
-    hp: &[u8],
-    hpos: &mut usize,
-    prop_end: usize,
-    num_files: usize,
-) -> Option<Vec<bool>> {
-    if *hpos >= prop_end {
-        return None;
-    }
-    let all_defined = hp[*hpos];
-    *hpos += 1;
-    let mut defined = vec![true; num_files];
-    if all_defined == 0 {
-        let mask_bytes = num_files.div_ceil(8);
-        if *hpos + mask_bytes <= prop_end {
-            for (i, slot) in defined.iter_mut().enumerate().take(num_files) {
-                let b = hp[*hpos + (i / 8)];
-                *slot = ((b >> (7 - (i % 8))) & 1) != 0;
-            }
-            *hpos += mask_bytes;
-        }
-    }
-    if *hpos >= prop_end {
-        return None;
-    }
-    let external = hp[*hpos];
-    *hpos += 1;
-    (external == 0).then_some(defined)
-}
-
-fn parse_files_names(
-    hp: &[u8],
-    hpos: usize,
-    prop_end: usize,
-    files: &mut [SevenZFileMeta],
-) -> Result<(), TTZipStatus> {
-    if hpos >= prop_end {
-        return Err(TTZipStatus::ErrCorruptHeader);
-    }
-    let mut name_pos = hpos + 1;
-    let mut name_bytes_left = (prop_end - hpos).saturating_sub(1);
-    let mut u16_chars = Vec::new();
-
-    for file in files.iter_mut() {
-        u16_chars.clear();
-        while name_bytes_left >= 2 && name_pos + 2 <= prop_end {
-            let mut ch = u16::from_le_bytes([hp[name_pos], hp[name_pos + 1]]);
-            name_pos += 2;
-            name_bytes_left -= 2;
-            if ch == 0 {
-                break;
-            }
-            if ch == 0x005C {
-                ch = 0x002F;
-            }
-            u16_chars.push(ch);
-        }
-        file.rel_path = String::from_utf16_lossy(&u16_chars);
-    }
-    Ok(())
-}
-
-fn parse_files_mtime(hp: &[u8], mut hpos: usize, prop_end: usize, files: &mut [SevenZFileMeta]) {
-    let Some(defined) = read_defined_bitmask(hp, &mut hpos, prop_end, files.len()) else {
-        return;
-    };
-    for (file, is_def) in files.iter_mut().zip(defined) {
-        if !is_def || hpos + 8 > prop_end {
-            continue;
-        }
-        let mut t_bytes = [0u8; 8];
-        t_bytes.copy_from_slice(&hp[hpos..hpos + 8]);
-        hpos += 8;
-        let nt = crate::sevenz::time::NtTime(u64::from_le_bytes(t_bytes));
-        let sys_time = nt.to_system_time();
-        let secs = match sys_time.duration_since(std::time::UNIX_EPOCH) {
-            Ok(dur) => dur.as_secs() as i64,
-            Err(err) => -(err.duration().as_secs() as i64),
-        };
-        file.mtime_epoch_secs = Some(secs);
-    }
-}
-
-fn apply_win_attribute_to_file(attr: u32, file: &mut SevenZFileMeta) {
-    let posix_mode = (attr >> 16) & 0xFFFF;
-    let file_type = posix_mode & 0o170000;
-    if file_type == 0o120000 || (file_type == 0 && (attr & 0x400) != 0) {
-        file.is_directory = false;
-        file.mode = if posix_mode != 0 { posix_mode } else { 0o120777 };
-    } else {
-        if (attr & 0x10) != 0 || file_type == 0o040000 {
-            file.is_directory = true;
-        }
-        file.mode = if posix_mode != 0 {
-            posix_mode
-        } else if file.is_directory {
-            0o755
-        } else {
-            0o644
-        };
-    }
-}
-
-fn parse_files_win_attributes(
-    hp: &[u8],
-    mut hpos: usize,
-    prop_end: usize,
-    files: &mut [SevenZFileMeta],
-) {
-    let Some(defined) = read_defined_bitmask(hp, &mut hpos, prop_end, files.len()) else {
-        return;
-    };
-    for (file, is_def) in files.iter_mut().zip(defined) {
-        if !is_def || hpos + 4 > prop_end {
-            continue;
-        }
-        let attr = u32::from_le_bytes([hp[hpos], hp[hpos + 1], hp[hpos + 2], hp[hpos + 3]]);
-        hpos += 4;
-        apply_win_attribute_to_file(attr, file);
-    }
-}
-
-fn apply_empty_streams_and_files(
-    ftag: u8,
-    hp: &[u8],
-    hpos: usize,
-    prop_size: usize,
-    files: &mut [SevenZFileMeta],
-) {
-    if ftag == K_EMPTY_STREAM {
-        for (i, file) in files.iter_mut().enumerate() {
-            let byte_idx = i / 8;
-            if byte_idx < prop_size && ((hp[hpos + byte_idx] >> (7 - (i % 8))) & 1) != 0 {
-                file.is_empty_stream = true;
-            }
-        }
-    } else if ftag == K_EMPTY_FILE {
-        let mut empty_idx = 0usize;
-        for file in files.iter_mut() {
-            if file.is_empty_stream {
-                let byte_idx = empty_idx / 8;
-                if byte_idx < prop_size {
-                    let is_empty_file = ((hp[hpos + byte_idx] >> (7 - (empty_idx % 8))) & 1) != 0;
-                    file.is_directory = !is_empty_file;
-                }
-                empty_idx += 1;
-            }
-        }
-    }
-}
-
-fn parse_files_info_section(
-    hp: &[u8],
-    hpos: &mut usize,
-    out_info: &mut SevenZHeaderInfo,
-) -> Result<(), TTZipStatus> {
-    let hlen = hp.len();
-    let num_files_val = next_varint(hp, hpos)?;
-    if num_files_val > 1_000_000 || (num_files_val as usize) > hlen.saturating_mul(1024) {
-        return Err(TTZipStatus::ErrCorruptHeader);
-    }
-    out_info.files.resize(num_files_val as usize, SevenZFileMeta::default());
-
-    while *hpos < hlen {
-        let ftag = hp[*hpos];
-        *hpos += 1;
-        if ftag == K_END {
-            break;
-        }
-        let prop_size = next_varint(hp, hpos)? as usize;
-        let prop_end = hpos.checked_add(prop_size).filter(|&end| end <= hlen).ok_or(TTZipStatus::ErrCorruptHeader)?;
-
-        match ftag {
-            K_EMPTY_STREAM | K_EMPTY_FILE => {
-                apply_empty_streams_and_files(ftag, hp, *hpos, prop_size, &mut out_info.files);
-            }
-            K_NAME => parse_files_names(hp, *hpos, prop_end, &mut out_info.files)?,
-            K_MTIME => parse_files_mtime(hp, *hpos, prop_end, &mut out_info.files),
-            K_WIN_ATTRIBUTES => parse_files_win_attributes(hp, *hpos, prop_end, &mut out_info.files),
-            _ => {}
-        }
-        *hpos = prop_end;
-    }
     Ok(())
 }
 
@@ -741,20 +592,31 @@ pub fn parse_7z_header_stream(
     hp: &[u8],
     out_info: &mut SevenZHeaderInfo,
 ) -> Result<(), TTZipStatus> {
+    parse_7z_header_stream_with_admission(hp, out_info, HeaderAdmission::Standard)
+}
+
+pub(super) fn parse_7z_header_stream_with_admission(
+    hp: &[u8],
+    out_info: &mut SevenZHeaderInfo,
+    admission: HeaderAdmission,
+) -> Result<(), TTZipStatus> {
     let mut hpos = 0;
     let hlen = hp.len();
 
+    let mut tags = 0;
     while hpos < hlen {
-        let tag = hp[hpos];
-        hpos += 1;
+        let tag = admission.next_tag(hp, &mut hpos, &mut tags)?;
 
         match tag {
             K_END | K_HEADER | K_MAIN_STREAMS_INFO => continue,
-            K_PACK_INFO => parse_pack_info_section(hp, &mut hpos, out_info)?,
-            K_UNPACK_INFO => parse_unpack_info_section(hp, &mut hpos, out_info)?,
-            K_SUB_STREAMS_INFO => parse_substreams_info_section(hp, &mut hpos, out_info)?,
-            K_FILES_INFO => parse_files_info_section(hp, &mut hpos, out_info)?,
-            _ => skip_unknown_property(hp, &mut hpos)?,
+            K_PACK_INFO => parse_pack_info_section(hp, &mut hpos, out_info, admission)?,
+            K_UNPACK_INFO => parse_unpack_info_section(hp, &mut hpos, out_info, admission)?,
+            K_SUB_STREAMS_INFO => parse_substreams_info_section(hp, &mut hpos, out_info, admission)?,
+            K_FILES_INFO => parse_files_info_section(hp, &mut hpos, out_info, admission)?,
+            _ => {
+                admission.unsupported()?;
+                skip_unknown_property(hp, &mut hpos)?;
+            }
         }
     }
 
@@ -763,31 +625,4 @@ pub fn parse_7z_header_stream(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_read_optional_crc_list_and_substreams_reject_oversized_counts_on_short_header() {
-        let mut hpos = 0usize;
-        assert_eq!(
-            read_optional_crc_list(&[0x01u8, 0x00], &mut hpos, 10_000_000),
-            Err(TTZipStatus::ErrCorruptHeader)
-        );
-        let mut hpos_mask = 0usize;
-        assert_eq!(
-            read_optional_crc_list(&[0x00u8, 0xFF], &mut hpos_mask, 500_000),
-            Err(TTZipStatus::ErrCorruptHeader)
-        );
-        let header_bytes = [K_NUM_UNPACK_STREAM, 0xE0, 0x40, 0x4B, 0x4C, K_CRC, 0x01, K_END];
-        let mut info = SevenZHeaderInfo {
-            folders: vec![SevenZFolder::default()],
-            ..Default::default()
-        };
-        let mut pos = 0usize;
-        assert_eq!(
-            parse_substreams_info_section(&header_bytes, &mut pos, &mut info),
-            Err(TTZipStatus::ErrCorruptHeader)
-        );
-    }
-}
-
+mod tests;
