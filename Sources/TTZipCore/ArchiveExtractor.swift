@@ -1,6 +1,9 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreCrypto
+import TTZipCoreTypes
 import Foundation
 
 /// High-performance unified stream-based archive extraction engine (100% Pure Mozilla UniFFI Engine).

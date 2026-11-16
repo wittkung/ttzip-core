@@ -1,6 +1,8 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreTypes
 import Foundation
 #if canImport(Darwin)
 import Darwin
@@ -61,11 +63,7 @@ public enum NativeMicrokernelBridge {
     /// Natural string comparator backed by pure Rust UniFFI kernel.
     @inlinable
     public static func naturalCompare(_ a: String, _ b: String) -> ComparisonResult {
-        #if SWIFT_PACKAGE
-        let cmp = TTZipCore.naturalCompare(a: a, b: b)
-        #else
         let cmp = TTZipCoreBindings.naturalCompare(a: a, b: b)
-        #endif
         if cmp < 0 { return .orderedAscending }
         if cmp > 0 { return .orderedDescending }
         return .orderedSame
@@ -74,11 +72,7 @@ public enum NativeMicrokernelBridge {
     /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from a file path using pure Rust UniFFI kernel.
     @inlinable
     public static func extractAudioWaveform(path: String, bucketCount: Int = 36) -> [Float] {
-        #if SWIFT_PACKAGE
-        let result = try? TTZipCore.extractAudioWaveform(path: path, bucketCount: UInt32(bucketCount))
-        #else
         let result = try? TTZipCoreBindings.extractAudioWaveform(path: path, bucketCount: UInt32(bucketCount))
-        #endif
         if let result = result, !result.isEmpty {
             return result
         }
@@ -92,11 +86,7 @@ public enum NativeMicrokernelBridge {
     /// Extracts normalized audio waveform amplitudes [0.08 ... 1.0] from memory data using pure Rust UniFFI kernel.
     @inlinable
     public static func extractAudioWaveformFromMemory(data: Data, bucketCount: Int = 36) -> [Float] {
-        #if SWIFT_PACKAGE
-        let result = try? TTZipCore.extractAudioWaveformFromMemory(data: data, bucketCount: UInt32(bucketCount))
-        #else
         let result = try? TTZipCoreBindings.extractAudioWaveformFromMemory(data: data, bucketCount: UInt32(bucketCount))
-        #endif
         if let result = result, !result.isEmpty {
             return result
         }

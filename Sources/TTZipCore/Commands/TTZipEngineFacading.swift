@@ -1,6 +1,9 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreCrypto
+import TTZipCoreTypes
 import Foundation
 
 /// High-level result payload for archive extraction operations.

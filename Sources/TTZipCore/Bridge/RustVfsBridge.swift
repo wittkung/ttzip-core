@@ -1,6 +1,8 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreTypes
 import Foundation
 
 /// Thread-safe concurrent session manager isolating VFS sessions by physical path or content fingerprint.

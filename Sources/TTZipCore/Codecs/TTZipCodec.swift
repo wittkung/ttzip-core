@@ -1,6 +1,8 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreTypes
 import Foundation
 
 /// Swift 6 strongly-typed facade for all native compression codecs via UniFFI bridge.

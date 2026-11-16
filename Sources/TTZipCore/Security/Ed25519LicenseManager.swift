@@ -1,6 +1,8 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreTypes
 import Foundation
 
 /// Central thread-safe license state coordinator and manager.

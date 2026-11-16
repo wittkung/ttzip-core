@@ -1,6 +1,8 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
+import TTZipCoreTypes
 import Foundation
 import Compression
 
@@ -34,11 +36,7 @@ public final class HashCalculator: HashCalculating, @unchecked Sendable {
     /// Static convenience method for calculating SHA-256 fingerprint of a file via microkernel.
     @inlinable
     public static func computeFileSha256(filePath: String) throws -> String {
-        #if SWIFT_PACKAGE
-        try TTZipCore.computeFileSha256(filePath: filePath)
-        #else
         try TTZipCoreBindings.computeFileSha256(filePath: filePath)
-        #endif
     }
     
     /// Static convenience method for calculating SHA-256 fingerprint of a file.

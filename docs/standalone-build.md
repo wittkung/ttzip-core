@@ -79,3 +79,10 @@ macOS clients that only decode EPUB previews can depend on the `TTZipEpub`
 product. Use `inspectEpubFile` or `inspectEpubBytes` for the book outline and
 `readEpubResource` for bytes at a container-relative path. The file entry point
 also returns the ordered HTML fallback when the book has no usable spine.
+
+For archive entry sizes, bounded reads, and selected-entry extraction, depend on
+the `TTZipArchiveRuntime` product and import `TTZipCoreArchive`.
+`ArchiveRuntime` serves those operations without linking the high-level
+`TTZipCore` module. Existing source clients can still import `TTZipCore`.
+Rebuild Swift clients when updating the package because lower modules now own
+some of the previously monolithic Swift types and symbols.

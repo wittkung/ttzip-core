@@ -6,9 +6,9 @@
 
 @_exported import TTZipCoreBindings
 
-#if !SWIFT_PACKAGE
 @_exported import TTZipCoreTypes
 @_exported import TTZipCoreCrypto
 @_exported import TTZipCoreArchive
+#if !SWIFT_PACKAGE
 @_exported import TTZipCoreMedia
 #endif

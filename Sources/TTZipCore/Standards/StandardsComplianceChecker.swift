@@ -1,6 +1,7 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
 import Foundation
 
 /// State representation for archive inspection and standards compliance auditing.

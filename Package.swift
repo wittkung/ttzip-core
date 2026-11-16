@@ -22,6 +22,72 @@ let archiveLinkerSettings: [LinkerSetting] = [
     .linkedFramework("Security", .when(platforms: [.macOS, .iOS]))
 ]
 
+let coreSourcesPath = "Sources/TTZipCore"
+
+let typesSources = [
+    "ArchiveProtocols.swift",
+    "Features/Charset/TTZipTextEncodingService.swift",
+    "TTZipImageModels.swift",
+    "Localization",
+    "Logging",
+    "Platform",
+    "Standards",
+    "Types",
+]
+
+let cryptoSources = [
+    "PasswordRecoveryEngine.swift",
+    "PasswordVaultArchiveCredentials.swift",
+    "PasswordVaultEntries.swift",
+    "PasswordVaultManager+BiometricUnlock.swift",
+    "PasswordVaultManager+VaultReset.swift",
+    "PasswordVaultManager.swift",
+    "PasswordVaultModels.swift",
+    "TTZipPluginAuthService.swift",
+    "Crypto",
+    "Features/CryptoVault",
+    "Security",
+]
+
+let archiveSources = [
+    "ArchiveExtractor.swift",
+    "ArchiveReader.swift",
+    "ArchiveTreeNode+Builder.swift",
+    "ArchiveTreeNode+Composite.swift",
+    "ArchiveTreeNode+Search.swift",
+    "ArchiveTreeNode.swift",
+    "ArchiveWriter.swift",
+    "HashCalculator.swift",
+    "TTZipMmapStreamService.swift",
+    "UniFfiMmapReader+ZeroCopy.swift",
+    "Bridge",
+    "Codecs",
+    "Commands",
+    "Concurrency",
+    "Pipeline",
+    "Split",
+    "Tree",
+    "VFS/VFSLz4CachePool.swift",
+]
+
+let facadeSources = [
+    "CompetitorDetector.swift",
+    "Facades",
+    "FinderSyncHelper.swift",
+    "PresetManager.swift",
+    "QuickLook",
+    "Services",
+    "SystemServices.swift",
+    "TTZipAppUpdateService.swift",
+    "TTZipCoreExports.swift",
+    "TTZipDocumentMetadataService.swift",
+    "TTZipEbookReaderService.swift",
+    "TTZipEngine.swift",
+    "TTZipImageRenderingService.swift",
+    "ToolchainInstaller.swift",
+    "VFS/TTZipVfsSchemeHandler.swift",
+]
+
 let package = Package(
     name: "TTZipCore",
     platforms: [
@@ -38,6 +104,10 @@ let package = Package(
             targets: ["TTZipOperationContract"]
         ),
         .library(
+            name: "TTZipArchiveRuntime",
+            targets: ["TTZipCoreArchive"]
+        ),
+        .library(
             name: "TTZipCore",
             type: .dynamic,
             targets: ["TTZipCore"]
@@ -46,6 +116,10 @@ let package = Package(
             name: "TTZipEpub",
             type: .dynamic,
             targets: ["TTZipEpub"]
+        ),
+        .library(
+            name: "TTZipArchiveWebKit",
+            targets: ["TTZipWebKit"]
         ),
         .executable(
             name: "ttzip-bench",
@@ -95,6 +169,51 @@ let package = Package(
             dependencies: ["TTZipVendor"],
             path: "Sources/TTZipCore/Generated",
             exclude: ["ttzip_engineFFI.h", "ttzip_engineFFI.modulemap"],
+            swiftSettings: coreSwiftSettings,
+            linkerSettings: archiveLinkerSettings
+        ),
+        .target(
+            name: "TTZipWebKit",
+            path: "Sources/TTZipWebKit",
+            swiftSettings: coreSwiftSettings
+        ),
+        .target(
+            name: "TTZipCoreTypes",
+            dependencies: [
+                "TTZipArchiveContract",
+                "TTZipOperationContract",
+                "TTZipCoreBindings",
+                .product(name: "TTLogKit", package: ttlogPackageName)
+            ],
+            path: coreSourcesPath,
+            exclude: ["Generated"] + cryptoSources + archiveSources + facadeSources,
+            sources: typesSources,
+            swiftSettings: coreSwiftSettings
+        ),
+        .target(
+            name: "TTZipCoreCrypto",
+            dependencies: [
+                "TTZipCoreBindings",
+                "TTZipCoreTypes",
+                .product(name: "TTLogKit", package: ttlogPackageName)
+            ],
+            path: coreSourcesPath,
+            exclude: ["Generated"] + typesSources + archiveSources + facadeSources,
+            sources: cryptoSources,
+            swiftSettings: coreSwiftSettings
+        ),
+        .target(
+            name: "TTZipCoreArchive",
+            dependencies: [
+                "TTZipArchiveContract",
+                "TTZipCoreBindings",
+                "TTZipCoreCrypto",
+                "TTZipCoreTypes",
+                .product(name: "TTLogKit", package: ttlogPackageName)
+            ],
+            path: coreSourcesPath,
+            exclude: ["Generated"] + typesSources + cryptoSources + facadeSources,
+            sources: archiveSources,
             swiftSettings: coreSwiftSettings
         ),
         .target(
@@ -102,14 +221,17 @@ let package = Package(
             dependencies: [
                 "TTZipArchiveContract",
                 "TTZipOperationContract",
+                "TTZipCoreArchive",
                 "TTZipCoreBindings",
-                "TTZipVendor",
+                "TTZipCoreCrypto",
+                "TTZipCoreTypes",
+                "TTZipWebKit",
                 .product(name: "TTLogKit", package: ttlogPackageName)
             ],
-            path: "Sources/TTZipCore",
-            exclude: ["Generated"],
-            swiftSettings: coreSwiftSettings,
-            linkerSettings: archiveLinkerSettings
+            path: coreSourcesPath,
+            exclude: ["Generated"] + typesSources + cryptoSources + archiveSources,
+            sources: facadeSources,
+            swiftSettings: coreSwiftSettings
         ),
         .executableTarget(
             name: "TTZipBench",

@@ -1,6 +1,7 @@
 // Copyright 2026 MetastudyLine. All rights reserved.
 // SPDX-License-Identifier: BSD-3-Clause
 
+import TTZipCoreBindings
 import Foundation
 import os
 @_exported import TTLogKit
@@ -43,22 +44,14 @@ public final class TTLogger: @unchecked Sendable {
     }
 
     private init() {
-        #if SWIFT_PACKAGE
-        _ = TTZipCore.enableMicrokernelLoggingBridge(minLevel: TTLogEngine.shared.level)
-        #else
         _ = TTZipCoreTypes.enableMicrokernelLoggingBridge(minLevel: TTLogEngine.shared.level)
-        #endif
     }
 
     /// Bridges microkernel logs into the shared logger engine.
     @discardableResult
     public func enableMicrokernelLoggingBridge(minLevel: TTLogLevel? = nil) -> Bool {
         let targetLevel = minLevel ?? self.level
-        #if SWIFT_PACKAGE
-        return TTZipCore.enableMicrokernelLoggingBridge(minLevel: targetLevel)
-        #else
         return TTZipCoreTypes.enableMicrokernelLoggingBridge(minLevel: targetLevel)
-        #endif
     }
 
     /// Logs an entry to the shared log engine.
