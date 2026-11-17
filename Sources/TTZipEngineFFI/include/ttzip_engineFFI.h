@@ -1681,6 +1681,11 @@ int8_t uniffi_ttzip_engine_fn_func_probe_full_disk_access_silent(RustCallStatus 
     
 );
 #endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_READ_ARCHIVE_PREVIEW_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_READ_ARCHIVE_PREVIEW_ENTRY
+RustBuffer uniffi_ttzip_engine_fn_func_read_archive_preview_entry(RustBuffer archive_path, RustBuffer entry_path, RustBuffer password, void*_Nonnull token, RustCallStatus *_Nonnull out_status
+);
+#endif
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOMMEND_CODEC
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_FN_FUNC_RECOMMEND_CODEC
 RustBuffer uniffi_ttzip_engine_fn_func_recommend_codec(RustBuffer data, int32_t scenario, RustCallStatus *_Nonnull out_status
@@ -2946,6 +2951,12 @@ uint16_t uniffi_ttzip_engine_checksum_func_parse_epub_metadata(void
 #ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_PROBE_FULL_DISK_ACCESS_SILENT
 #define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_PROBE_FULL_DISK_ACCESS_SILENT
 uint16_t uniffi_ttzip_engine_checksum_func_probe_full_disk_access_silent(void
+
+);
+#endif
+#ifndef UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_READ_ARCHIVE_PREVIEW_ENTRY
+#define UNIFFI_FFIDEF_UNIFFI_TTZIP_ENGINE_CHECKSUM_FUNC_READ_ARCHIVE_PREVIEW_ENTRY
+uint16_t uniffi_ttzip_engine_checksum_func_read_archive_preview_entry(void
     
 );
 #endif

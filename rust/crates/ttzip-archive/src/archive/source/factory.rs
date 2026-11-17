@@ -47,8 +47,13 @@ fn classify_storage_medium(stat: &libc::statfs) -> StorageMedium {
 }
 
 /// Opens one regular file on a local volume for a bounded preview.
-#[cfg(unix)]
 pub fn open_local_regular_archive_mmap(path: &Path) -> Result<MmapSource, TTZipStatus> {
+    try_open_local_regular_archive_mmap(path)?.ok_or(TTZipStatus::ErrUnsupportedFeature)
+}
+
+/// A nonlocal regular file has no local preview mapping.
+#[cfg(unix)]
+pub fn try_open_local_regular_archive_mmap(path: &Path) -> Result<Option<MmapSource>, TTZipStatus> {
     use std::fs::OpenOptions;
     use std::io::ErrorKind;
     use std::os::{fd::AsRawFd, unix::fs::OpenOptionsExt};
@@ -76,17 +81,15 @@ pub fn open_local_regular_archive_mmap(path: &Path) -> Result<MmapSource, TTZipS
     let medium = classify_storage_medium(&unsafe { stat.assume_init() });
     match medium {
         StorageMedium::LocalFastApfs | StorageMedium::LocalStandard => {
-            MmapSource::from_file(&file, medium)
+            MmapSource::from_file(&file, medium).map(Some)
         }
-        StorageMedium::RemoteNetwork | StorageMedium::VirtualFilesystem => {
-            Err(TTZipStatus::ErrUnsupportedFeature)
-        }
+        StorageMedium::RemoteNetwork | StorageMedium::VirtualFilesystem => Ok(None),
     }
 }
 
 #[cfg(not(unix))]
-pub fn open_local_regular_archive_mmap(_path: &Path) -> Result<MmapSource, TTZipStatus> {
-    Err(TTZipStatus::ErrUnsupportedFeature)
+pub fn try_open_local_regular_archive_mmap(_path: &Path) -> Result<Option<MmapSource>, TTZipStatus> {
+    Ok(None)
 }
 
 /// Opens an optimal ArchiveSource instance dynamically matching the underlying filesystem.

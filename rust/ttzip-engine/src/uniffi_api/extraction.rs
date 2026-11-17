@@ -10,11 +10,12 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::sevenz::header::SevenZFolder;
 use crate::types::TTZipStatus;
 
+mod entry_preview;
 mod solid_preview;
 
+pub use self::entry_preview::{ArchiveEntryPreviewError, extract_single_entry_for_preview};
 pub use self::solid_preview::{SolidLzma2PreviewError, extract_solid_lzma2_preview};
 use super::extraction_observer::{OneShotStageObserver, StageObserver};
 use super::extraction_session::{
@@ -293,101 +294,6 @@ pub(crate) fn extract_single_entry_split_guarded(
     .map_err(|s| map_single_entry_status(s, &missing_label))
 }
 
-fn extract_zip_entry_by_path_bounded(
-    zip_archive: &crate::zip::reader::ZipArchive<'_>,
-    clean_target: &str,
-    entry_path: &str,
-    password: Option<&str>,
-    budget_bytes: u64,
-) -> Result<Vec<u8>, TTZipError> {
-    let suffix = format!("/{clean_target}");
-    let found_idx = zip_archive
-        .entries()
-        .iter()
-        .position(|e| e.rel_path == clean_target || e.rel_path.ends_with(&suffix))
-        .ok_or_else(|| TTZipError::FileNotFound {
-            path: entry_path.to_string(),
-        })?;
-    let entry = &zip_archive.entries()[found_idx];
-    if entry.uncompressed_size > budget_bytes {
-        return Err(TTZipError::OutOfMemory {
-            details: format!(
-                "Entry uncompressed size ({} bytes) exceeds safety budget ({budget_bytes} bytes)",
-                entry.uncompressed_size
-            ),
-        });
-    }
-    zip_archive
-        .extract_entry_bytes(found_idx, password)
-        .map_err(|s| map_single_entry_status(s, entry_path))
-}
-
-fn read_stored_7z_preview(
-    mapped: &[u8],
-    archive: &crate::sevenz::decoder::SevenZArchive<'_>,
-    folder: &SevenZFolder,
-    index: usize,
-) -> Result<Vec<u8>, TTZipStatus> {
-    let signature = crate::sevenz::format::SevenZSignatureHeader::parse(mapped)?;
-    let end_of_payload = usize::try_from(signature.next_header_offset)
-        .ok()
-        .and_then(|offset| offset.checked_add(32))
-        .and_then(|end| mapped.get(..end))
-        .ok_or(TTZipStatus::ErrCorruptHeader)?;
-    let packed_end = folder
-        .packed_offset
-        .checked_add(folder.packed_len)
-        .ok_or(TTZipStatus::ErrCorruptHeader)?;
-    if folder.packed_offset < 32
-        || packed_end > end_of_payload.len()
-        || folder.unpack_sizes.as_slice() != [folder.packed_len as u64]
-    {
-        return Err(TTZipStatus::ErrCorruptHeader);
-    }
-    crate::archive::stream_adapter::extract_7z_single_entry_from_reader_fast(
-        &mut std::io::Cursor::new(end_of_payload),
-        archive.info(),
-        archive.seek_index(),
-        index,
-        None,
-    )
-}
-
-fn extract_7z_entry_by_path_bounded(
-    mapped: &[u8],
-    entry_path: &str,
-    password: Option<&str>,
-    budget_bytes: u64,
-) -> Result<Vec<u8>, TTZipError> {
-    let archive = open_sevenz_slice_for_preview(mapped, password)?;
-    let index = resolve_7z_entry_index(archive.files(), Some(entry_path), -1)?;
-    let info = archive.info();
-    let seek_index = archive.seek_index();
-    if let Some(loc) = seek_index.get_by_index(index) {
-        let stored_folder = loc
-            .folder_index
-            .and_then(|folder| info.folders.get(folder))
-            .filter(|folder| {
-                loc.offset_in_folder > budget_bytes
-                    && crate::archive::stream_adapter::is_unencrypted_copy_folder(info, folder)
-                    && matches!(folder.coders.as_slice(), [coder]
-                        if coder.num_in_streams == 1
-                            && coder.num_out_streams == 1
-                            && coder.properties.is_empty())
-            });
-        if let Some(folder) = stored_folder {
-            enforce_7z_entry_budget(loc, 0)?;
-            return read_stored_7z_preview(mapped, &archive, folder, index)
-                .map_err(|s| map_single_entry_status(s, entry_path));
-        }
-        enforce_7z_entry_budget(loc, budget_bytes)?;
-    }
-    crate::sevenz::decoder::stream::extract_entry_bytes_stream_bounded(
-        mapped, info, seek_index, index, password, budget_bytes,
-    )
-    .map_err(|s| map_single_entry_status(s, entry_path))
-}
-
 /// Extracts a single entry stream preview directly by relative entry path.
 #[uniffi::export]
 pub fn extract_single_entry_by_path(
@@ -395,59 +301,8 @@ pub fn extract_single_entry_by_path(
     entry_path: String,
     password: Option<String>,
 ) -> Result<Vec<u8>, TTZipError> {
-    let secure_pwd = password.map(crate::crypto::ZeroizingString::new);
-    let p = std::path::Path::new(&archive_path);
-    let volume_chain = crate::archive::split::detect_volume_chain(p)
-        .map_err(|_| TTZipError::FileNotFound {
-            path: archive_path.clone(),
-        })?;
-    if volume_chain.len() > 1 {
-        return extract_single_entry_split_guarded(
-            &volume_chain,
-            p,
-            Some(&entry_path),
-            -1,
-            secure_pwd.as_deref(),
-            64,
-        );
-    }
-    if !p.exists() {
-        return Err(TTZipError::FileNotFound { path: archive_path });
-    }
-
-    let source = crate::archive::source::open_archive_source(p)
-        .map_err(|e| TTZipError::IoError { message: e.to_string() })?;
-    let mapped = source.as_slice().ok_or_else(|| TTZipError::IoError {
-        message: "Failed to map archive bytes".to_string(),
-    })?;
-
-    let clean_target = entry_path.trim_start_matches('/');
-    const DEFAULT_EXTRACTION_BUDGET_BYTES: u64 = 64 * 1024 * 1024;
-
-    if mapped.starts_with(b"7z\xBC\xAF\x27\x1C") {
-        extract_7z_entry_by_path_bounded(
-            mapped,
-            &entry_path,
-            secure_pwd.as_deref(),
-            DEFAULT_EXTRACTION_BUDGET_BYTES,
-        )
-    } else if let Ok(zip_archive) = crate::zip::reader::ZipArchive::open_slice(mapped) {
-        extract_zip_entry_by_path_bounded(
-            &zip_archive,
-            clean_target,
-            &entry_path,
-            secure_pwd.as_deref(),
-            DEFAULT_EXTRACTION_BUDGET_BYTES,
-        )
-    } else {
-        crate::archive::unified::extract_single::extract_single_entry_memory(
-            p,
-            Some(&entry_path),
-            -1,
-            secure_pwd.as_deref(),
-        )
-        .map_err(|s| map_single_entry_status(s, &entry_path))
-    }
+    entry_preview::extract_single_entry(archive_path, entry_path, password, None)
+        .map_err(ArchiveEntryPreviewError::into_archive_error)
 }
 
 /// Repairs damaged archive file and writes to output destination.

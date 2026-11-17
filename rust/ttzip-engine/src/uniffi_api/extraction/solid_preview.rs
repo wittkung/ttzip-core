@@ -54,15 +54,10 @@ pub fn extract_solid_lzma2_preview(
     entry_path: String,
     token: Arc<CancellationToken>,
 ) -> Result<Vec<u8>, SolidLzma2PreviewError> {
-    const MIB: usize = 1024 * 1024;
     extract_solid_preview_from_path(
         Path::new(&archive_path),
         &entry_path,
-        SolidLzma2Preview {
-            max_packed_bytes: 40 * MIB,
-            max_decoded_bytes: 66 * MIB as u64,
-            cancellation: &|| token.is_cancelled(),
-        },
+        preview_work(&|| token.is_cancelled()),
     )
     .map_err(Into::into)
 }
@@ -131,4 +126,39 @@ fn extract_solid_preview_by_path(
         policy,
     )
     .map_err(|status| map_single_entry_status(status, entry_path))
+}
+
+fn preview_work(cancelled: &dyn Fn() -> bool) -> SolidLzma2Preview<'_> {
+    const MIB: usize = 1024 * 1024;
+    SolidLzma2Preview {
+        max_packed_bytes: 40 * MIB,
+        max_decoded_bytes: 66 * MIB as u64,
+        cancellation: cancelled,
+    }
+}
+
+pub(super) fn extract_selected_solid_preview(
+    mapped: &[u8],
+    selected_path: &str,
+    index: usize,
+    cancelled: &dyn Fn() -> bool,
+) -> Result<Vec<u8>, TTZipError> {
+    use crate::sevenz::header::{SevenZSeekIndex, parse_solid_preview_metadata};
+
+    let terminal_status = |status| match status {
+        TTZipStatus::Cancelled => TTZipError::Cancelled,
+        TTZipStatus::ErrUnsupportedFeature => TTZipError::SecurityViolation {
+            reason: "Unsupported metadata for bounded 7z preview".to_owned(),
+        },
+        status => map_single_entry_status(status, selected_path),
+    };
+    let info = parse_solid_preview_metadata(mapped, cancelled).map_err(terminal_status)?;
+    if info.files.get(index).is_none_or(|file| file.rel_path != selected_path) {
+        return Err(terminal_status(TTZipStatus::ErrCorruptHeader));
+    }
+    let seek_index = SevenZSeekIndex::build(&info);
+    crate::sevenz::decoder::stream::extract_solid_lzma2_preview(
+        mapped, &info, &seek_index, index, preview_work(cancelled),
+    )
+    .map_err(terminal_status)
 }

@@ -20,7 +20,7 @@ public enum ArchiveRuntime {
         entryPath: String,
         password: String?
     ) async throws -> Data? {
-        try await ArchiveSelectiveExtractor.shared.extractSingleEntryData(
+        try await ArchiveSelectiveExtractor.shared.extractPreviewEntryData(
             archivePath: archivePath, entryPath: entryPath, password: password
         )
     }

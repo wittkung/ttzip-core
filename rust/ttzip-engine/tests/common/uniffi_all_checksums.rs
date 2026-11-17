@@ -94,6 +94,7 @@ uniffi_checksum_table! {
     uniffi_ttzip_engine_checksum_func_parse_epub_book_from_memory,
     uniffi_ttzip_engine_checksum_func_parse_epub_metadata,
     uniffi_ttzip_engine_checksum_func_probe_full_disk_access_silent,
+    uniffi_ttzip_engine_checksum_func_read_archive_preview_entry,
     uniffi_ttzip_engine_checksum_func_recommend_codec,
     uniffi_ttzip_engine_checksum_func_recover_archive_password,
     uniffi_ttzip_engine_checksum_func_relieve_malloc_pressure,

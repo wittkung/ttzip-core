@@ -16740,6 +16740,71 @@ extension AppLanguage: Equatable, Hashable {}
 
 
 
+
+public enum ArchiveEntryPreviewError {
+
+
+
+    case Legacy(TtZipError
+    )
+    case Terminal(TtZipError
+    )
+}
+
+
+#if swift(>=5.8)
+@_documentation(visibility: private)
+#endif
+public struct FfiConverterTypeArchiveEntryPreviewError: FfiConverterRustBuffer {
+    typealias SwiftType = ArchiveEntryPreviewError
+
+    public static func read(from buf: inout (data: Data, offset: Data.Index)) throws -> ArchiveEntryPreviewError {
+        let variant: Int32 = try readInt(&buf)
+        switch variant {
+
+
+
+
+        case 1: return .Legacy(
+            try FfiConverterTypeTTZipError.read(from: &buf)
+            )
+        case 2: return .Terminal(
+            try FfiConverterTypeTTZipError.read(from: &buf)
+            )
+
+         default: throw UniffiInternalError.unexpectedEnumCase
+        }
+    }
+
+    public static func write(_ value: ArchiveEntryPreviewError, into buf: inout [UInt8]) {
+        switch value {
+
+
+
+
+
+        case let .Legacy(v1):
+            writeInt(&buf, Int32(1))
+            FfiConverterTypeTTZipError.write(v1, into: &buf)
+
+
+        case let .Terminal(v1):
+            writeInt(&buf, Int32(2))
+            FfiConverterTypeTTZipError.write(v1, into: &buf)
+
+        }
+    }
+}
+
+
+extension ArchiveEntryPreviewError: Equatable, Hashable {}
+
+extension ArchiveEntryPreviewError: Foundation.LocalizedError {
+    public var errorDescription: String? {
+        String(reflecting: self)
+    }
+}
+
 // Note that we don't yet support `indirect` for enums.
 // See https://github.com/mozilla/uniffi-rs/issues/396 for further discussion.
 /**
@@ -22902,6 +22967,16 @@ public func probeFullDiskAccessSilent() -> Bool {
     )
 })
 }
+public func readArchivePreviewEntry(archivePath: String, entryPath: String, password: String?, token: CancellationToken)throws  -> Data {
+    return try  FfiConverterData.lift(try rustCallWithError(FfiConverterTypeArchiveEntryPreviewError.lift) {
+    uniffi_ttzip_engine_fn_func_read_archive_preview_entry(
+        FfiConverterString.lower(archivePath),
+        FfiConverterString.lower(entryPath),
+        FfiConverterOptionString.lower(password),
+        FfiConverterTypeCancellationToken.lower(token),$0
+    )
+})
+}
 /**
  * Recommends codec algorithm name based on entropy and scenario.
  */
@@ -24522,6 +24597,9 @@ private let initializationResult: InitializationResult = {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_probe_full_disk_access_silent() != 35775) {
+        return InitializationResult.apiChecksumMismatch
+    }
+    if (uniffi_ttzip_engine_checksum_func_read_archive_preview_entry() != 42617) {
         return InitializationResult.apiChecksumMismatch
     }
     if (uniffi_ttzip_engine_checksum_func_recommend_codec() != 1005) {

@@ -126,6 +126,15 @@ fn apply_aes_coder_props(props: &[u8], out_info: &mut SevenZHeaderInfo) {
     }
 }
 
+fn read_coder_properties(hp: &[u8], hpos: &mut usize) -> Result<Vec<u8>, TTZipStatus> {
+    let size = usize::try_from(next_varint(hp, hpos)?)
+        .map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+    let end = hpos.checked_add(size).ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let properties = hp.get(*hpos..end).ok_or(TTZipStatus::ErrCorruptHeader)?;
+    *hpos = end;
+    Ok(properties.to_vec())
+}
+
 fn parse_single_coder(
     hp: &[u8],
     hpos: &mut usize,
@@ -164,19 +173,17 @@ fn parse_single_coder(
         out_streams = outs;
     }
 
-    let mut props = Vec::new();
-    if (flags & 0x20) != 0 {
-        let psz = next_varint(hp, hpos)? as usize;
-        if psz > 0 && *hpos + psz <= hlen {
-            props.extend_from_slice(&hp[*hpos..*hpos + psz]);
-            if mid == METHOD_AES {
-                apply_aes_coder_props(&props, out_info);
-            } else {
-                out_info.coder_props = props.clone();
-            }
-            *hpos += psz;
+    let props = if (flags & 0x20) != 0 {
+        let properties = read_coder_properties(hp, hpos)?;
+        if mid == METHOD_AES {
+            apply_aes_coder_props(&properties, out_info);
+        } else if !properties.is_empty() {
+            out_info.coder_props = properties.clone();
         }
-    }
+        properties
+    } else {
+        Vec::new()
+    };
 
     Ok(SevenZCoder {
         method_id: mid,

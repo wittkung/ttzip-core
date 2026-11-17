@@ -145,3 +145,84 @@ fn solid_lzma2_by_path_rejects_sparse_substream_crc() {
     let bytes = read_lzma2_preview_fixture(&complete, 40, 66, &|| false).unwrap();
     assert_eq!(bytes, LZMA2_PREVIEW_TARGET);
 }
+
+#[test]
+#[ignore = "requires retained synthetic #654 admission and compatibility fixtures"]
+fn automatic_preview_preserves_legacy_and_rejects_strict_failures() {
+    let outputs = std::env::var("TTZIP_654_OUTPUTS_DIR").unwrap();
+    let read = |relative: &str| {
+        let path = Path::new(&outputs).join(relative);
+        extract_single_entry_for_preview(
+            path.to_str().unwrap().to_owned(),
+            LZMA2_PREVIEW_ENTRY.to_owned(),
+            None,
+            &CancellationToken::new(),
+        )
+    };
+    assert_eq!(
+        read("tzip-654-lzma2-probe/native-probe.7z").unwrap(),
+        LZMA2_PREVIEW_TARGET
+    );
+    for name in ["ordinary-early.7z", "ordinary-stored.7z", "ordinary.zip"] {
+        let relative = format!("tzip-654-auto-preview-acceptance/controls/{name}");
+        assert_eq!(read(&relative).unwrap(), LZMA2_PREVIEW_TARGET, "{name}");
+    }
+    for name in ["short-header-1025-files.7z", "big-header-701-files.7z"] {
+        let relative = format!("tzip-654-auto-preview/independent-compatibility/{name}");
+        assert_eq!(read(&relative).unwrap(), b"ordinary preview", "{name}");
+    }
+    assert!(matches!(
+        read("tzip-654-lzma2-probe/ratio-probe.7z"),
+        Err(ArchiveEntryPreviewError::Terminal(TTZipError::DecompressionBombDetected { .. }))
+    ));
+    for name in ["bad-crc.7z", "invalid-lzma2-control.7z"] {
+        let relative = format!("tzip-654-lzma2-integration/{name}");
+        assert!(
+            matches!(read(&relative), Err(ArchiveEntryPreviewError::Terminal(TTZipError::CorruptHeader { .. }))),
+            "{name}",
+        );
+    }
+    assert!(matches!(
+        read("tzip-654-lzma2-integration/large-dictionary.7z"),
+        Err(ArchiveEntryPreviewError::Terminal(TTZipError::OutOfMemory { .. }))
+    ));
+    assert!(matches!(
+        read("tzip-654-lzma2-integration/review-sparse-substream-crc.7z"),
+        Err(ArchiveEntryPreviewError::Terminal(TTZipError::SecurityViolation { .. }))
+    ));
+    assert!(matches!(
+        read("tzip-654-auto-preview/independent-review/overflow-coder-props.7z"),
+        Err(ArchiveEntryPreviewError::Legacy(TTZipError::CorruptHeader { .. }))
+    ));
+}
+
+#[test]
+#[ignore = "requires the retained synthetic #654 admission fixture"]
+fn automatic_preview_decodes_the_same_open_input() {
+    let outputs = std::env::var("TTZIP_654_OUTPUTS_DIR").unwrap();
+    let original = Path::new(&outputs).join("tzip-654-lzma2-probe/native-probe.7z");
+    let temporary = tempfile::tempdir().unwrap();
+    let archive = temporary.path().join("unlink.7z");
+    std::fs::copy(&original, &archive).unwrap();
+    let polls = std::cell::Cell::new(0);
+    let unlink_after_open = || {
+        polls.set(polls.get() + 1);
+        if polls.get() == 2 {
+            std::fs::remove_file(&archive).unwrap();
+        }
+        false
+    };
+    let archive_path = archive.to_str().unwrap().to_owned();
+    let read = super::entry_preview::extract_single_entry(
+        archive_path.clone(), LZMA2_PREVIEW_ENTRY.into(), None, Some(&unlink_after_open),
+    );
+    assert_eq!(read.unwrap(), LZMA2_PREVIEW_TARGET);
+    assert!(!archive.exists());
+
+    let token = CancellationToken::new();
+    token.cancel();
+    assert!(matches!(
+        extract_single_entry_for_preview(archive_path, LZMA2_PREVIEW_ENTRY.into(), None, &token),
+        Err(ArchiveEntryPreviewError::Terminal(TTZipError::Cancelled))
+    ));
+}

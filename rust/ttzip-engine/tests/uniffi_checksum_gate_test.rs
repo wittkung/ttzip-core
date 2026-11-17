@@ -37,7 +37,7 @@ unsafe extern "C" {
 }
 
 const EXPECTED_CONTRACT_VERSION: u32 = 26;
-const EXPECTED_UNIFFI_SYMBOL_COUNT: usize = 360;
+const EXPECTED_UNIFFI_SYMBOL_COUNT: usize = 361;
 
 /// Canonical exported symbol checksum expectations table.
 struct SymbolChecksumEntry {
@@ -187,10 +187,15 @@ static CANONICAL_SYMBOL_CHECKSUMS: &[SymbolChecksumEntry] = &[
         checksum_fn: uniffi_ttzip_engine_checksum_func_extract_solid_lzma2_preview,
         expected_value: 8204,
     },
+    SymbolChecksumEntry {
+        name: "read_archive_preview_entry",
+        checksum_fn: uniffi_ttzip_engine_checksum_func_read_archive_preview_entry,
+        expected_value: 42617,
+    },
 ];
 
 const EXPECTED_AGGREGATE_SHA256: &str =
-    "417dcaf6085ab27b4481f4cdab6e8bdfa91d2977a0d4f176fbb8a5d84049194c";
+    "ebd98d817db0ce19e4d9f1ee66c78879084c1893bb5a09904f949b2b66f9e135";
 
 fn live_rust_checksum_map() -> BTreeMap<&'static str, u16> {
     assert_eq!(

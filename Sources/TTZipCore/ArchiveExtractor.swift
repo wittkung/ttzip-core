@@ -498,6 +498,66 @@ public final class ArchiveSelectiveExtractor: Sendable {
         }
     }
 
+    func extractPreviewEntryData(
+        archivePath: String,
+        entryPath: String,
+        password: String?
+    ) async throws -> Data? {
+        // Preview can read past the generic extraction budget, so its results belong to the preview session cache.
+        let data = try await NativeComputeDispatcher.shared.dispatchCompute(
+            cancellationPolicy: .waitForWorkerCompletion
+        ) { (token: CancellationToken) in
+            try Self.readPreviewEntry(
+                archivePath: archivePath, entryPath: entryPath, password: password, token: token
+            )
+        }
+        try Task.checkCancellation()
+        return data
+    }
+
+    private static func readPreviewEntry(
+        archivePath: String,
+        entryPath: String,
+        password: String?,
+        token: CancellationToken
+    ) throws -> Data? {
+        do {
+            return try readArchivePreviewEntry(
+                archivePath: archivePath, entryPath: entryPath, password: password, token: token
+            )
+        } catch ArchiveEntryPreviewError.Terminal(let error) {
+            try rethrowFatalPreviewError(error, archivePath: archivePath, password: password)
+            throw error
+        } catch ArchiveEntryPreviewError.Legacy(let error) {
+            try rethrowFatalPreviewError(error, archivePath: archivePath, password: password)
+            return try extractEntryViaCatalogFallback(
+                archivePath: archivePath,
+                entryPath: entryPath,
+                password: password,
+                maxAllowedBytes: 64 * 1024 * 1024,
+                cancellationToken: token
+            )
+        }
+    }
+
+    private static func rethrowFatalPreviewError(
+        _ error: TtZipError,
+        archivePath: String,
+        password: String?
+    ) throws {
+        try rethrowFatalSelectiveError(error, archivePath: archivePath, password: password)
+        switch error {
+        case .Cancelled:
+            throw CancellationError()
+        case let .OutOfMemory(details):
+            throw ArchiveError.engineFailure(code: RustTTZipStatusCode.errOutOfMemory.rawValue, message: details)
+        case .ChecksumMismatch:
+            throw ArchiveError.from(uniffiError: error)
+        default:
+            return
+        }
+    }
+
     /// Extracts a single entry directly into memory for instant Space-bar Quick Look or Drag-and-Drop.
     /// Memory preview limit strictly defaults to 64MB aligning with microkernel bounds.
     public func extractSingleEntryData(
@@ -568,8 +628,10 @@ public final class ArchiveSelectiveExtractor: Sendable {
         archivePath: String,
         entryPath: String,
         password: String?,
-        maxAllowedBytes: Int
+        maxAllowedBytes: Int,
+        cancellationToken: CancellationToken? = nil
     ) throws -> Data? {
+        if cancellationToken?.isCancelled() == true { throw CancellationError() }
         let entries: [UniFfiEntryMetadata]
         do {
             entries = try inspectArchiveEntries(archivePath: archivePath, password: password)
@@ -591,6 +653,7 @@ public final class ArchiveSelectiveExtractor: Sendable {
             )
         }
 
+        if cancellationToken?.isCancelled() == true { throw CancellationError() }
         do {
             let data = try extractSingleEntryStream(archivePath: archivePath, entryIndex: UInt64(idx), password: password)
             try enforceSizeLimit(data.count, maxAllowedBytes: maxAllowedBytes, label: "Extracted stream")

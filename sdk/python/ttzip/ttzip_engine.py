@@ -576,6 +576,8 @@ def _uniffi_check_api_checksums(lib):
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_probe_full_disk_access_silent() != 35775:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    if lib.uniffi_ttzip_engine_checksum_func_read_archive_preview_entry() != 42617:
+        raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_recommend_codec() != 1005:
         raise InternalError("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     if lib.uniffi_ttzip_engine_checksum_func_recover_archive_password() != 41198:
@@ -2926,6 +2928,14 @@ _UniffiLib.uniffi_ttzip_engine_fn_func_probe_full_disk_access_silent.argtypes = 
     ctypes.POINTER(_UniffiRustCallStatus),
 )
 _UniffiLib.uniffi_ttzip_engine_fn_func_probe_full_disk_access_silent.restype = ctypes.c_int8
+_UniffiLib.uniffi_ttzip_engine_fn_func_read_archive_preview_entry.argtypes = (
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    _UniffiRustBuffer,
+    ctypes.c_void_p,
+    ctypes.POINTER(_UniffiRustCallStatus),
+)
+_UniffiLib.uniffi_ttzip_engine_fn_func_read_archive_preview_entry.restype = _UniffiRustBuffer
 _UniffiLib.uniffi_ttzip_engine_fn_func_recommend_codec.argtypes = (
     _UniffiRustBuffer,
     ctypes.c_int32,
@@ -4151,6 +4161,9 @@ _UniffiLib.uniffi_ttzip_engine_checksum_func_parse_epub_metadata.restype = ctype
 _UniffiLib.uniffi_ttzip_engine_checksum_func_probe_full_disk_access_silent.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_probe_full_disk_access_silent.restype = ctypes.c_uint16
+_UniffiLib.uniffi_ttzip_engine_checksum_func_read_archive_preview_entry.argtypes = (
+)
+_UniffiLib.uniffi_ttzip_engine_checksum_func_read_archive_preview_entry.restype = ctypes.c_uint16
 _UniffiLib.uniffi_ttzip_engine_checksum_func_recommend_codec.argtypes = (
 )
 _UniffiLib.uniffi_ttzip_engine_checksum_func_recommend_codec.restype = ctypes.c_uint16
@@ -17473,6 +17486,86 @@ class _UniffiConverterTypeAppLanguage(_UniffiConverterRustBuffer):
 
 
 
+# ArchiveEntryPreviewError
+# We want to define each variant as a nested class that's also a subclass,
+# which is tricky in Python.  To accomplish this we're going to create each
+# class separately, then manually add the child classes to the base class's
+# __dict__.  All of this happens in dummy class to avoid polluting the module
+# namespace.
+class ArchiveEntryPreviewError(Exception):
+    pass
+
+_UniffiTempArchiveEntryPreviewError = ArchiveEntryPreviewError
+
+class ArchiveEntryPreviewError:  # type: ignore
+    class Legacy(_UniffiTempArchiveEntryPreviewError):
+        def __init__(self, *values):
+            if len(values) != 1:
+                raise TypeError(f"Expected 1 arguments, found {len(values)}")
+            if not isinstance(values[0], TtZipError):
+                raise TypeError(f"unexpected type for tuple element 0 - expected 'TtZipError', got '{type(values[0])}'")
+            super().__init__(", ".join(map(repr, values)))
+            self._values = values
+
+        def __getitem__(self, index):
+            return self._values[index]
+
+        def __repr__(self):
+            return "ArchiveEntryPreviewError.Legacy({})".format(str(self))
+    _UniffiTempArchiveEntryPreviewError.Legacy = Legacy # type: ignore
+    class Terminal(_UniffiTempArchiveEntryPreviewError):
+        def __init__(self, *values):
+            if len(values) != 1:
+                raise TypeError(f"Expected 1 arguments, found {len(values)}")
+            if not isinstance(values[0], TtZipError):
+                raise TypeError(f"unexpected type for tuple element 0 - expected 'TtZipError', got '{type(values[0])}'")
+            super().__init__(", ".join(map(repr, values)))
+            self._values = values
+
+        def __getitem__(self, index):
+            return self._values[index]
+
+        def __repr__(self):
+            return "ArchiveEntryPreviewError.Terminal({})".format(str(self))
+    _UniffiTempArchiveEntryPreviewError.Terminal = Terminal # type: ignore
+
+ArchiveEntryPreviewError = _UniffiTempArchiveEntryPreviewError # type: ignore
+del _UniffiTempArchiveEntryPreviewError
+
+
+class _UniffiConverterTypeArchiveEntryPreviewError(_UniffiConverterRustBuffer):
+    @staticmethod
+    def read(buf):
+        variant = buf.read_i32()
+        if variant == 1:
+            return ArchiveEntryPreviewError.Legacy(
+                _UniffiConverterTypeTtZipError.read(buf),
+            )
+        if variant == 2:
+            return ArchiveEntryPreviewError.Terminal(
+                _UniffiConverterTypeTtZipError.read(buf),
+            )
+        raise InternalError("Raw enum value doesn't match any cases")
+
+    @staticmethod
+    def check_lower(value):
+        if isinstance(value, ArchiveEntryPreviewError.Legacy):
+            _UniffiConverterTypeTtZipError.check_lower(value._values[0])
+            return
+        if isinstance(value, ArchiveEntryPreviewError.Terminal):
+            _UniffiConverterTypeTtZipError.check_lower(value._values[0])
+            return
+
+    @staticmethod
+    def write(value, buf):
+        if isinstance(value, ArchiveEntryPreviewError.Legacy):
+            buf.write_i32(1)
+            _UniffiConverterTypeTtZipError.write(value._values[0], buf)
+        if isinstance(value, ArchiveEntryPreviewError.Terminal):
+            buf.write_i32(2)
+            _UniffiConverterTypeTtZipError.write(value._values[0], buf)
+
+
 
 
 
@@ -23813,6 +23906,22 @@ def probe_full_disk_access_silent() -> "bool":
     return _UniffiConverterBool.lift(_uniffi_rust_call(_UniffiLib.uniffi_ttzip_engine_fn_func_probe_full_disk_access_silent,))
 
 
+def read_archive_preview_entry(archive_path: "str",entry_path: "str",password: "typing.Optional[str]",token: "CancellationToken") -> "bytes":
+    _UniffiConverterString.check_lower(archive_path)
+
+    _UniffiConverterString.check_lower(entry_path)
+
+    _UniffiConverterOptionalString.check_lower(password)
+
+    _UniffiConverterTypeCancellationToken.check_lower(token)
+
+    return _UniffiConverterBytes.lift(_uniffi_rust_call_with_error(_UniffiConverterTypeArchiveEntryPreviewError,_UniffiLib.uniffi_ttzip_engine_fn_func_read_archive_preview_entry,
+        _UniffiConverterString.lower(archive_path),
+        _UniffiConverterString.lower(entry_path),
+        _UniffiConverterOptionalString.lower(password),
+        _UniffiConverterTypeCancellationToken.lower(token)))
+
+
 def recommend_codec(data: "bytes",scenario: "int") -> "str":
     """
     Recommends codec algorithm name based on entropy and scenario.
@@ -25674,6 +25783,7 @@ def verify_license_key(license_key: "str",public_key_base64: "typing.Optional[st
 __all__ = [
     "InternalError",
     "AppLanguage",
+    "ArchiveEntryPreviewError",
     "ArchiveFormat",
     "ByteSizeStandard",
     "CollisionAction",
@@ -25867,6 +25977,7 @@ __all__ = [
     "parse_epub_book_from_memory",
     "parse_epub_metadata",
     "probe_full_disk_access_silent",
+    "read_archive_preview_entry",
     "recommend_codec",
     "recover_archive_password",
     "relieve_malloc_pressure",
