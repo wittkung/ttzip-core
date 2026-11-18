@@ -464,9 +464,7 @@ pub fn execute_list_unified(
     if !archive_path.exists() {
         return Err(format!("Archive file not found: {}", archive_path.display()));
     }
-    unsafe {
-        libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
-    }
+    super::check::ensure_utf8_c_locale();
     let mut nodes = Vec::new();
     inspect_archive(archive_path, password, false, |entry| {
         let rel = entry
@@ -659,9 +657,7 @@ pub fn execute_extract_unified_with_policy(
         return Err(format!("Archive file not found: {}", archive_path.display()));
     }
     let policy = resolve_unified_conflict_policy(on_conflict)?;
-    unsafe {
-        libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
-    }
+    super::check::ensure_utf8_c_locale();
     if dry_run {
         return execute_list_unified(archive_path, password, false, include, exclude);
     }

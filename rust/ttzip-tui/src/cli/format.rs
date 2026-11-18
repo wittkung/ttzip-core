@@ -425,8 +425,11 @@ fn parse_zip_entries_slice(data: &[u8]) -> Result<Vec<ArchiveEntryInfo>, String>
         .collect())
 }
 
-fn parse_sevenz_entries_slice(data: &[u8]) -> Result<Vec<ArchiveEntryInfo>, String> {
-    let archive = SevenZArchive::open_slice(data)
+fn parse_sevenz_entries_slice(
+    data: &[u8],
+    password: Option<&str>,
+) -> Result<Vec<ArchiveEntryInfo>, String> {
+    let archive = SevenZArchive::open_slice_with_password(data, password)
         .map_err(|e| format!("Failed to parse 7z archive: {:?}", e))?;
     let mut entries = Vec::with_capacity(archive.len());
     let info = archive.info();
@@ -539,6 +542,7 @@ fn parse_engine_archive_entries(
     data: &[u8],
     password: Option<&str>,
 ) -> Result<Vec<ArchiveEntryInfo>, String> {
+    crate::cli::handlers::check::ensure_utf8_c_locale();
     let mut temp_dir = None;
     let target_path = if path.exists() {
         path.to_path_buf()
@@ -603,7 +607,7 @@ pub fn parse_archive_entries_with_password(
 
     let entries = match format {
         ContainerFormat::Zip => parse_zip_entries_slice(data)?,
-        ContainerFormat::SevenZip => parse_sevenz_entries_slice(data)?,
+        ContainerFormat::SevenZip => parse_sevenz_entries_slice(data, password)?,
         ContainerFormat::Tar => {
             let archive = TarArchive::open_slice(data)
                 .map_err(|e| format!("Failed to parse TAR archive: {:?}", e))?;

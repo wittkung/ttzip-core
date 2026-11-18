@@ -8,6 +8,7 @@ use super::payload::{
     decode_7z_folder_streaming, decode_7z_packed_folder_slice_bounded, folder_final_unpack_size,
     MAX_IN_MEMORY_DECOMPRESS_BYTES,
 };
+use super::solid_stream_state::EntryWindowCompletion;
 pub(crate) use super::stream_folder::{
     stream_7z_folder_from_reader, stream_7z_folder_from_reader_with_budget,
     FolderReaderStreamBounds,
@@ -54,9 +55,40 @@ fn verify_extracted_entry_bytes(
     Ok(())
 }
 
+#[derive(Clone, Copy)]
 struct EntryWindowTarget {
-    target_end: u64,
-    target_len: u64,
+    start: u64,
+    end: u64,
+    completion: EntryWindowCompletion,
+}
+
+impl EntryWindowTarget {
+    fn for_folder(
+        start: u64,
+        end: u64,
+        folder: &crate::sevenz::header::SevenZFolder,
+    ) -> Self {
+        Self {
+            start,
+            end,
+            completion: EntryWindowCompletion::for_expected_folder_unpack(
+                end,
+                folder_final_unpack_size(folder),
+            ),
+        }
+    }
+
+    fn preview(start: u64, end: u64) -> Self {
+        Self {
+            start,
+            end,
+            completion: EntryWindowCompletion::EarlyExitAtTargetEnd,
+        }
+    }
+
+    fn len(self) -> u64 {
+        self.end - self.start
+    }
 }
 
 fn decode_in_memory_folder_fallback<F>(
@@ -117,8 +149,8 @@ where
         password,
         1,
         FolderReaderStreamBounds {
-            max_unpack_hint: Some(window.target_end),
-            existing_allocated_bytes: window.target_len,
+            max_unpack_hint: Some(window.end),
+            existing_allocated_bytes: window.len(),
             allow_reader_fallback: false,
         },
         &mut sink,
@@ -130,17 +162,14 @@ where
             folder,
             folder_idx,
             password,
-            window.target_len,
+            window.len(),
             sink,
         )
         .map(|_| ()),
         Err(e) => Err(e),
     };
 
-    match decode_res {
-        Ok(_) | Err(TTZipStatus::Eof) => Ok(()),
-        Err(e) => Err(e),
-    }
+    window.completion.accept_decode_result(decode_res)
 }
 
 /// Decompresses and extracts a single entry from 7z solid stream with 4MB micro-buffer discarding,
@@ -181,25 +210,15 @@ pub fn extract_single_entry_bounded(
         .get(folder_idx)
         .ok_or(TTZipStatus::ErrCorruptHeader)?;
 
+    let window = EntryWindowTarget::for_folder(target_start, target_end, folder);
     decode_folder_into_entry_window(
         mapped,
         info,
         folder,
         folder_idx,
         password,
-        EntryWindowTarget {
-            target_end,
-            target_len,
-        },
-        |chunk| {
-            append_entry_window_chunk(
-                chunk,
-                &mut current_offset,
-                target_start,
-                target_end,
-                &mut result_vec,
-            )
-        },
+        window,
+        |chunk| append_entry_window_chunk(chunk, &mut current_offset, window, &mut result_vec),
     )?;
 
     verify_extracted_entry_bytes(&result_vec, target_len, loc.crc, info.is_encrypted)?;
@@ -338,8 +357,9 @@ pub fn extract_solid_lzma2_preview(
     let (packed, prop) = bounded_lzma2_payload(mapped, info, loc, end)?;
     let mut bytes = Vec::with_capacity(len as usize);
     let mut offset = 0;
+    let window = EntryWindowTarget::preview(start, end);
     pump_preview_entry(packed, prop, policy.max_packed_bytes, &mut work, |chunk| {
-        append_entry_window_chunk(chunk, &mut offset, start, end, &mut bytes)
+        append_entry_window_chunk(chunk, &mut offset, window, &mut bytes)
     })?;
     verify_extracted_entry_bytes(&bytes, len, loc.crc, false)?;
     work.check_cancelled()?;
@@ -363,8 +383,7 @@ pub fn extract_entry_bytes_stream(
 fn append_entry_window_chunk(
     chunk: &[u8],
     current_offset: &mut u64,
-    target_start: u64,
-    target_end: u64,
+    window: EntryWindowTarget,
     result_vec: &mut Vec<u8>,
 ) -> Result<(), TTZipStatus> {
     let chunk_start = *current_offset;
@@ -372,15 +391,17 @@ fn append_entry_window_chunk(
         .checked_add(chunk.len() as u64)
         .ok_or(TTZipStatus::ErrCorruptHeader)?;
     *current_offset = chunk_end;
-    if chunk_end <= target_start {
+    if chunk_end <= window.start {
         return Ok(());
     }
-    if chunk_start < target_end && chunk_end > target_start {
-        let s = (target_start.saturating_sub(chunk_start)) as usize;
-        let e = (target_end.min(chunk_end) - chunk_start) as usize;
+    if chunk_start < window.end && chunk_end > window.start {
+        let s = (window.start.saturating_sub(chunk_start)) as usize;
+        let e = (window.end.min(chunk_end) - chunk_start) as usize;
         result_vec.extend_from_slice(&chunk[s..e]);
     }
-    if *current_offset >= target_end {
+    if window.completion == EntryWindowCompletion::EarlyExitAtTargetEnd
+        && *current_offset >= window.end
+    {
         return Err(TTZipStatus::Eof);
     }
     Ok(())
@@ -409,12 +430,13 @@ pub fn extract_7z_single_entry_from_reader<R: std::io::Read + std::io::Seek>(
     let target_end = target_start
         .checked_add(target_len)
         .ok_or(TTZipStatus::ErrCorruptHeader)?;
+    let window = EntryWindowTarget::for_folder(target_start, target_end, folder);
     let mut current_offset = 0u64;
     let mut result_vec = Vec::with_capacity(target_len as usize);
     let mut sink = |chunk: &[u8]| -> Result<(), TTZipStatus> {
-        append_entry_window_chunk(chunk, &mut current_offset, target_start, target_end, &mut result_vec)
+        append_entry_window_chunk(chunk, &mut current_offset, window, &mut result_vec)
     };
-    match stream_7z_folder_from_reader_with_budget(
+    let decode_res = stream_7z_folder_from_reader_with_budget(
         reader,
         info,
         folder,
@@ -426,10 +448,8 @@ pub fn extract_7z_single_entry_from_reader<R: std::io::Read + std::io::Seek>(
             allow_reader_fallback: true,
         },
         &mut sink,
-    ) {
-        Ok(_) | Err(TTZipStatus::Eof) => {}
-        Err(e) => return Err(e),
-    }
+    );
+    window.completion.accept_decode_result(decode_res)?;
     verify_extracted_entry_bytes(&result_vec, target_len, loc.crc, info.is_encrypted)?;
     Ok(result_vec)
 }
@@ -599,6 +619,114 @@ mod tests {
             extract_7z_single_entry_from_reader(&mut reader, &info, &seek_index, 0, None),
             Err(TTZipStatus::ErrOutOfMemory),
             "Reader extraction must reject when target_len (40 MiB) + fallback packed_buf (30 MiB) exceeds 64 MiB"
+        );
+    }
+
+    fn patterned_bytes(len: usize, seed: u8) -> Vec<u8> {
+        (0..len)
+            .map(|idx| seed.wrapping_add((idx % 251) as u8))
+            .collect()
+    }
+
+    #[test]
+    fn test_single_entry_rejects_exact_64kib_declared_unpack_overrun() {
+        let actual_len = 65 * 1024;
+        let declared_len = 64 * 1024;
+        let payload = patterned_bytes(actual_len, 0x37);
+        let items = [crate::zip::writer::ZipInputItem {
+            rel_path: "overrun_64k.bin".to_string(),
+            data: payload.clone(),
+            mtime_epoch_secs: 1_700_000_000,
+            mode: 0o644,
+            is_directory: false,
+        }];
+        let archive_bytes =
+            crate::sevenz::create_7z_solid_archive_bytes(&items, 3, 1).expect("create 7z");
+        let mut info =
+            crate::sevenz::parse_7z_metadata(&archive_bytes, None).expect("parse metadata");
+        info.folders[0].unpack_sizes = vec![declared_len as u64];
+        info.stream_sizes = vec![declared_len as u64];
+        info.stream_crcs = vec![crc32_fast(0, &payload[..declared_len])];
+        let seek_index = SevenZSeekIndex::build(&info);
+        let solid_index = super::super::solid_stream::SolidFolderIndex::build(&info);
+
+        assert_eq!(
+            extract_single_entry_bounded(&archive_bytes, &info, &seek_index, 0, None, 0),
+            Err(TTZipStatus::ErrCorruptHeader)
+        );
+        let mut reader = Cursor::new(archive_bytes.as_slice());
+        assert_eq!(
+            extract_7z_single_entry_from_reader(&mut reader, &info, &seek_index, 0, None),
+            Err(TTZipStatus::ErrCorruptHeader)
+        );
+        let extractor =
+            super::super::solid_stream::SolidEarlyExitExtractor::new(&archive_bytes, &info, &solid_index);
+        assert_eq!(
+            extractor.extract_to_vec(0, None),
+            Err(TTZipStatus::ErrCorruptHeader)
+        );
+    }
+
+    #[test]
+    fn test_solid_folder_final_entry_rejects_overrun_while_non_final_early_exits() {
+        let first = patterned_bytes(32 * 1024, 0x11);
+        let second = patterned_bytes(33 * 1024, 0x73);
+        let declared_second_len = 32 * 1024;
+        let declared_total = (first.len() + declared_second_len) as u64;
+        let items = [
+            crate::zip::writer::ZipInputItem {
+                rel_path: "first.bin".to_string(),
+                data: first.clone(),
+                mtime_epoch_secs: 1_700_000_000,
+                mode: 0o644,
+                is_directory: false,
+            },
+            crate::zip::writer::ZipInputItem {
+                rel_path: "second.bin".to_string(),
+                data: second.clone(),
+                mtime_epoch_secs: 1_700_000_000,
+                mode: 0o644,
+                is_directory: false,
+            },
+        ];
+        let archive_bytes =
+            crate::sevenz::create_7z_solid_archive_bytes(&items, 3, 1).expect("create solid 7z");
+        let mut info =
+            crate::sevenz::parse_7z_metadata(&archive_bytes, None).expect("parse metadata");
+        info.folders[0].unpack_sizes = vec![declared_total];
+        info.stream_sizes = vec![first.len() as u64, declared_second_len as u64];
+        info.stream_crcs[1] = crc32_fast(0, &second[..declared_second_len]);
+        let seek_index = SevenZSeekIndex::build(&info);
+        let solid_index = super::super::solid_stream::SolidFolderIndex::build(&info);
+        let extractor =
+            super::super::solid_stream::SolidEarlyExitExtractor::new(&archive_bytes, &info, &solid_index);
+
+        assert_eq!(
+            extract_single_entry_bounded(&archive_bytes, &info, &seek_index, 0, None, 0),
+            Ok(first.clone())
+        );
+        let mut first_reader = Cursor::new(archive_bytes.as_slice());
+        assert_eq!(
+            extract_7z_single_entry_from_reader(&mut first_reader, &info, &seek_index, 0, None),
+            Ok(first.clone())
+        );
+        let (extracted_first, first_stats) =
+            extractor.extract_to_vec(0, None).expect("non-final solid entry early-exit");
+        assert_eq!(extracted_first, first);
+        assert!(first_stats.early_exit_triggered);
+
+        assert_eq!(
+            extract_single_entry_bounded(&archive_bytes, &info, &seek_index, 1, None, 0),
+            Err(TTZipStatus::ErrCorruptHeader)
+        );
+        let mut second_reader = Cursor::new(archive_bytes.as_slice());
+        assert_eq!(
+            extract_7z_single_entry_from_reader(&mut second_reader, &info, &seek_index, 1, None),
+            Err(TTZipStatus::ErrCorruptHeader)
+        );
+        assert_eq!(
+            extractor.extract_to_vec(1, None),
+            Err(TTZipStatus::ErrCorruptHeader)
         );
     }
 }

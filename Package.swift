@@ -25,67 +25,41 @@ let archiveLinkerSettings: [LinkerSetting] = [
 let coreSourcesPath = "Sources/TTZipCore"
 
 let typesSources = [
-    "ArchiveProtocols.swift",
-    "Features/Charset/TTZipTextEncodingService.swift",
-    "TTZipImageModels.swift",
+    "Features/ArchiveDomain",
+    "Features/Charset",
+    "Features/MediaModels",
     "Localization",
     "Logging",
     "Platform",
     "Standards",
-    "Types",
 ]
 
 let cryptoSources = [
-    "PasswordRecoveryEngine.swift",
-    "PasswordVaultArchiveCredentials.swift",
-    "PasswordVaultEntries.swift",
-    "PasswordVaultManager+BiometricUnlock.swift",
-    "PasswordVaultManager+VaultReset.swift",
-    "PasswordVaultManager.swift",
-    "PasswordVaultModels.swift",
-    "TTZipPluginAuthService.swift",
     "Crypto",
     "Features/CryptoVault",
     "Security",
 ]
 
 let archiveSources = [
-    "ArchiveExtractor.swift",
-    "ArchiveReader.swift",
-    "ArchiveTreeNode+Builder.swift",
-    "ArchiveTreeNode+Composite.swift",
-    "ArchiveTreeNode+Search.swift",
-    "ArchiveTreeNode.swift",
-    "ArchiveWriter.swift",
-    "HashCalculator.swift",
-    "TTZipMmapStreamService.swift",
-    "UniFfiMmapReader+ZeroCopy.swift",
     "Bridge",
     "Codecs",
-    "Commands",
     "Concurrency",
+    "Features/ArchiveOperations",
+    "Features/MmapStream",
     "Pipeline",
     "Split",
     "Tree",
-    "VFS/VFSLz4CachePool.swift",
+    "VFS",
 ]
 
 let facadeSources = [
-    "CompetitorDetector.swift",
-    "Facades",
-    "FinderSyncHelper.swift",
-    "PresetManager.swift",
+    "Features/EngineOrchestration",
+    "Features/MediaServices",
+    "Features/SystemIntegration",
+    "Features/VfsScheme",
     "QuickLook",
-    "Services",
-    "SystemServices.swift",
-    "TTZipAppUpdateService.swift",
     "TTZipCoreExports.swift",
-    "TTZipDocumentMetadataService.swift",
-    "TTZipEbookReaderService.swift",
     "TTZipEngine.swift",
-    "TTZipImageRenderingService.swift",
-    "ToolchainInstaller.swift",
-    "VFS/TTZipVfsSchemeHandler.swift",
 ]
 
 let package = Package(
@@ -109,7 +83,6 @@ let package = Package(
         ),
         .library(
             name: "TTZipCore",
-            type: .dynamic,
             targets: ["TTZipCore"]
         ),
         .library(

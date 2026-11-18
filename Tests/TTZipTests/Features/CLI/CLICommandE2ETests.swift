@@ -50,8 +50,15 @@ final class CLICommandE2ETests: XCTestCase {
             candidates.append(base.appendingPathComponent("debug/ttzip"))
             candidates.append(base.appendingPathComponent("release/ttzip"))
         }
-        let currentFile = URL(fileURLWithPath: #filePath)
-        let coreDir = currentFile.deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        var dir = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+        while !fileManager.fileExists(atPath: dir.appendingPathComponent("Package.swift").path) {
+            let parent = dir.deletingLastPathComponent()
+            if parent.standardizedFileURL.path == dir.standardizedFileURL.path {
+                break
+            }
+            dir = parent
+        }
+        let coreDir = dir
         candidates.append(coreDir.appendingPathComponent("rust/target/debug/ttzip"))
         candidates.append(coreDir.appendingPathComponent("rust/target/release/ttzip"))
         candidates.append(coreDir.appendingPathComponent("rust/ttzip-tui/target/debug/ttzip_cli"))

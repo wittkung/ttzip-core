@@ -430,7 +430,7 @@ write_xcframework_plist "${EPUB_STAGED_FRAMEWORK}/Info.plist" "libTTZipEpubVendo
 rm -rf "${EPUB_XCFRAMEWORK_DIR}"
 mv "${EPUB_STAGED_FRAMEWORK}" "${EPUB_XCFRAMEWORK_DIR}"
 
-"${CARGO[@]}" build ${OFFLINE_FLAG} --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen
+"${CARGO[@]}" build ${OFFLINE_FLAG} --manifest-path "${RUST_DIR}/Cargo.toml" --package ttzip-bindgen --bin uniffi-bindgen --package ttzip-tui --bin ttzip
 bash "${SCRIPT_DIR}/generate_epub_uniffi.sh" \
     "${EFFECTIVE_TARGET_DIR}/debug/uniffi-bindgen" \
     "${EFFECTIVE_TARGET_DIR}/${FIRST_TARGET}/${BUILD_MODE}/libttzip_epub.dylib"

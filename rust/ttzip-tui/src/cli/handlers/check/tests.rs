@@ -517,3 +517,59 @@ fn test_keep_both_reserves_planned_destinations_across_entries() {
         b"archive entry two"
     );
 }
+
+#[test]
+fn test_check_encrypted_single_volume_7z_and_utf8_compressed_tars() {
+    use crate::cli::handlers::create::{CliCreateParams, execute_create_with_params};
+    use std::fs;
+    use tempfile::tempdir;
+
+    let dir = tempdir().expect("tempdir");
+    let src = dir.path().join("inputs");
+    fs::create_dir_all(src.join("nested")).expect("mkdir nested");
+    fs::write(src.join("nested").join("文件.bin"), b"utf8-tar-and-7z-payload")
+        .expect("write utf8 payload");
+
+    let enc_7z = dir.path().join("single_enc.7z");
+    execute_create_with_params(CliCreateParams {
+        archive_path: &enc_7z,
+        sources: std::slice::from_ref(&src),
+        format_opt: Some("7z"),
+        level: 6,
+        password: Some("pass123"),
+        threads: 2,
+        volume_size: None,
+        dry_run: false,
+        include: &[],
+        exclude: &[],
+        silent: true,
+    })
+    .expect("create encrypted 7z");
+
+    let ok_7z = check_archive_integrity(&enc_7z, Some("pass123"), true).expect("check ok 7z");
+    assert!(ok_7z.is_valid, "errors: {:?}", ok_7z.errors);
+    assert_eq!(ok_7z.total_entries, 1);
+    assert!(!check_archive_integrity(&enc_7z, Some("wrong"), true).expect("wrong pw").is_valid);
+    assert!(!check_archive_integrity(&enc_7z, None, true).expect("missing pw").is_valid);
+
+    for fmt in ["tar.gz", "tar.xz", "tar.bz2", "tar.lz4"] {
+        let tar_arc = dir.path().join(format!("utf8.{fmt}"));
+        execute_create_with_params(CliCreateParams {
+            archive_path: &tar_arc,
+            sources: std::slice::from_ref(&src),
+            format_opt: Some(fmt),
+            level: 6,
+            password: None,
+            threads: 2,
+            volume_size: None,
+            dry_run: false,
+            include: &[],
+            exclude: &[],
+            silent: true,
+        })
+        .expect("create compressed tar");
+        let dto = check_archive_integrity(&tar_arc, None, true).expect("check compressed tar");
+        assert!(dto.is_valid, "{fmt} errors: {:?}", dto.errors);
+        assert_eq!(dto.total_entries, 1);
+    }
+}

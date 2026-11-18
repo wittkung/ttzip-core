@@ -24,9 +24,7 @@ public enum SilesiaFixtureLoader {
             }
         }
         
-        let sourceFile = URL(fileURLWithPath: #filePath)
-        let fallbackURL = sourceFile.deletingLastPathComponent().appendingPathComponent("Fixtures/Silesia").resolvingSymlinksInPath()
-        if FileManager.default.fileExists(atPath: fallbackURL.path) {
+        if let fallbackURL = TestFixtureLoader.resolveFixturesURL("Silesia") {
             return fallbackURL
         }
         

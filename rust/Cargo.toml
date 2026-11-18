@@ -38,7 +38,7 @@ strip = "none"
 
 
 [profile.test]
-opt-level = 2
+opt-level = 3
 debug = 1
 codegen-units = 16
 split-debuginfo = "off"

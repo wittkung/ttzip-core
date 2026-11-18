@@ -9,7 +9,9 @@ use std::io::Write;
 
 use super::payload::decode_7z_folder_streaming;
 pub use super::solid_stream_state::{SolidExtractionStats, SolidFileRange, SolidFolderTable};
-use super::solid_stream_state::{build_initial_folder_tables, SolidStreamWindowState};
+use super::solid_stream_state::{
+    build_initial_folder_tables, EntryWindowCompletion, SolidStreamWindowState,
+};
 use crate::sevenz::header::SevenZHeaderInfo;
 use crate::types::TTZipStatus;
 use ttzip_types::options::ProgressAtomicSheet;
@@ -404,7 +406,16 @@ impl<'a> SolidEarlyExitExtractor<'a> {
         }
 
         let folder_total = self.folder_index.folder_total_size(folder_idx).unwrap_or(target_end);
-        let mut window = SolidStreamWindowState::new(target_start, target_end, self.sheet);
+        let expected_unpack_size = self
+            .header_info
+            .folders
+            .get(folder_idx)
+            .map(super::payload::folder_final_unpack_size)
+            .unwrap_or(folder_total);
+        let completion =
+            EntryWindowCompletion::for_expected_folder_unpack(target_end, expected_unpack_size);
+        let mut window =
+            SolidStreamWindowState::new(target_start, target_end, completion, self.sheet);
 
         let decode_res = decode_7z_folder_streaming(
             self.archive_data,
@@ -414,11 +425,7 @@ impl<'a> SolidEarlyExitExtractor<'a> {
             self.thread_budget,
             |chunk| window.consume_chunk(chunk, &mut sink),
         );
-
-        match decode_res {
-            Ok(_) | Err(TTZipStatus::Eof) => {}
-            Err(e) => return Err(e),
-        }
+        completion.accept_decode_result(decode_res)?;
 
         window.finalize(
             folder_idx,

@@ -28,8 +28,6 @@ const GENERATED_FFI_HEADER_SRC: &str =
     include_str!("../../../Sources/TTZipCore/Generated/ttzip_engineFFI.h");
 const ENGINE_FFI_HEADER_SRC: &str =
     include_str!("../../../Sources/TTZipEngineFFI/include/ttzip_engineFFI.h");
-const BRIDGE_FFI_HEADER_SRC: &str =
-    include_str!("../../../Sources/CTTZipBridge/include/ttzip_engineFFI.h");
 
 // UniFFI Scaffolding C-ABI contract version exported by ttzip_engine.
 unsafe extern "C" {
@@ -312,7 +310,6 @@ fn test_c_ffi_headers_checksum_symbol_set_parity() {
     for (label, src) in [
         ("Sources/TTZipCore/Generated/ttzip_engineFFI.h", GENERATED_FFI_HEADER_SRC),
         ("Sources/TTZipEngineFFI/include/ttzip_engineFFI.h", ENGINE_FFI_HEADER_SRC),
-        ("Sources/CTTZipBridge/include/ttzip_engineFFI.h", BRIDGE_FFI_HEADER_SRC),
     ] {
         let header_set = parse_c_header_checksum_symbols(src);
         assert_eq!(

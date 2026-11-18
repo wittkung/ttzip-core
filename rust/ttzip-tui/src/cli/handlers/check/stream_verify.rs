@@ -698,6 +698,7 @@ pub(super) fn deep_verify_stream_extract_with_quota(
     max_output_bytes: u64,
     errors: &mut Vec<String>,
 ) -> usize {
+    super::ensure_utf8_c_locale();
     match verify_stream_inner(archive_path, fmt, password, max_output_bytes, errors) {
         Ok(corrupted) => corrupted,
         Err(err) => {

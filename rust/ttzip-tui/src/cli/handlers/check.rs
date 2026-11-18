@@ -24,6 +24,16 @@ use ttzip_engine::zip::ZipArchive;
 
 const MAX_DEEP_VERIFY_OUTPUT_BYTES: u64 = 256 * 1024 * 1024;
 
+pub(crate) fn ensure_utf8_c_locale() {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| {
+        #[cfg(unix)]
+        unsafe {
+            libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
+        }
+    });
+}
+
 fn check_quota(bytes: u64, max_bytes: u64) -> Result<(), String> {
     if bytes > max_bytes {
         return Err(format!(
@@ -322,6 +332,7 @@ pub fn check_archive_integrity(
     password: Option<&str>,
     deep: bool,
 ) -> Result<CheckResultDto, String> {
+    ensure_utf8_c_locale();
     if !archive_path.exists() {
         return Err(format!(
             "Archive file not found: {}",

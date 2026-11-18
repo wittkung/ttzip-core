@@ -98,9 +98,38 @@ pub(crate) fn build_initial_folder_tables(info: &SevenZHeaderInfo) -> Vec<SolidF
     folders
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum EntryWindowCompletion {
+    EarlyExitAtTargetEnd,
+    DrainFolderToEnd,
+}
+
+impl EntryWindowCompletion {
+    #[inline]
+    pub(crate) fn for_expected_folder_unpack(target_end: u64, expected_unpack_size: u64) -> Self {
+        if expected_unpack_size == 0 || target_end < expected_unpack_size {
+            Self::EarlyExitAtTargetEnd
+        } else {
+            Self::DrainFolderToEnd
+        }
+    }
+
+    #[inline]
+    pub(crate) fn accept_decode_result<T>(
+        self,
+        res: Result<T, TTZipStatus>,
+    ) -> Result<(), TTZipStatus> {
+        match (res, self) {
+            (Ok(_), _) | (Err(TTZipStatus::Eof), Self::EarlyExitAtTargetEnd) => Ok(()),
+            (Err(err), _) => Err(err),
+        }
+    }
+}
+
 pub(crate) struct SolidStreamWindowState<'a> {
     pub(crate) target_start: u64,
     pub(crate) target_end: u64,
+    pub(crate) completion: EntryWindowCompletion,
     pub(crate) current_offset: u64,
     pub(crate) decompressed_total: u64,
     pub(crate) skipped_preceding: u64,
@@ -114,11 +143,13 @@ impl<'a> SolidStreamWindowState<'a> {
     pub(crate) fn new(
         target_start: u64,
         target_end: u64,
+        completion: EntryWindowCompletion,
         sheet: Option<&'a ProgressAtomicSheet>,
     ) -> Self {
         Self {
             target_start,
             target_end,
+            completion,
             current_offset: 0,
             decompressed_total: 0,
             skipped_preceding: 0,
@@ -167,7 +198,9 @@ impl<'a> SolidStreamWindowState<'a> {
             }
         }
 
-        if self.current_offset >= self.target_end {
+        if self.completion == EntryWindowCompletion::EarlyExitAtTargetEnd
+            && self.current_offset >= self.target_end
+        {
             self.early_exit_signal_sent = true;
             return Err(TTZipStatus::Eof);
         }
