@@ -14,7 +14,6 @@ use crate::ffi::archive_ffi::guards::ArchiveReadGuard;
 use crate::ffi::archive_ffi::sys::*;
 use crate::types::{TTZipProgressCallback, TTZipStatus};
 use crate::zip::reader::ZipArchive;
-use ttzip_types::scheduler::LocalWorkStealingPool;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -84,9 +83,10 @@ fn verify_zip_archive_in_memory(
     let corrupted_list = parking_lot::Mutex::new(Vec::new());
     let user_data_addr = user_data as usize;
 
-    let num_threads = ttzip_types::recommended_compute_threads().min(total_entries).max(1);
+    let thread_budget = ttzip_types::recommended_compute_threads();
+    let num_threads = thread_budget.min(total_entries).max(1);
     let next_entry_idx = AtomicUsize::new(0);
-    let pool = LocalWorkStealingPool::with_threads(num_threads);
+    let pool = crate::archive::shared_compute_pool(thread_budget);
 
     pool.scope(|s| {
         for _ in 0..num_threads {

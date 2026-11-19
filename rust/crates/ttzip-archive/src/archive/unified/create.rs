@@ -6,6 +6,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::create_dispatch::{
+    write_staged_explicit_archive_in_txn, write_staged_source_archive_in_txn,
+};
 pub use super::create_staging::{
     commit_staged_archive_files_in_txn_with, commit_staged_archive_files_with,
     recover_preserved_create_backup, with_staged_archive_destination,
@@ -17,15 +20,8 @@ pub use super::create_staging::{
 pub use super::create_to_writer::{
     create_archive_to_writer, run_libarchive_staged_write, run_libarchive_staged_write_in_txn,
 };
-use super::create_to_writer::{
-    collect_source_entries, write_archive_entries_to_handle_fmt, write_entries_slice_to_handle_fmt,
-};
 use super::create_transaction::{
     ArchiveCleanupDisposition, CreateTransactionContext, ResidualPathRole, StageCleanupFailure,
-};
-use super::format_config::{
-    write_brotli_target_in_txn, write_gzip_target_in_txn, write_snappy_target_in_txn,
-    write_zstd_target_in_txn,
 };
 use crate::types::{TTZipArchiveFormat, TTZipCreateOptions, TTZipStatus};
 
@@ -63,7 +59,7 @@ pub(crate) fn should_use_raw_stream(
 }
 
 #[inline]
-fn should_use_raw_stream_explicit(
+pub(super) fn should_use_raw_stream_explicit(
     entries: &[(PathBuf, String)],
     resolved_format: TTZipArchiveFormat,
 ) -> bool {
@@ -186,151 +182,6 @@ pub fn create_archive(
     create_archive_detailed(source_paths, destination_path, options, split_volume_size_bytes)
         .map(|_| ())
         .map_err(CreateStageCommitError::log_and_into_status)
-}
-
-fn write_staged_special_container_in_txn(
-    source_paths: &[PathBuf],
-    staged_dest: &Path,
-    resolved_format: TTZipArchiveFormat,
-    options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
-    txn_ctx: Option<&CreateTransactionContext>,
-) -> Option<Result<(), TTZipStatus>> {
-    match resolved_format {
-        TTZipArchiveFormat::Zip | TTZipArchiveFormat::Auto => Some(
-            crate::zip::writer::create_zip_streaming_parallel_split_in_txn(
-                staged_dest,
-                source_paths,
-                options,
-                split_volume_size_bytes,
-                txn_ctx,
-            )
-            .map(|_| ()),
-        ),
-        TTZipArchiveFormat::SevenZip => Some(
-            crate::sevenz::writer::create_7z_archive_split_in_txn(
-                staged_dest,
-                source_paths,
-                options,
-                split_volume_size_bytes,
-                txn_ctx,
-            )
-            .map(|_| ()),
-        ),
-        TTZipArchiveFormat::Aar => {
-            Some(collect_source_entries(source_paths).and_then(|entries| {
-                super::format_config::write_apple_archive_entries_in_txn(
-                    &entries,
-                    staged_dest,
-                    split_volume_size_bytes,
-                    txn_ctx,
-                )
-            }))
-        }
-        TTZipArchiveFormat::Xar => {
-            Some(collect_source_entries(source_paths).and_then(|entries| {
-                super::format_config::write_xar_entries_in_txn(
-                    &entries,
-                    staged_dest,
-                    options,
-                    split_volume_size_bytes,
-                    txn_ctx,
-                )
-            }))
-        }
-        _ => None,
-    }
-}
-
-fn try_write_staged_source_native_stream_in_txn(
-    source_paths: &[PathBuf],
-    staged_dest: &Path,
-    resolved_format: TTZipArchiveFormat,
-    options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
-    raw_src: Option<&Path>,
-    txn_ctx: Option<&CreateTransactionContext>,
-) -> Option<Result<(), TTZipStatus>> {
-    match resolved_format {
-        TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
-            Some(write_brotli_target_in_txn(
-                staged_dest,
-                split_volume_size_bytes,
-                options,
-                raw_src,
-                txn_ctx,
-                |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-            ))
-        }
-        TTZipArchiveFormat::Snappy => Some(write_snappy_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-        )),
-        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => Some(write_zstd_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-        )),
-        TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => Some(write_gzip_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-        )),
-        _ => None,
-    }
-}
-
-fn write_staged_source_archive_in_txn(
-    source_paths: &[PathBuf],
-    staged_dest: &Path,
-    resolved_format: TTZipArchiveFormat,
-    options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
-    txn_ctx: Option<&CreateTransactionContext>,
-) -> Result<(), TTZipStatus> {
-    if let Some(res) = write_staged_special_container_in_txn(
-        source_paths,
-        staged_dest,
-        resolved_format,
-        options,
-        split_volume_size_bytes,
-        txn_ctx,
-    ) {
-        return res;
-    }
-
-    let is_raw_stream = should_use_raw_stream(source_paths, resolved_format);
-    let raw_src = is_raw_stream.then(|| source_paths[0].as_path());
-    if let Some(res) = try_write_staged_source_native_stream_in_txn(
-        source_paths,
-        staged_dest,
-        resolved_format,
-        options,
-        split_volume_size_bytes,
-        raw_src,
-        txn_ctx,
-    ) {
-        return res;
-    }
-
-    run_libarchive_staged_write_in_txn(
-        staged_dest,
-        resolved_format,
-        options,
-        is_raw_stream,
-        split_volume_size_bytes,
-        txn_ctx,
-        |a| unsafe { write_archive_entries_to_handle_fmt(a, source_paths, options, resolved_format) },
-    )
 }
 
 /// Returns whether the resolved archive format supports an embedded `TTZR`/`TTRC` recovery record trailer.
@@ -537,147 +388,6 @@ pub fn create_archive_explicit_with_files(
         split_volume_size_bytes,
     )
     .map_err(CreateStageCommitError::log_and_into_status)
-}
-
-fn write_staged_explicit_special_container_in_txn(
-    entries: &[(PathBuf, String)],
-    staged_dest: &Path,
-    resolved_format: TTZipArchiveFormat,
-    options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
-    encrypt_file_names: Option<bool>,
-    txn_ctx: Option<&CreateTransactionContext>,
-) -> Option<Result<(), TTZipStatus>> {
-    match resolved_format {
-        TTZipArchiveFormat::Zip | TTZipArchiveFormat::Auto => Some(
-            crate::zip::writer::create_zip_streaming_parallel_explicit_split_in_txn(
-                staged_dest,
-                entries,
-                options,
-                split_volume_size_bytes,
-                txn_ctx,
-            )
-            .map(|_| ()),
-        ),
-        TTZipArchiveFormat::SevenZip => Some(
-            crate::sevenz::writer::create_7z_archive_explicit_split_with_header_encryption_in_txn(
-                staged_dest,
-                entries,
-                options,
-                split_volume_size_bytes,
-                encrypt_file_names,
-                txn_ctx,
-            )
-            .map(|_| ()),
-        ),
-        TTZipArchiveFormat::Aar => Some(super::format_config::write_apple_archive_entries_in_txn(
-            entries,
-            staged_dest,
-            split_volume_size_bytes,
-            txn_ctx,
-        )),
-        TTZipArchiveFormat::Xar => Some(super::format_config::write_xar_entries_in_txn(
-            entries,
-            staged_dest,
-            options,
-            split_volume_size_bytes,
-            txn_ctx,
-        )),
-        _ => None,
-    }
-}
-
-fn try_write_staged_explicit_native_stream_in_txn(
-    entries: &[(PathBuf, String)],
-    staged_dest: &Path,
-    resolved_format: TTZipArchiveFormat,
-    options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
-    raw_src: Option<&Path>,
-    txn_ctx: Option<&CreateTransactionContext>,
-) -> Option<Result<(), TTZipStatus>> {
-    match resolved_format {
-        TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
-            Some(write_brotli_target_in_txn(
-                staged_dest,
-                split_volume_size_bytes,
-                options,
-                raw_src,
-                txn_ctx,
-                |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-            ))
-        }
-        TTZipArchiveFormat::Snappy => Some(write_snappy_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-        )),
-        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => Some(write_zstd_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-        )),
-        TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => Some(write_gzip_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-        )),
-        _ => None,
-    }
-}
-
-fn write_staged_explicit_archive_in_txn(
-    entries: &[(PathBuf, String)],
-    staged_dest: &Path,
-    resolved_format: TTZipArchiveFormat,
-    options: &TTZipCreateOptions,
-    split_volume_size_bytes: u64,
-    encrypt_file_names: Option<bool>,
-    txn_ctx: Option<&CreateTransactionContext>,
-) -> Result<(), TTZipStatus> {
-    if let Some(res) = write_staged_explicit_special_container_in_txn(
-        entries,
-        staged_dest,
-        resolved_format,
-        options,
-        split_volume_size_bytes,
-        encrypt_file_names,
-        txn_ctx,
-    ) {
-        return res;
-    }
-
-    let is_raw_stream = should_use_raw_stream_explicit(entries, resolved_format);
-    let raw_src = is_raw_stream.then(|| entries[0].0.as_path());
-    if let Some(res) = try_write_staged_explicit_native_stream_in_txn(
-        entries,
-        staged_dest,
-        resolved_format,
-        options,
-        split_volume_size_bytes,
-        raw_src,
-        txn_ctx,
-    ) {
-        return res;
-    }
-
-    run_libarchive_staged_write_in_txn(
-        staged_dest,
-        resolved_format,
-        options,
-        is_raw_stream,
-        split_volume_size_bytes,
-        txn_ctx,
-        |a| unsafe { write_entries_slice_to_handle_fmt(a, entries, options, resolved_format) },
-    )
 }
 
 /// Recursively compresses pre-filtered explicit entries into the destination archive path.

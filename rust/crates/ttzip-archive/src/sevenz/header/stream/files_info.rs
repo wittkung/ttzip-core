@@ -3,9 +3,10 @@
 
 use std::ops::Range;
 
-use super::{HeaderAdmission, next_varint};
+use super::{HeaderAdmission, next_varint, require_section_end};
 use crate::sevenz::format::{
-    K_EMPTY_FILE, K_EMPTY_STREAM, K_END, K_MTIME, K_NAME, K_WIN_ATTRIBUTES,
+    K_ATIME, K_CTIME, K_DUMMY, K_EMPTY_FILE, K_EMPTY_STREAM, K_END, K_MTIME, K_NAME,
+    K_WIN_ATTRIBUTES,
 };
 use crate::sevenz::header::{SevenZFileMeta, SevenZHeaderInfo};
 use crate::types::TTZipStatus;
@@ -24,13 +25,12 @@ fn read_defined_bitmask(
     let mut defined = vec![true; num_files];
     if all_defined == 0 {
         let mask_bytes = num_files.div_ceil(8);
-        if *hpos + mask_bytes <= prop_end {
-            for (i, slot) in defined.iter_mut().enumerate().take(num_files) {
-                let b = hp[*hpos + (i / 8)];
-                *slot = ((b >> (7 - (i % 8))) & 1) != 0;
-            }
-            *hpos += mask_bytes;
+        let mask_end = hpos.checked_add(mask_bytes).filter(|&end| end <= prop_end)?;
+        for (i, slot) in defined.iter_mut().enumerate().take(num_files) {
+            let b = hp[*hpos + (i / 8)];
+            *slot = ((b >> (7 - (i % 8))) & 1) != 0;
         }
+        *hpos = mask_end;
     }
     if *hpos >= prop_end {
         return None;
@@ -174,20 +174,25 @@ pub(super) fn parse_files_info_section(
     let hlen = hp.len();
     let num_files_val = next_varint(hp, hpos)?;
     admission.count(num_files_val, 1024)?;
-    if num_files_val > 1_000_000 || (num_files_val as usize) > hlen.saturating_mul(1024) {
+    let num_files =
+        usize::try_from(num_files_val).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
+    if num_files_val > 1_000_000 || num_files > hlen.saturating_mul(1024) {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
     out_info
         .files
-        .resize(num_files_val as usize, SevenZFileMeta::default());
+        .resize(num_files, SevenZFileMeta::default());
 
     let mut tags = 0;
+    let mut saw_end = false;
     while *hpos < hlen {
         let ftag = admission.next_tag(hp, hpos, &mut tags)?;
         if ftag == K_END {
+            saw_end = true;
             break;
         }
-        let prop_size = next_varint(hp, hpos)? as usize;
+        let prop_size =
+            usize::try_from(next_varint(hp, hpos)?).map_err(|_| TTZipStatus::ErrCorruptHeader)?;
         let prop_end = hpos
             .checked_add(prop_size)
             .filter(|&end| end <= hlen)
@@ -196,7 +201,7 @@ pub(super) fn parse_files_info_section(
         apply_file_property(ftag, hp, *hpos..prop_end, &mut out_info.files, admission)?;
         *hpos = prop_end;
     }
-    Ok(())
+    require_section_end(admission, saw_end)
 }
 
 fn apply_file_property(
@@ -213,14 +218,17 @@ fn apply_file_property(
             apply_empty_streams_and_files(tag, bytes, start, property.len(), files);
         }
         K_NAME => {
-            if bytes.get(start).copied() != Some(0) {
-                admission.unsupported()?;
+            match bytes[start..end].first().copied() {
+                None => return Err(TTZipStatus::ErrCorruptHeader),
+                Some(0) => {}
+                Some(_) => admission.unsupported()?,
             }
             parse_files_names(bytes, start, end, files)?;
         }
         K_MTIME => parse_files_mtime(bytes, start, end, files),
         K_WIN_ATTRIBUTES => parse_files_win_attributes(bytes, start, end, files),
-        _ => {}
+        K_DUMMY | K_CTIME | K_ATIME => {}
+        _ => admission.unsupported()?,
     }
     Ok(())
 }

@@ -16,7 +16,6 @@ use std::io::{Read, Write};
 use std::ops::{Deref, DerefMut};
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
-use ttzip_types::scheduler::LocalWorkStealingPool;
 
 // MARK: - Constants
 
@@ -290,7 +289,8 @@ impl JobScheduler {
             return jobs.into_iter().map(worker).collect();
         }
 
-        let num_threads = ttzip_types::recommended_compute_threads().min(total).max(1);
+        let thread_budget = ttzip_types::recommended_compute_threads();
+        let num_threads = thread_budget.min(total).max(1);
         if num_threads <= 1 {
             return jobs.into_iter().map(worker).collect();
         }
@@ -301,7 +301,7 @@ impl JobScheduler {
         }
 
         let result_slots: Mutex<Vec<Option<CompletedJob>>> = Mutex::new((0..total).map(|_| None).collect());
-        let pool = LocalWorkStealingPool::with_threads(num_threads);
+        let pool = crate::archive::shared_compute_pool(thread_budget);
 
         pool.scope(|s| {
             for bucket in buckets {

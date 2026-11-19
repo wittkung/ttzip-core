@@ -18,7 +18,6 @@ use std::fs::{self, OpenOptions};
 use std::os::unix::fs::MetadataExt;
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
-use ttzip_types::scheduler::LocalWorkStealingPool;
 
 /// Item planned for parallel store writing.
 #[derive(Debug, Clone)]
@@ -291,22 +290,23 @@ fn write_store_entries_parallel(
     raw_thread_budget: usize,
 ) -> Result<Vec<u32>, TTZipStatus> {
     let total_items = plan_items.len();
-    let thread_budget = raw_thread_budget.clamp(1, 64).min(total_items).max(1);
+    let pool_budget = raw_thread_budget.clamp(1, 64);
+    let worker_count = pool_budget.min(total_items).max(1);
 
-    if thread_budget <= 1 || total_items <= 1 {
+    if worker_count <= 1 || total_items <= 1 {
         return plan_items
             .iter()
             .map(|item| write_single_store_entry(fd, item))
             .collect();
     }
 
-    let chunk_size = total_items.div_ceil(thread_budget);
+    let chunk_size = total_items.div_ceil(worker_count);
     let chunks: Vec<_> = plan_items.chunks(chunk_size).collect();
     let num_chunks = chunks.len();
     let chunk_results: parking_lot::Mutex<Vec<Option<Vec<u32>>>> =
         parking_lot::Mutex::new((0..num_chunks).map(|_| None).collect());
     let first_error: parking_lot::Mutex<Option<TTZipStatus>> = parking_lot::Mutex::new(None);
-    let pool = LocalWorkStealingPool::with_threads(thread_budget);
+    let pool = crate::archive::shared_compute_pool(pool_budget);
 
     pool.scope(|s| {
         for (chunk_idx, chunk) in chunks.into_iter().enumerate() {

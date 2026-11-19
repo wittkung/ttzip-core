@@ -8,7 +8,6 @@ use std::collections::HashSet;
 use std::fs;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
-use ttzip_types::scheduler::LocalWorkStealingPool;
 
 use crate::fs::apfs::is_mac_junk_file;
 
@@ -191,9 +190,8 @@ fn scan_subdirs_parallel(
     options: &ScanOptions,
     detector: &CycleDetector,
 ) -> Vec<ScannedFsItem> {
-    let num_threads = ttzip_types::recommended_compute_threads()
-        .min(sub_dirs.len())
-        .max(1);
+    let thread_budget = ttzip_types::recommended_compute_threads();
+    let num_threads = thread_budget.min(sub_dirs.len()).max(1);
     let mut buckets: Vec<Vec<(std::path::PathBuf, String)>> =
         (0..num_threads).map(|_| Vec::new()).collect();
     for (idx, item) in sub_dirs.into_iter().enumerate() {
@@ -201,7 +199,7 @@ fn scan_subdirs_parallel(
     }
 
     let results_mutex = Mutex::new(Vec::new());
-    let pool = LocalWorkStealingPool::with_threads(num_threads);
+    let pool = crate::archive::shared_compute_pool(thread_budget);
     pool.scope(|s| {
         for bucket in buckets {
             let results_ref = &results_mutex;

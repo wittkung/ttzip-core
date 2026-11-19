@@ -18,17 +18,22 @@ pub(super) enum HeaderAdmission {
 }
 
 impl HeaderAdmission {
+    pub(super) const fn is_standard(self) -> bool {
+        matches!(self, Self::Standard)
+    }
+
     pub(super) fn count(self, count: u64, max: u64) -> Result<(), TTZipStatus> {
-        if matches!(self, Self::SolidPreview) && count > max {
+        if !self.is_standard() && count > max {
             return Err(TTZipStatus::ErrSolidBudgetExceeded);
         }
         Ok(())
     }
 
     pub(super) fn unsupported(self) -> Result<(), TTZipStatus> {
-        match self {
-            Self::Standard => Ok(()),
-            Self::SolidPreview => Err(TTZipStatus::ErrUnsupportedFeature),
+        if self.is_standard() {
+            Ok(())
+        } else {
+            Err(TTZipStatus::ErrUnsupportedFeature)
         }
     }
 
@@ -36,7 +41,7 @@ impl HeaderAdmission {
         self,
         crcs: &[Option<u32>],
     ) -> Result<(), TTZipStatus> {
-        if matches!(self, Self::SolidPreview) && crcs.iter().any(Option::is_none) {
+        if !self.is_standard() && crcs.iter().any(Option::is_none) {
             return Err(TTZipStatus::ErrUnsupportedFeature);
         }
         Ok(())
@@ -57,9 +62,9 @@ impl HeaderAdmission {
         position: &mut usize,
         seen: &mut u64,
     ) -> Result<u8, TTZipStatus> {
-        let tag = bytes[*position];
+        let tag = *bytes.get(*position).ok_or(TTZipStatus::ErrCorruptHeader)?;
         *position += 1;
-        if matches!(self, Self::SolidPreview) && !matches!(tag, K_END | K_DUMMY) {
+        if !self.is_standard() && !matches!(tag, K_END | K_DUMMY) {
             let bit = 1u64.checked_shl(u32::from(tag)).ok_or(TTZipStatus::ErrUnsupportedFeature)?;
             if *seen & bit != 0 {
                 return Err(TTZipStatus::ErrUnsupportedFeature);

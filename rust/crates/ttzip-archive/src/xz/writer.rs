@@ -18,7 +18,6 @@ use crate::xz::header::{XzStreamFlags, XzStreamFooter, XzStreamHeader};
 use crate::xz::index::{XzBlockRecord, XzStreamIndex};
 use crate::xz::types::{XzCheckType, XzError};
 use std::io::{self, Write};
-use ttzip_types::scheduler::LocalWorkStealingPool;
 
 use crate::xz::bcj::{BcjArm, BcjArm64, BcjRiscv, BcjX86, BranchFilter};
 
@@ -395,7 +394,8 @@ impl<W: Write> XzParallelStreamWriter<W> {
             let res = XzBlockEncoder::encode_block(chunks[0], &self.options);
             res.map(|b| vec![b])
         } else {
-            let num_threads = ttzip_types::recommended_compute_threads().min(total).max(1);
+            let thread_budget = ttzip_types::recommended_compute_threads();
+            let num_threads = thread_budget.min(total).max(1);
             if num_threads <= 1 {
                 chunks
                     .into_iter()
@@ -409,7 +409,7 @@ impl<W: Write> XzParallelStreamWriter<W> {
 
                 let result_slots: parking_lot::Mutex<Vec<Option<XzBlockResult>>> =
                     parking_lot::Mutex::new((0..total).map(|_| None).collect());
-                let pool = LocalWorkStealingPool::with_threads(num_threads);
+                let pool = crate::archive::shared_compute_pool(thread_budget);
 
                 pool.scope(|s| {
                     for bucket in buckets {

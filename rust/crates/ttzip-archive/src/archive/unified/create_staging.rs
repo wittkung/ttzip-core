@@ -13,7 +13,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use crate::archive::split::VolumeNamingScheme;
 use crate::types::{TTZipArchiveFormat, TTZipStatus};
 
-use super::create_guard_settlement::{
+use super::create_stage_dir_settlement::{
     finalize_failed_stage_dir_with_ctx, settle_committed_stage_dir, CreateStagingGuard,
 };
 pub use super::create_split_rollback::recover_preserved_create_backup;

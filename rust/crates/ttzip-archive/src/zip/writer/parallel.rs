@@ -21,7 +21,6 @@ use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use ttzip_types::options::ProgressAtomicSheet;
-use ttzip_types::scheduler::LocalWorkStealingPool;
 
 fn create_encrypted_spill_file() -> Result<SpillFile, TTZipStatus> {
     let temp_path = std::env::temp_dir().join(format!(
@@ -422,22 +421,21 @@ pub fn compress_items_parallel_with_token(
         }
     }
 
-    let thread_count = (thread_budget as usize).clamp(1, 64).min(items.len().max(1));
-    let pool = LocalWorkStealingPool::with_threads(thread_count);
+    let pool_budget = (thread_budget as usize).clamp(1, 64);
+    let compress_one = |item| {
+        if let Some(token) = cancel_token
+            && token.load(Ordering::Acquire)
+        {
+            return Err(TTZipStatus::Cancelled);
+        }
+        compress_single_item(item, level, encryption, password)
+    };
+    if items.len() <= 1 || pool_budget <= 1 {
+        return items.into_iter().map(compress_one).collect();
+    }
 
-    pool.install(|| {
-        items
-            .into_par_iter()
-            .map(|item| {
-                if let Some(token) = cancel_token {
-                    if token.load(Ordering::Acquire) {
-                        return Err(TTZipStatus::Cancelled);
-                    }
-                }
-                compress_single_item(item, level, encryption, password)
-            })
-            .collect()
-    })
+    let pool = crate::archive::shared_compute_pool(pool_budget);
+    pool.install(|| items.into_par_iter().map(compress_one).collect())
 }
 
 /// Compresses a batch of `ZipInputItem`s in parallel across threads using work-stealing pool.

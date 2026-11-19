@@ -90,13 +90,16 @@ pub fn execute_batch_parallel_with_options(
     execute_scoped(batch, workers, context)
 }
 
-fn resolve_workers(requested: u32, items: usize) -> usize {
-    let budget = if requested == 0 {
+fn resolve_pool_budget(requested: u32) -> usize {
+    if requested == 0 {
         ttzip_types::recommended_compute_threads()
     } else {
         (requested as usize).clamp(1, 64)
-    };
-    budget.min(items).max(1)
+    }
+}
+
+fn resolve_workers(requested: u32, items: usize) -> usize {
+    resolve_pool_budget(requested).min(items).max(1)
 }
 
 fn execute_scoped(
@@ -144,20 +147,6 @@ fn run_scoped_workers(
 }
 
 #[cfg(not(test))]
-fn shared_batch_pool(workers: usize) -> ttzip_types::scheduler::LocalWorkStealingPool {
-    static DEFAULT_POOL: std::sync::OnceLock<ttzip_types::scheduler::LocalWorkStealingPool> =
-        std::sync::OnceLock::new();
-    let default_threads = ttzip_types::recommended_compute_threads();
-    if workers <= default_threads {
-        DEFAULT_POOL
-            .get_or_init(ttzip_types::scheduler::LocalWorkStealingPool::new)
-            .clone()
-    } else {
-        ttzip_types::scheduler::LocalWorkStealingPool::with_threads(workers)
-    }
-}
-
-#[cfg(not(test))]
 fn run_scoped_workers(
     workers: usize,
     next_index: &AtomicUsize,
@@ -166,7 +155,8 @@ fn run_scoped_workers(
     slots: &mut [Option<EntryResult>],
 ) {
     let slots_mutex = Mutex::new(slots);
-    let pool = shared_batch_pool(workers);
+    let pool_budget = resolve_pool_budget(context.options.thread_budget);
+    let pool = crate::archive::shared_compute_pool(pool_budget);
     pool.scope(|scope| {
         for _ in 0..workers {
             let context = context.clone();

@@ -76,6 +76,15 @@ pub(super) struct FileIngestInput<'a> {
     pub mtime_ns: i64,
 }
 
+struct IngestBatchContext<'a> {
+    scope_id: &'a str,
+    run_identity: ScopeRunIdentity,
+    cancel_flag: &'a AtomicBool,
+    working_index: PersistentScopeIndex,
+    model_ready: Option<bool>,
+    saw_removed: bool,
+}
+
 impl SemanticSearchCoordinator {
     pub(super) fn can_commit_locked(
         managed: Option<&ManagedScope>,
@@ -149,13 +158,12 @@ impl SemanticSearchCoordinator {
             root_path.display()
         );
         let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
-        if let Some(managed) = guard.get_mut(scope_id) {
-            if managed.auth_epoch == run_identity.auth_epoch
-                && managed.active_run_token == run_identity.run_token
-            {
-                managed.progress.phase = SemanticIngestPhase::Failed;
-                managed.progress.error_message = Some(reason.clone());
-            }
+        if let Some(managed) = guard.get_mut(scope_id)
+            && managed.auth_epoch == run_identity.auth_epoch
+            && managed.active_run_token == run_identity.run_token
+        {
+            managed.progress.phase = SemanticIngestPhase::Failed;
+            managed.progress.error_message = Some(reason.clone());
         }
         Err(SemanticModelError::RuntimeFailed { reason })
     }
@@ -189,45 +197,44 @@ impl SemanticSearchCoordinator {
     where
         I: IntoIterator<Item = IngestFileEvent>,
     {
-        let mut model_ready: Option<bool> = None;
-        let mut saw_removed = false;
-        let mut working_index = self.prepare_run_working_index(
+        let working_index = self.prepare_run_working_index(
             scope_id, event_count, run_identity, cancel_flag,
         )?;
+        let mut batch = IngestBatchContext {
+            scope_id,
+            run_identity,
+            cancel_flag,
+            working_index,
+            model_ready: None,
+            saw_removed: false,
+        };
 
         for (idx, event) in events.into_iter().enumerate() {
             if !self.is_run_still_active(scope_id, run_identity, cancel_flag) {
                 return Ok(self.cancelled_progress_snapshot(scope_id, run_identity));
             }
-            if let Some(early_finish) = self.apply_single_ingest_event_step(
-                scope_id,
-                idx,
-                event,
-                &mut working_index,
-                &mut model_ready,
-                &mut saw_removed,
-                run_identity,
-                cancel_flag,
-            )? {
+            if let Some(early_finish) =
+                self.apply_single_ingest_event_step(&mut batch, idx, event)?
+            {
                 return Ok(early_finish);
             }
         }
 
-        if let Some((root_path, had_stream_read_error)) = directory_read_guard {
-            if had_stream_read_error.load(Ordering::SeqCst) {
-                return self.fail_directory_scope_scan(scope_id, root_path, run_identity);
-            }
+        if let Some((root_path, had_stream_read_error)) = directory_read_guard
+            && had_stream_read_error.load(Ordering::SeqCst)
+        {
+            return self.fail_directory_scope_scan(scope_id, root_path, run_identity);
         }
 
-        let resolved_model_ready = match model_ready {
+        let resolved_model_ready = match batch.model_ready {
             Some(ready) => ready,
-            None if saw_removed => true,
+            None if batch.saw_removed => true,
             None => matches!(self.provider.prepare(), SemanticModelState::Ready(_)),
         };
 
         self.finalize_ingest_commit(
             scope_id,
-            working_index,
+            batch.working_index,
             run_identity,
             cancel_flag,
             resolved_model_ready,
@@ -236,25 +243,20 @@ impl SemanticSearchCoordinator {
 
     fn apply_single_ingest_event_step(
         &self,
-        scope_id: &str,
+        batch: &mut IngestBatchContext<'_>,
         idx: usize,
         event: IngestFileEvent,
-        working_index: &mut PersistentScopeIndex,
-        model_ready: &mut Option<bool>,
-        saw_removed: &mut bool,
-        run_identity: ScopeRunIdentity,
-        cancel_flag: &AtomicBool,
     ) -> Result<Option<SemanticIndexProgress>, SemanticModelError> {
         match event {
             IngestFileEvent::Removed { relative_path } => {
-                *saw_removed = true;
-                working_index.remove_file(&relative_path);
+                batch.saw_removed = true;
+                batch.working_index.remove_file(&relative_path);
                 self.record_step_progress_if_active(
-                    scope_id,
+                    batch.scope_id,
                     idx,
-                    working_index,
-                    run_identity,
-                    cancel_flag,
+                    &batch.working_index,
+                    batch.run_identity,
+                    batch.cancel_flag,
                 );
                 Ok(None)
             }
@@ -266,21 +268,21 @@ impl SemanticSearchCoordinator {
                 tier,
                 mtime_ns,
             } => {
-                let is_ready = *model_ready.get_or_insert_with(|| {
+                let is_ready = *batch.model_ready.get_or_insert_with(|| {
                     matches!(self.provider.prepare(), SemanticModelState::Ready(_))
                 });
                 if !is_ready {
                     let degraded = self.finalize_ingest_commit(
-                        scope_id,
-                        working_index.clone(),
-                        run_identity,
-                        cancel_flag,
+                        batch.scope_id,
+                        batch.working_index.clone(),
+                        batch.run_identity,
+                        batch.cancel_flag,
                         false,
                     )?;
                     return Ok(Some(degraded));
                 }
                 let committed_step = self.ingest_single_file(
-                    scope_id,
+                    batch.scope_id,
                     idx,
                     FileIngestInput {
                         relative_path: &relative_path,
@@ -290,12 +292,14 @@ impl SemanticSearchCoordinator {
                         tier,
                         mtime_ns,
                     },
-                    working_index,
-                    run_identity,
-                    cancel_flag,
+                    &mut batch.working_index,
+                    batch.run_identity,
+                    batch.cancel_flag,
                 )?;
                 if !committed_step {
-                    return Ok(Some(self.cancelled_progress_snapshot(scope_id, run_identity)));
+                    return Ok(Some(
+                        self.cancelled_progress_snapshot(batch.scope_id, batch.run_identity),
+                    ));
                 }
                 Ok(None)
             }
@@ -329,14 +333,13 @@ impl SemanticSearchCoordinator {
         run_identity: ScopeRunIdentity,
     ) -> SemanticIndexProgress {
         let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
-        if let Some(managed) = guard.get_mut(scope_id) {
-            if managed.auth_epoch == run_identity.auth_epoch
-                && (managed.active_run_token == run_identity.run_token
-                    || managed.active_run_token == 0)
-            {
-                managed.progress.phase = SemanticIngestPhase::Cancelled;
-                return managed.progress.clone();
-            }
+        if let Some(managed) = guard.get_mut(scope_id)
+            && managed.auth_epoch == run_identity.auth_epoch
+            && (managed.active_run_token == run_identity.run_token
+                || managed.active_run_token == 0)
+        {
+            managed.progress.phase = SemanticIngestPhase::Cancelled;
+            return managed.progress.clone();
         }
         SemanticIndexProgress {
             scope_id: scope_id.to_string(),
@@ -360,14 +363,13 @@ impl SemanticSearchCoordinator {
         let (ttvec_path, ttidx_path) = self.scope_paths(scope_id);
         let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
         if !Self::can_commit_locked(guard.get(scope_id), run_identity, cancel_flag) {
-            if let Some(managed) = guard.get_mut(scope_id) {
-                if managed.auth_epoch == run_identity.auth_epoch
-                    && (managed.active_run_token == run_identity.run_token
-                        || managed.active_run_token == 0)
-                {
-                    managed.progress.phase = SemanticIngestPhase::Cancelled;
-                    return Ok(managed.progress.clone());
-                }
+            if let Some(managed) = guard.get_mut(scope_id)
+                && managed.auth_epoch == run_identity.auth_epoch
+                && (managed.active_run_token == run_identity.run_token
+                    || managed.active_run_token == 0)
+            {
+                managed.progress.phase = SemanticIngestPhase::Cancelled;
+                return Ok(managed.progress.clone());
             }
             return Ok(SemanticIndexProgress {
                 scope_id: scope_id.to_string(),
@@ -483,12 +485,12 @@ impl SemanticSearchCoordinator {
         cancel_flag: &AtomicBool,
     ) {
         let mut guard = self.scopes.write().unwrap_or_else(|e| e.into_inner());
-        if Self::can_commit_locked(guard.get(scope_id), run_identity, cancel_flag) {
-            if let Some(managed) = guard.get_mut(scope_id) {
-                managed.progress.processed_files = (idx + 1) as u32;
-                managed.progress.indexed_segments = working_index.segments().len() as u32;
-                managed.progress.index_generation = working_index.index_generation;
-            }
+        if Self::can_commit_locked(guard.get(scope_id), run_identity, cancel_flag)
+            && let Some(managed) = guard.get_mut(scope_id)
+        {
+            managed.progress.processed_files = (idx + 1) as u32;
+            managed.progress.indexed_segments = working_index.segments().len() as u32;
+            managed.progress.index_generation = working_index.index_generation;
         }
     }
 

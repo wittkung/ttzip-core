@@ -9,6 +9,9 @@ authors = ["Witt Kung <witt.w.kung@gmail.com>"]
 license = "BSD-3-Clause"
 description = "TTZip EmbeddingGemma 2 GGUF & llama.cpp Semantic Indexing and Hybrid Search Engine"
 
+[lints]
+workspace = true
+
 [dependencies]
 blake3 = "1.5"
 libc = "0.2"

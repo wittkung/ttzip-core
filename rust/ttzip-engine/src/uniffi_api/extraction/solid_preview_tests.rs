@@ -226,3 +226,257 @@ fn automatic_preview_decodes_the_same_open_input() {
         Err(ArchiveEntryPreviewError::Terminal(TTZipError::Cancelled))
     ));
 }
+
+fn wrap_7z_archive(payload: &[u8], next_header: &[u8]) -> Vec<u8> {
+    use crate::crypto::crc32::crc32_fast;
+    use crate::sevenz::format::SevenZSignatureHeader;
+
+    let signature = SevenZSignatureHeader {
+        major_version: 0,
+        minor_version: 4,
+        start_header_crc: 0,
+        next_header_offset: payload.len() as u64,
+        next_header_size: next_header.len() as u64,
+        next_header_crc: crc32_fast(0, next_header),
+    }
+    .serialize();
+    let mut out = Vec::with_capacity(signature.len() + payload.len() + next_header.len());
+    out.extend_from_slice(&signature);
+    out.extend_from_slice(payload);
+    out.extend_from_slice(next_header);
+    out
+}
+
+fn build_plain_lzma2_fixture_parts() -> (Vec<u8>, Vec<u8>) {
+    use crate::crypto::crc32::crc32_fast;
+    use crate::sevenz::format::METHOD_LZMA2;
+    use crate::sevenz::writer::build_7z_metadata_header;
+    use crate::zip::writer::ZipInputItem;
+
+    let tail = b"02-tail\n";
+    let mut payload = Vec::from(LZMA2_PREVIEW_TARGET);
+    payload.extend_from_slice(tail);
+    let items = [
+        (LZMA2_PREVIEW_ENTRY, LZMA2_PREVIEW_TARGET),
+        ("02-tail.bin", tail.as_slice()),
+    ]
+    .map(|(rel_path, data)| ZipInputItem {
+        rel_path: rel_path.to_string(),
+        data: data.to_vec(),
+        mtime_epoch_secs: 0,
+        mode: 0o100644,
+        is_directory: false,
+    });
+    let sizes = [LZMA2_PREVIEW_TARGET.len() as u64, tail.len() as u64];
+    let crcs = [crc32_fast(0, LZMA2_PREVIEW_TARGET), crc32_fast(0, tail)];
+    let header = build_7z_metadata_header(
+        &items,
+        &sizes,
+        &crcs,
+        payload.len() as u64,
+        payload.len() as u64,
+        METHOD_LZMA2,
+        &[0x00],
+    );
+    (payload, header)
+}
+
+fn assert_solid_preview_rejects_corrupt(temp: &Path, name: &str, archive_bytes: &[u8]) {
+    let path = temp.join(name);
+    std::fs::write(&path, archive_bytes).expect("write corrupt 7z fixture");
+    assert_eq!(
+        crate::sevenz::decoder::SevenZArchive::open_slice(archive_bytes).err(),
+        Some(TTZipStatus::ErrCorruptHeader),
+        "{name}: standard open_slice must reject corrupt header"
+    );
+    let direct = read_lzma2_preview_fixture(path.to_str().unwrap(), 40, 66, &|| false);
+    assert!(
+        matches!(direct, Err(TTZipError::CorruptHeader { .. })),
+        "{name}: solid preview from path must return CorruptHeader, got {direct:?}"
+    );
+    let selected = super::solid_preview::extract_selected_solid_preview(
+        archive_bytes,
+        LZMA2_PREVIEW_ENTRY,
+        0,
+        &|| false,
+    );
+    assert!(
+        matches!(selected, Err(TTZipError::CorruptHeader { .. })),
+        "{name}: selected solid preview must return CorruptHeader, got {selected:?}"
+    );
+    let auto = extract_single_entry_for_preview(
+        path.to_str().unwrap().to_owned(),
+        LZMA2_PREVIEW_ENTRY.to_owned(),
+        None,
+        &CancellationToken::new(),
+    );
+    assert!(
+        matches!(auto, Err(ArchiveEntryPreviewError::Legacy(TTZipError::CorruptHeader { .. }))),
+        "{name}: automatic preview must return CorruptHeader, got {auto:?}"
+    );
+}
+
+#[test]
+fn solid_preview_rejects_corrupt_coder_descriptors_without_panicking() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let (payload, lzma2_header) = build_plain_lzma2_fixture_parts();
+    let coder_pos = lzma2_header
+        .windows(4)
+        .position(|w| w == [0x21, 0x21, 0x01, 0x00])
+        .expect("locate LZMA2 coder descriptor");
+
+    let mut overflow_header = lzma2_header[..coder_pos + 2].to_vec();
+    overflow_header.extend_from_slice(&[0xFF; 9]);
+    overflow_header.extend_from_slice(&lzma2_header[coder_pos + 3..]);
+    assert_solid_preview_rejects_corrupt(
+        temp.path(),
+        "overflow-coder-props.7z",
+        &wrap_7z_archive(&payload, &overflow_header),
+    );
+
+    let mut truncated_header = lzma2_header[..coder_pos + 2].to_vec();
+    truncated_header.push(0x7F);
+    truncated_header.extend_from_slice(&lzma2_header[coder_pos + 3..]);
+    assert_solid_preview_rejects_corrupt(
+        temp.path(),
+        "truncated-coder-props.7z",
+        &wrap_7z_archive(&payload, &truncated_header),
+    );
+
+    let mut reserved_flags_header = lzma2_header;
+    reserved_flags_header[coder_pos] = 0x61;
+    assert_solid_preview_rejects_corrupt(
+        temp.path(),
+        "reserved-coder-flags.7z",
+        &wrap_7z_archive(&payload, &reserved_flags_header),
+    );
+}
+
+#[test]
+fn solid_preview_rejects_duplicate_unclosed_and_trailing_header_sections() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let (payload, lzma2_header) = build_plain_lzma2_fixture_parts();
+
+    let files_pos = lzma2_header
+        .windows(3)
+        .position(|w| w == [0x00, 0x05, 0x02])
+        .expect("locate FilesInfo section")
+        + 1;
+    let mut dup_files_header = lzma2_header[..lzma2_header.len() - 1].to_vec();
+    dup_files_header.extend_from_slice(&lzma2_header[files_pos..]);
+    let dup_archive = wrap_7z_archive(&payload, &dup_files_header);
+    let dup_path = temp.path().join("dup-files-info.7z");
+    std::fs::write(&dup_path, &dup_archive).expect("write dup archive");
+
+    let dup_direct = read_lzma2_preview_fixture(dup_path.to_str().unwrap(), 40, 66, &|| false);
+    assert!(matches!(
+        dup_direct,
+        Err(TTZipError::EngineError { code }) if code == TTZipStatus::ErrUnsupportedFeature as i32
+    ));
+    let dup_selected = super::solid_preview::extract_selected_solid_preview(
+        &dup_archive,
+        LZMA2_PREVIEW_ENTRY,
+        0,
+        &|| false,
+    );
+    assert!(matches!(dup_selected, Err(TTZipError::SecurityViolation { .. })));
+
+    let mut unclosed_header = lzma2_header.clone();
+    unclosed_header.pop();
+    let unclosed_archive = wrap_7z_archive(&payload, &unclosed_header);
+    let unclosed_selected = super::solid_preview::extract_selected_solid_preview(
+        &unclosed_archive,
+        LZMA2_PREVIEW_ENTRY,
+        0,
+        &|| false,
+    );
+    assert!(matches!(unclosed_selected, Err(TTZipError::CorruptHeader { .. })));
+
+    let mut trailing_header = lzma2_header;
+    trailing_header.push(0x00);
+    let trailing_archive = wrap_7z_archive(&payload, &trailing_header);
+    let trailing_selected = super::solid_preview::extract_selected_solid_preview(
+        &trailing_archive,
+        LZMA2_PREVIEW_ENTRY,
+        0,
+        &|| false,
+    );
+    assert!(matches!(trailing_selected, Err(TTZipError::CorruptHeader { .. })));
+}
+
+#[test]
+fn automatic_preview_honors_cancellation_across_plain_encoded_and_zip_routes() {
+    use crate::crypto::crc32::crc32_fast;
+    use crate::sevenz::format::{METHOD_COPY, build_7z_encoded_header_boot};
+    use crate::sevenz::writer::build_7z_metadata_header;
+    use crate::types::TTZipCreateOptions;
+    use crate::zip::writer::{ZipInputItem, create_zip_archive};
+
+    let temp = tempfile::tempdir().expect("tempdir");
+    let copy_item = [ZipInputItem {
+        rel_path: LZMA2_PREVIEW_ENTRY.to_string(),
+        data: LZMA2_PREVIEW_TARGET.to_vec(),
+        mtime_epoch_secs: 0,
+        mode: 0o100644,
+        is_directory: false,
+    }];
+    let target_crc = crc32_fast(0, LZMA2_PREVIEW_TARGET);
+    let copy_header = build_7z_metadata_header(
+        &copy_item,
+        &[LZMA2_PREVIEW_TARGET.len() as u64],
+        &[target_crc],
+        LZMA2_PREVIEW_TARGET.len() as u64,
+        LZMA2_PREVIEW_TARGET.len() as u64,
+        METHOD_COPY,
+        &[],
+    );
+    let plain_path = temp.path().join("plain-copy.7z");
+    std::fs::write(&plain_path, wrap_7z_archive(LZMA2_PREVIEW_TARGET, &copy_header))
+        .expect("write plain copy 7z");
+
+    let mut encoded_payload = Vec::from(LZMA2_PREVIEW_TARGET);
+    let boot = build_7z_encoded_header_boot(
+        encoded_payload.len() as u64,
+        copy_header.len() as u64,
+        copy_header.len() as u64,
+        crc32_fast(0, &copy_header),
+        METHOD_COPY,
+        &[],
+        None,
+    );
+    encoded_payload.extend_from_slice(&copy_header);
+    let encoded_path = temp.path().join("encoded-copy.7z");
+    std::fs::write(&encoded_path, wrap_7z_archive(&encoded_payload, &boot))
+        .expect("write encoded copy 7z");
+
+    let entry_file = temp.path().join(LZMA2_PREVIEW_ENTRY);
+    std::fs::write(&entry_file, LZMA2_PREVIEW_TARGET).expect("write zip input");
+    let zip_path = temp.path().join("control.zip");
+    create_zip_archive(&zip_path, &[entry_file], &TTZipCreateOptions::default())
+        .expect("create zip control");
+
+    for path in [&plain_path, &encoded_path, &zip_path] {
+        let path_str = path.to_str().unwrap().to_owned();
+        let bytes = extract_single_entry_for_preview(
+            path_str.clone(),
+            LZMA2_PREVIEW_ENTRY.to_owned(),
+            None,
+            &CancellationToken::new(),
+        )
+        .unwrap_or_else(|err| panic!("{path:?} uncancelled preview must succeed: {err:?}"));
+        assert_eq!(bytes, LZMA2_PREVIEW_TARGET);
+
+        let token = CancellationToken::new();
+        token.cancel();
+        let cancelled = extract_single_entry_for_preview(
+            path_str,
+            LZMA2_PREVIEW_ENTRY.to_owned(),
+            None,
+            &token,
+        );
+        assert!(
+            matches!(cancelled, Err(ArchiveEntryPreviewError::Terminal(TTZipError::Cancelled))),
+            "{path:?} cancelled preview must return terminal Cancelled: {cancelled:?}"
+        );
+    }
+}

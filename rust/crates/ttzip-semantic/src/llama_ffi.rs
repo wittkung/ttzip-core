@@ -200,10 +200,10 @@ impl LlamaRuntimeEngine {
         &self,
         session: &mut LlamaSession,
     ) -> Result<SemanticModelInfo, SemanticModelError> {
-        if let SemanticModelState::Ready(ref info) = session.state {
-            if !session.bridge_ptr.is_null() {
-                return Ok(info.clone());
-            }
+        if let SemanticModelState::Ready(ref info) = session.state
+            && !session.bridge_ptr.is_null()
+        {
+            return Ok(info.clone());
         }
         self.publish_state(SemanticModelState::Verifying);
         let result = Self::ensure_loaded_locked(&self.config, session);
@@ -215,10 +215,10 @@ impl LlamaRuntimeEngine {
         config: &LlamaRuntimeConfig,
         session: &mut LlamaSession,
     ) -> Result<SemanticModelInfo, SemanticModelError> {
-        if let SemanticModelState::Ready(ref info) = session.state {
-            if !session.bridge_ptr.is_null() {
-                return Ok(info.clone());
-            }
+        if let SemanticModelState::Ready(ref info) = session.state
+            && !session.bridge_ptr.is_null()
+        {
+            return Ok(info.clone());
         }
         session.state = SemanticModelState::Verifying;
 

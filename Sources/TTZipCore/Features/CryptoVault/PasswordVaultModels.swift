@@ -335,7 +335,23 @@ public final class ArchivePasswordStore: @unchecked Sendable {
     public func removePassword(for path: String) {
         lock.lock()
         defer { lock.unlock() }
+        removePasswordLocked(normalizedPath: normalize(path))
+    }
+
+    /// Removes the cached credential only if the currently stored password still equals `expected`.
+    /// The comparison, memory erasure, and LRU removal share one lock; no suspension is allowed.
+    @discardableResult
+    public func removePassword(for path: String, ifCurrentPasswordIs expected: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
         let normPath = normalize(path)
+        guard passwords[normPath] == expected else { return false }
+        removePasswordLocked(normalizedPath: normPath)
+        return true
+    }
+
+    /// Requires `lock` to be held by the caller.
+    private func removePasswordLocked(normalizedPath normPath: String) {
         if var pwd = passwords.removeValue(forKey: normPath) {
             eraseSensitiveString(&pwd)
         }

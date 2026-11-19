@@ -100,10 +100,10 @@ pub fn is_excluded_relative_path(rel_path: &str) -> bool {
     if file_name.starts_with(".env") || file_name == "id_rsa" || file_name == "id_ed25519" {
         return true;
     }
-    if let Some(ext) = Path::new(&file_name).extension().and_then(|e| e.to_str()) {
-        if EXCLUDED_EXTENSIONS.contains(&ext) {
-            return true;
-        }
+    if let Some(ext) = Path::new(&file_name).extension().and_then(|e| e.to_str())
+        && EXCLUDED_EXTENSIONS.contains(&ext)
+    {
+        return true;
     }
     false
 }

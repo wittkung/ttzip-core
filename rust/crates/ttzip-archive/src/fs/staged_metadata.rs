@@ -519,12 +519,8 @@ pub fn apply_entry_metadata_in_jail_with_mask(
 
 const PARALLEL_METADATA_MIN_FILES: usize = 64;
 
-fn shared_metadata_pool() -> &'static LocalWorkStealingPool {
-    static META_POOL: OnceLock<LocalWorkStealingPool> = OnceLock::new();
-    META_POOL.get_or_init(|| {
-        let threads = ttzip_types::recommended_compute_threads().clamp(2, 6);
-        LocalWorkStealingPool::with_threads(threads)
-    })
+fn shared_metadata_pool() -> LocalWorkStealingPool {
+    crate::archive::shared_compute_pool(ttzip_types::recommended_compute_threads().clamp(2, 6))
 }
 
 /// Applies non-directory file metadata in parallel across a bounded worker pool while preserving

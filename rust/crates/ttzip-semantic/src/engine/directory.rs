@@ -116,10 +116,13 @@ impl SemanticSearchCoordinator {
         if !had_directory_read_error && !cancel_flag.load(Ordering::SeqCst) {
             let guard = self.scopes.read().unwrap_or_else(|e| e.into_inner());
             if let Some(managed) = guard.get(scope_id) {
-                removed_paths.extend(managed.index.files().filter_map(|file| {
-                    (!seen.contains(file.relative_path.as_str()))
-                        .then(|| file.relative_path.clone())
-                }));
+                removed_paths.extend(
+                    managed
+                        .index
+                        .files()
+                        .filter(|file| !seen.contains(file.relative_path.as_str()))
+                        .map(|file| file.relative_path.clone()),
+                );
             }
         }
         DirectoryFileEventStream {
