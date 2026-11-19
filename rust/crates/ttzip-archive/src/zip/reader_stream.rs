@@ -29,6 +29,17 @@ thread_local! {
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
+#[inline]
+pub(super) fn compare_zip_entry_schedule(size_a: u64, size_b: u64) -> std::cmp::Ordering {
+    const LARGE_FILE_PRIORITY_BYTES: u64 = 64 * 1024;
+    match (size_a >= LARGE_FILE_PRIORITY_BYTES, size_b >= LARGE_FILE_PRIORITY_BYTES) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        (true, true) => size_b.cmp(&size_a),
+        (false, false) => std::cmp::Ordering::Equal,
+    }
+}
+
 /// Parses all Central Directory entries from a seekable ZIP stream (`VirtualMultiVolumeReader`).
 pub fn parse_entries_from_reader<R: Read + Seek>(
     reader: &mut R,
@@ -479,7 +490,9 @@ fn extract_reader_entry_to_disk<R: Read + Seek>(
     }
     let mut inflight = crate::fs::abort_guard::InFlightJailFile::open(ctx.jail, out_rel, ctx.overwrite)?;
     if entry.uncompressed_size > 0 {
-        let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), entry.uncompressed_size);
+        if entry.uncompressed_size >= crate::fs::apfs::MIN_ENTRY_PREALLOCATE_BYTES {
+            let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), entry.uncompressed_size);
+        }
         extract_zip_entry_to_sink_from_reader(
             reader, ctx.total_len, entry, ctx.password, inflight.file_mut(), Some(ctx.sheet),
         )?;

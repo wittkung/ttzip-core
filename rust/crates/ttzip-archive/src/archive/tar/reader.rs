@@ -15,9 +15,7 @@ use std::fs;
 use std::io::Write;
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::Arc;
-use ttzip_types::scheduler::LocalWorkStealingPool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use ttzip_types::ProgressAtomicSheet;
 
 /// Extraction report summarizing processed entries and byte counts.
@@ -119,26 +117,18 @@ impl<'a> TarArchive<'a> {
         }
 
         let file_indices = self.collect_non_dir_file_indices();
-        let processed_bytes = Arc::new(AtomicU64::new(0));
-        let cancel_flag = Arc::new(AtomicBool::new(false));
+        let thread_budget = ttzip_types::resolve_thread_budget(options.thread_budget);
 
         if Self::should_extract_tar_sequentially(options, file_indices.len(), has_links) {
             self.extract_files_sequential(
                 &jail,
                 &file_indices,
-                &processed_bytes,
                 total_uncomp_bytes,
                 options,
                 sheet,
             )?;
         } else {
-            self.extract_files_parallel(
-                &jail,
-                &file_indices,
-                &processed_bytes,
-                &cancel_flag,
-                sheet,
-            )?;
+            self.extract_files_parallel(&jail, &file_indices, thread_budget, sheet)?;
         }
 
         if has_links {
@@ -154,13 +144,13 @@ impl<'a> TarArchive<'a> {
         })
     }
 
-    fn should_extract_tar_sequentially(
+    pub(crate) fn should_extract_tar_sequentially(
         options: &TTZipExtractOptions,
         file_count: usize,
         has_links: bool,
     ) -> bool {
-        let thread_budget = (options.thread_budget as usize).clamp(1, 64);
-        thread_budget <= 1 || file_count <= 4 || has_links || options.progress_callback.is_some()
+        let resolved = ttzip_types::resolve_thread_budget(options.thread_budget);
+        resolved <= 1 || file_count <= 4 || has_links || options.progress_callback.is_some()
     }
 
     fn collect_non_dir_file_indices(&self) -> Vec<usize> {
@@ -226,19 +216,18 @@ impl<'a> TarArchive<'a> {
         &self,
         jail: &DirJail,
         file_indices: &[usize],
-        processed_bytes: &AtomicU64,
         total_uncomp_bytes: u64,
         options: &TTZipExtractOptions,
         sheet: Option<&ProgressAtomicSheet>,
     ) -> Result<(), TTZipStatus> {
         let mut deferred_hardlinks = crate::fs::abort_guard::DeferredHardlinks::default();
+        let mut processed_bytes = 0u64;
         for &idx in file_indices {
             if sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
                 return Err(TTZipStatus::Cancelled);
             }
             let entry = &self.entries[idx];
-            let current_done =
-                processed_bytes.fetch_add(entry.size, Ordering::Relaxed) + entry.size;
+            processed_bytes = processed_bytes.saturating_add(entry.size);
             self.extract_single_tar_entry_to_jail(
                 jail,
                 idx,
@@ -246,7 +235,7 @@ impl<'a> TarArchive<'a> {
                 Some(&mut deferred_hardlinks),
                 Some(TarProgressCheck {
                     options,
-                    current_done,
+                    current_done: processed_bytes,
                     total_uncomp_bytes,
                     sheet,
                 }),
@@ -259,22 +248,19 @@ impl<'a> TarArchive<'a> {
         &self,
         jail: &DirJail,
         file_indices: &[usize],
-        processed_bytes: &AtomicU64,
-        cancel_flag: &AtomicBool,
+        thread_budget: usize,
         sheet: Option<&ProgressAtomicSheet>,
     ) -> Result<(), TTZipStatus> {
-        let num_threads = ttzip_types::recommended_compute_threads()
-            .min(file_indices.len())
-            .max(1);
+        let num_threads = thread_budget.min(file_indices.len()).max(1);
         let next_work_idx = std::sync::atomic::AtomicUsize::new(0);
+        let cancel_flag = AtomicBool::new(false);
         let first_error: parking_lot::Mutex<Option<TTZipStatus>> = parking_lot::Mutex::new(None);
-        let pool = LocalWorkStealingPool::with_threads(num_threads);
+        let pool = crate::archive::shared_compute_pool(thread_budget);
         let state = TarParallelWorkerState {
             jail,
             file_indices,
             next_work_idx: &next_work_idx,
-            processed_bytes,
-            cancel_flag,
+            cancel_flag: &cancel_flag,
             first_error: &first_error,
             sheet,
         };
@@ -333,7 +319,6 @@ impl<'a> TarArchive<'a> {
                     sheet: Some(s),
                 }),
             )?;
-            state.processed_bytes.fetch_add(entry.size, Ordering::Relaxed);
         }
         Ok(())
     }
@@ -351,7 +336,9 @@ impl<'a> TarArchive<'a> {
         let mut inflight =
             crate::fs::abort_guard::InFlightJailFile::open(jail, &entry.path, true)?;
         if entry.size > 0 {
-            let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), entry.size);
+            if entry.size >= crate::fs::apfs::MIN_ENTRY_PREALLOCATE_BYTES {
+                let _ = apfs_preallocate_entry(inflight.file_mut().as_raw_fd(), entry.size);
+            }
             for chunk in payload.chunks(256 * 1024) {
                 if sheet.is_some_and(ProgressAtomicSheet::is_cancelled) {
                     return Err(TTZipStatus::Cancelled);
@@ -468,7 +455,6 @@ struct TarParallelWorkerState<'a> {
     jail: &'a DirJail,
     file_indices: &'a [usize],
     next_work_idx: &'a std::sync::atomic::AtomicUsize,
-    processed_bytes: &'a AtomicU64,
     cancel_flag: &'a AtomicBool,
     first_error: &'a parking_lot::Mutex<Option<TTZipStatus>>,
     sheet: Option<&'a ProgressAtomicSheet>,

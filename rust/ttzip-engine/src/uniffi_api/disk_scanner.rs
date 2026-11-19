@@ -3,17 +3,19 @@
 
 //! Mozilla UniFFI Concurrent Directory Scanner & POSIX Path Normalization Layer.
 
+use std::cell::Cell;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use super::defensive;
 use super::types::{DiskItemSummary, PathSuggestionItem, TTZipError, UniFFIParentAndPrefix};
 
-static LAST_SCAN_IO_ERROR_COUNT: AtomicU64 = AtomicU64::new(0);
+thread_local! {
+    static LAST_SCAN_IO_ERROR_COUNT: Cell<u64> = const { Cell::new(0) };
+}
 
-/// Returns the number of per-entry or subdirectory I/O errors encountered during the most recent `scan_directory` call.
+/// Returns the number of per-entry or subdirectory I/O errors encountered during the most recent `scan_directory` call on the current thread.
 #[inline]
 pub fn last_scan_io_error_count() -> u64 {
-    LAST_SCAN_IO_ERROR_COUNT.load(Ordering::Relaxed)
+    LAST_SCAN_IO_ERROR_COUNT.with(Cell::get)
 }
 
 #[cfg(target_os = "macos")]
@@ -79,7 +81,7 @@ pub fn scan_directory_with_error_count(path: String, max_depth: u32) -> Result<(
     #[cfg(not(target_os = "macos"))]
     let items = scan_directory_fallback(&path, max_depth, &mut io_error_count)?;
 
-    LAST_SCAN_IO_ERROR_COUNT.store(io_error_count, Ordering::Relaxed);
+    LAST_SCAN_IO_ERROR_COUNT.with(|slot| slot.set(io_error_count));
     if io_error_count > 0 {
         log::debug!("scan_directory completed with {io_error_count} non-fatal entry/subdir I/O error(s)");
     }

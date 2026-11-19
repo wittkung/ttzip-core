@@ -17,7 +17,10 @@ use super::create_transaction::{
     ArchiveCleanupDisposition, CreateFileAccessMode, CreateTransactionContext,
     FileFinishSyncPolicy, ResidualPathRole, StageCleanupFailure,
 };
-use super::format_config::{configure_archive_write_format, validate_creatable_format};
+use super::format_config::{
+    build_gzip_stream_config, configure_archive_write_format, validate_creatable_format,
+    GzipTargetStreamWriter,
+};
 use crate::archive::split::SplitVolumeWriter;
 use crate::ffi::archive_ffi::guards::{ArchiveEntryGuard, ArchiveWriteGuard};
 use crate::ffi::archive_ffi::sys::*;
@@ -133,6 +136,29 @@ fn write_zstd_to_counting(
     Ok(counting.bytes_written)
 }
 
+fn write_gzip_to_counting(
+    source_paths: &[PathBuf],
+    counting: &mut CountingStreamWriter<'_>,
+    options: &TTZipCreateOptions,
+    is_raw_stream: bool,
+) -> Result<u64, TTZipStatus> {
+    let config = build_gzip_stream_config(options);
+    {
+        let mut gw = GzipTargetStreamWriter::new(&mut *counting, config);
+        if is_raw_stream {
+            let mut src = File::open(&source_paths[0]).map_err(|_| TTZipStatus::ErrFileNotFound)?;
+            std::io::copy(&mut src, &mut gw).map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+        } else {
+            gw = crate::archive::tar::write_tar_to_writer(source_paths, gw, options)?;
+        }
+        gw.finish()?;
+    }
+    counting
+        .flush()
+        .map_err(|_| TTZipStatus::ErrCompressionFailed)?;
+    Ok(counting.bytes_written)
+}
+
 fn write_snappy_to_counting(
     source_paths: &[PathBuf],
     counting: &mut CountingStreamWriter<'_>,
@@ -230,6 +256,12 @@ pub fn create_archive_to_writer<W: Write>(
         TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd
     ) {
         return write_zstd_to_counting(source_paths, &mut counting, options, is_raw_stream);
+    }
+    if matches!(
+        resolved_format,
+        TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip
+    ) {
+        return write_gzip_to_counting(source_paths, &mut counting, options, is_raw_stream);
     }
     if resolved_format == TTZipArchiveFormat::Tar {
         crate::archive::tar::write_tar_to_writer(source_paths, &mut counting, options)?;

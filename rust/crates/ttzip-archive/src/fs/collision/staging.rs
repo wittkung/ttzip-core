@@ -116,12 +116,47 @@ pub(crate) fn remove_dir_contents_by_fd(dir_fd: RawFd) -> Result<(), std::io::Er
     Ok(())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum OwnedDirRemovalErrorKind {
+    IdentityMismatchRestored,
+    IdentityMismatchRestoreOccupied,
+    IdentityMismatchLocationUnconfirmed,
+    OwnershipMismatchRefused,
+    IoError,
+}
+
+#[derive(Debug)]
+pub(crate) struct OwnedDirRemovalError {
+    pub(crate) kind: OwnedDirRemovalErrorKind,
+    pub(crate) io_err: std::io::Error,
+}
+
+impl OwnedDirRemovalError {
+    #[inline]
+    fn new(kind: OwnedDirRemovalErrorKind, io_err: std::io::Error) -> Self {
+        Self { kind, io_err }
+    }
+
+    #[inline]
+    fn io(io_err: std::io::Error) -> Self {
+        Self {
+            kind: OwnedDirRemovalErrorKind::IoError,
+            io_err,
+        }
+    }
+
+    #[inline]
+    pub(crate) fn into_io_error(self) -> std::io::Error {
+        self.io_err
+    }
+}
+
 fn format_quarantined_rmdir_err(
     orig_dir_path: &Path,
     q_path: &Path,
     expected_parent_id: (u64, u64),
     rmdir_err: std::io::Error,
-) -> std::io::Error {
+) -> OwnedDirRemovalError {
     let errno = rmdir_err.raw_os_error().unwrap_or(libc::EIO);
     let msg = format!(
         "quarantined staging directory rmdir failed (outcome=quarantined_rmdir_failed, orig_path='{}', quarantine_path='{}', parent_id={:?}, os_err={errno}: {rmdir_err}); residual owned directory remains at quarantine path",
@@ -129,7 +164,7 @@ fn format_quarantined_rmdir_err(
         q_path.display(),
         expected_parent_id,
     );
-    std::io::Error::new(rmdir_err.kind(), msg)
+    OwnedDirRemovalError::io(std::io::Error::new(rmdir_err.kind(), msg))
 }
 
 fn restore_quarantined_dir_sentinel(
@@ -140,7 +175,7 @@ fn restore_quarantined_dir_sentinel(
     dir_name: &CStr,
     q_name: &CStr,
     observed_id: Option<(u64, u64)>,
-) -> std::io::Error {
+) -> OwnedDirRemovalError {
     let flags: libc::c_uint = (crate::fs::collision::fs_ops::RENAME_EXCL
         | crate::fs::collision::fs_ops::RENAME_NOFOLLOW_ANY) as libc::c_uint;
     let rc = unsafe {
@@ -152,46 +187,58 @@ fn restore_quarantined_dir_sentinel(
             _ => false,
         };
         if verified {
-            return std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                format!(
-                    "staging directory replaced between identity check and rmdir (outcome=identity_mismatch_restored, restored_path='{}', quarantine_name='{}', parent_id={:?}); restored sentinel",
-                    orig_dir_path.display(),
-                    q_name.to_string_lossy(),
-                    expected_parent_id,
+            return OwnedDirRemovalError::new(
+                OwnedDirRemovalErrorKind::IdentityMismatchRestored,
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    format!(
+                        "staging directory replaced between identity check and rmdir (outcome=identity_mismatch_restored, restored_path='{}', quarantine_name='{}', parent_id={:?}); restored sentinel",
+                        orig_dir_path.display(),
+                        q_name.to_string_lossy(),
+                        expected_parent_id,
+                    ),
                 ),
             );
         }
-        return std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!(
-                "staging directory replaced between identity check and rmdir, but post-restore verification did not match (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', quarantine_path='{}', parent_id={:?})",
-                orig_dir_path.display(),
-                q_path.display(),
-                expected_parent_id,
+        return OwnedDirRemovalError::new(
+            OwnedDirRemovalErrorKind::IdentityMismatchLocationUnconfirmed,
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "staging directory replaced between identity check and rmdir, but post-restore verification did not match (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', quarantine_path='{}', parent_id={:?})",
+                    orig_dir_path.display(),
+                    q_path.display(),
+                    expected_parent_id,
+                ),
             ),
         );
     }
     let restore_err = std::io::Error::last_os_error();
     let errno = restore_err.raw_os_error().unwrap_or(libc::EIO);
     if errno == libc::EEXIST {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!(
-                "staging directory replaced between identity check and rmdir and original leaf was occupied during restore (outcome=identity_mismatch_restore_occupied, sentinel_preserved_at_quarantine_path='{}', occupant_preserved_at_original_path='{}', parent_id={:?}, os_err={errno}); sentinel NOT restored to original name",
-                q_path.display(),
-                orig_dir_path.display(),
-                expected_parent_id,
+        OwnedDirRemovalError::new(
+            OwnedDirRemovalErrorKind::IdentityMismatchRestoreOccupied,
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "staging directory replaced between identity check and rmdir and original leaf was occupied during restore (outcome=identity_mismatch_restore_occupied, sentinel_preserved_at_quarantine_path='{}', occupant_preserved_at_original_path='{}', parent_id={:?}, os_err={errno}); sentinel NOT restored to original name",
+                    q_path.display(),
+                    orig_dir_path.display(),
+                    expected_parent_id,
+                ),
             ),
         )
     } else {
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!(
-                "staging directory replaced between identity check and rmdir and restore rename failed (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', quarantine_path='{}', parent_id={:?}, os_err={errno}: {restore_err})",
-                orig_dir_path.display(),
-                q_path.display(),
-                expected_parent_id,
+        OwnedDirRemovalError::new(
+            OwnedDirRemovalErrorKind::IdentityMismatchLocationUnconfirmed,
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "staging directory replaced between identity check and rmdir and restore rename failed (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', quarantine_path='{}', parent_id={:?}, os_err={errno}: {restore_err})",
+                    orig_dir_path.display(),
+                    q_path.display(),
+                    expected_parent_id,
+                ),
             ),
         )
     }
@@ -204,12 +251,15 @@ pub(crate) fn quarantine_verify_and_rmdir(
     dir_path: &Path,
     dir_name: &CStr,
     expected_dir_id: (u64, u64),
-) -> Result<(), std::io::Error> {
+) -> Result<(), OwnedDirRemovalError> {
     let pid = std::process::id();
     let seq = DIR_QUARANTINE_SEQ.fetch_add(1, Ordering::Relaxed);
     let q_str = format!(".ttzip_dir_q_{pid}_{seq}");
     let q_name = CString::new(q_str.as_bytes()).map_err(|_| {
-        std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid quarantine name")
+        OwnedDirRemovalError::io(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "invalid quarantine name",
+        ))
     })?;
     let q_path = parent_path.join(&q_str);
     let flags: libc::c_uint = (crate::fs::collision::fs_ops::RENAME_EXCL
@@ -224,7 +274,7 @@ pub(crate) fn quarantine_verify_and_rmdir(
         )
     } != 0
     {
-        return Err(std::io::Error::last_os_error());
+        return Err(OwnedDirRemovalError::io(std::io::Error::last_os_error()));
     }
     run_staging_after_quarantine_hook(dir_path, &q_path);
     match fstatat_dev_ino_nofollow(parent_fd, &q_name) {
@@ -257,7 +307,7 @@ pub(crate) fn quarantine_verify_and_rmdir(
     }
 }
 
-pub(crate) fn verify_and_remove_owned_dir(
+pub(crate) fn verify_and_remove_owned_dir_typed(
     parent_path: &Path,
     parent_fd: RawFd,
     expected_parent_id: (u64, u64),
@@ -265,29 +315,36 @@ pub(crate) fn verify_and_remove_owned_dir(
     dir_name: &CStr,
     dir_fd: RawFd,
     expected_dir_id: (u64, u64),
-) -> Result<(), std::io::Error> {
-    let (p_dev, p_ino, p_mode) = path_dev_ino_nofollow(parent_path)?;
+) -> Result<(), OwnedDirRemovalError> {
+    let (p_dev, p_ino, p_mode) =
+        path_dev_ino_nofollow(parent_path).map_err(OwnedDirRemovalError::io)?;
     if (p_mode & libc::S_IFMT) != libc::S_IFDIR || (p_dev, p_ino) != expected_parent_id {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!(
-                "parent directory identity changed (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', expected_parent_id={:?}, observed_parent_id={:?}); refusing staging directory cleanup",
-                dir_path.display(),
-                expected_parent_id,
-                (p_dev, p_ino)
+        return Err(OwnedDirRemovalError::new(
+            OwnedDirRemovalErrorKind::IdentityMismatchLocationUnconfirmed,
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!(
+                    "parent directory identity changed (outcome=identity_mismatch_location_unconfirmed, orig_path='{}', expected_parent_id={:?}, observed_parent_id={:?}); refusing staging directory cleanup",
+                    dir_path.display(),
+                    expected_parent_id,
+                    (p_dev, p_ino)
+                ),
             ),
         ));
     }
     match fstatat_dev_ino_nofollow(parent_fd, dir_name) {
         Ok((dev, ino, mode)) => {
             if (mode & libc::S_IFMT) != libc::S_IFDIR || (dev, ino) != expected_dir_id {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    format!(
-                        "staging directory path '{}' replaced by another inode (expected={:?}, observed={:?}); refusing destructive cleanup",
-                        dir_path.display(),
-                        expected_dir_id,
-                        (dev, ino)
+                return Err(OwnedDirRemovalError::new(
+                    OwnedDirRemovalErrorKind::OwnershipMismatchRefused,
+                    std::io::Error::new(
+                        std::io::ErrorKind::InvalidData,
+                        format!(
+                            "staging directory path '{}' replaced by another inode (expected={:?}, observed={:?}); refusing destructive cleanup",
+                            dir_path.display(),
+                            expected_dir_id,
+                            (dev, ino)
+                        ),
                     ),
                 ));
             }
@@ -295,17 +352,20 @@ pub(crate) fn verify_and_remove_owned_dir(
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             if let Ok((_, _, _, nlink)) = fd_stat_info(dir_fd) {
                 if nlink >= 2 {
-                    return Err(std::io::Error::new(
-                        std::io::ErrorKind::InvalidData,
-                        "staging directory moved away from parent and remains linked",
+                    return Err(OwnedDirRemovalError::new(
+                        OwnedDirRemovalErrorKind::OwnershipMismatchRefused,
+                        std::io::Error::new(
+                            std::io::ErrorKind::InvalidData,
+                            "staging directory moved away from parent and remains linked",
+                        ),
                     ));
                 }
             }
             return Ok(());
         }
-        Err(e) => return Err(e),
+        Err(e) => return Err(OwnedDirRemovalError::io(e)),
     }
-    remove_dir_contents_by_fd(dir_fd)?;
+    remove_dir_contents_by_fd(dir_fd).map_err(OwnedDirRemovalError::io)?;
     run_staging_after_check_hook(dir_path);
     quarantine_verify_and_rmdir(
         parent_path,
@@ -315,6 +375,27 @@ pub(crate) fn verify_and_remove_owned_dir(
         dir_name,
         expected_dir_id,
     )
+}
+
+pub(crate) fn verify_and_remove_owned_dir(
+    parent_path: &Path,
+    parent_fd: RawFd,
+    expected_parent_id: (u64, u64),
+    dir_path: &Path,
+    dir_name: &CStr,
+    dir_fd: RawFd,
+    expected_dir_id: (u64, u64),
+) -> Result<(), std::io::Error> {
+    verify_and_remove_owned_dir_typed(
+        parent_path,
+        parent_fd,
+        expected_parent_id,
+        dir_path,
+        dir_name,
+        dir_fd,
+        expected_dir_id,
+    )
+    .map_err(OwnedDirRemovalError::into_io_error)
 }
 
 pub struct StagingRoot(pub PathBuf);

@@ -11,6 +11,11 @@
 //! 3. Symbolic links are validated against lexical stack underflow, ancestor-directory loops,
 //!    and multi-hop / chained symlinks via step-by-step `fstatat` inspection from `root_fd`.
 
+#[path = "dir_jail_cache.rs"]
+pub(crate) mod dir_jail_cache;
+
+pub(crate) use dir_jail_cache::{DirStepError, VerifiedDirHandle};
+
 use crate::fs::safe_extract::sanitize_and_validate_path;
 use crate::types::TTZipStatus;
 use std::ffi::{CStr, CString};
@@ -18,6 +23,7 @@ use std::fs::{self, File};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::FromRawFd;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Arc;
 
 #[inline]
 const fn dir_step_open_flags() -> libc::c_int {
@@ -68,6 +74,7 @@ pub struct DirJail {
     owns_fd: bool,
     dest_dir: PathBuf,
     canonical_dest_dir: Option<PathBuf>,
+    dir_cache: dir_jail_cache::DirFdCache,
 }
 
 impl Drop for DirJail {
@@ -115,6 +122,7 @@ impl DirJail {
             owns_fd: true,
             dest_dir: dest_dir.to_path_buf(),
             canonical_dest_dir: fs::canonicalize(dest_dir).ok(),
+            dir_cache: dir_jail_cache::DirFdCache::new(),
         })
     }
 
@@ -128,6 +136,7 @@ impl DirJail {
             owns_fd: false,
             dest_dir: PathBuf::new(),
             canonical_dest_dir: None,
+            dir_cache: dir_jail_cache::DirFdCache::new(),
         })
     }
 
@@ -185,7 +194,7 @@ impl DirJail {
 
     /// Step-by-step creates and validates a directory hierarchy from pre-validated components.
     pub fn create_dir_all_components(&self, comps: &[String]) -> Result<(), TTZipStatus> {
-        let _dir_fd = self.open_dir_chain(comps, true)?;
+        let _dir = self.resolve_dir_handle(comps, true)?;
         Ok(())
     }
 
@@ -208,10 +217,13 @@ impl DirJail {
         overwrite: bool,
     ) -> Result<File, TTZipStatus> {
         let (leaf, parent_comps) = comps.split_last().ok_or(TTZipStatus::ErrSecurityViolation)?;
-        let parent_guard = self.open_dir_chain(parent_comps, true)?;
+        let parent_handle = self.resolve_dir_handle(parent_comps, true)?;
+        let parent_fd = parent_handle
+            .as_ref()
+            .map_or(self.root_fd, |h| h.as_raw_fd());
         let leaf_c = CString::new(leaf.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
 
-        if let Some(existing_fmt) = fstatat_mode_type(parent_guard.fd, &leaf_c)? {
+        if let Some(existing_fmt) = fstatat_mode_type(parent_fd, &leaf_c)? {
             if existing_fmt == libc::S_IFLNK || existing_fmt == libc::S_IFDIR {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
@@ -223,7 +235,7 @@ impl DirJail {
         let create_mode = ((mode & 0o777) | 0o600) as libc::c_uint;
         let fd = unsafe {
             libc::openat(
-                parent_guard.fd,
+                parent_fd,
                 leaf_c.as_ptr(),
                 file_leaf_open_flags(overwrite),
                 create_mode,
@@ -267,7 +279,10 @@ impl DirJail {
         link_target: &str,
     ) -> Result<(), TTZipStatus> {
         let (leaf, parent_comps) = comps.split_last().ok_or(TTZipStatus::ErrSecurityViolation)?;
-        let parent_guard = self.open_dir_chain(parent_comps, true)?;
+        let parent_handle = self.resolve_dir_handle(parent_comps, true)?;
+        let parent_fd = parent_handle
+            .as_ref()
+            .map_or(self.root_fd, |h| h.as_raw_fd());
 
         self.validate_symlink_target_components(comps, parent_comps, link_target)?;
 
@@ -275,23 +290,25 @@ impl DirJail {
         let target_c =
             CString::new(link_target.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
 
-        if let Some(existing_fmt) = fstatat_mode_type(parent_guard.fd, &leaf_c)? {
+        if let Some(existing_fmt) = fstatat_mode_type(parent_fd, &leaf_c)? {
             if existing_fmt == libc::S_IFLNK || existing_fmt == libc::S_IFDIR {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
             unsafe {
-                libc::unlinkat(parent_guard.fd, leaf_c.as_ptr(), 0);
+                libc::unlinkat(parent_fd, leaf_c.as_ptr(), 0);
             }
         }
 
-        let rc = unsafe { libc::symlinkat(target_c.as_ptr(), parent_guard.fd, leaf_c.as_ptr()) };
+        self.dir_cache
+            .invalidate_prefix(&dir_jail_cache::join_components_key(comps));
+        let rc = unsafe { libc::symlinkat(target_c.as_ptr(), parent_fd, leaf_c.as_ptr()) };
         if rc != 0 {
             return Err(TTZipStatus::ErrExtractionFailed);
         }
 
         if let Err(err) = self.verify_all_jail_symlinks() {
             unsafe {
-                libc::unlinkat(parent_guard.fd, leaf_c.as_ptr(), 0);
+                libc::unlinkat(parent_fd, leaf_c.as_ptr(), 0);
             }
             return Err(err);
         }
@@ -326,23 +343,29 @@ impl DirJail {
             .split_last()
             .ok_or(TTZipStatus::ErrSecurityViolation)?;
 
-        let src_parent_guard = self.open_dir_chain(src_parent, false)?;
+        let src_parent_handle = self.resolve_dir_handle(src_parent, false)?;
+        let src_parent_fd = src_parent_handle
+            .as_ref()
+            .map_or(self.root_fd, |h| h.as_raw_fd());
         let src_leaf_c =
             CString::new(src_leaf.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-        match fstatat_mode_type(src_parent_guard.fd, &src_leaf_c)? {
+        match fstatat_mode_type(src_parent_fd, &src_leaf_c)? {
             Some(libc::S_IFREG) => {}
             Some(_) => return Err(TTZipStatus::ErrSecurityViolation),
             None => return Err(TTZipStatus::ErrFileNotFound),
         }
 
-        let (dst_parent_guard, dst_leaf_c) =
+        let (dst_parent_handle, dst_leaf_c) =
             self.prepare_hardlink_destination(dst_parent, dst_leaf)?;
+        let dst_parent_fd = dst_parent_handle
+            .as_ref()
+            .map_or(self.root_fd, |h| h.as_raw_fd());
 
         let rc = unsafe {
             libc::linkat(
-                src_parent_guard.fd,
+                src_parent_fd,
                 src_leaf_c.as_ptr(),
-                dst_parent_guard.fd,
+                dst_parent_fd,
                 dst_leaf_c.as_ptr(),
                 0,
             )
@@ -357,34 +380,50 @@ impl DirJail {
         &self,
         dst_parent: &[String],
         dst_leaf: &str,
-    ) -> Result<(OwnedFdGuard, CString), TTZipStatus> {
-        let dst_parent_guard = self.open_dir_chain(dst_parent, true)?;
+    ) -> Result<(Option<Arc<VerifiedDirHandle>>, CString), TTZipStatus> {
+        let dst_parent_handle = self.resolve_dir_handle(dst_parent, true)?;
+        let dst_parent_fd = dst_parent_handle
+            .as_ref()
+            .map_or(self.root_fd, |h| h.as_raw_fd());
         let dst_leaf_c =
             CString::new(dst_leaf.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-        if let Some(existing_fmt) = fstatat_mode_type(dst_parent_guard.fd, &dst_leaf_c)? {
+        if let Some(existing_fmt) = fstatat_mode_type(dst_parent_fd, &dst_leaf_c)? {
             if existing_fmt == libc::S_IFLNK || existing_fmt == libc::S_IFDIR {
                 return Err(TTZipStatus::ErrSecurityViolation);
             }
             unsafe {
-                libc::unlinkat(dst_parent_guard.fd, dst_leaf_c.as_ptr(), 0);
+                libc::unlinkat(dst_parent_fd, dst_leaf_c.as_ptr(), 0);
             }
         }
-        Ok((dst_parent_guard, dst_leaf_c))
+        Ok((dst_parent_handle, dst_leaf_c))
     }
 
-    fn open_dir_chain(
+    pub(crate) fn resolve_dir_handle_detailed(
         &self,
         comps: &[String],
         create_if_missing: bool,
-    ) -> Result<OwnedFdGuard, TTZipStatus> {
-        let mut cur_guard = OwnedFdGuard::borrowed(self.root_fd);
-        for seg in comps {
-            let seg_c =
-                CString::new(seg.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-            let next_fd = step_into_subdir(cur_guard.fd, &seg_c, create_if_missing)?;
-            cur_guard = OwnedFdGuard::owned(next_fd);
-        }
-        Ok(cur_guard)
+    ) -> Result<Option<Arc<VerifiedDirHandle>>, DirStepError> {
+        self.dir_cache
+            .resolve_dir_handle_detailed(self.root_fd, comps, create_if_missing)
+    }
+
+    pub(crate) fn resolve_dir_handle(
+        &self,
+        comps: &[String],
+        create_if_missing: bool,
+    ) -> Result<Option<Arc<VerifiedDirHandle>>, TTZipStatus> {
+        self.resolve_dir_handle_detailed(comps, create_if_missing)
+            .map_err(|e| e.status)
+    }
+
+    /// Walks `comps` strictly from `self.root_fd` without consulting the FD cache.
+    pub(crate) fn open_dir_chain_uncached(
+        &self,
+        comps: &[String],
+        create_if_missing: bool,
+    ) -> Result<Option<VerifiedDirHandle>, TTZipStatus> {
+        self.dir_cache
+            .open_dir_chain_uncached(self.root_fd, comps, create_if_missing)
     }
 
     fn apply_symlink_target_component(
@@ -581,41 +620,6 @@ fn collect_normal_components(rel: &Path) -> Result<Vec<String>, TTZipStatus> {
         return Err(TTZipStatus::ErrSecurityViolation);
     }
     Ok(comps)
-}
-
-fn step_into_subdir(
-    cur_fd: libc::c_int,
-    seg_c: &CString,
-    create_if_missing: bool,
-) -> Result<libc::c_int, TTZipStatus> {
-    match fstatat_mode_type(cur_fd, seg_c)? {
-        Some(libc::S_IFDIR) => {}
-        Some(_) => return Err(TTZipStatus::ErrSecurityViolation),
-        None => {
-            if !create_if_missing {
-                return Err(TTZipStatus::ErrFileNotFound);
-            }
-            let rc = unsafe { libc::mkdirat(cur_fd, seg_c.as_ptr(), 0o700) };
-            if rc != 0 {
-                let err = std::io::Error::last_os_error();
-                if err.raw_os_error() != Some(libc::EEXIST) {
-                    return Err(TTZipStatus::ErrExtractionFailed);
-                }
-            }
-        }
-    }
-
-    let next_fd = unsafe { libc::openat(cur_fd, seg_c.as_ptr(), dir_step_open_flags()) };
-    if next_fd < 0 {
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-    if !verify_fd_is_dir(next_fd) {
-        unsafe {
-            libc::close(next_fd);
-        }
-        return Err(TTZipStatus::ErrSecurityViolation);
-    }
-    Ok(next_fd)
 }
 
 fn fstatat_mode_type(

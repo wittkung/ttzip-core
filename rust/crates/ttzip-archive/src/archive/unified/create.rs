@@ -20,9 +20,12 @@ pub use super::create_to_writer::{
 use super::create_to_writer::{
     collect_source_entries, write_archive_entries_to_handle_fmt, write_entries_slice_to_handle_fmt,
 };
-use super::create_transaction::CreateTransactionContext;
+use super::create_transaction::{
+    ArchiveCleanupDisposition, CreateTransactionContext, ResidualPathRole, StageCleanupFailure,
+};
 use super::format_config::{
-    write_brotli_target_in_txn, write_snappy_target_in_txn, write_zstd_target_in_txn,
+    write_brotli_target_in_txn, write_gzip_target_in_txn, write_snappy_target_in_txn,
+    write_zstd_target_in_txn,
 };
 use crate::types::{TTZipArchiveFormat, TTZipCreateOptions, TTZipStatus};
 
@@ -239,6 +242,53 @@ fn write_staged_special_container_in_txn(
     }
 }
 
+fn try_write_staged_source_native_stream_in_txn(
+    source_paths: &[PathBuf],
+    staged_dest: &Path,
+    resolved_format: TTZipArchiveFormat,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    raw_src: Option<&Path>,
+    txn_ctx: Option<&CreateTransactionContext>,
+) -> Option<Result<(), TTZipStatus>> {
+    match resolved_format {
+        TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
+            Some(write_brotli_target_in_txn(
+                staged_dest,
+                split_volume_size_bytes,
+                options,
+                raw_src,
+                txn_ctx,
+                |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
+            ))
+        }
+        TTZipArchiveFormat::Snappy => Some(write_snappy_target_in_txn(
+            staged_dest,
+            split_volume_size_bytes,
+            raw_src,
+            txn_ctx,
+            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
+        )),
+        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => Some(write_zstd_target_in_txn(
+            staged_dest,
+            split_volume_size_bytes,
+            options,
+            raw_src,
+            txn_ctx,
+            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
+        )),
+        TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => Some(write_gzip_target_in_txn(
+            staged_dest,
+            split_volume_size_bytes,
+            options,
+            raw_src,
+            txn_ctx,
+            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
+        )),
+        _ => None,
+    }
+}
+
 fn write_staged_source_archive_in_txn(
     source_paths: &[PathBuf],
     staged_dest: &Path,
@@ -260,41 +310,16 @@ fn write_staged_source_archive_in_txn(
 
     let is_raw_stream = should_use_raw_stream(source_paths, resolved_format);
     let raw_src = is_raw_stream.then(|| source_paths[0].as_path());
-
-    if matches!(
+    if let Some(res) = try_write_staged_source_native_stream_in_txn(
+        source_paths,
+        staged_dest,
         resolved_format,
-        TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli
+        options,
+        split_volume_size_bytes,
+        raw_src,
+        txn_ctx,
     ) {
-        return write_brotli_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-        );
-    }
-    if resolved_format == TTZipArchiveFormat::Snappy {
-        return write_snappy_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-        );
-    }
-    if matches!(
-        resolved_format,
-        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd
-    ) {
-        return write_zstd_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_to_writer(source_paths, w, options),
-        );
+        return res;
     }
 
     run_libarchive_staged_write_in_txn(
@@ -315,6 +340,45 @@ pub fn supports_embedded_recovery_record(resolved_format: TTZipArchiveFormat) ->
         resolved_format,
         TTZipArchiveFormat::Zip | TTZipArchiveFormat::SevenZip | TTZipArchiveFormat::Tar
     )
+}
+
+fn append_staged_recovery_record_in_txn(
+    staged_dest: &Path,
+    redundancy_percent: u8,
+    txn_ctx: &CreateTransactionContext,
+) -> Result<(), TTZipStatus> {
+    let Err(status) = crate::crypto::rs_fec::append_recovery_record_to_file(
+        staged_dest,
+        f64::from(redundancy_percent),
+        4096,
+    ) else {
+        return Ok(());
+    };
+    if let Err(rm_err) = fs::remove_file(staged_dest)
+        && rm_err.kind() != std::io::ErrorKind::NotFound
+    {
+        let disposition = if rm_err.kind() == std::io::ErrorKind::InvalidData {
+            ArchiveCleanupDisposition::RefusedOwnershipMismatch
+        } else {
+            ArchiveCleanupDisposition::UnlinkOrRmdirIoError
+        };
+        txn_ctx.record_inner_failure(StageCleanupFailure {
+            role: ResidualPathRole::StagedArtifact,
+            disposition,
+            original_path: staged_dest.to_path_buf(),
+            final_known_path: staged_dest.exists().then(|| staged_dest.to_path_buf()),
+            expected_identity: None,
+            observed_identity: None,
+            os_error_code: rm_err.raw_os_error(),
+            detail: format!(
+                "append_recovery_record_to_file cleanup failed for '{}': {rm_err} (kind={:?}, os_err={:?})",
+                staged_dest.display(),
+                rm_err.kind(),
+                rm_err.raw_os_error(),
+            ),
+        });
+    }
+    Err(status)
 }
 
 /// Recursively compresses pre-filtered explicit entries into the destination archive path with a
@@ -369,22 +433,11 @@ where
                 Some(txn_ctx),
             )?;
             if recovery_record_redundancy_percent > 0 {
-                if let Err(status) = crate::crypto::rs_fec::append_recovery_record_to_file(
+                append_staged_recovery_record_in_txn(
                     staged_dest,
-                    f64::from(recovery_record_redundancy_percent),
-                    4096,
-                ) {
-                    if let Err(rm_err) = fs::remove_file(staged_dest)
-                        && rm_err.kind() != std::io::ErrorKind::NotFound
-                    {
-                        super::record_inner_stage_cleanup_error_with_status(
-                            "append_recovery_record_to_file",
-                            status,
-                            &rm_err,
-                        );
-                    }
-                    return Err(status);
-                }
+                    recovery_record_redundancy_percent,
+                    txn_ctx,
+                )?;
             }
             Ok(())
         },
@@ -534,6 +587,53 @@ fn write_staged_explicit_special_container_in_txn(
     }
 }
 
+fn try_write_staged_explicit_native_stream_in_txn(
+    entries: &[(PathBuf, String)],
+    staged_dest: &Path,
+    resolved_format: TTZipArchiveFormat,
+    options: &TTZipCreateOptions,
+    split_volume_size_bytes: u64,
+    raw_src: Option<&Path>,
+    txn_ctx: Option<&CreateTransactionContext>,
+) -> Option<Result<(), TTZipStatus>> {
+    match resolved_format {
+        TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli => {
+            Some(write_brotli_target_in_txn(
+                staged_dest,
+                split_volume_size_bytes,
+                options,
+                raw_src,
+                txn_ctx,
+                |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
+            ))
+        }
+        TTZipArchiveFormat::Snappy => Some(write_snappy_target_in_txn(
+            staged_dest,
+            split_volume_size_bytes,
+            raw_src,
+            txn_ctx,
+            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
+        )),
+        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd => Some(write_zstd_target_in_txn(
+            staged_dest,
+            split_volume_size_bytes,
+            options,
+            raw_src,
+            txn_ctx,
+            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
+        )),
+        TTZipArchiveFormat::TarGz | TTZipArchiveFormat::Gzip => Some(write_gzip_target_in_txn(
+            staged_dest,
+            split_volume_size_bytes,
+            options,
+            raw_src,
+            txn_ctx,
+            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
+        )),
+        _ => None,
+    }
+}
+
 fn write_staged_explicit_archive_in_txn(
     entries: &[(PathBuf, String)],
     staged_dest: &Path,
@@ -557,41 +657,18 @@ fn write_staged_explicit_archive_in_txn(
 
     let is_raw_stream = should_use_raw_stream_explicit(entries, resolved_format);
     let raw_src = is_raw_stream.then(|| entries[0].0.as_path());
-    if matches!(
+    if let Some(res) = try_write_staged_explicit_native_stream_in_txn(
+        entries,
+        staged_dest,
         resolved_format,
-        TTZipArchiveFormat::TarBrotli | TTZipArchiveFormat::Brotli
+        options,
+        split_volume_size_bytes,
+        raw_src,
+        txn_ctx,
     ) {
-        return write_brotli_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-        );
+        return res;
     }
-    if resolved_format == TTZipArchiveFormat::Snappy {
-        return write_snappy_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-        );
-    }
-    if matches!(
-        resolved_format,
-        TTZipArchiveFormat::TarZstd | TTZipArchiveFormat::Zstd
-    ) {
-        return write_zstd_target_in_txn(
-            staged_dest,
-            split_volume_size_bytes,
-            options,
-            raw_src,
-            txn_ctx,
-            |w| crate::archive::tar::write_tar_entries_to_writer(entries, w, options),
-        );
-    }
+
     run_libarchive_staged_write_in_txn(
         staged_dest,
         resolved_format,
@@ -690,6 +767,28 @@ mod tests {
             "Python zipfile.ZipFile must accept large ZIP with recovery record: {}",
             String::from_utf8_lossy(&py_out.stderr)
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_append_staged_recovery_record_records_cleanup_failure_in_txn_without_tls() {
+        use std::os::unix::fs::PermissionsExt;
+        super::super::clear_create_stage_diagnostics();
+        let dir = tempfile::tempdir().expect("tempdir");
+        let stage_dir = dir.path().join("stage");
+        fs::create_dir(&stage_dir).expect("mkdir stage");
+        let staged_dest = stage_dir.join("empty.zip");
+        fs::write(&staged_dest, b"").expect("write empty staged file");
+        fs::set_permissions(&stage_dir, fs::Permissions::from_mode(0o500)).expect("chmod 500");
+
+        let txn_ctx = CreateTransactionContext::new(stage_dir.clone());
+        let res = append_staged_recovery_record_in_txn(&staged_dest, 10, &txn_ctx);
+        let _ = fs::set_permissions(&stage_dir, fs::Permissions::from_mode(0o700));
+
+        assert_eq!(res, Err(TTZipStatus::ErrInvalidParam));
+        assert!(txn_ctx.has_failures_for_path(&staged_dest));
+        assert!(txn_ctx.should_preserve_outer_stage_dir());
+        assert!(super::super::take_last_inner_stage_cleanup_record().is_none());
     }
 }
 

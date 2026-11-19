@@ -507,10 +507,11 @@ impl<'a> ZipArchive<'a> {
     }
 
     fn sort_indices_by_uncompressed_desc(&self, file_indices: &mut [usize]) {
-        file_indices.sort_unstable_by(|&a, &b| {
-            self.entries[b]
-                .uncompressed_size
-                .cmp(&self.entries[a].uncompressed_size)
+        file_indices.sort_by(|&a, &b| {
+            super::reader_stream::compare_zip_entry_schedule(
+                self.entries[a].uncompressed_size,
+                self.entries[b].uncompressed_size,
+            )
         });
     }
 
@@ -554,7 +555,7 @@ impl<'a> ZipArchive<'a> {
             crate::fs::abort_guard::InFlightJailFile::open(jail, &entry.rel_path, true)?;
         if entry.uncompressed_size > 0 {
             let fd = inflight.file_mut().as_raw_fd();
-            if entry.uncompressed_size >= 256 * 1024 {
+            if entry.uncompressed_size >= crate::fs::apfs::MIN_ENTRY_PREALLOCATE_BYTES {
                 let _ = apfs_preallocate_entry(fd, entry.uncompressed_size);
             }
 

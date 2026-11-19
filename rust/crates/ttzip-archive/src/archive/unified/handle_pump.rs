@@ -16,7 +16,7 @@ use libc::{c_int, c_void, mode_t};
 use super::is_sequential_compressed_stream_path;
 use crate::ffi::archive_ffi::sys::*;
 use crate::fs::abort_guard::{DeferredHardlinks, InFlightJailFile};
-use crate::fs::apfs::apfs_preallocate_entry;
+use crate::fs::apfs::{apfs_preallocate_entry, MIN_ENTRY_PREALLOCATE_BYTES};
 use crate::fs::safe_extract::{sanitize_and_validate_path, DirJail, SafeExtractEngine};
 use crate::security::path_sanitizer::ExpansionRatioGuard;
 use crate::types::{ProgressAtomicSheet, TTZipExtractOptions, TTZipStatus};
@@ -193,7 +193,7 @@ fn ensure_inflight_file<'a>(
 ) -> Result<&'a mut fs::File, TTZipStatus> {
     if inflight.is_none() {
         let mut opened = InFlightJailFile::open(jail, clean_rel_str, true)?;
-        if size > 0 {
+        if size >= MIN_ENTRY_PREALLOCATE_BYTES {
             let _ = apfs_preallocate_entry(opened.file_mut().as_raw_fd(), size);
         }
         *inflight = Some(opened);
@@ -317,6 +317,7 @@ struct HandleLoopState<'a> {
     active_sheet: &'a ProgressAtomicSheet,
     total_processed: &'a mut u64,
     entries_seen: &'a mut usize,
+    has_symlinks: &'a mut bool,
 }
 
 struct ParsedHandleEntry<'a> {
@@ -396,6 +397,7 @@ unsafe fn try_apply_non_regular_entry(
     state: &mut HandleLoopState<'_>,
 ) -> Result<bool, TTZipStatus> {
     if parsed.is_symlink {
+        *state.has_symlinks = true;
         let symlink_raw = unsafe { archive_entry_symlink(entry) };
         if symlink_raw.is_null() {
             return Err(TTZipStatus::ErrSecurityViolation);
@@ -500,38 +502,61 @@ unsafe fn process_single_handle_entry(
         .on_regular_committed(state.jail, &entry_comps, hardlink_rel.as_deref())
 }
 
-fn finalize_handle_extraction(
-    archive_path: &Path,
-    options: &TTZipExtractOptions,
-    jail: &DirJail,
-    engine: &mut SafeExtractEngine,
+pub(super) enum StreamEofVerify<'a> {
+    GzipPathCheck,
+    Custom(&'a mut dyn FnMut() -> Result<(), TTZipStatus>),
+}
+
+struct FinalizeHandleCtx<'a, 'b> {
+    archive_path: &'a Path,
+    options: &'a TTZipExtractOptions,
+    jail: &'a DirJail,
+    engine: &'a mut SafeExtractEngine,
     deferred_hardlinks: DeferredHardlinks,
-    active_sheet: &ProgressAtomicSheet,
+    active_sheet: &'a ProgressAtomicSheet,
     entries_seen: usize,
     total_processed: u64,
-) -> Result<u64, TTZipStatus> {
-    deferred_hardlinks.finalize(jail)?;
+    has_symlinks: bool,
+    stream_verify: StreamEofVerify<'b>,
+}
 
-    if !options.dry_run {
-        super::super::fallback_policy::verify_gzip_stream_if_applicable(archive_path)?;
-        jail.verify_all_jail_symlinks()?;
+fn finalize_handle_extraction(mut ctx: FinalizeHandleCtx<'_, '_>) -> Result<u64, TTZipStatus> {
+    ctx.deferred_hardlinks.finalize(ctx.jail)?;
+
+    if !ctx.options.dry_run {
+        match &mut ctx.stream_verify {
+            StreamEofVerify::GzipPathCheck => {
+                super::super::fallback_policy::verify_gzip_stream_if_applicable(ctx.archive_path)?;
+            }
+            StreamEofVerify::Custom(verify_eof) => {
+                verify_eof()?;
+            }
+        }
+        if ctx.has_symlinks {
+            ctx.jail.verify_all_jail_symlinks()?;
+        }
     }
 
-    if entries_seen == 0
-        && total_processed == 0
-        && !options.dry_run
-        && archive_path.metadata().map(|m| m.len() > 0).unwrap_or(false)
+    if ctx.entries_seen == 0
+        && ctx.total_processed == 0
+        && !ctx.options.dry_run
+        && ctx
+            .archive_path
+            .metadata()
+            .map(|m| m.len() > 0)
+            .unwrap_or(false)
     {
         return Err(TTZipStatus::ErrCorruptHeader);
     }
 
-    active_sheet.mark_finished();
+    ctx.active_sheet.mark_finished();
 
-    if !options.dry_run {
-        engine.apply_deferred_metadata(options.preserve_permissions)?;
+    if !ctx.options.dry_run {
+        ctx.engine
+            .apply_deferred_metadata(ctx.options.preserve_permissions)?;
     }
 
-    Ok(total_processed)
+    Ok(ctx.total_processed)
 }
 
 pub(super) unsafe fn extract_from_archive_handle(
@@ -540,6 +565,26 @@ pub(super) unsafe fn extract_from_archive_handle(
     destination_path: &Path,
     options: &TTZipExtractOptions,
     sheet: Option<&ProgressAtomicSheet>,
+) -> Result<u64, TTZipStatus> {
+    unsafe {
+        extract_from_archive_handle_with_stream_verify(
+            a,
+            archive_path,
+            destination_path,
+            options,
+            sheet,
+            StreamEofVerify::GzipPathCheck,
+        )
+    }
+}
+
+pub(super) unsafe fn extract_from_archive_handle_with_stream_verify(
+    a: *mut c_void,
+    archive_path: &Path,
+    destination_path: &Path,
+    options: &TTZipExtractOptions,
+    sheet: Option<&ProgressAtomicSheet>,
+    stream_verify: StreamEofVerify<'_>,
 ) -> Result<u64, TTZipStatus> {
     unsafe {
         libc::setlocale(libc::LC_ALL, c"en_US.UTF-8".as_ptr());
@@ -565,6 +610,7 @@ pub(super) unsafe fn extract_from_archive_handle(
         let mut entry: *mut c_void = std::ptr::null_mut();
         let mut total_processed: u64 = 0;
         let mut entries_seen: usize = 0;
+        let mut has_symlinks = false;
         let mut deferred_hardlinks = DeferredHardlinks::default();
         let bomb_guard = ExpansionRatioGuard::default();
 
@@ -584,19 +630,22 @@ pub(super) unsafe fn extract_from_archive_handle(
                 active_sheet,
                 total_processed: &mut total_processed,
                 entries_seen: &mut entries_seen,
+                has_symlinks: &mut has_symlinks,
             };
             process_single_handle_entry(a, entry, &mut state)?;
         }
 
-        finalize_handle_extraction(
+        finalize_handle_extraction(FinalizeHandleCtx {
             archive_path,
             options,
-            &jail,
-            &mut engine,
+            jail: &jail,
+            engine: &mut engine,
             deferred_hardlinks,
             active_sheet,
             entries_seen,
             total_processed,
-        )
+            has_symlinks,
+            stream_verify,
+        })
     }
 }

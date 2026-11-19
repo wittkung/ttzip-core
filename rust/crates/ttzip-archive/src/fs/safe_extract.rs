@@ -401,6 +401,96 @@ impl SafeExtractEngine {
     /// `preserve_permissions == false` (owner-writable, non-executable, non-world-writable).
     pub const DEFAULT_REGULAR_FILE_MODE: u32 = 0o644;
 
+    fn store_transactional_metadata_plan(
+        &self,
+        shared_jail: Option<&DirJail>,
+        preserve_permissions: bool,
+        creation_mode_mask: u32,
+        mut files: Vec<DeferredEntryMetadata>,
+        mut explicit_dirs: Vec<DeferredEntryMetadata>,
+        mut implicit_dirs: Vec<DeferredEntryMetadata>,
+    ) -> Result<(), TTZipStatus> {
+        if let Some(jail) = shared_jail {
+            super::staged_metadata::populate_staged_identities_in_jail(jail, &mut files)
+                .map_err(|e| e.status)?;
+            super::staged_metadata::populate_staged_identities_in_jail(jail, &mut explicit_dirs)
+                .map_err(|e| e.status)?;
+            super::staged_metadata::populate_staged_identities_in_jail(jail, &mut implicit_dirs)
+                .map_err(|e| e.status)?;
+        }
+        super::staged_metadata::store_staged_metadata_plan(
+            super::staged_metadata::StagedMetadataPlan {
+                staging_payload_root: self.dest_root.clone(),
+                preserve_permissions,
+                creation_mode_mask,
+                files,
+                explicit_dirs,
+                implicit_dirs,
+            },
+        );
+        Ok(())
+    }
+
+    fn apply_direct_deferred_metadata(
+        &mut self,
+        shared_jail: Option<&DirJail>,
+        preserve_permissions: bool,
+        creation_mode_mask: u32,
+        files: Vec<DeferredEntryMetadata>,
+        dirs: Vec<DeferredEntryMetadata>,
+    ) -> Result<(), TTZipStatus> {
+        if let Some(jail) = shared_jail
+            .filter(|_| files.iter().all(|f| f.path.starts_with(&self.dest_root)))
+        {
+            super::staged_metadata::apply_file_metadata_batch_in_jail(
+                jail,
+                &files,
+                preserve_permissions,
+                creation_mode_mask,
+            )
+            .map_err(|e| e.status)?;
+        } else {
+            for file in &files {
+                super::staged_metadata::apply_entry_metadata_via_jail_with_mask(
+                    &self.dest_root,
+                    file,
+                    preserve_permissions,
+                    creation_mode_mask,
+                )
+                .map_err(|e| e.status)?;
+            }
+        }
+
+        let mut decorated_dirs: Vec<(usize, DeferredEntryMetadata)> =
+            dirs.into_iter().map(|d| (d.depth(), d)).collect();
+        decorated_dirs.sort_by(|(depth_a, dir_a), (depth_b, dir_b)| {
+            depth_b.cmp(depth_a).then_with(|| dir_b.path.cmp(&dir_a.path))
+        });
+
+        for (_, dir) in decorated_dirs {
+            let res = if let Some(jail) =
+                shared_jail.filter(|_| dir.path.starts_with(&self.dest_root))
+            {
+                super::staged_metadata::apply_entry_metadata_in_jail_with_mask(
+                    jail,
+                    &dir,
+                    preserve_permissions,
+                    creation_mode_mask,
+                )
+            } else {
+                super::staged_metadata::apply_entry_metadata_via_jail_with_mask(
+                    &self.dest_root,
+                    &dir,
+                    preserve_permissions,
+                    creation_mode_mask,
+                )
+            };
+            res.map_err(|e| e.status)?;
+            self.preexisting_dirs.insert(dir.path);
+        }
+        Ok(())
+    }
+
     /// Stage 2: Post-extraction deferred metadata application in Bottom-Up order.
     ///
     /// Directories are sorted deepest-first (longest path / highest component count)
@@ -408,69 +498,37 @@ impl SafeExtractEngine {
     /// entries have their metadata and timestamps applied.
     pub fn apply_deferred_metadata(&mut self, preserve_permissions: bool) -> Result<(), TTZipStatus> {
         let drained: Vec<DeferredEntryMetadata> = std::mem::take(&mut self.deferred_entries);
-        let (mut files, mut dirs) = super::staged_metadata::dedup_last_entry_wins(drained);
-        let mut implicit_dirs = self.collect_implicit_parent_dirs(&files, &dirs);
-        let creation_mode_mask =
-            super::staged_metadata::probe_creation_mode_mask_for_path(&self.dest_root);
+        let (files, mut dirs) = super::staged_metadata::dedup_last_entry_wins(drained);
+        let implicit_dirs = self.collect_implicit_parent_dirs(&files, &dirs);
 
-        if !self.dest_root.as_os_str().is_empty() {
-            super::staged_metadata::populate_staged_identities(&self.dest_root, &mut files)
-                .map_err(|e| e.status)?;
-            super::staged_metadata::populate_staged_identities(&self.dest_root, &mut dirs)
-                .map_err(|e| e.status)?;
-            super::staged_metadata::populate_staged_identities(&self.dest_root, &mut implicit_dirs)
-                .map_err(|e| e.status)?;
-        }
+        let shared_jail = if !self.dest_root.as_os_str().is_empty() {
+            Some(DirJail::open(&self.dest_root)?)
+        } else {
+            None
+        };
+        let creation_mode_mask = shared_jail.as_ref().map_or(0o700, |jail| {
+            super::staged_metadata::probe_creation_mode_mask_in_fd(jail.root_fd())
+        });
 
         if super::staged_metadata::is_transactional_staging_payload(&self.dest_root) {
-            super::staged_metadata::store_staged_metadata_plan(
-                super::staged_metadata::StagedMetadataPlan {
-                    staging_payload_root: self.dest_root.clone(),
-                    preserve_permissions,
-                    creation_mode_mask,
-                    files,
-                    explicit_dirs: dirs,
-                    implicit_dirs,
-                },
+            return self.store_transactional_metadata_plan(
+                shared_jail.as_ref(),
+                preserve_permissions,
+                creation_mode_mask,
+                files,
+                dirs,
+                implicit_dirs,
             );
-            return Ok(());
         }
 
         dirs.extend(implicit_dirs);
-
-        // 1. Apply file metadata first via DirJail FD traversal
-        for file in files {
-            super::staged_metadata::apply_entry_metadata_via_jail_with_mask(
-                &self.dest_root,
-                &file,
-                preserve_permissions,
-                creation_mode_mask,
-            )
-            .map_err(|e| e.status)?;
-        }
-
-        // 2. Sort directories Bottom-Up (descending depth, deepest child first)
-        let mut decorated_dirs: Vec<(usize, DeferredEntryMetadata)> = dirs
-            .into_iter()
-            .map(|d| (d.depth(), d))
-            .collect();
-        decorated_dirs.sort_by(|(depth_a, dir_a), (depth_b, dir_b)| {
-            depth_b.cmp(depth_a).then_with(|| dir_b.path.cmp(&dir_a.path))
-        });
-
-        // 3. Apply directory metadata in bottom-up sequence via DirJail FD traversal
-        for (_, dir) in decorated_dirs {
-            super::staged_metadata::apply_entry_metadata_via_jail_with_mask(
-                &self.dest_root,
-                &dir,
-                preserve_permissions,
-                creation_mode_mask,
-            )
-            .map_err(|e| e.status)?;
-            self.preexisting_dirs.insert(dir.path);
-        }
-
-        Ok(())
+        self.apply_direct_deferred_metadata(
+            shared_jail.as_ref(),
+            preserve_permissions,
+            creation_mode_mask,
+            files,
+            dirs,
+        )
     }
 
     fn collect_implicit_parent_dirs(

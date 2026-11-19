@@ -18,6 +18,9 @@ use crate::fs::abort_guard::{
     fstatat_dev_ino_nofollow, open_dir_nofollow, path_dev_ino_nofollow,
     quarantine_verify_and_unlink,
 };
+use crate::fs::collision::staging::{
+    OwnedDirRemovalError, OwnedDirRemovalErrorKind, verify_and_remove_owned_dir_typed,
+};
 use crate::fs::finish_io::{
     CloseScopePrecondition, DescriptorReleaseStatus, ExplicitFileFinishProof,
     FileFinishSyncPolicy, StageFileFinishError, close_owned_fd_once,
@@ -556,9 +559,9 @@ impl CreateStagingGuard {
         })
     }
 
-    pub(crate) fn cleanup_checked(&mut self) -> io::Result<()> {
+    pub(crate) fn cleanup_checked(&mut self) -> Result<(), OwnedDirRemovalError> {
         self.attempted_cleanup = true;
-        crate::fs::collision::staging::verify_and_remove_owned_dir(
+        verify_and_remove_owned_dir_typed(
             &self.parent_path,
             self.parent_fd.as_raw_fd(),
             self.parent_id,
@@ -612,19 +615,25 @@ fn absorb_legacy_inner_record_into_ctx(
 fn record_outer_cleanup_error_into_ctx(
     guard: &CreateStagingGuard,
     txn_ctx: &CreateTransactionContext,
-    err: &io::Error,
+    err: &OwnedDirRemovalError,
     stage_dir_preserved: bool,
 ) {
-    let msg = err.to_string();
-    let disposition = if msg.contains("outcome=identity_mismatch_restored") {
-        ArchiveCleanupDisposition::RestoredDisplacedSentinel
-    } else if msg.contains("outcome=identity_mismatch_restore_occupied") {
-        ArchiveCleanupDisposition::RestoreDisplacedSentinelFailed
-    } else if err.kind() == io::ErrorKind::InvalidData {
-        ArchiveCleanupDisposition::RefusedOwnershipMismatch
-    } else {
-        ArchiveCleanupDisposition::UnlinkOrRmdirIoError
+    let disposition = match err.kind {
+        OwnedDirRemovalErrorKind::IdentityMismatchRestored => {
+            ArchiveCleanupDisposition::RestoredDisplacedSentinel
+        }
+        OwnedDirRemovalErrorKind::IdentityMismatchRestoreOccupied => {
+            ArchiveCleanupDisposition::RestoreDisplacedSentinelFailed
+        }
+        OwnedDirRemovalErrorKind::IdentityMismatchLocationUnconfirmed => {
+            ArchiveCleanupDisposition::OwnershipOrLocationUnconfirmed
+        }
+        OwnedDirRemovalErrorKind::OwnershipMismatchRefused => {
+            ArchiveCleanupDisposition::RefusedOwnershipMismatch
+        }
+        OwnedDirRemovalErrorKind::IoError => ArchiveCleanupDisposition::UnlinkOrRmdirIoError,
     };
+    let io_err = &err.io_err;
     if let Ok(entries) = std::fs::read_dir(&guard.txn_dir) {
         for entry in entries.flatten() {
             let p = entry.path();
@@ -636,8 +645,8 @@ fn record_outer_cleanup_error_into_ctx(
                     final_known_path: Some(p),
                     expected_identity: None,
                     observed_identity: None,
-                    os_error_code: err.raw_os_error(),
-                    detail: format!("Staged file remained in '{}': {err}", guard.txn_dir.display()),
+                    os_error_code: io_err.raw_os_error(),
+                    detail: format!("Staged file remained in '{}': {io_err}", guard.txn_dir.display()),
                 });
             }
         }
@@ -649,9 +658,9 @@ fn record_outer_cleanup_error_into_ctx(
         final_known_path: stage_dir_preserved.then(|| guard.txn_dir.clone()),
         expected_identity: Some(guard.txn_id),
         observed_identity: None,
-        os_error_code: err.raw_os_error(),
+        os_error_code: io_err.raw_os_error(),
         detail: format!(
-            "Failed to clean outer transaction stage dir '{}': {err}",
+            "Failed to clean outer transaction stage dir '{}': {io_err}",
             guard.txn_dir.display()
         ),
     });
@@ -718,21 +727,67 @@ pub(crate) fn settle_committed_stage_dir(
     mut output: super::create_staging::CreateStagedCommitOutput,
 ) -> super::create_staging::CreateStagedCommitOutput {
     if let Err(cleanup_err) = guard.cleanup_checked() {
+        let io_err = cleanup_err.into_io_error();
         let txn_dir = guard.txn_dir.clone();
         super::record_post_commit_cleanup_issue(
             txn_dir.clone(),
             "committed_txn_stage_dir",
-            &cleanup_err,
+            &io_err,
         );
         output
             .post_commit_cleanup_issues
             .push(super::PostCommitCleanupIssue {
                 path: txn_dir,
                 role: "committed_txn_stage_dir",
-                message: format!("committed_txn_stage_dir: {cleanup_err}"),
-                errno: cleanup_err.raw_os_error().unwrap_or(libc::EIO),
+                message: format!("committed_txn_stage_dir: {io_err}"),
+                errno: io_err.raw_os_error().unwrap_or(libc::EIO),
             });
     }
     txn_ctx.mark_settled_clean();
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_record_outer_cleanup_error_maps_typed_kind_without_parsing_message() {
+        let cases = [
+            (
+                OwnedDirRemovalErrorKind::IdentityMismatchRestored,
+                ArchiveCleanupDisposition::RestoredDisplacedSentinel,
+            ),
+            (
+                OwnedDirRemovalErrorKind::IdentityMismatchRestoreOccupied,
+                ArchiveCleanupDisposition::RestoreDisplacedSentinelFailed,
+            ),
+            (
+                OwnedDirRemovalErrorKind::IdentityMismatchLocationUnconfirmed,
+                ArchiveCleanupDisposition::OwnershipOrLocationUnconfirmed,
+            ),
+            (
+                OwnedDirRemovalErrorKind::OwnershipMismatchRefused,
+                ArchiveCleanupDisposition::RefusedOwnershipMismatch,
+            ),
+            (
+                OwnedDirRemovalErrorKind::IoError,
+                ArchiveCleanupDisposition::UnlinkOrRmdirIoError,
+            ),
+        ];
+
+        let tmp = tempfile::tempdir().expect("tempdir");
+        for (kind, expected_disposition) in cases {
+            let guard = CreateStagingGuard::create(tmp.path()).expect("create staging guard");
+            let txn_ctx = CreateTransactionContext::new(guard.txn_dir.clone());
+            let err = OwnedDirRemovalError {
+                kind,
+                io_err: io::Error::new(io::ErrorKind::InvalidData, "message without outcome token"),
+            };
+            record_outer_cleanup_error_into_ctx(&guard, &txn_ctx, &err, true);
+            let report = txn_ctx.freeze_failure_report(TTZipStatus::ErrOpenFailed, true, || false);
+            assert_eq!(report.cleanup_failures.len(), 1);
+            assert_eq!(report.cleanup_failures[0].disposition, expected_disposition);
+        }
+    }
 }

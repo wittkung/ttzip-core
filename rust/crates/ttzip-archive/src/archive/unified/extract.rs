@@ -6,7 +6,9 @@
 #[path = "handle_pump.rs"]
 mod handle_pump;
 
-use handle_pump::extract_from_archive_handle;
+use handle_pump::{
+    StreamEofVerify, extract_from_archive_handle, extract_from_archive_handle_with_stream_verify,
+};
 use std::ffi::{CStr, CString};
 use std::fs;
 use std::io::{Seek, SeekFrom};
@@ -149,14 +151,18 @@ fn extract_compressed_tar_stream<R: std::io::Read + 'static>(
     let mut stream_reader =
         crate::archive::stream_adapter::read::ArchiveStreamReader::open_sequential(pre, 65536)?;
     let raw_a = stream_reader.as_raw_archive();
-    let bytes = unsafe {
+    let mut verify_eof = || stream_reader.verify_underlying_eof();
+    unsafe {
         apply_archive_passphrase(raw_a, options.password);
-        extract_from_archive_handle(raw_a, archive_path, destination_path, options, sheet)
-    }?;
-    if !options.dry_run {
-        stream_reader.verify_underlying_eof()?;
+        extract_from_archive_handle_with_stream_verify(
+            raw_a,
+            archive_path,
+            destination_path,
+            options,
+            sheet,
+            StreamEofVerify::Custom(&mut verify_eof),
+        )
     }
-    Ok(bytes)
 }
 
 fn extract_special_or_compressed_stream(
@@ -514,6 +520,86 @@ mod tests {
             "TarArchive::extract_all_with_sheet must honor cancelled ProgressAtomicSheet"
         );
         assert!(!dest.join("item1.bin").exists());
+    }
+
+    fn build_tar_bytes(entry_name: &str, payload: &[u8], extra_trailing_zeros: usize) -> Vec<u8> {
+        let mut tar_bytes = Vec::new();
+        {
+            let mut writer = TarWriter::new(&mut tar_bytes);
+            writer
+                .append_file(entry_name, payload, 0o644, 0)
+                .expect("append entry");
+        }
+        tar_bytes.extend_from_slice(&[0u8; 1024]);
+        if extra_trailing_zeros > 0 {
+            tar_bytes.resize(tar_bytes.len() + extra_trailing_zeros, 0);
+        }
+        tar_bytes
+    }
+
+    #[test]
+    fn test_extract_compressed_tar_gz_rejects_corrupt_trailer_before_mark_finished() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let tar_bytes = build_tar_bytes("hello.txt", b"hello trailer check", 0);
+        let mut gz = crate::codecs::deflate::libdeflate_gzip_compress(&tar_bytes, 6)
+            .expect("gzip compress");
+        let last = gz.len() - 1;
+        gz[last - 4] ^= 0xFF;
+        let archive_path = dir.path().join("bad_trailer.tar.gz");
+        fs::write(&archive_path, &gz).expect("write bad_trailer.tar.gz");
+
+        let staging = crate::fs::collision::staging::StagingRoot(dir.path().join("out"));
+        let sheet = ProgressAtomicSheet::new();
+        let res = extract_archive_with_sheet(
+            &archive_path,
+            &staging,
+            &TTZipExtractOptions::default(),
+            Some(&sheet),
+        );
+        assert_eq!(res.err(), Some(TTZipStatus::ErrCorruptHeader));
+        assert!(
+            !sheet.is_finished(),
+            "sheet must not mark_finished when underlying gzip EOF/CRC verification fails"
+        );
+    }
+
+    #[test]
+    fn test_extract_compressed_tar_gz_rejects_uncompressed_trailer_past_drain_limit() {
+        use std::io::Read;
+
+        let dir = tempfile::tempdir().expect("tempdir");
+        let tar_bytes = build_tar_bytes("hello.txt", b"hello over-limit", 0);
+        let mut gz = crate::codecs::deflate::libdeflate_gzip_compress(&tar_bytes, 6)
+            .expect("gzip compress tar member");
+        let trailer_len = 2 * 1024 * 1024 + 128 * 1024;
+        let trailing_member =
+            crate::codecs::deflate::libdeflate_gzip_compress(&vec![0xABu8; trailer_len], 1)
+                .expect("gzip compress trailing member");
+        gz.extend_from_slice(&trailing_member);
+
+        let mut verify_decoder = flate2::read::MultiGzDecoder::new(gz.as_slice());
+        let mut decoded = Vec::new();
+        verify_decoder
+            .read_to_end(&mut decoded)
+            .expect("concatenated multi-member gzip fixture must be valid and uncorrupted");
+        assert_eq!(decoded.len(), tar_bytes.len() + trailer_len);
+
+        let archive_path = dir.path().join("over_limit.tar.gz");
+        fs::write(&archive_path, &gz).expect("write over_limit.tar.gz");
+
+        let staging = crate::fs::collision::staging::StagingRoot(dir.path().join("out"));
+        let sheet = ProgressAtomicSheet::new();
+        let res = extract_archive_with_sheet(
+            &archive_path,
+            &staging,
+            &TTZipExtractOptions::default(),
+            Some(&sheet),
+        );
+        assert_eq!(res.err(), Some(TTZipStatus::ErrCorruptHeader));
+        assert!(
+            !sheet.is_finished(),
+            "sheet must not mark_finished when valid trailing stream exceeds MAX_TRAILER_DRAIN without EOF"
+        );
     }
 }
 

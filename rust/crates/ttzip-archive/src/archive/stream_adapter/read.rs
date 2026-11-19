@@ -282,6 +282,9 @@ impl<R: Read> ArchiveStreamReader<R> {
                 Err(_) => return Err(TTZipStatus::ErrCorruptHeader),
             }
         }
+        if !state.is_eof {
+            return Err(TTZipStatus::ErrCorruptHeader);
+        }
         Ok(())
     }
 }

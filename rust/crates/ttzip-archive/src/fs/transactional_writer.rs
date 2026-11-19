@@ -272,33 +272,39 @@ const _: () = {
 
 static INFLIGHT_JAIL_SEQ: AtomicU64 = AtomicU64::new(1);
 
-pub(crate) fn resolve_jail_parent_fd(
+enum InFlightParentDir {
+    Owned(std::os::fd::OwnedFd),
+    Cached(std::sync::Arc<super::dir_jail::VerifiedDirHandle>),
+}
+
+impl InFlightParentDir {
+    #[inline]
+    fn raw_fd(&self) -> libc::c_int {
+        use std::os::fd::AsRawFd;
+        match self {
+            Self::Owned(fd) => fd.as_raw_fd(),
+            Self::Cached(handle) => handle.as_raw_fd(),
+        }
+    }
+}
+
+fn resolve_inflight_parent_dir(
     jail: &super::dir_jail::DirJail,
     comps: &[String],
     create_if_missing: bool,
-) -> Result<libc::c_int, crate::types::TTZipStatus> {
+) -> Result<InFlightParentDir, crate::types::TTZipStatus> {
     use crate::types::TTZipStatus;
-    if create_if_missing {
-        jail.create_dir_all_components(comps)?;
+    use std::os::fd::FromRawFd;
+    if let Some(handle) = jail.resolve_dir_handle(comps, create_if_missing)? {
+        return Ok(InFlightParentDir::Cached(handle));
     }
-    let mut cur_fd = unsafe { libc::fcntl(jail.root_fd(), libc::F_DUPFD_CLOEXEC, 0) };
-    if cur_fd < 0 {
+    let dup_fd = unsafe { libc::fcntl(jail.root_fd(), libc::F_DUPFD_CLOEXEC, 0) };
+    if dup_fd < 0 {
         return Err(TTZipStatus::ErrExtractionFailed);
     }
-    let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-    for seg in comps {
-        let Ok(seg_c) = std::ffi::CString::new(seg.as_bytes()) else {
-            unsafe { libc::close(cur_fd) };
-            return Err(TTZipStatus::ErrSecurityViolation);
-        };
-        let next_fd = unsafe { libc::openat(cur_fd, seg_c.as_ptr(), flags) };
-        unsafe { libc::close(cur_fd) };
-        if next_fd < 0 {
-            return Err(TTZipStatus::ErrSecurityViolation);
-        }
-        cur_fd = next_fd;
-    }
-    Ok(cur_fd)
+    Ok(InFlightParentDir::Owned(unsafe {
+        std::os::fd::OwnedFd::from_raw_fd(dup_fd)
+    }))
 }
 
 pub(crate) fn verify_jail_parent_fd_unchanged(
@@ -307,18 +313,27 @@ pub(crate) fn verify_jail_parent_fd_unchanged(
     expected_fd: libc::c_int,
 ) -> Result<(), crate::types::TTZipStatus> {
     use crate::types::TTZipStatus;
-    let reopened_fd = resolve_jail_parent_fd(jail, comps, false)?;
-    let (mut st_a, mut st_b): (libc::stat, libc::stat) =
-        unsafe { (std::mem::zeroed(), std::mem::zeroed()) };
-    let ok = unsafe {
-        libc::fstat(reopened_fd, &mut st_a) == 0 && libc::fstat(expected_fd, &mut st_b) == 0
-    } && (st_a.st_mode & libc::S_IFMT) == libc::S_IFDIR
-        && st_a.st_dev == st_b.st_dev
-        && st_a.st_ino == st_b.st_ino;
-    unsafe {
-        libc::close(reopened_fd);
+    let reopened = jail.open_dir_chain_uncached(comps, false)?;
+    let mut st_b: libc::stat = unsafe { std::mem::zeroed() };
+    if unsafe { libc::fstat(expected_fd, &mut st_b) } != 0
+        || (st_b.st_mode & libc::S_IFMT) != libc::S_IFDIR
+    {
+        return Err(TTZipStatus::ErrSecurityViolation);
     }
-    if ok {
+    let expected_id = (st_b.st_dev as u64, st_b.st_ino);
+    let reopened_id = match reopened {
+        Some(handle) => handle.identity(),
+        None => {
+            let mut st_a: libc::stat = unsafe { std::mem::zeroed() };
+            if unsafe { libc::fstat(jail.root_fd(), &mut st_a) } != 0
+                || (st_a.st_mode & libc::S_IFMT) != libc::S_IFDIR
+            {
+                return Err(TTZipStatus::ErrSecurityViolation);
+            }
+            (st_a.st_dev as u64, st_a.st_ino)
+        }
+    };
+    if reopened_id == expected_id {
         Ok(())
     } else {
         Err(TTZipStatus::ErrSecurityViolation)
@@ -392,15 +407,15 @@ pub(crate) fn open_exclusive_temp_in_dir(
     Err(TTZipStatus::ErrExtractionFailed)
 }
 
-pub(crate) type InFlightOpenParts = (
+type InFlightOpenParts = (
     std::fs::File,
-    libc::c_int,
+    InFlightParentDir,
     Vec<String>,
     std::ffi::CString,
     Option<std::ffi::CString>,
 );
 
-pub(crate) fn open_inflight_jail_entry(
+fn open_inflight_jail_entry(
     jail: &super::dir_jail::DirJail,
     out_rel: &str,
     overwrite: bool,
@@ -410,34 +425,29 @@ pub(crate) fn open_inflight_jail_entry(
     let (leaf, parent_comps) = comps.split_last().ok_or(TTZipStatus::ErrSecurityViolation)?;
     let leaf_c =
         std::ffi::CString::new(leaf.as_bytes()).map_err(|_| TTZipStatus::ErrSecurityViolation)?;
-    let parent_fd = resolve_jail_parent_fd(jail, parent_comps, true)?;
-    let res = match open_exclusive_file_in_dir(parent_fd, &leaf_c) {
-        Ok(file) => Ok((file, parent_fd, parent_comps.to_vec(), leaf_c, None)),
-        Err(libc::EEXIST) => (|| {
+    let parent_dir = resolve_inflight_parent_dir(jail, parent_comps, true)?;
+    let parent_fd = parent_dir.raw_fd();
+    match open_exclusive_file_in_dir(parent_fd, &leaf_c) {
+        Ok(file) => Ok((file, parent_dir, parent_comps.to_vec(), leaf_c, None)),
+        Err(libc::EEXIST) => {
             let is_reg = check_regular_or_missing_in_dir(parent_fd, &leaf_c)?;
             if !is_reg || !overwrite {
                 return Err(TTZipStatus::ErrExtractionFailed);
             }
             let (file, tmp_c) = open_exclusive_temp_in_dir(parent_fd, leaf)?;
-            Ok((file, parent_fd, parent_comps.to_vec(), tmp_c, Some(leaf_c)))
-        })(),
+            Ok((file, parent_dir, parent_comps.to_vec(), tmp_c, Some(leaf_c)))
+        }
         Err(libc::ELOOP | libc::ENOTDIR | libc::EISDIR | libc::EPERM | libc::EACCES) => {
             Err(TTZipStatus::ErrSecurityViolation)
         }
         Err(_) => Err(TTZipStatus::ErrExtractionFailed),
-    };
-    if res.is_err() {
-        unsafe {
-            libc::close(parent_fd);
-        }
     }
-    res
 }
 
 /// RAII guard for an in-flight extracted regular file inside a [`super::dir_jail::DirJail`].
 pub struct InFlightJailFile {
     file: Option<std::fs::File>,
-    parent_fd: libc::c_int,
+    parent_dir: InFlightParentDir,
     parent_comps: Vec<String>,
     cleanup_leaf: Option<std::ffi::CString>,
     commit_leaf: Option<std::ffi::CString>,
@@ -450,11 +460,11 @@ impl InFlightJailFile {
         out_rel: &str,
         overwrite: bool,
     ) -> Result<Self, crate::types::TTZipStatus> {
-        let (file, parent_fd, parent_comps, cleanup_leaf, commit_leaf) =
+        let (file, parent_dir, parent_comps, cleanup_leaf, commit_leaf) =
             open_inflight_jail_entry(jail, out_rel, overwrite)?;
         Ok(Self {
             file: Some(file),
-            parent_fd,
+            parent_dir,
             parent_comps,
             cleanup_leaf: Some(cleanup_leaf),
             commit_leaf,
@@ -470,22 +480,22 @@ impl InFlightJailFile {
         }
     }
 
-    /// Flushes the file, verifies that the parent directory path in `jail` still resolves to
-    /// `parent_fd`, atomically installs any sibling temporary file via `renameat(parent_fd, ...)`,
-    /// and disarms drop cleanup.
+    /// Flushes the file, re-verifies the parent directory path when installing an overwrite
+    /// sibling temporary file via `renameat(parent_fd, ...)`, and disarms drop cleanup.
     pub fn commit(mut self, jail: &super::dir_jail::DirJail) -> Result<(), crate::types::TTZipStatus> {
         use crate::types::TTZipStatus;
         if let Some(mut f) = self.file.take() {
             f.flush().map_err(|_| TTZipStatus::ErrExtractionFailed)?;
         }
-        verify_jail_parent_fd_unchanged(jail, &self.parent_comps, self.parent_fd)?;
         if let (Some(cleanup_c), Some(target_c)) = (&self.cleanup_leaf, &self.commit_leaf) {
-            let _ = check_regular_or_missing_in_dir(self.parent_fd, target_c)?;
+            let parent_fd = self.parent_dir.raw_fd();
+            verify_jail_parent_fd_unchanged(jail, &self.parent_comps, parent_fd)?;
+            let _ = check_regular_or_missing_in_dir(parent_fd, target_c)?;
             let rc = unsafe {
                 libc::renameat(
-                    self.parent_fd,
+                    parent_fd,
                     cleanup_c.as_ptr(),
-                    self.parent_fd,
+                    parent_fd,
                     target_c.as_ptr(),
                 )
             };
@@ -501,16 +511,10 @@ impl InFlightJailFile {
 impl Drop for InFlightJailFile {
     fn drop(&mut self) {
         drop(self.file.take());
-        if self.parent_fd >= 0 {
-            if let Some(cleanup_c) = self.cleanup_leaf.take() {
-                unsafe {
-                    libc::unlinkat(self.parent_fd, cleanup_c.as_ptr(), 0);
-                }
-            }
+        if let Some(cleanup_c) = self.cleanup_leaf.take() {
             unsafe {
-                libc::close(self.parent_fd);
+                libc::unlinkat(self.parent_dir.raw_fd(), cleanup_c.as_ptr(), 0);
             }
-            self.parent_fd = -1;
         }
     }
 }

@@ -163,3 +163,58 @@ fn test_scan_directory_io_error_accounting() {
     assert!(io_errors >= 1);
     assert!(last_scan_io_error_count() >= 1);
 }
+
+#[cfg(unix)]
+#[test]
+fn test_last_scan_io_error_count_isolated_across_concurrent_threads() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::sync::{Arc, Barrier};
+
+    let err_dir = tempfile::tempdir().expect("create error tempdir");
+    let clean_dir = tempfile::tempdir().expect("create clean tempdir");
+
+    std::fs::write(err_dir.path().join("visible.txt"), b"ok").expect("write visible");
+    let locked_dir = err_dir.path().join("locked_subdir");
+    std::fs::create_dir(&locked_dir).expect("create locked_subdir");
+    std::fs::write(locked_dir.join("secret.txt"), b"secret").expect("write secret");
+    std::fs::set_permissions(&locked_dir, std::fs::Permissions::from_mode(0o000))
+        .expect("chmod 000");
+
+    std::fs::write(clean_dir.path().join("clean.txt"), b"clean").expect("write clean");
+
+    let err_path = err_dir.path().to_string_lossy().into_owned();
+    let clean_path = clean_dir.path().to_string_lossy().into_owned();
+    let after_a_scan = Arc::new(Barrier::new(2));
+    let after_b_scan = Arc::new(Barrier::new(2));
+
+    let a_b1 = Arc::clone(&after_a_scan);
+    let a_b2 = Arc::clone(&after_b_scan);
+    let handle_a = std::thread::spawn(move || {
+        let (_, io_errors) = scan_directory_with_error_count(err_path, 2).expect("scan err_dir");
+        assert!(io_errors >= 1);
+        assert_eq!(last_scan_io_error_count(), io_errors);
+        a_b1.wait();
+        a_b2.wait();
+        assert_eq!(
+            last_scan_io_error_count(),
+            io_errors,
+            "concurrent 0-error scan on sibling thread must not clobber TLS error count"
+        );
+    });
+
+    let b_b1 = Arc::clone(&after_a_scan);
+    let b_b2 = Arc::clone(&after_b_scan);
+    let handle_b = std::thread::spawn(move || {
+        b_b1.wait();
+        let items = scan_directory(clean_path, 1).expect("scan clean_dir");
+        assert_eq!(items.len(), 1);
+        assert_eq!(last_scan_io_error_count(), 0);
+        b_b2.wait();
+    });
+
+    let res_a = handle_a.join();
+    let res_b = handle_b.join();
+    let _ = std::fs::set_permissions(&locked_dir, std::fs::Permissions::from_mode(0o755));
+    res_a.expect("thread A must pass");
+    res_b.expect("thread B must pass");
+}

@@ -340,3 +340,75 @@ use std::fs;
         assert_eq!(entry.link_target.as_deref(), Some(long_target));
     }
 
+    #[test]
+    fn test_tar_extract_thread_budget_routing_and_bounded_parallel_extraction() {
+        let mut archive_bytes = Vec::new();
+        let mut expected_files: Vec<(String, Vec<u8>)> = Vec::new();
+        {
+            let mut writer = TarWriter::new(&mut archive_bytes);
+            for idx in 0..12usize {
+                let rel = format!("batch/sub_{}/file_{idx:02}.bin", idx % 3);
+                let payload: Vec<u8> = if idx == 0 {
+                    Vec::new()
+                } else {
+                    (0..(idx * 733 + 17))
+                        .map(|b| ((b + idx * 31) & 0xFF) as u8)
+                        .collect()
+                };
+                writer
+                    .append_file(&rel, &payload, 0o644, 1700000000)
+                    .expect("append file");
+                expected_files.push((rel, payload));
+            }
+            writer.finish().expect("finish tar");
+        }
+
+        let opts_for = |budget: u32| TTZipExtractOptions {
+            thread_budget: budget,
+            ..Default::default()
+        };
+
+        let auto_opts = opts_for(0);
+        let seq_opts = opts_for(1);
+        let par2_opts = opts_for(2);
+
+        let expected_auto_seq = ttzip_types::resolve_thread_budget(0) <= 1;
+        assert_eq!(
+            TarArchive::should_extract_tar_sequentially(&auto_opts, expected_files.len(), false),
+            expected_auto_seq,
+            "thread_budget=0 must resolve via resolve_thread_budget instead of clamping 0->1"
+        );
+        assert!(TarArchive::should_extract_tar_sequentially(
+            &seq_opts,
+            expected_files.len(),
+            false
+        ));
+        assert!(!TarArchive::should_extract_tar_sequentially(
+            &par2_opts,
+            expected_files.len(),
+            false
+        ));
+        assert!(TarArchive::should_extract_tar_sequentially(&par2_opts, 4, false));
+        assert!(TarArchive::should_extract_tar_sequentially(
+            &par2_opts,
+            expected_files.len(),
+            true
+        ));
+
+        let archive = TarArchive::open_slice(&archive_bytes).expect("open tar");
+        let expected_total: u64 = expected_files.iter().map(|(_, p)| p.len() as u64).sum();
+
+        for budget in [0u32, 1u32, 2u32] {
+            let temp_dir = tempfile::tempdir().expect("tempdir");
+            let report = archive
+                .extract_all(temp_dir.path(), &opts_for(budget))
+                .expect("extract tar");
+            assert_eq!(report.processed_entries_count, expected_files.len());
+            assert_eq!(report.total_uncompressed_bytes, expected_total);
+            for (rel, expected_bytes) in &expected_files {
+                let actual = fs::read(temp_dir.path().join(rel)).expect("read extracted file");
+                assert_eq!(actual, *expected_bytes, "mismatch for {rel} at budget={budget}");
+            }
+        }
+    }
+

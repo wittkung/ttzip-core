@@ -18,11 +18,14 @@
 use std::collections::HashMap;
 use std::ffi::{CString, OsStr};
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
+
+use rayon::prelude::*;
+use ttzip_types::scheduler::LocalWorkStealingPool;
 
 use crate::fs::collision::fs_ops::map_errno;
 use crate::fs::collision::{CommitPathMapping, ExtractionOutcome, FailedItem, FailureReason, OutcomeStatus};
-use crate::fs::dir_jail::DirJail;
+use crate::fs::dir_jail::{DirJail, VerifiedDirHandle};
 use crate::fs::safe_extract::{DeferredEntryMetadata, SafeExtractEngine};
 use crate::types::TTZipStatus;
 
@@ -171,24 +174,18 @@ pub fn dedup_last_entry_wins(
 
 struct RawFdGuard {
     fd: libc::c_int,
-    owned: bool,
 }
 
 impl RawFdGuard {
     #[inline]
-    const fn borrowed(fd: libc::c_int) -> Self {
-        Self { fd, owned: false }
-    }
-
-    #[inline]
     const fn owned(fd: libc::c_int) -> Self {
-        Self { fd, owned: true }
+        Self { fd }
     }
 }
 
 impl Drop for RawFdGuard {
     fn drop(&mut self) {
-        if self.owned && self.fd >= 0 {
+        if self.fd >= 0 {
             unsafe {
                 libc::close(self.fd);
             }
@@ -213,36 +210,15 @@ fn fstat_raw(fd: libc::c_int) -> Result<libc::stat, MetadataApplyError> {
     Ok(st)
 }
 
-fn open_parent_dir_in_jail(
-    root_fd: libc::c_int,
+fn resolve_parent_dir_in_jail(
+    jail: &DirJail,
     parent_comps: &[String],
-) -> Result<RawFdGuard, MetadataApplyError> {
-    let mut cur = RawFdGuard::borrowed(root_fd);
-    for seg in parent_comps {
-        let seg_c = CString::new(seg.as_bytes()).map_err(|_| MetadataApplyError::security(libc::EINVAL))?;
-        let pre_st = fstatat_nofollow_raw(cur.fd, &seg_c)?;
-        let fmt = pre_st.st_mode & libc::S_IFMT;
-        if fmt == libc::S_IFLNK {
-            return Err(MetadataApplyError::security(libc::ELOOP));
-        }
-        if fmt != libc::S_IFDIR {
-            return Err(MetadataApplyError::security(libc::ENOTDIR));
-        }
-        let flags = libc::O_RDONLY | libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-        let next_fd = unsafe { libc::openat(cur.fd, seg_c.as_ptr(), flags) };
-        if next_fd < 0 {
-            return Err(MetadataApplyError::from_last_os_error(TTZipStatus::ErrSecurityViolation));
-        }
-        let next_guard = RawFdGuard::owned(next_fd);
-        let post_st = fstat_raw(next_guard.fd)?;
-        if (post_st.st_mode & libc::S_IFMT) != libc::S_IFDIR
-            || (post_st.st_dev, post_st.st_ino) != (pre_st.st_dev, pre_st.st_ino)
-        {
-            return Err(MetadataApplyError::security(libc::EPERM));
-        }
-        cur = next_guard;
-    }
-    Ok(cur)
+) -> Result<Option<Arc<VerifiedDirHandle>>, MetadataApplyError> {
+    jail.resolve_dir_handle_detailed(parent_comps, false)
+        .map_err(|e| MetadataApplyError {
+            status: e.status,
+            errno: e.errno,
+        })
 }
 
 /// Resolves `(st_dev, st_ino)` of an entry inside `jail` step-by-step without following symlinks.
@@ -257,10 +233,25 @@ pub fn stat_entry_identity_in_jail(
         let st = fstat_raw(jail.root_fd())?;
         return Ok((st.st_dev as u64, st.st_ino));
     };
-    let parent_fd = open_parent_dir_in_jail(jail.root_fd(), parent_comps)?;
+    let parent_handle = resolve_parent_dir_in_jail(jail, parent_comps)?;
+    let parent_fd = parent_handle
+        .as_ref()
+        .map_or(jail.root_fd(), |h| h.as_raw_fd());
     let leaf_c = CString::new(leaf.as_bytes()).map_err(|_| MetadataApplyError::security(libc::EINVAL))?;
-    let st = fstatat_nofollow_raw(parent_fd.fd, &leaf_c)?;
+    let st = fstatat_nofollow_raw(parent_fd, &leaf_c)?;
     Ok((st.st_dev as u64, st.st_ino))
+}
+
+/// Populates `expected_identity` (`(st_dev, st_ino)`) for each entry using an already-open `DirJail`.
+pub(crate) fn populate_staged_identities_in_jail(
+    jail: &DirJail,
+    entries: &mut [DeferredEntryMetadata],
+) -> Result<(), MetadataApplyError> {
+    for entry in entries {
+        let identity = stat_entry_identity_in_jail(jail, &entry.path)?;
+        entry.expected_identity = Some(identity);
+    }
+    Ok(())
 }
 
 /// Populates `expected_identity` (`(st_dev, st_ino)`) for each entry inside `dest_root`.
@@ -283,11 +274,7 @@ pub fn populate_staged_identities(
             libc::EACCES
         },
     })?;
-    for entry in entries {
-        let identity = stat_entry_identity_in_jail(&jail, &entry.path)?;
-        entry.expected_identity = Some(identity);
-    }
-    Ok(())
+    populate_staged_identities_in_jail(&jail, entries)
 }
 
 fn apply_symlink_mtime_nofollow(
@@ -341,28 +328,42 @@ fn apply_symlink_mtime_nofollow(
     }
 }
 
-fn open_verified_target_fd(
+fn open_target_fd_verified(
     parent_fd: libc::c_int,
     leaf_c: &CString,
-    pre_st: &libc::stat,
-    expected_fmt: libc::mode_t,
-) -> Result<RawFdGuard, MetadataApplyError> {
-    let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC;
-    if expected_fmt == libc::S_IFDIR {
+    entry: &DeferredEntryMetadata,
+) -> Result<(RawFdGuard, libc::stat), MetadataApplyError> {
+    let expected_fmt = if entry.is_directory {
+        libc::S_IFDIR
+    } else {
+        libc::S_IFREG
+    };
+    let mut flags = libc::O_RDONLY | libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK;
+    if entry.is_directory {
         flags |= libc::O_DIRECTORY;
     }
     let fd = unsafe { libc::openat(parent_fd, leaf_c.as_ptr(), flags) };
     if fd < 0 {
-        return Err(MetadataApplyError::from_last_os_error(TTZipStatus::ErrExtractionFailed));
+        return Err(MetadataApplyError::from_last_os_error(
+            TTZipStatus::ErrExtractionFailed,
+        ));
     }
     let guard = RawFdGuard::owned(fd);
     let fd_st = fstat_raw(guard.fd)?;
-    if (fd_st.st_mode & libc::S_IFMT) != expected_fmt
-        || (fd_st.st_dev, fd_st.st_ino) != (pre_st.st_dev, pre_st.st_ino)
-    {
-        return Err(MetadataApplyError::security(libc::EPERM));
+    if (fd_st.st_mode & libc::S_IFMT) != expected_fmt {
+        let errno = if entry.is_directory {
+            libc::ENOTDIR
+        } else {
+            libc::EPERM
+        };
+        return Err(MetadataApplyError::security(errno));
     }
-    Ok(guard)
+    if let Some((exp_dev, exp_ino)) = entry.expected_identity {
+        if (fd_st.st_dev as u64, fd_st.st_ino) != (exp_dev, exp_ino) {
+            return Err(MetadataApplyError::security(libc::EPERM));
+        }
+    }
+    Ok((guard, fd_st))
 }
 
 /// Probes the calling environment's effective creation mode mask (`0o777 & !umask`)
@@ -414,6 +415,7 @@ pub fn probe_creation_mode_mask_for_path(dir_path: &Path) -> u32 {
 
 fn apply_fd_mode_and_mtime(
     fd: libc::c_int,
+    current_mode: u32,
     entry: &DeferredEntryMetadata,
     preserve_permissions: bool,
     creation_mode_mask: u32,
@@ -450,8 +452,12 @@ fn apply_fd_mode_and_mtime(
     };
     if effective_mode != 0 {
         let target_mode = ((effective_mode & 0o0777) & !0o002) as libc::mode_t;
-        if unsafe { libc::fchmod(fd, target_mode) } != 0 {
-            return Err(MetadataApplyError::from_last_os_error(TTZipStatus::ErrExtractionFailed));
+        if (current_mode & 0o0777) != (target_mode as u32)
+            && unsafe { libc::fchmod(fd, target_mode) } != 0
+        {
+            return Err(MetadataApplyError::from_last_os_error(
+                TTZipStatus::ErrExtractionFailed,
+            ));
         }
     }
 
@@ -482,39 +488,82 @@ pub fn apply_entry_metadata_in_jail_with_mask(
     let Some((leaf, parent_comps)) = comps.split_last() else {
         return Ok(());
     };
-    let parent_fd = open_parent_dir_in_jail(jail.root_fd(), parent_comps)?;
+    let parent_handle = resolve_parent_dir_in_jail(jail, parent_comps)?;
+    let parent_fd = parent_handle
+        .as_ref()
+        .map_or(jail.root_fd(), |h| h.as_raw_fd());
     let leaf_c = CString::new(leaf.as_bytes()).map_err(|_| MetadataApplyError::security(libc::EINVAL))?;
-    let pre_st = fstatat_nofollow_raw(parent_fd.fd, &leaf_c)?;
-    let actual_fmt = pre_st.st_mode & libc::S_IFMT;
-
-    if let Some((exp_dev, exp_ino)) = entry.expected_identity {
-        if (pre_st.st_dev as u64, pre_st.st_ino) != (exp_dev, exp_ino) {
-            return Err(MetadataApplyError::security(libc::EPERM));
-        }
-    }
 
     if entry.is_symlink {
-        if actual_fmt != libc::S_IFLNK {
+        let pre_st = fstatat_nofollow_raw(parent_fd, &leaf_c)?;
+        if let Some((exp_dev, exp_ino)) = entry.expected_identity {
+            if (pre_st.st_dev as u64, pre_st.st_ino) != (exp_dev, exp_ino) {
+                return Err(MetadataApplyError::security(libc::EPERM));
+            }
+        }
+        if (pre_st.st_mode & libc::S_IFMT) != libc::S_IFLNK {
             return Err(MetadataApplyError::security(libc::EPERM));
         }
-        return apply_symlink_mtime_nofollow(parent_fd.fd, &leaf_c, &pre_st, entry);
+        return apply_symlink_mtime_nofollow(parent_fd, &leaf_c, &pre_st, entry);
     }
 
-    if actual_fmt == libc::S_IFLNK {
-        return Err(MetadataApplyError::security(libc::ELOOP));
-    }
-    let expected_fmt = if entry.is_directory {
-        libc::S_IFDIR
-    } else {
-        libc::S_IFREG
-    };
-    if actual_fmt != expected_fmt {
-        let errno = if entry.is_directory { libc::ENOTDIR } else { libc::EPERM };
-        return Err(MetadataApplyError::security(errno));
-    }
+    let (target_fd, fd_st) = open_target_fd_verified(parent_fd, &leaf_c, entry)?;
+    apply_fd_mode_and_mtime(
+        target_fd.fd,
+        fd_st.st_mode as u32,
+        entry,
+        preserve_permissions,
+        creation_mode_mask,
+    )
+}
 
-    let target_fd = open_verified_target_fd(parent_fd.fd, &leaf_c, &pre_st, expected_fmt)?;
-    apply_fd_mode_and_mtime(target_fd.fd, entry, preserve_permissions, creation_mode_mask)
+const PARALLEL_METADATA_MIN_FILES: usize = 64;
+
+fn shared_metadata_pool() -> &'static LocalWorkStealingPool {
+    static META_POOL: OnceLock<LocalWorkStealingPool> = OnceLock::new();
+    META_POOL.get_or_init(|| {
+        let threads = ttzip_types::recommended_compute_threads().clamp(2, 6);
+        LocalWorkStealingPool::with_threads(threads)
+    })
+}
+
+/// Applies non-directory file metadata in parallel across a bounded worker pool while preserving
+/// deterministic first-error reporting.
+pub(crate) fn apply_file_metadata_batch_in_jail(
+    jail: &DirJail,
+    files: &[DeferredEntryMetadata],
+    preserve_permissions: bool,
+    creation_mode_mask: u32,
+) -> Result<(), MetadataApplyError> {
+    if files.len() < PARALLEL_METADATA_MIN_FILES {
+        for file in files {
+            apply_entry_metadata_in_jail_with_mask(
+                jail,
+                file,
+                preserve_permissions,
+                creation_mode_mask,
+            )?;
+        }
+        return Ok(());
+    }
+    let errors: Vec<Option<MetadataApplyError>> = shared_metadata_pool().install(|| {
+        files
+            .par_iter()
+            .map(|file| {
+                apply_entry_metadata_in_jail_with_mask(
+                    jail,
+                    file,
+                    preserve_permissions,
+                    creation_mode_mask,
+                )
+                .err()
+            })
+            .collect()
+    });
+    if let Some(first_err) = errors.into_iter().flatten().next() {
+        return Err(first_err);
+    }
+    Ok(())
 }
 
 /// Applies `entry` metadata via `DirJail` rooted at `dest_root` (or `entry.path.parent()` if `dest_root` is unset).
@@ -667,7 +716,15 @@ pub fn apply_committed_metadata(
         }
     };
 
-    for (committed_rel, mapped) in &mapped_files {
+    apply_committed_file_metadata(
+        &jail,
+        &mapped_files,
+        plan.preserve_permissions,
+        creation_mode_mask,
+        outcome,
+    );
+
+    for (committed_rel, mapped) in &mapped_dirs {
         if mapped.expected_identity.is_none() {
             record_metadata_failure(outcome, committed_rel, MetadataApplyError::security(libc::EPERM));
             continue;
@@ -681,18 +738,40 @@ pub fn apply_committed_metadata(
             record_metadata_failure(outcome, committed_rel, err);
         }
     }
+}
 
-    for (committed_rel, mapped) in &mapped_dirs {
+fn apply_committed_file_metadata(
+    jail: &DirJail,
+    mapped_files: &MappedEntryList,
+    preserve_permissions: bool,
+    creation_mode_mask: u32,
+    outcome: &mut ExtractionOutcome,
+) {
+    let apply_one = |mapped: &DeferredEntryMetadata| -> Option<MetadataApplyError> {
         if mapped.expected_identity.is_none() {
-            record_metadata_failure(outcome, committed_rel, MetadataApplyError::security(libc::EPERM));
-            continue;
+            return Some(MetadataApplyError::security(libc::EPERM));
         }
-        if let Err(err) = apply_entry_metadata_in_jail_with_mask(
-            &jail,
-            mapped,
-            plan.preserve_permissions,
-            creation_mode_mask,
-        ) {
+        apply_entry_metadata_in_jail_with_mask(jail, mapped, preserve_permissions, creation_mode_mask)
+            .err()
+    };
+
+    if mapped_files.len() < PARALLEL_METADATA_MIN_FILES {
+        for (committed_rel, mapped) in mapped_files {
+            if let Some(err) = apply_one(mapped) {
+                record_metadata_failure(outcome, committed_rel, err);
+            }
+        }
+        return;
+    }
+
+    let errors: Vec<Option<MetadataApplyError>> = shared_metadata_pool().install(|| {
+        mapped_files
+            .par_iter()
+            .map(|(_, mapped)| apply_one(mapped))
+            .collect()
+    });
+    for ((committed_rel, _), err_opt) in mapped_files.iter().zip(errors) {
+        if let Some(err) = err_opt {
             record_metadata_failure(outcome, committed_rel, err);
         }
     }

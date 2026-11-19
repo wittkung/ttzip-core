@@ -33,6 +33,12 @@ pub struct fstore_t {
     pub fst_bytesalloc: i64,
 }
 
+/// Minimum entry size worth calling `F_PREALLOCATE` on APFS (256 KiB).
+///
+/// Below this threshold, APFS allocates tiny files in a single extent on write; invoking
+/// `fcntl(F_PREALLOCATE)` per file adds measurable syscall overhead on multi-file source trees.
+pub const MIN_ENTRY_PREALLOCATE_BYTES: u64 = 256 * 1024;
+
 /// Maximum number of bytes that may be physically preallocated for a single archive entry.
 ///
 /// Entry sizes read from an archive header are attacker-controlled: a corrupted archive can

@@ -3,6 +3,9 @@
 
 //! Archive streaming and libarchive adapter module.
 
+use std::sync::OnceLock;
+use ttzip_types::scheduler::LocalWorkStealingPool;
+
 pub mod builder;
 pub mod in_place_edit;
 pub mod mac_metadata;
@@ -32,6 +35,15 @@ pub use tar::*;
 pub use ttzip_mt_drainer::*;
 pub use unified::*;
 pub use wal_mutation::*;
+
+/// Returns a cached work-stealing compute pool sized to `num_threads.clamp(1, 64)`.
+pub(crate) fn shared_compute_pool(num_threads: usize) -> LocalWorkStealingPool {
+    static POOLS: [OnceLock<LocalWorkStealingPool>; 65] = [const { OnceLock::new() }; 65];
+    let clamped = num_threads.clamp(1, 64);
+    POOLS[clamped]
+        .get_or_init(|| LocalWorkStealingPool::with_threads(clamped))
+        .clone()
+}
 
 
 

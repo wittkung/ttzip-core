@@ -390,9 +390,14 @@ fn map_brotli_quality(level: TTZipCompressionLevel) -> u32 {
     }
 }
 
+#[path = "format_config_gzip.rs"]
+mod format_config_gzip;
 #[path = "format_config_zstd.rs"]
 mod format_config_zstd;
 
+pub(crate) use format_config_gzip::{
+    build_gzip_stream_config, write_gzip_target_in_txn, GzipTargetStreamWriter,
+};
 #[cfg(test)]
 use format_config_zstd::build_zstd_stream_config;
 pub(crate) use format_config_zstd::write_zstd_target_in_txn;
